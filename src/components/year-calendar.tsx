@@ -59,8 +59,8 @@ export default function YearCalendar() {
       const h = now.getHours().toString().padStart(2, '0');
       const m = now.getMinutes().toString().padStart(2, '0');
       const s = now.getSeconds().toString().padStart(2, '0');
-      const ms = now.getMilliseconds().toString().padStart(2, '0').slice(0, 2);
-      setClockStr(`${h}:${m}:${s}.${ms}`);
+      const cs = Math.floor(now.getMilliseconds() / 10).toString().padStart(2, '0');
+      setClockStr(`${h}:${m}:${s}.${cs}`);
     };
     update();
     const id = setInterval(update, 47); // ~21fps for smooth ms
@@ -280,9 +280,17 @@ export default function YearCalendar() {
                     {clockStr}
                   </div>
                 )}
-                <span className="text-lg text-gray-500 font-medium leading-tight mt-0.5">
-                  {ganZhi}（{animal}）
-                </span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-lg text-gray-500 font-medium leading-tight">
+                    {ganZhi}（{animal}）
+                  </span>
+                  <button
+                    onClick={() => setYear(new Date().getFullYear())}
+                    className="px-2.5 py-0.5 text-sm rounded-md bg-gray-900 text-white hover:bg-gray-700 transition-colors leading-tight"
+                  >
+                    今年
+                  </button>
+                </div>
               </div>
             </div>
             <button
@@ -291,12 +299,6 @@ export default function YearCalendar() {
               aria-label="下一年"
             >
               ›
-            </button>
-            <button
-              onClick={() => setYear(new Date().getFullYear())}
-              className="px-4 py-1.5 text-base rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors"
-            >
-              今年
             </button>
           </div>
 
@@ -443,7 +445,7 @@ export default function YearCalendar() {
                         height: cellHeight,
                         borderBottom: '1px solid #efefef',
                         borderRight: '1px solid #efefef',
-                        backgroundColor: isPast ? '#f3f3f3' : weekendBg,
+                        backgroundColor: isPast ? '#f8f8f8' : weekendBg,
                       }}
                     >
                       {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
@@ -461,7 +463,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#d0d0d0' }
+                              ? { color: '#dedede' }
                               : cell.isWeekend
                                 ? { color: monthColor.text }
                                 : undefined
@@ -485,7 +487,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#d5d5d5' }
+                              ? { color: '#e3e3e3' }
                               : cell.isWeekend &&
                                 !cell.isSolarTerm &&
                                 !cell.isFestival &&
