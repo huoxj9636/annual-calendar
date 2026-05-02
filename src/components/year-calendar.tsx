@@ -222,7 +222,7 @@ export default function YearCalendar() {
     <div className="h-screen bg-gray-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 print:static print:border-b z-20">
-        <div className="px-4 py-2 flex items-center justify-between flex-wrap gap-2">
+        <div className="px-8 py-3 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setYear((y) => y - 1)}
@@ -255,89 +255,54 @@ export default function YearCalendar() {
           </div>
 
           {/* Legend & Stats */}
-          <div className="flex items-center gap-3 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 text-xs">
+            <div className="flex items-center gap-3 text-gray-500">
               <span className="flex items-center gap-1">
-                <span className="inline-block w-3.5 h-3.5 bg-green-100 rounded text-green-600 text-center text-[10px] leading-3.5">
+                <span className="inline-flex w-5 h-5 bg-emerald-50 rounded-md items-center justify-center text-emerald-600 text-[11px] font-bold">
                   ✓
-                </span>{' '}
-                满意
+                </span>
+                <span>满意</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="inline-block w-3.5 h-3.5 bg-red-100 rounded text-red-600 text-center text-[10px] leading-3.5">
+                <span className="inline-flex w-5 h-5 bg-rose-50 rounded-md items-center justify-center text-rose-500 text-[11px] font-bold">
                   ✗
-                </span>{' '}
-                不满意
+                </span>
+                <span>不满意</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="inline-block w-3.5 h-3 rounded border-2 border-red-600" />
-                <span className="inline-block w-3.5 h-3 rounded border-2 border-gray-900 -ml-1" />
-                {' '}12周
+                <span className="inline-block w-4 h-3 rounded border-2 border-red-500" />
+                <span className="inline-block w-4 h-3 rounded border-2 border-gray-800 -ml-1.5" />
+                <span>12周</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 bg-blue-400 rounded-full" />
-                备注
+                <span className="inline-block w-2 h-2 bg-sky-400 rounded-full" />
+                <span>备注</span>
               </span>
             </div>
             {mounted && stats.total > 0 && (
-              <div className="flex items-center gap-1.5 pl-2 border-l border-gray-300">
-                <span>已过{stats.total}天</span>
-                <span className="text-green-600 font-medium">✓{stats.checked}</span>
-                <span className="text-red-500 font-medium">✗{stats.crossed}</span>
-                <span className="font-bold text-gray-900">{stats.rate}%</span>
+              <div className="flex items-center gap-2 pl-3 ml-1 border-l border-gray-200">
+                <span className="text-gray-400">已过 <strong className="text-gray-700 font-semibold">{stats.total}</strong> 天</span>
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-50 rounded-md text-emerald-700 font-semibold">
+                  ✓{stats.checked}
+                </span>
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-rose-50 rounded-md text-rose-600 font-semibold">
+                  ✗{stats.crossed}
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 bg-gray-900 text-white rounded-md font-bold text-xs">
+                  {stats.rate}%
+                </span>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* 12-Week Block Labels */}
-      <div className="flex-shrink-0 px-4 pt-2 pb-1">
-        <div className="flex items-center gap-2 text-xs flex-wrap">
-          {blocks.map((block, i) => (
-            <span
-              key={i}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded"
-              style={{
-                border: `2px solid ${block.color === 'red' ? '#dc2626' : '#1a1a1a'}`,
-              }}
-            >
-              <span
-                className="font-bold"
-                style={{
-                  color: block.color === 'red' ? '#dc2626' : '#1a1a1a',
-                }}
-              >
-                {block.label}
-              </span>
-              <span className="text-gray-500 text-[10px]">
-                {block.startDate.getMonth() + 1}/{block.startDate.getDate()} -{' '}
-                {block.endDate.getMonth() + 1}/{block.endDate.getDate()}
-              </span>
-            </span>
-          ))}
-          <span className="text-gray-400 text-[10px] ml-1">
-            {(() => {
-              const block4End = blocks[3]?.endDate;
-              const yearEnd = new Date(year, 11, 31);
-              if (block4End && yearEnd > block4End) {
-                const remaining =
-                  Math.floor(
-                    (yearEnd.getTime() - block4End.getTime()) /
-                      (1000 * 60 * 60 * 24),
-                  ) + 1;
-                return `剩余 ${remaining} 天不在12周周期内`;
-              }
-              return '';
-            })()}
-          </span>
-        </div>
-      </div>
+
 
       {/* Calendar Grid - fills remaining viewport */}
       <div
         ref={gridContainerRef}
-        className="flex-1 px-3 pb-2 overflow-x-auto min-h-0"
+        className="flex-1 px-8 pb-6 pt-3 overflow-x-auto min-h-0"
       >
         <div className="w-full h-full">
           {/* Day number header */}
@@ -371,8 +336,13 @@ export default function YearCalendar() {
               >
                 {/* Month label */}
                 <div
-                  className="flex items-center justify-center text-[10px] font-bold sticky left-0 bg-gray-50 z-10 print:bg-white"
-                  style={{ height: cellHeight, color: monthColor.text }}
+                  className="flex items-center justify-center text-[10px] font-bold sticky left-0 bg-gray-50 z-10 print:bg-white rounded-md mx-0.5"
+                  style={{
+                    height: cellHeight,
+                    color: monthColor.text,
+                    border: `2px solid ${monthColor.text}`,
+                    backgroundColor: `${monthColor.bg}`,
+                  }}
                 >
                   {MONTH_NAMES[monthIdx]}
                 </div>
