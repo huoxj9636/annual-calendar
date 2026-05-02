@@ -335,18 +335,18 @@ export default function YearCalendar() {
       {/* Header */}
       <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/header-bg.jpeg')" }} />
-        <div className="absolute inset-0 bg-white/85 backdrop-blur-[3px]" />
+        <div className="absolute inset-0 bg-[#faf9f7]/90 backdrop-blur-[4px]" />
         <div className="relative px-8 py-1.5 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 rounded-2xl px-4 py-2">
             <button
               onClick={() => setYear((y) => y - 1)}
-              className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors text-2xl font-bold text-gray-400 hover:text-blue-500"
+              className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-[#f5f2ef] active:bg-[#ece8e3] transition-colors text-2xl font-bold text-[#b0a8a0] hover:text-[#4a4458]"
               aria-label="上一年"
             >
               ‹
             </button>
             <div className="flex items-center">
-              <h1 className="text-7xl font-black tracking-tight text-gray-800 leading-none">
+              <h1 className="text-7xl font-black tracking-tight text-[#1a1a2e] leading-none">
                 {year}
               </h1>
               <div className="flex flex-col ml-4">
@@ -356,13 +356,13 @@ export default function YearCalendar() {
                   </span>
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
-                    className="px-2.5 py-0.5 text-sm rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-100 transition-colors leading-tight"
+                    className="px-2.5 py-0.5 text-sm rounded-md bg-white/60 text-[#4a4458] hover:bg-white/80 border border-[#e8e4df] transition-colors leading-tight"
                   >
                     今年
                   </button>
                 </div>
                 {mounted && clockStr && (
-                  <div className="text-2xl text-blue-400/30 font-mono tracking-wider tabular-nums leading-tight mt-0.5">
+                  <div className="text-2xl text-[#8b8680]/40 font-mono tracking-wider tabular-nums leading-tight mt-0.5">
                     {clockStr}
                   </div>
                 )}
@@ -370,7 +370,7 @@ export default function YearCalendar() {
             </div>
             <button
               onClick={() => setYear((y) => y + 1)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors text-lg font-bold text-gray-400 hover:text-blue-500"
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f5f2ef] active:bg-[#ece8e3] transition-colors text-lg font-bold text-[#b0a8a0] hover:text-[#4a4458]"
               aria-label="下一年"
             >
               ›
@@ -379,7 +379,7 @@ export default function YearCalendar() {
 
           {/* 居中标语 */}
           <div className="absolute inset-x-0 flex justify-center pointer-events-none">
-            <span className="text-4xl font-bold tracking-[0.4em] text-slate-400/70 select-none" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
+            <span className="text-4xl font-bold tracking-[0.4em] text-[#8b8680] select-none tracking-[0.3em]" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
               永远不要放弃
             </span>
           </div>

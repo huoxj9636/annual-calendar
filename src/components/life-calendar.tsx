@@ -562,7 +562,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
         style={{ width: Math.min(520, window.innerWidth * 0.92), maxWidth: '92vw' }}
       >
         {/* Header */}
-        <div className="flex-shrink-0 bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-4 text-white relative overflow-hidden">
+        <div className="flex-shrink-0 bg-gradient-to-r from-[#3d3552] to-[#4a4458] px-5 py-4 text-white relative overflow-hidden">
           
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold tracking-wide">人生旅程</h2>

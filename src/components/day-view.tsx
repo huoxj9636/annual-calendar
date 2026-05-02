@@ -409,7 +409,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
             className={`relative px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
               activeTab === 'schedule'
                 ? 'text-indigo-600 bg-indigo-50/50'
-                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                : 'text-[#8b8680] hover:text-[#4a4458] hover:bg-gray-50'
             }`}
           >
             <span className="flex items-center gap-1.5">
@@ -427,7 +427,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
             className={`relative px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
               activeTab === 'memo'
                 ? 'text-indigo-600 bg-indigo-50/50'
-                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                : 'text-[#8b8680] hover:text-[#4a4458] hover:bg-gray-50'
             }`}
           >
             <span className="flex items-center gap-1.5">
@@ -521,7 +521,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
                   />
                 </div>
                 <div className="flex justify-end gap-2 mt-2">
-                  <button onClick={() => setShowAddEvent(false)} className="text-xs text-gray-400 hover:text-gray-600 px-3 py-1 transition-colors">取消</button>
+                  <button onClick={() => setShowAddEvent(false)} className="text-xs text-[#8b8680] hover:text-[#4a4458] px-3 py-1 transition-colors">取消</button>
                   <button onClick={addEvent} disabled={!newEvent.title.trim()} className="text-xs font-medium text-white px-3 py-1 rounded-lg transition-all disabled:opacity-40" style={{ background: accentGradient }}>添加</button>
                 </div>
               </div>
