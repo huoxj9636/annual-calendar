@@ -56,6 +56,9 @@ export default function YearCalendar() {
   const scrollTimeout = useRef<ReturnType<typeof setTimeout>>(null);
   const [dayViewWidth, setDayViewWidth] = useState(480);
   const [reviewWidth, setReviewWidth] = useState(440);
+  const [showLifeCalendar, setShowLifeCalendar] = useState(false);
+  const [lifeCalendarYear, setLifeCalendarYear] = useState<number | null>(null);
+  const [birthYear, setBirthYear] = useState(1990);
 
   // Resize handler for side panels
   const handlePanelResize = useCallback((setter: React.Dispatch<React.SetStateAction<number>>, e: React.MouseEvent) => {
@@ -347,13 +350,8 @@ export default function YearCalendar() {
                 {year}
               </h1>
               <div className="flex flex-col ml-4">
-                {mounted && clockStr && (
-                  <div className="text-2xl text-gray-500 font-mono tracking-wider tabular-nums leading-tight">
-                    {clockStr}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-lg text-gray-500 font-medium leading-tight">
+                <div className="flex items-center gap-2 leading-tight">
+                  <span className="text-lg text-gray-500 font-medium">
                     {ganZhi}（{animal}）
                   </span>
                   <button
@@ -363,6 +361,11 @@ export default function YearCalendar() {
                     今年
                   </button>
                 </div>
+                {mounted && clockStr && (
+                  <div className="text-2xl text-gray-500 font-mono tracking-wider tabular-nums leading-tight mt-0.5">
+                    {clockStr}
+                  </div>
+                )}
               </div>
             </div>
             <button
@@ -424,10 +427,20 @@ export default function YearCalendar() {
 
 
       {/* Calendar Grid - fills remaining viewport */}
-      <div
-        ref={gridContainerRef}
-        className="flex-1 px-8 pb-2 pt-1 overflow-x-auto min-h-0 flex justify-center"
-      >
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* Left arrow for Life Calendar */}
+        <button
+          onClick={() => setShowLifeCalendar(true)}
+          className="flex-shrink-0 w-8 flex items-center justify-center bg-gradient-to-r from-indigo-50/80 to-transparent hover:from-indigo-100 transition-all group cursor-pointer z-10"
+          title="人生日历"
+        >
+          <span className="text-indigo-300 group-hover:text-indigo-500 transition-colors text-2xl">‹</span>
+        </button>
+
+        <div
+          ref={gridContainerRef}
+          className="flex-1 px-8 pb-2 pt-1 overflow-x-auto min-h-0 flex justify-center"
+        >
         <div ref={gridInnerRef} className="h-full relative border-t border-l border-gray-100 rounded-lg" style={{ minWidth: '1100px' }}>
 
 
@@ -607,7 +620,8 @@ export default function YearCalendar() {
 
 
         </div>
-      </div>
+        </div>
+        </div>{/* end gridContainerRef + flex container */}
 
       {/* Note Popup - TickTick inspired */}
       {notePopup && mounted && (
@@ -824,6 +838,172 @@ export default function YearCalendar() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 人生日历侧边栏 */}
+      {showLifeCalendar && (
+        <div className="fixed inset-0 z-50 flex justify-start">
+          <div className="absolute inset-0 bg-black/20" onClick={() => { setShowLifeCalendar(false); setLifeCalendarYear(null); }} />
+          <div
+            className="relative h-full bg-white shadow-2xl overflow-hidden flex flex-col animate-slide-in-left"
+            style={{ width: Math.min(520, window.innerWidth * 0.92), maxWidth: '92vw' }}
+          >
+            {/* Header */}
+            <div className="flex-shrink-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 px-6 py-4 text-white">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">人生日历</h2>
+                <button
+                  onClick={() => { setShowLifeCalendar(false); setLifeCalendarYear(null); }}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M1 1l12 12M13 1L1 13" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-white/60 text-sm mt-1">每格代表一年，点击查看年度日程</p>
+            </div>
+
+            {/* Life Calendar Grid */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {!lifeCalendarYear ? (
+                <>
+                  <div className="mb-4">
+                    <label className="text-sm text-gray-500 mb-2 block">出生年份</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        value={birthYear}
+                        min={1900}
+                        max={2026}
+                        onChange={(e) => setBirthYear(Number(e.target.value))}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    {Array.from({ length: 8 }, (_, decade) => {
+                      const decadeStart = birthYear + decade * 10;
+                      return (
+                        <div key={decade}>
+                          <div className="text-xs text-gray-400 mb-1.5 font-medium">{decadeStart}年代</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {Array.from({ length: 10 }, (_, y) => {
+                              const yr = decadeStart + y;
+                              const now = new Date().getFullYear();
+                              const isCurrent = yr === now;
+                              const isFuture = yr > now;
+                              const isPast = yr < now;
+                              // Check if year has data
+                              let hasData = false;
+                              try {
+                                const keys = [`calendar-overrides-${yr}`, `calendar-notes-${yr}`];
+                                for (const k of keys) {
+                                  if (localStorage.getItem(k)) { hasData = true; break; }
+                                }
+                              } catch { /* empty */ }
+
+                              return (
+                                <button
+                                  key={yr}
+                                  onClick={() => {
+                                    if (!isFuture) {
+                                      setLifeCalendarYear(yr);
+                                    }
+                                  }}
+                                  disabled={isFuture}
+                                  className={`w-10 h-10 rounded-lg text-xs font-medium transition-all ${
+                                    isCurrent
+                                      ? 'bg-indigo-500 text-white shadow-md ring-2 ring-indigo-200'
+                                      : hasData
+                                        ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                                        : isPast
+                                          ? 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                          : 'bg-gray-50 text-gray-200 cursor-not-allowed'
+                                  }`}
+                                >
+                                  {String(yr).slice(2)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                /* Year detail view */
+                <div>
+                  <button
+                    onClick={() => setLifeCalendarYear(null)}
+                    className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm mb-4 transition-colors"
+                  >
+                    <span>‹</span> 返回人生日历
+                  </button>
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">{lifeCalendarYear}年 日程总览</h3>
+                  {/* 12 month mini calendar */}
+                  <div className="space-y-3">
+                    {Array.from({ length: 12 }, (_, m) => {
+                      const month = m + 1;
+                      const daysInMonth = getDaysInMonth(lifeCalendarYear, month);
+                      // Count events/todos for this month
+                      let eventCount = 0;
+                      let todoCount = 0;
+                      try {
+                        for (let d = 1; d <= daysInMonth; d++) {
+                          const evKey = `dayview-events-${lifeCalendarYear}-${month}-${d}`;
+                          const tdKey = `dayview-todos-${lifeCalendarYear}-${month}-${d}`;
+                          const evRaw = localStorage.getItem(evKey);
+                          const tdRaw = localStorage.getItem(tdKey);
+                          if (evRaw) { const arr = JSON.parse(evRaw); if (Array.isArray(arr)) eventCount += arr.length; }
+                          if (tdRaw) { const arr = JSON.parse(tdRaw); if (Array.isArray(arr)) todoCount += arr.length; }
+                        }
+                      } catch { /* empty */ }
+
+                      return (
+                        <div key={m} className="p-3 bg-gray-50 rounded-xl">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-semibold text-gray-700">{month}月</span>
+                            <div className="flex gap-2 text-xs text-gray-400">
+                              <span>{eventCount}项日程</span>
+                              <span>{todoCount}项待办</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-[2px]">
+                            {Array.from({ length: daysInMonth }, (_, d) => {
+                              const day = d + 1;
+                              let hasEvent = false;
+                              let hasTodo = false;
+                              try {
+                                const evKey = `dayview-events-${lifeCalendarYear}-${month}-${day}`;
+                                const tdKey = `dayview-todos-${lifeCalendarYear}-${month}-${day}`;
+                                if (localStorage.getItem(evKey)) { const raw = localStorage.getItem(evKey); try { const arr = JSON.parse(raw || '[]'); hasEvent = Array.isArray(arr) && arr.length > 0; } catch { hasEvent = false; } }
+                                if (localStorage.getItem(tdKey)) { const raw = localStorage.getItem(tdKey); try { const arr = JSON.parse(raw || '[]'); hasTodo = Array.isArray(arr) && arr.length > 0; } catch { hasTodo = false; } }
+                              } catch { /* empty */ }
+
+                              return (
+                                <div
+                                  key={d}
+                                  className={`w-[10px] h-[10px] rounded-[2px] ${
+                                    hasEvent ? 'bg-blue-400' :
+                                    hasTodo ? 'bg-amber-400' :
+                                    'bg-gray-200'
+                                  }`}
+                                  title={`${month}月${day}日`}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

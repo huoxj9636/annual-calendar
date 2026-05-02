@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { getLunarInfo } from '@/lib/lunar';
 import {
   getDaysInMonth,
@@ -41,8 +41,26 @@ interface MonthStats {
 export default function MonthlyReview({ year }: MonthlyReviewProps) {
   const [mounted, setMounted] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const monthGridRef = useRef<HTMLDivElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    // Auto-select current month after mount
+    const currentMonth = new Date().getMonth() + 1;
+    if (year === new Date().getFullYear()) {
+      setSelectedMonth(currentMonth);
+    }
+  }, [year]);
+
+  // Scroll to detail when a month is selected
+  useEffect(() => {
+    if (selectedMonth !== null && detailRef.current) {
+      setTimeout(() => {
+        detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [selectedMonth]);
 
   const monthStats = useMemo<MonthStats[]>(() => {
     const now = new Date();
@@ -237,7 +255,7 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
       </div>
 
       {/* 12 Month Cards Grid */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div ref={monthGridRef} className="grid grid-cols-4 gap-4 mb-6">
         {monthStats.map((m) => {
           const isSelected = selectedMonth === m.month;
           return (
@@ -339,7 +357,7 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
 
       {/* Selected Month Detail */}
       {selectedStats && (
-        <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-6 mb-6">
+        <div ref={detailRef} className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-6 mb-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-gray-800">{selectedStats.month}月详细分析</h3>
             <button
