@@ -16,7 +16,6 @@ import {
   isToday,
   MONTH_COLORS,
   MONTH_NAMES,
-  getDaysInMonth,
   type CellData,
   type TwelveWeekBlock,
 } from '@/lib/calendar-utils';
@@ -241,9 +240,8 @@ export default function YearCalendar() {
       if (!gridEl) return;
       const gridRect = gridEl.getBoundingClientRect();
 
-      // Collect cell rects per block, organized by (month, day) to handle empty cells
+      // Collect cell rects per block
       const blockCellMap: Record<number, Map<string, { rect: DOMRect; month: number; day: number }>> = {};
-
       const monthRows = gridEl.querySelectorAll<HTMLElement>('[data-month-row]');
       monthRows.forEach((row) => {
         const monthIdx = parseInt(row.dataset.monthRow || '0', 10);
@@ -262,14 +260,10 @@ export default function YearCalendar() {
       });
 
       const paths: { d: string; color: string; blockIdx: number }[] = [];
+      const amplitude = 0.3;
+      const wavelength = 4;
 
-      const amplitude = 0.6;
-      const wavelength = 3;
-
-      const makeWavyLine = (
-        x1: number, y1: number,
-        x2: number, y2: number,
-      ): string => {
+      const makeWavyLine = (x1: number, y1: number, x2: number, y2: number): string => {
         const dx = x2 - x1;
         const dy = y2 - y1;
         const len = Math.sqrt(dx * dx + dy * dy);
@@ -279,7 +273,6 @@ export default function YearCalendar() {
         const uy = dy / len;
         const px = -uy;
         const py = ux;
-
         let d = `M ${x1} ${y1}`;
         for (let i = 1; i <= steps; i++) {
           const t = i / steps;
@@ -291,155 +284,97 @@ export default function YearCalendar() {
         return d;
       };
 
-      // For each block, draw outline segments that skip empty cells
       for (const [blockIdxStr, cellMap] of Object.entries(blockCellMap)) {
         const blockIdx = parseInt(blockIdxStr, 10);
         const block = blocks.find((b: TwelveWeekBlock) => b.index === blockIdx);
         if (!block) continue;
         const color = block.color === 'red' ? '#dc2626' : '#1a1a1a';
 
-        // Group cells by month for row-aware processing
+        // Build Set of cell keys for O(1) neighbor lookup
+        const cellKeys = new Set(cellMap.keys());
+
+        // Group cells by month with position info
         const byMonth: Record<number, { day: number; left: number; right: number; top: number; bottom: number }[]> = {};
         for (const [, info] of cellMap) {
           if (!byMonth[info.month]) byMonth[info.month] = [];
-          const l = info.rect.left - gridRect.left;
-          const t = info.rect.top - gridRect.top;
-          const r = info.rect.right - gridRect.left;
-          const b = info.rect.bottom - gridRect.top;
-          byMonth[info.month].push({ day: info.day, left: l, right: r, top: t, bottom: b });
+          byMonth[info.month].push({
+            day: info.day,
+            left: info.rect.left - gridRect.left,
+            right: info.rect.right - gridRect.left,
+            top: info.rect.top - gridRect.top,
+            bottom: info.rect.bottom - gridRect.top,
+          });
         }
-
-        // Sort each month's cells by day
         for (const m of Object.keys(byMonth)) {
           byMonth[parseInt(m)].sort((a, b) => a.day - b.day);
         }
 
-        // Find contiguous horizontal segments per month (break at empty cells)
-        interface HSegment { month: number; dayStart: number; dayEnd: number; left: number; right: number; top: number; bottom: number }
-        const hSegments: HSegment[] = [];
-        const months = Object.keys(byMonth).map(Number).sort((a, b) => a - b);
-
-        for (const m of months) {
+        // ---- TOP EDGES ----
+        // A cell (m, d) needs top edge if cellKeys does NOT contain (m-1, d)
+        for (const mStr of Object.keys(byMonth)) {
+          const m = parseInt(mStr);
           const cells = byMonth[m];
-          if (cells.length === 0) continue;
-          let segStart = cells[0];
-          for (let i = 1; i <= cells.length; i++) {
-            const isEnd = i === cells.length;
-            const isGap = !isEnd && cells[i].day !== cells[i - 1].day + 1;
-            if (isEnd || isGap) {
-              const segEnd = cells[i - 1];
-              hSegments.push({
-                month: m,
-                dayStart: segStart.day,
-                dayEnd: segEnd.day,
-                left: segStart.left,
-                right: segEnd.right,
-                top: segStart.top,
-                bottom: segEnd.bottom,
-              });
-              if (!isEnd) segStart = cells[i];
-            }
+          const topCells = cells.filter(c => !cellKeys.has(`${m - 1}-${c.day}`));
+          // Merge contiguous topCells by day
+          for (let i = 0; i < topCells.length;) {
+            let j = i;
+            while (j + 1 < topCells.length && topCells[j + 1].day === topCells[j].day + 1) j++;
+            const d = makeWavyLine(topCells[i].left, topCells[i].top, topCells[j].right, topCells[j].top);
+            if (d) paths.push({ d, color, blockIdx });
+            i = j + 1;
           }
         }
 
-        // Draw top and bottom edges for each horizontal segment
-        for (const seg of hSegments) {
-          // Check if this segment needs a top edge (no same-block cell above)
-          let needsTop = true;
-          const aboveMonth = seg.month - 1;
-          if (byMonth[aboveMonth]) {
-            const above = byMonth[aboveMonth];
-            const hasFullAbove = above.some(c => c.day >= seg.dayStart && c.day <= seg.dayEnd);
-            if (hasFullAbove) needsTop = false;
-          }
-          if (needsTop) {
-            const d = makeWavyLine(seg.left, seg.top, seg.right, seg.top);
+        // ---- BOTTOM EDGES ----
+        for (const mStr of Object.keys(byMonth)) {
+          const m = parseInt(mStr);
+          const cells = byMonth[m];
+          const bottomCells = cells.filter(c => !cellKeys.has(`${m + 1}-${c.day}`));
+          for (let i = 0; i < bottomCells.length;) {
+            let j = i;
+            while (j + 1 < bottomCells.length && bottomCells[j + 1].day === bottomCells[j].day + 1) j++;
+            const d = makeWavyLine(bottomCells[j].right, bottomCells[j].bottom, bottomCells[i].left, bottomCells[i].bottom);
             if (d) paths.push({ d, color, blockIdx });
-          }
-
-          // Check if this segment needs a bottom edge
-          let needsBottom = true;
-          const belowMonth = seg.month + 1;
-          if (byMonth[belowMonth]) {
-            const below = byMonth[belowMonth];
-            const hasFullBelow = below.some(c => c.day >= seg.dayStart && c.day <= seg.dayEnd);
-            if (hasFullBelow) needsBottom = false;
-          }
-          if (needsBottom) {
-            const d = makeWavyLine(seg.right, seg.bottom, seg.left, seg.bottom);
-            if (d) paths.push({ d, color, blockIdx });
+            i = j + 1;
           }
         }
 
-        // Draw left and right edges for each column
-        // Collect all unique day columns that have cells
+        // ---- LEFT EDGES ----
+        // Collect all day columns
         const allDays = new Set<number>();
-        for (const [, info] of cellMap) {
-          allDays.add(info.day);
-        }
+        for (const [, info] of cellMap) allDays.add(info.day);
 
         for (const dayCol of allDays) {
-          // Find contiguous vertical segments for this day column
-          const monthCols = months
+          // Get months that have this day, sorted
+          const dayMonths = Object.keys(byMonth)
+            .map(Number)
             .filter(m => byMonth[m].some(c => c.day === dayCol))
-            .map(m => {
-              const c = byMonth[m].find(cc => cc.day === dayCol)!;
-              return { month: m, top: c.top, bottom: c.bottom, left: c.left, right: c.right };
-            })
-            .sort((a, b) => a.month - b.month);
+            .sort((a, b) => a - b);
 
-          // Break into contiguous vertical segments (adjacent months)
-          const vSegments: { top: number; bottom: number; left: number; right: number; monthStart: number; monthEnd: number }[] = [];
-          let vStart = monthCols[0];
-          for (let i = 1; i <= monthCols.length; i++) {
-            const isEnd = i === monthCols.length;
-            const isGap = !isEnd && monthCols[i].month !== monthCols[i - 1].month + 1;
-            if (isEnd || isGap) {
-              const vEnd = monthCols[i - 1];
-              vSegments.push({
-                top: vStart.top,
-                bottom: vEnd.bottom,
-                left: vStart.left,
-                right: vStart.right,
-                monthStart: vStart.month,
-                monthEnd: vEnd.month,
-              });
-              if (!isEnd) vStart = monthCols[i];
-            }
+          // Cells needing left edge: cellKeys does NOT contain (m, dayCol-1)
+          const leftCells = dayMonths.filter(m => !cellKeys.has(`${m}-${dayCol - 1}`));
+          // Merge contiguous by month
+          for (let i = 0; i < leftCells.length;) {
+            let j = i;
+            while (j + 1 < leftCells.length && leftCells[j + 1] === leftCells[j] + 1) j++;
+            const startCell = byMonth[leftCells[i]].find(c => c.day === dayCol)!;
+            const endCell = byMonth[leftCells[j]].find(c => c.day === dayCol)!;
+            const d = makeWavyLine(startCell.left, startCell.top, endCell.left, endCell.bottom);
+            if (d) paths.push({ d, color, blockIdx });
+            i = j + 1;
           }
 
-          for (const vSeg of vSegments) {
-            // Left edge: no same-block cell to the left
-            let needsLeft = true;
-            if (dayCol > 1) {
-              // Check if previous day exists in all months of this vertical segment
-              const hasPrevDay = months
-                .filter(m => m >= vSeg.monthStart && m <= vSeg.monthEnd)
-                .every(m => byMonth[m]?.some(c => c.day === dayCol - 1));
-              if (hasPrevDay) needsLeft = false;
-            }
-            if (needsLeft) {
-              const d = makeWavyLine(vSeg.left, vSeg.top, vSeg.left, vSeg.bottom);
-              if (d) paths.push({ d, color, blockIdx });
-            }
-
-            // Right edge: no same-block cell to the right
-            let needsRight = true;
-            const daysInLastMonth = getDaysInMonth(year, vSeg.monthEnd);
-            if (dayCol < daysInLastMonth) {
-              const hasNextDay = months
-                .filter(m => m >= vSeg.monthStart && m <= vSeg.monthEnd)
-                .every(m => {
-                  const dim = getDaysInMonth(year, m);
-                  if (dayCol >= dim) return false;
-                  return byMonth[m]?.some(c => c.day === dayCol + 1);
-                });
-              if (hasNextDay) needsRight = false;
-            }
-            if (needsRight) {
-              const d = makeWavyLine(vSeg.right, vSeg.top, vSeg.right, vSeg.bottom);
-              if (d) paths.push({ d, color, blockIdx });
-            }
+          // ---- RIGHT EDGES ----
+          // Cells needing right edge: cellKeys does NOT contain (m, dayCol+1)
+          const rightCells = dayMonths.filter(m => !cellKeys.has(`${m}-${dayCol + 1}`));
+          for (let i = 0; i < rightCells.length;) {
+            let j = i;
+            while (j + 1 < rightCells.length && rightCells[j + 1] === rightCells[j] + 1) j++;
+            const startCell = byMonth[rightCells[i]].find(c => c.day === dayCol)!;
+            const endCell = byMonth[rightCells[j]].find(c => c.day === dayCol)!;
+            const d = makeWavyLine(endCell.right, endCell.bottom, startCell.right, startCell.top);
+            if (d) paths.push({ d, color, blockIdx });
+            i = j + 1;
           }
         }
       }
@@ -447,15 +382,12 @@ export default function YearCalendar() {
       setWaveBorders(paths);
     };
 
-    // Delay to ensure layout is stable
     const timer = setTimeout(computeBorders, 100);
-
     const onResize = () => {
       clearTimeout(timer);
       setTimeout(computeBorders, 50);
     };
     window.addEventListener('resize', onResize);
-
     return () => {
       clearTimeout(timer);
       window.removeEventListener('resize', onResize);
@@ -711,7 +643,7 @@ export default function YearCalendar() {
                   d={p.d}
                   fill="none"
                   stroke={p.color}
-                  strokeWidth={1.5}
+                  strokeWidth={1}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
