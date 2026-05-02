@@ -311,10 +311,27 @@ export default function YearCalendar() {
 
         // ---- TOP EDGES ----
         // A cell (m, d) needs top edge if cellKeys does NOT contain (m-1, d)
+        // AND (m-1, d) actually exists as a valid date in the calendar
         for (const mStr of Object.keys(byMonth)) {
           const m = parseInt(mStr);
           const cells = byMonth[m];
-          const topCells = cells.filter(c => !cellKeys.has(`${m - 1}-${c.day}`));
+          const topCells = cells.filter(c => {
+            // No neighbor above in this block
+            if (cellKeys.has(`${m - 1}-${c.day}`)) return false;
+            // If month above has this day in the block, we're interior - skip
+            // If m=1, always need top edge
+            if (m === 1) return true;
+            // Check if the cell above exists in the calendar at all
+            // If not (e.g. Feb 31), this is not a real boundary - skip
+            const aboveInBlock = cellMap.get(`${m - 1}-${c.day}`);
+            if (!aboveInBlock) {
+              // Cell above doesn't exist in this block - could be boundary or non-existent date
+              // Check if the date is valid at all
+              const daysInMonthAbove = new Date(year, m - 1, 0).getDate();
+              if (c.day > daysInMonthAbove) return false; // date doesn't exist in month above, not a real boundary
+            }
+            return true;
+          });
           // Merge contiguous topCells by day
           for (let i = 0; i < topCells.length;) {
             let j = i;
@@ -329,7 +346,13 @@ export default function YearCalendar() {
         for (const mStr of Object.keys(byMonth)) {
           const m = parseInt(mStr);
           const cells = byMonth[m];
-          const bottomCells = cells.filter(c => !cellKeys.has(`${m + 1}-${c.day}`));
+          const bottomCells = cells.filter(c => {
+            if (cellKeys.has(`${m + 1}-${c.day}`)) return false;
+            if (m === 12) return true;
+            const daysInMonthBelow = new Date(year, m + 1, 0).getDate();
+            if (c.day > daysInMonthBelow) return false;
+            return true;
+          });
           for (let i = 0; i < bottomCells.length;) {
             let j = i;
             while (j + 1 < bottomCells.length && bottomCells[j + 1].day === bottomCells[j].day + 1) j++;
@@ -352,7 +375,19 @@ export default function YearCalendar() {
             .sort((a, b) => a - b);
 
           // Cells needing left edge: cellKeys does NOT contain (m, dayCol-1)
-          const leftCells = dayMonths.filter(m => !cellKeys.has(`${m}-${dayCol - 1}`));
+          const leftCells = dayMonths.filter(m => {
+            if (cellKeys.has(`${m}-${dayCol - 1}`)) return false;
+            if (dayCol === 1) return true;
+            // Check if the cell to the left exists in this block
+            const leftInBlock = cellMap.get(`${m}-${dayCol - 1}`);
+            if (!leftInBlock) {
+              // Cell to the left doesn't exist in this block
+              // Check if the month has enough days for dayCol-1
+              const daysInMonth = new Date(year, m, 0).getDate();
+              if (dayCol - 1 > daysInMonth) return false; // shouldn't happen but safety
+            }
+            return true;
+          });
           // Merge contiguous by month
           for (let i = 0; i < leftCells.length;) {
             let j = i;
@@ -366,7 +401,13 @@ export default function YearCalendar() {
 
           // ---- RIGHT EDGES ----
           // Cells needing right edge: cellKeys does NOT contain (m, dayCol+1)
-          const rightCells = dayMonths.filter(m => !cellKeys.has(`${m}-${dayCol + 1}`));
+          const rightCells = dayMonths.filter(m => {
+            if (cellKeys.has(`${m}-${dayCol + 1}`)) return false;
+            const daysInMonth = new Date(year, m, 0).getDate();
+            if (dayCol === daysInMonth) return true; // last day of month, always right edge
+            // If dayCol+1 doesn't exist in this block, need right edge
+            return true;
+          });
           for (let i = 0; i < rightCells.length;) {
             let j = i;
             while (j + 1 < rightCells.length && rightCells[j + 1] === rightCells[j] + 1) j++;
