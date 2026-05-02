@@ -9,6 +9,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { getLunarInfo, getYearAnimal, getGanZhiYear } from '@/lib/lunar';
+import DayView from '@/components/day-view';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -48,6 +49,7 @@ interface MonthViewProps {
   toggleDay: (month: number, day: number) => void;
   openNotePopup: (month: number, day: number, e: ReactMouseEvent) => void;
   onBack: () => void;
+  onOpenDayView?: (month: number, day: number) => void;
 }
 
 function MonthView({
@@ -61,6 +63,7 @@ function MonthView({
   toggleDay,
   openNotePopup,
   onBack,
+  onOpenDayView,
 }: MonthViewProps) {
   const monthColor = MONTH_COLORS[month - 1];
   const daysInMonth = getDaysInMonth(year, month);
@@ -173,52 +176,61 @@ function MonthView({
               >
                 {/* Top zone: day + lunar + check */}
                 <div
-                  className="p-3 cursor-pointer"
-                  onClick={() => toggleDay(month, day)}
+                  className="p-3 cursor-pointer flex"
                 >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-2xl font-bold ${
-                        isPastDay ? 'text-gray-200' : data.isWeekendDay ? '' : 'text-gray-800'
-                      }`}
-                      style={isPastDay ? undefined : data.isWeekendDay ? { color: monthColor.text } : undefined}
-                    >
-                      {day}
-                    </span>
-                      {mounted && status !== 'none' && (
+                  <div
+                    className="flex-1"
+                    onClick={() => onOpenDayView?.(month, day)}
+                  >
+                    <div className="flex items-center justify-between">
                       <span
-                        className={`absolute inset-0 flex items-center justify-center text-5xl font-bold pointer-events-none ${
-                          status === 'crossed' ? 'text-red-400/30' : 'text-green-500/30'
+                        className={`text-2xl font-bold ${
+                          isPastDay ? 'text-gray-200' : data.isWeekendDay ? '' : 'text-gray-800'
+                        }`}
+                        style={isPastDay ? undefined : data.isWeekendDay ? { color: monthColor.text } : undefined}
+                      >
+                        {day}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-base leading-tight block mt-1 ${
+                        isPastDay
+                          ? 'text-gray-100'
+                          : data.isSolarTerm
+                            ? 'text-orange-600 font-medium'
+                            : data.isFestival
+                              ? 'text-red-500 font-medium'
+                              : data.isLunarFirstDay
+                                ? 'text-purple-600 font-medium'
+                                : data.isWeekendDay
+                                  ? ''
+                                  : 'text-gray-400'
+                      }`}
+                      style={
+                        isPastDay
+                          ? undefined
+                          : data.isWeekendDay && !data.isSolarTerm && !data.isFestival && !data.isLunarFirstDay
+                            ? { color: monthColor.accent }
+                            : undefined
+                      }
+                    >
+                      {data.display}
+                    </span>
+                  </div>
+                  <div
+                    className="w-10 flex items-start justify-center pt-1"
+                    onClick={(e) => { e.stopPropagation(); toggleDay(month, day); }}
+                  >
+                    {mounted && status !== 'none' && (
+                      <span
+                        className={`text-xl font-bold ${
+                          status === 'crossed' ? 'text-red-400/40' : 'text-green-500/40'
                         }`}
                       >
                         {status === 'crossed' ? '✗' : '✓'}
                       </span>
                     )}
                   </div>
-                  <span
-                    className={`text-base leading-tight block mt-1 ${
-                      isPastDay
-                        ? 'text-gray-100'
-                        : data.isSolarTerm
-                          ? 'text-orange-600 font-medium'
-                          : data.isFestival
-                            ? 'text-red-500 font-medium'
-                            : data.isLunarFirstDay
-                              ? 'text-purple-600 font-medium'
-                              : data.isWeekendDay
-                                ? ''
-                                : 'text-gray-400'
-                    }`}
-                    style={
-                      isPastDay
-                        ? undefined
-                        : data.isWeekendDay && !data.isSolarTerm && !data.isFestival && !data.isLunarFirstDay
-                          ? { color: monthColor.accent }
-                          : undefined
-                    }
-                  >
-                    {data.display}
-                  </span>
                 </div>
                 {/* Bottom zone: note */}
                 <div
@@ -253,6 +265,7 @@ export default function YearCalendar() {
   const [popupSize, setPopupSize] = useState({ w: 400, h: 320 });
   const [noteDraft, setNoteDraft] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [dayViewDate, setDayViewDate] = useState<{ year: number; month: number; day: number } | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const gridInnerRef = useRef<HTMLDivElement>(null);
@@ -510,19 +523,17 @@ export default function YearCalendar() {
         const leftRect = monthLabelFirst.getBoundingClientRect();
         const leftRectLast = monthLabelLast.getBoundingClientRect();
 
-        // Find the rightmost cell (day 31) for right edge
-        // Use the last row's day 31 cell to get the right edge
-        const rightCellFirst = firstRow.querySelector<HTMLElement>('[data-day="31"]');
-        const rightCellLast = lastRow.querySelector<HTMLElement>('[data-day="31"]');
-        if (!rightCellFirst || !rightCellLast) continue;
+        // Use grid's right edge directly - all rows have 31 columns in the DOM
+        // Just use the last child of the first row to get the right edge
+        const lastCellFirst = firstRow.querySelector<HTMLElement>(':scope > div:last-child');
+        if (!lastCellFirst) continue;
 
-        const rightRectFirst = rightCellFirst.getBoundingClientRect();
-        const rightRectLast = rightCellLast.getBoundingClientRect();
+        const lastCellRect = lastCellFirst.getBoundingClientRect();
 
         // Calculate coordinates relative to grid
         const gap = 1; // gap between adjacent quarters
         const left = leftRect.right - gridRect.left + 1; // right edge of month label
-        const right = Math.max(rightRectFirst.right, rightRectLast.right) - gridRect.left;
+        const right = lastCellRect.right - gridRect.left;
         const top = firstRowRect.top - gridRect.top + gap;
         const bottom = lastRowRect.bottom - gridRect.top - gap;
 
@@ -729,14 +740,14 @@ export default function YearCalendar() {
                         backgroundColor: isPast ? '#fafafa' : weekendBg,
                       }}
                     >
-                      {/* Top zone: day number + lunar + check/cross, click to toggle */}
-                      <div
-                        className="flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-black/[0.03] transition-colors"
-                        style={{ height: '40%' }}
-                        onClick={() => toggleDay(cell.month, cell.day)}
-                        title={`${year}年${cell.month}月${cell.day}日 - 点击切换满意/不满意`}
-                      >
-                        <div className="flex items-center gap-0.5">
+                      {/* Top zone (40%): left=day+lunar(click=day view), right=check/cross(click=toggle) */}
+                      <div className="flex" style={{ height: '40%' }}>
+                        {/* Left: day number + lunar → open day view */}
+                        <div
+                          className="flex-1 flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-blue-50/50 transition-colors rounded-tl-sm"
+                          onClick={() => setDayViewDate({ year, month: cell.month, day: cell.day })}
+                          title={`${year}年${cell.month}月${cell.day}日 - 点击查看日视图`}
+                        >
                           <span
                             className={`text-[15px] font-bold leading-none ${
                               isPast
@@ -753,46 +764,65 @@ export default function YearCalendar() {
                           >
                             {cell.day}
                           </span>
+                          <span
+                            className={`text-[9px] leading-tight mt-0.5 whitespace-nowrap ${
+                              isPast
+                                ? 'text-gray-100'
+                                : cell.isSolarTerm
+                                  ? 'text-orange-600 font-medium'
+                                  : cell.isFestival
+                                    ? 'text-red-500 font-medium'
+                                    : cell.isLunarFirstDay
+                                      ? 'text-purple-600 font-medium'
+                                      : cell.isWeekend
+                                        ? ''
+                                        : 'text-gray-400'
+                            }`}
+                            style={
+                              isPast
+                                ? undefined
+                                : cell.isWeekend &&
+                                  !cell.isSolarTerm &&
+                                  !cell.isFestival &&
+                                  !cell.isLunarFirstDay
+                                    ? { color: monthColor.accent }
+                                    : undefined
+                            }
+                          >
+                            {cell.lunarDisplay}
+                          </span>
+                        </div>
+                        {/* Right: check/cross toggle */}
+                        <div
+                          className="w-5 flex items-start justify-center pt-0.5 cursor-pointer hover:bg-green-50/50 transition-colors rounded-tr-sm"
+                          onClick={() => toggleDay(cell.month, cell.day)}
+                          title="切换满意/不满意"
+                        >
                           {mounted && status !== 'none' && (
                             <span
-                              className={`absolute inset-0 flex items-center justify-center text-[22px] font-bold leading-none pointer-events-none ${
+                              className={`text-[10px] font-bold leading-none ${
                                 status === 'crossed'
-                                  ? 'text-red-400/40'
-                                  : 'text-green-500/40'
+                                  ? 'text-red-400'
+                                  : 'text-green-500'
                               }`}
                             >
                               {status === 'crossed' ? '✗' : '✓'}
                             </span>
                           )}
                         </div>
-                        <span
-                          className={`text-[9px] leading-tight mt-0.5 whitespace-nowrap ${
-                            isPast
-                              ? 'text-gray-100'
-                              : cell.isSolarTerm
-                                ? 'text-orange-600 font-medium'
-                                : cell.isFestival
-                                  ? 'text-red-500 font-medium'
-                                  : cell.isLunarFirstDay
-                                    ? 'text-purple-600 font-medium'
-                                    : cell.isWeekend
-                                      ? ''
-                                      : 'text-gray-400'
-                          }`}
-                          style={
-                            isPast
-                              ? undefined
-                              : cell.isWeekend &&
-                                !cell.isSolarTerm &&
-                                !cell.isFestival &&
-                                !cell.isLunarFirstDay
-                                  ? { color: monthColor.accent }
-                                  : undefined
-                          }
-                        >
-                          {cell.lunarDisplay}
-                        </span>
                       </div>
+                      {/* Centered check/cross watermark overlay */}
+                      {mounted && status !== 'none' && (
+                        <span
+                          className={`absolute inset-0 flex items-center justify-center text-[22px] font-bold leading-none pointer-events-none ${
+                            status === 'crossed'
+                              ? 'text-red-400/40'
+                              : 'text-green-500/40'
+                          }`}
+                        >
+                          {status === 'crossed' ? '✗' : '✓'}
+                        </span>
+                      )}
 
                       {/* Bottom zone: empty area, click to open note */}
                       <div
@@ -845,6 +875,7 @@ export default function YearCalendar() {
           toggleDay={toggleDay}
           openNotePopup={openNotePopup}
           onBack={() => setSelectedMonth(null)}
+          onOpenDayView={(m, d) => setDayViewDate({ year, month: m, day: d })}
         />
         )}
       </div>
@@ -948,6 +979,14 @@ export default function YearCalendar() {
             </svg>
           </div>
         </div>
+      )}
+      {dayViewDate && (
+        <DayView
+          year={dayViewDate.year}
+          month={dayViewDate.month}
+          day={dayViewDate.day}
+          onClose={() => setDayViewDate(null)}
+        />
       )}
     </div>
   );
