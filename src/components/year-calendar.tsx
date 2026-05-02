@@ -516,17 +516,16 @@ export default function YearCalendar() {
                           {status === 'crossed' ? '✗' : '✓'}
                         </span>
                       )}
-                      {/* Bottom zone (2/3): click to open day view (schedule) */}
+                      {/* Bottom zone (2/3): click to open day view */}
                       <div
-                        className="cursor-pointer hover:bg-black/[0.03] transition-colors relative"
+                        className="cursor-pointer hover:bg-black/[0.03] transition-colors"
                         style={{ height: '67%' }}
                         onClick={() => setDayViewDate({ year, month: cell.month, day: cell.day })}
-                        title={`${year}年${cell.month}月${cell.day}日 - 点击查看日程`}
-                      >
-                        {hasAnyNote && (
-                          <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-blue-500" />
-                        )}
-                      </div>
+                      />
+                      {/* Blue dot indicator at top-right of entire cell */}
+                      {hasAnyNote && (
+                        <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-blue-500" />
+                      )}
                     </div>
                   );
                 })}
