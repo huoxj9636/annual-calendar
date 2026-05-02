@@ -537,7 +537,7 @@ export default function YearCalendar() {
               >
                 {/* Month label */}
                 <div
-                  className="flex items-center justify-center text-[10px] font-bold sticky left-0 bg-gray-50 z-10 print:bg-white rounded mx-0.5"
+                  className="flex items-center justify-center text-[11px] font-extrabold sticky left-0 bg-gray-50 z-10 print:bg-white rounded mx-0.5"
                   style={{
                     height: cellHeight,
                     color: monthColor.text,
