@@ -839,8 +839,8 @@ export default function YearCalendar() {
                   d={p.d}
                   fill="none"
                   stroke={p.color}
-                  strokeWidth={0.8}
-                  opacity={0.6}
+                  strokeWidth={0.5}
+                  opacity={0.35}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -996,13 +996,25 @@ export default function YearCalendar() {
                 }
                 const rate = effectiveDays > 0 ? Math.round((satisfied / effectiveDays) * 100) : 0;
                 return (
-                  <div className="mt-4 flex items-center gap-3">
-                    <div className="flex-1 h-1.5 rounded-full bg-white/20 overflow-hidden">
-                      <div className="h-full rounded-full bg-white/80 transition-all" style={{ width: `${rate}%` }} />
+                  <div className="mt-4 space-y-2.5">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-white/90 text-sm">✓</span>
+                        <span className="text-white/80 text-xs font-medium">{satisfied}天满意</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-white/90 text-sm">✗</span>
+                        <span className="text-white/80 text-xs font-medium">{crossed}天不满意</span>
+                      </div>
+                      <div className="flex-1" />
+                      <span className="text-white/60 text-xs">{effectiveDays}天</span>
                     </div>
-                    <span className="text-white/80 text-xs font-semibold">{rate}%</span>
-                    <span className="text-white/40 text-xs">|</span>
-                    <span className="text-white/60 text-xs">{effectiveDays}天</span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-1.5 rounded-full bg-white/20 overflow-hidden">
+                        <div className="h-full rounded-full bg-white/80 transition-all" style={{ width: `${rate}%` }} />
+                      </div>
+                      <span className="text-white/80 text-xs font-semibold">{rate}%</span>
+                    </div>
                   </div>
                 );
               })()}
