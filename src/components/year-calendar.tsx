@@ -107,12 +107,12 @@ function MonthView({
   }, [daysInMonth, firstDayOfWeek]);
 
   return (
-    <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
+    <div className="flex flex-col items-center w-full h-full">
       {/* Month header */}
-      <div className="w-full flex items-center justify-between mb-4">
+      <div className="w-full max-w-4xl flex items-center justify-between mb-4 px-2">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors text-base text-gray-600 font-medium"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors text-lg text-gray-600 font-medium"
         >
           <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M10 3L5 8l5 5" />
@@ -120,20 +120,20 @@ function MonthView({
           返回年历
         </button>
         <div className="flex items-center gap-3">
-          <h2 className="text-3xl font-bold" style={{ color: monthColor.text }}>
+          <h2 className="text-4xl font-bold" style={{ color: monthColor.text }}>
             {month}月
           </h2>
-          <span className="text-base text-gray-400">{year}年</span>
+          <span className="text-xl text-gray-400">{year}年</span>
         </div>
-        <div className="w-24" /> {/* Spacer for centering */}
+        <div className="w-28" /> {/* Spacer for centering */}
       </div>
 
       {/* Weekday header */}
-      <div className="w-full grid grid-cols-7 gap-1 mb-1">
+      <div className="w-full max-w-4xl grid grid-cols-7 gap-2 mb-2 px-2">
         {WEEKDAY_LABELS.map((label, i) => (
           <div
             key={i}
-            className={`text-center text-sm font-semibold py-2 rounded-md ${
+            className={`text-center text-lg font-semibold py-2 rounded-md ${
               i === 0 || i === 6 ? 'text-red-400' : 'text-gray-400'
             }`}
           >
@@ -143,11 +143,11 @@ function MonthView({
       </div>
 
       {/* Calendar grid */}
-      <div className="w-full grid grid-cols-7 gap-1">
+      <div className="w-full max-w-4xl grid grid-cols-7 gap-2 px-2 flex-1">
         {weeks.flatMap((week, wi) =>
           week.map((day, di) => {
             if (day === null) {
-              return <div key={`${wi}-${di}`} className="rounded-lg" style={{ minHeight: 108 }} />;
+              return <div key={`${wi}-${di}`} className="rounded-lg" />;
             }
 
             const data = dayData[day - 1];
@@ -166,18 +166,17 @@ function MonthView({
                   hover:shadow-sm
                 `}
                 style={{
-                  minHeight: 108,
                   backgroundColor: data.isWeekendDay ? monthColor.bg : undefined,
                 }}
               >
                 {/* Top zone: day + lunar + check */}
                 <div
-                  className="p-2 cursor-pointer"
+                  className="p-3 cursor-pointer"
                   onClick={() => toggleDay(month, day)}
                 >
                   <div className="flex items-center justify-between">
                     <span
-                      className={`text-xl font-bold ${
+                      className={`text-2xl font-bold ${
                         data.isWeekendDay ? '' : 'text-gray-800'
                       }`}
                       style={data.isWeekendDay ? { color: monthColor.text } : undefined}
@@ -186,7 +185,7 @@ function MonthView({
                     </span>
                     {mounted && status !== 'none' && (
                       <span
-                        className={`text-lg font-bold ${
+                        className={`text-xl font-bold ${
                           status === 'crossed' ? 'text-red-500' : 'text-green-600'
                         }`}
                       >
@@ -195,7 +194,7 @@ function MonthView({
                     )}
                   </div>
                   <span
-                    className={`text-[15px] leading-tight block mt-0.5 ${
+                    className={`text-base leading-tight block mt-1 ${
                       data.isSolarTerm
                         ? 'text-orange-600 font-medium'
                         : data.isFestival
@@ -217,11 +216,11 @@ function MonthView({
                 </div>
                 {/* Bottom zone: note */}
                 <div
-                  className="px-2 pb-2 cursor-pointer"
+                  className="px-3 pb-3 cursor-pointer min-h-[40px]"
                   onClick={(e) => openNotePopup(month, day, e)}
                 >
                   {hasNote && (
-                    <div className="text-[14px] text-gray-400 truncate leading-tight">
+                    <div className="text-sm text-gray-400 truncate leading-tight">
                       {notes[noteKey].split('\n')[0]}
                     </div>
                   )}
@@ -692,7 +691,7 @@ export default function YearCalendar() {
     <div className="h-screen bg-gray-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 print:static print:border-b z-20">
-        <div className="px-8 py-3 flex items-center justify-between flex-wrap gap-2">
+        <div className="px-8 py-1.5 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setYear((y) => y - 1)}
@@ -742,7 +741,7 @@ export default function YearCalendar() {
               <span className="flex items-center gap-1">
                 <span className="inline-block w-4 h-3 rounded border-2 border-red-500" />
                 <span className="inline-block w-4 h-3 rounded border-2 border-gray-800 -ml-1.5" />
-                <span>12周</span>
+                <span>季度</span>
               </span>
               <span className="flex items-center gap-1">
                 <span className="inline-block w-3 h-3 bg-sky-400 rounded-full" />
@@ -771,7 +770,7 @@ export default function YearCalendar() {
       {/* Calendar Grid - fills remaining viewport */}
       <div
         ref={gridContainerRef}
-        className="flex-1 px-8 pb-6 pt-3 overflow-x-auto min-h-0"
+        className="flex-1 px-8 pb-2 pt-1 overflow-x-auto min-h-0"
       >
         {selectedMonth === null ? (
         <div ref={gridInnerRef} className="w-full h-full relative border-t border-l border-gray-200 rounded-sm">
