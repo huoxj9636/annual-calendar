@@ -432,7 +432,7 @@ export default function YearCalendar() {
         <button
           onClick={() => setShowLifeCalendar(true)}
           className="flex-shrink-0 w-8 flex items-center justify-center bg-gradient-to-r from-indigo-50/80 to-transparent hover:from-indigo-100 transition-all group cursor-pointer z-10"
-          title="人生日历"
+          title="4000周人生"
         >
           <span className="text-indigo-300 group-hover:text-indigo-500 transition-colors text-2xl">‹</span>
         </button>
@@ -843,96 +843,206 @@ export default function YearCalendar() {
         </div>
       )}
 
-      {/* 人生日历侧边栏 */}
+      {/* 人生日历侧边栏 - 4000周 */}
       {showLifeCalendar && (
         <div className="fixed inset-0 z-50 flex justify-start">
           <div className="absolute inset-0 bg-black/20" onClick={() => { setShowLifeCalendar(false); setLifeCalendarYear(null); }} />
           <div
             className="relative h-full bg-white shadow-2xl overflow-hidden flex flex-col animate-slide-in-left"
-            style={{ width: Math.min(520, window.innerWidth * 0.92), maxWidth: '92vw' }}
+            style={{ width: Math.min(560, window.innerWidth * 0.92), maxWidth: '92vw' }}
           >
             {/* Header */}
-            <div className="flex-shrink-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 px-6 py-4 text-white">
+            <div className="flex-shrink-0 bg-gradient-to-br from-slate-800 via-slate-700 to-indigo-900 px-6 py-5 text-white">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold">人生日历</h2>
+                <h2 className="text-xl font-bold tracking-wide">人生 4000 周</h2>
                 <button
                   onClick={() => { setShowLifeCalendar(false); setLifeCalendarYear(null); }}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <path d="M1 1l12 12M13 1L1 13" />
                   </svg>
                 </button>
               </div>
-              <p className="text-white/60 text-sm mt-1">每格代表一年，点击查看年度日程</p>
+              <div className="mt-3 flex items-center gap-3">
+                <label className="text-white/50 text-xs">出生年份</label>
+                <input
+                  type="number"
+                  value={birthYear}
+                  min={1930}
+                  max={new Date().getFullYear()}
+                  onChange={(e) => setBirthYear(Number(e.target.value))}
+                  className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-sm text-white text-center focus:outline-none focus:border-white/40"
+                />
+                {(() => {
+                  const now = new Date();
+                  const birthDate = new Date(birthYear, 0, 1);
+                  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+                  const weeksLived = Math.max(0, Math.floor((now.getTime() - birthDate.getTime()) / msPerWeek));
+                  const totalWeeks = 80 * 52;
+                  const weeksLeft = Math.max(0, totalWeeks - weeksLived);
+                  const pct = Math.min(100, (weeksLived / totalWeeks * 100)).toFixed(1);
+                  return (
+                    <div className="flex-1 text-right">
+                      <div className="text-white/70 text-xs">
+                        已过 <span className="text-amber-300 font-bold text-sm">{weeksLived.toLocaleString()}</span> 周
+                        <span className="mx-1.5 text-white/30">|</span>
+                        剩余 <span className="text-emerald-300 font-bold text-sm">{weeksLeft.toLocaleString()}</span> 周
+                      </div>
+                      <div className="mt-1.5 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="text-white/40 text-[10px] mt-0.5 text-right">{pct}%</div>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             {/* Life Calendar Grid */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4">
               {!lifeCalendarYear ? (
                 <>
-                  <div className="mb-4">
-                    <label className="text-sm text-gray-500 mb-2 block">出生年份</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        value={birthYear}
-                        min={1900}
-                        max={2026}
-                        onChange={(e) => setBirthYear(Number(e.target.value))}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400"
-                      />
-                    </div>
+                  {/* Legend */}
+                  <div className="flex items-center gap-4 mb-3 px-1 text-[10px] text-gray-400">
+                    <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-sm bg-indigo-400" />已度过</div>
+                    <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-sm bg-amber-400" />当前年</div>
+                    <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-sm bg-gray-200" />未到达</div>
+                    <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-sm bg-blue-400" />有日程</div>
                   </div>
-                  <div className="space-y-4">
-                    {Array.from({ length: 8 }, (_, decade) => {
-                      const decadeStart = birthYear + decade * 10;
-                      return (
-                        <div key={decade}>
-                          <div className="text-xs text-gray-400 mb-1.5 font-medium">{decadeStart}年代</div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {Array.from({ length: 10 }, (_, y) => {
-                              const yr = decadeStart + y;
-                              const now = new Date().getFullYear();
-                              const isCurrent = yr === now;
-                              const isFuture = yr > now;
-                              const isPast = yr < now;
-                              // Check if year has data
-                              let hasData = false;
-                              try {
-                                const keys = [`calendar-overrides-${yr}`, `calendar-notes-${yr}`];
-                                for (const k of keys) {
-                                  if (localStorage.getItem(k)) { hasData = true; break; }
-                                }
-                              } catch { /* empty */ }
-
-                              return (
-                                <button
-                                  key={yr}
-                                  onClick={() => {
-                                    if (!isFuture) {
-                                      setLifeCalendarYear(yr);
-                                    }
-                                  }}
-                                  disabled={isFuture}
-                                  className={`w-10 h-10 rounded-lg text-xs font-medium transition-all ${
-                                    isCurrent
-                                      ? 'bg-indigo-500 text-white shadow-md ring-2 ring-indigo-200'
-                                      : hasData
-                                        ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                  {/* 80 years x 52 weeks grid */}
+                  <div className="space-y-0.5">
+                    {(() => {
+                      const now = new Date();
+                      const currentYear = now.getFullYear();
+                      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+                      const birthDate = new Date(birthYear, 0, 1);
+                      const weeksLived = Math.max(0, Math.floor((now.getTime() - birthDate.getTime()) / msPerWeek));
+                      const lifeStages = [
+                        { label: '童年', start: 0, end: 5, color: 'text-pink-400' },
+                        { label: '少年', start: 6, end: 11, color: 'text-orange-400' },
+                        { label: '青春', start: 12, end: 17, color: 'text-yellow-500' },
+                        { label: '青年', start: 18, end: 29, color: 'text-green-500' },
+                        { label: '而立', start: 30, end: 39, color: 'text-teal-500' },
+                        { label: '不惑', start: 40, end: 49, color: 'text-cyan-500' },
+                        { label: '知天命', start: 50, end: 59, color: 'text-blue-500' },
+                        { label: '耳顺', start: 60, end: 69, color: 'text-violet-500' },
+                        { label: '古稀', start: 70, end: 79, color: 'text-purple-500' },
+                      ];
+                      return Array.from({ length: 80 }, (_, yearIdx) => {
+                        const yr = birthYear + yearIdx;
+                        const isCurrentYear = yr === currentYear;
+                        const isFuture = yr > currentYear;
+                        const yearStartWeek = yearIdx * 52;
+                        const stage = lifeStages.find(s => yearIdx >= s.start && yearIdx <= s.end);
+                        // Check if this year has any event data
+                        let yearHasData = false;
+                        if (!isFuture) {
+                          try {
+                            for (let m = 1; m <= 12; m++) {
+                              const dim = getDaysInMonth(yr, m);
+                              for (let d = 1; d <= dim; d++) {
+                                const evK = `dayview-events-${yr}-${m}-${d}`;
+                                const tdK = `dayview-todos-${yr}-${m}-${d}`;
+                                const evR = localStorage.getItem(evK);
+                                const tdR = localStorage.getItem(tdK);
+                                if (evR) { const a = JSON.parse(evR); if (Array.isArray(a) && a.length > 0) { yearHasData = true; break; } }
+                                if (tdR) { const a = JSON.parse(tdR); if (Array.isArray(a) && a.length > 0) { yearHasData = true; break; } }
+                              }
+                              if (yearHasData) break;
+                            }
+                          } catch { /* empty */ }
+                        }
+                        return (
+                          <div key={yearIdx} className="flex items-center gap-1.5 group">
+                            {/* Year label + stage label */}
+                            <div className="w-[52px] flex-shrink-0 flex items-center gap-0.5">
+                              <button
+                                onClick={() => { if (!isFuture) setLifeCalendarYear(yr); }}
+                                disabled={isFuture}
+                                className={`text-[9px] font-mono w-[26px] text-right transition-colors ${
+                                  isCurrentYear ? 'text-amber-500 font-bold' :
+                                  isFuture ? 'text-gray-200' :
+                                  'text-gray-400 group-hover:text-gray-700'
+                                }`}
+                              >
+                                {String(yr).slice(2)}
+                              </button>
+                              {stage && yearIdx === stage.start && (
+                                <span className={`text-[8px] ${stage.color} font-medium whitespace-nowrap`}>{stage.label}</span>
+                              )}
+                            </div>
+                            {/* 52 week cells */}
+                            <div className="flex gap-[1px]">
+                              {Array.from({ length: 52 }, (_, w) => {
+                                const weekNum = yearStartWeek + w;
+                                const isPast = weekNum < weeksLived;
+                                const isCurrentWeek = weekNum === weeksLived;
+                                return (
+                                  <div
+                                    key={w}
+                                    className={`w-[6px] h-[6px] rounded-[1px] transition-all ${
+                                      isCurrentWeek
+                                        ? 'bg-amber-400 ring-1 ring-amber-200'
                                         : isPast
-                                          ? 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                                          : 'bg-gray-50 text-gray-200 cursor-not-allowed'
-                                  }`}
-                                >
-                                  {String(yr).slice(2)}
-                                </button>
-                              );
-                            })}
+                                          ? yearHasData ? 'bg-blue-400' : 'bg-indigo-400/60'
+                                          : 'bg-gray-100'
+                                    }`}
+                                    title={`${yr}年 第${w + 1}周`}
+                                  />
+                                );
+                              })}
+                            </div>
+                            {/* Milestone markers */}
+                            {[18, 22, 30, 40, 50, 60, 70].includes(yearIdx) && (
+                              <span className="text-[8px] text-gray-300 ml-0.5">{yearIdx}岁</span>
+                            )}
                           </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                  {/* Bottom stats */}
+                  <div className="mt-4 p-4 bg-gradient-to-br from-indigo-50 to-violet-50 rounded-xl">
+                    <div className="text-xs text-gray-500 mb-2 font-medium">人生阶段统计</div>
+                    {(() => {
+                      const now = new Date();
+                      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+                      const birthDate = new Date(birthYear, 0, 1);
+                      const weeksLived = Math.max(0, Math.floor((now.getTime() - birthDate.getTime()) / msPerWeek));
+                      const currentAge = Math.floor(weeksLived / 52);
+                      const stages = [
+                        { label: '童年', emoji: '🎈', start: 0, end: 5, color: 'bg-pink-200 text-pink-700' },
+                        { label: '少年', emoji: '📚', start: 6, end: 11, color: 'bg-orange-200 text-orange-700' },
+                        { label: '青春', emoji: '💫', start: 12, end: 17, color: 'bg-yellow-200 text-yellow-800' },
+                        { label: '青年', emoji: '🔥', start: 18, end: 29, color: 'bg-green-200 text-green-700' },
+                        { label: '而立', emoji: '🏔️', start: 30, end: 39, color: 'bg-teal-200 text-teal-700' },
+                        { label: '不惑', emoji: '🌊', start: 40, end: 49, color: 'bg-cyan-200 text-cyan-700' },
+                        { label: '知天命', emoji: '🌅', start: 50, end: 59, color: 'bg-blue-200 text-blue-700' },
+                        { label: '耳顺', emoji: '🍂', start: 60, end: 69, color: 'bg-violet-200 text-violet-700' },
+                        { label: '古稀', emoji: '🌿', start: 70, end: 79, color: 'bg-purple-200 text-purple-700' },
+                      ];
+                      return (
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {stages.map(s => {
+                            const stageWeeks = (Math.min(s.end, 79) - s.start + 1) * 52;
+                            const stageLived = currentAge >= s.end
+                              ? stageWeeks
+                              : currentAge >= s.start
+                                ? (currentAge - s.start) * 52 + (weeksLived % 52)
+                                : 0;
+                            const pct = Math.min(100, (stageLived / stageWeeks * 100)).toFixed(0);
+                            const isActive = currentAge >= s.start && currentAge <= s.end;
+                            return (
+                              <div key={s.label} className={`px-2 py-1.5 rounded-lg ${isActive ? s.color + ' ring-1 ring-current/20' : 'bg-white text-gray-400'}`}>
+                                <div className="text-[10px] font-medium">{s.emoji} {s.label}</div>
+                                <div className="text-[9px] mt-0.5 opacity-70">{pct}%</div>
+                              </div>
+                            );
+                          })}
                         </div>
                       );
-                    })}
+                    })()}
                   </div>
                 </>
               ) : (
@@ -950,7 +1060,6 @@ export default function YearCalendar() {
                     {Array.from({ length: 12 }, (_, m) => {
                       const month = m + 1;
                       const daysInMonth = getDaysInMonth(lifeCalendarYear, month);
-                      // Count events/todos for this month
                       let eventCount = 0;
                       let todoCount = 0;
                       try {
