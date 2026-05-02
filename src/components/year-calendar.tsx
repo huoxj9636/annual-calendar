@@ -112,18 +112,18 @@ function MonthView({
       <div className="w-full flex items-center justify-between mb-4">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-sm text-gray-600 font-medium"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors text-base text-gray-600 font-medium"
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M10 3L5 8l5 5" />
           </svg>
           返回年历
         </button>
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold" style={{ color: monthColor.text }}>
+          <h2 className="text-3xl font-bold" style={{ color: monthColor.text }}>
             {month}月
           </h2>
-          <span className="text-sm text-gray-400">{year}年</span>
+          <span className="text-base text-gray-400">{year}年</span>
         </div>
         <div className="w-24" /> {/* Spacer for centering */}
       </div>
@@ -133,7 +133,7 @@ function MonthView({
         {WEEKDAY_LABELS.map((label, i) => (
           <div
             key={i}
-            className={`text-center text-xs font-semibold py-1.5 rounded-md ${
+            className={`text-center text-sm font-semibold py-2 rounded-md ${
               i === 0 || i === 6 ? 'text-red-400' : 'text-gray-400'
             }`}
           >
@@ -147,7 +147,7 @@ function MonthView({
         {weeks.flatMap((week, wi) =>
           week.map((day, di) => {
             if (day === null) {
-              return <div key={`${wi}-${di}`} className="rounded-lg" style={{ minHeight: 72 }} />;
+              return <div key={`${wi}-${di}`} className="rounded-lg" style={{ minHeight: 108 }} />;
             }
 
             const data = dayData[day - 1];
@@ -166,18 +166,18 @@ function MonthView({
                   hover:shadow-sm
                 `}
                 style={{
-                  minHeight: 72,
+                  minHeight: 108,
                   backgroundColor: data.isWeekendDay ? monthColor.bg : undefined,
                 }}
               >
                 {/* Top zone: day + lunar + check */}
                 <div
-                  className="p-1.5 cursor-pointer"
+                  className="p-2 cursor-pointer"
                   onClick={() => toggleDay(month, day)}
                 >
                   <div className="flex items-center justify-between">
                     <span
-                      className={`text-base font-bold ${
+                      className={`text-xl font-bold ${
                         data.isWeekendDay ? '' : 'text-gray-800'
                       }`}
                       style={data.isWeekendDay ? { color: monthColor.text } : undefined}
@@ -186,7 +186,7 @@ function MonthView({
                     </span>
                     {mounted && status !== 'none' && (
                       <span
-                        className={`text-xs font-bold ${
+                        className={`text-lg font-bold ${
                           status === 'crossed' ? 'text-red-500' : 'text-green-600'
                         }`}
                       >
@@ -195,7 +195,7 @@ function MonthView({
                     )}
                   </div>
                   <span
-                    className={`text-[10px] leading-tight block mt-0.5 ${
+                    className={`text-[15px] leading-tight block mt-0.5 ${
                       data.isSolarTerm
                         ? 'text-orange-600 font-medium'
                         : data.isFestival
@@ -217,16 +217,16 @@ function MonthView({
                 </div>
                 {/* Bottom zone: note */}
                 <div
-                  className="px-1.5 pb-1.5 cursor-pointer"
+                  className="px-2 pb-2 cursor-pointer"
                   onClick={(e) => openNotePopup(month, day, e)}
                 >
                   {hasNote && (
-                    <div className="text-[9px] text-gray-400 truncate leading-tight">
+                    <div className="text-[14px] text-gray-400 truncate leading-tight">
                       {notes[noteKey].split('\n')[0]}
                     </div>
                   )}
                   {hasNote && (
-                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-sky-400 rounded-full" />
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-sky-400 rounded-full" />
                   )}
                 </div>
               </div>
@@ -251,7 +251,7 @@ export default function YearCalendar() {
   const popupRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const gridInnerRef = useRef<HTMLDivElement>(null);
-  const [cellHeight, setCellHeight] = useState(44);
+  const [cellHeight, setCellHeight] = useState(66);
 
   const blocks = useMemo(() => getTwelveWeekBlocks(year), [year]);
 
@@ -696,16 +696,16 @@ export default function YearCalendar() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setYear((y) => y - 1)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors text-lg font-bold"
+              className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors text-2xl font-bold"
               aria-label="上一年"
             >
               ‹
             </button>
             <div className="flex items-end gap-2">
-              <h1 className="text-5xl font-black tracking-tight text-gray-900 leading-none">
+              <h1 className="text-7xl font-black tracking-tight text-gray-900 leading-none">
                 {year}
               </h1>
-              <span className="text-sm text-gray-500 font-medium pb-0.5">
+              <span className="text-base text-gray-500 font-medium pb-1">
                 {ganZhi}（{animal}）
               </span>
             </div>
@@ -718,7 +718,7 @@ export default function YearCalendar() {
             </button>
             <button
               onClick={() => setYear(new Date().getFullYear())}
-              className="px-2.5 py-1 text-sm rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors"
+              className="px-4 py-1.5 text-base rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors"
             >
               今年
             </button>
@@ -728,13 +728,13 @@ export default function YearCalendar() {
           <div className="flex items-center gap-2.5 text-xs">
             <div className="flex items-center gap-3 text-gray-500">
               <span className="flex items-center gap-1">
-                <span className="inline-flex w-5 h-5 bg-emerald-50 rounded-md items-center justify-center text-emerald-600 text-[11px] font-bold">
+                <span className="inline-flex w-[23px] h-[23px] bg-emerald-50 rounded-md items-center justify-center text-emerald-600 text-[17px] font-bold">
                   ✓
                 </span>
                 <span>满意</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="inline-flex w-5 h-5 bg-rose-50 rounded-md items-center justify-center text-rose-500 text-[11px] font-bold">
+                <span className="inline-flex w-[23px] h-[23px] bg-rose-50 rounded-md items-center justify-center text-rose-500 text-[17px] font-bold">
                   ✗
                 </span>
                 <span>不满意</span>
@@ -745,7 +745,7 @@ export default function YearCalendar() {
                 <span>12周</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 bg-sky-400 rounded-full" />
+                <span className="inline-block w-3 h-3 bg-sky-400 rounded-full" />
                 <span>备注</span>
               </span>
             </div>
@@ -792,7 +792,7 @@ export default function YearCalendar() {
               >
                 {/* Month label */}
                 <div
-                  className="flex items-center justify-center text-[11px] font-extrabold sticky left-0 bg-gray-50 z-10 print:bg-white rounded mx-0.5 cursor-pointer hover:opacity-80 transition-opacity"
+                  className="flex items-center justify-center text-[17px] font-extrabold sticky left-0 bg-gray-50 z-10 print:bg-white rounded mx-0.5 cursor-pointer hover:opacity-80 transition-opacity"
                   style={{
                     height: cellHeight,
                     color: monthColor.text,
@@ -851,7 +851,7 @@ export default function YearCalendar() {
                       >
                         <div className="flex items-center gap-0.5">
                           <span
-                            className={`text-[10px] font-bold leading-none ${
+                            className={`text-[15px] font-bold leading-none ${
                               cell.isWeekend ? '' : 'text-gray-800'
                             }`}
                             style={
@@ -864,7 +864,7 @@ export default function YearCalendar() {
                           </span>
                           {mounted && status !== 'none' && (
                             <span
-                              className={`text-[8px] font-bold leading-none ${
+                              className={`text-[12px] font-bold leading-none ${
                                 status === 'crossed'
                                   ? 'text-red-500'
                                   : 'text-green-600'
@@ -875,7 +875,7 @@ export default function YearCalendar() {
                           )}
                         </div>
                         <span
-                          className={`text-[7px] leading-tight truncate max-w-full mt-0.5 ${
+                          className={`text-[11px] leading-tight truncate max-w-full mt-0.5 ${
                             cell.isSolarTerm
                               ? 'text-orange-600 font-medium'
                               : cell.isFestival
@@ -907,7 +907,7 @@ export default function YearCalendar() {
                         title={`${year}年${cell.month}月${cell.day}日 - 点击添加备忘`}
                       >
                         {hasNote && (
-                          <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-sky-400 rounded-full" />
+                          <span className="absolute top-1 right-1 w-2 h-2 bg-sky-400 rounded-full" />
                         )}
                       </div>
                     </div>
@@ -994,7 +994,7 @@ export default function YearCalendar() {
           <div className="bg-white px-5 pb-4 pt-3 flex-1 flex flex-col min-h-0 overflow-auto">
             {notes[`${year}-${notePopup.month}-${notePopup.day}`] && !noteDraft ? (
               <div className="mb-3">
-                <div className="text-[10px] text-gray-400 font-medium mb-1.5 tracking-wide">已记录</div>
+                <div className="text-[15px] text-gray-400 font-medium mb-1.5 tracking-wide">已记录</div>
                 <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                   {notes[`${year}-${notePopup.month}-${notePopup.day}`]}
                 </div>
@@ -1014,7 +1014,7 @@ export default function YearCalendar() {
               }}
             />
             <div className="flex items-center justify-between mt-3">
-              <span className="text-[10px] text-gray-300">Enter 保存 · Shift+Enter 换行</span>
+              <span className="text-[15px] text-gray-300">Enter 保存 · Shift+Enter 换行</span>
               <button
                 className="px-5 py-1.5 rounded-full text-xs font-semibold text-white transition-all hover:shadow-md active:scale-95"
                 style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
