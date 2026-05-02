@@ -51,19 +51,17 @@ export default function YearCalendar() {
   const gridInnerRef = useRef<HTMLDivElement>(null);
   const [cellHeight, setCellHeight] = useState(66);
 
-  // Real-time clock with milliseconds
+  // Real-time clock with centiseconds (2-digit)
   useEffect(() => {
     if (!mounted) return;
-    const update = () => {
-      const now = new Date();
-      const h = now.getHours().toString().padStart(2, '0');
-      const m = now.getMinutes().toString().padStart(2, '0');
-      const s = now.getSeconds().toString().padStart(2, '0');
-      const cs = Math.floor(now.getMilliseconds() / 10).toString().padStart(2, '0');
-      setClockStr(`${h}:${m}:${s}.${cs}`);
+    const pad2 = (n: number) => (n < 10 ? '0' : '') + n;
+    const tick = () => {
+      const d = new Date();
+      const cs = Math.floor(d.getMilliseconds() / 10);
+      setClockStr(`${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}.${pad2(cs)}`);
     };
-    update();
-    const id = setInterval(update, 47); // ~21fps for smooth ms
+    tick();
+    const id = setInterval(tick, 53);
     return () => clearInterval(id);
   }, [mounted]);
 
@@ -445,7 +443,7 @@ export default function YearCalendar() {
                         height: cellHeight,
                         borderBottom: '1px solid #efefef',
                         borderRight: '1px solid #efefef',
-                        backgroundColor: isPast ? '#f8f8f8' : weekendBg,
+                        backgroundColor: isPast ? '#fafafa' : weekendBg,
                       }}
                     >
                       {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
@@ -463,7 +461,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#dedede' }
+                              ? { color: '#e5e5e5' }
                               : cell.isWeekend
                                 ? { color: monthColor.text }
                                 : undefined
@@ -487,7 +485,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#e3e3e3' }
+                              ? { color: '#eaeaea' }
                               : cell.isWeekend &&
                                 !cell.isSolarTerm &&
                                 !cell.isFestival &&
