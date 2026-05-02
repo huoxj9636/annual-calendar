@@ -58,7 +58,6 @@ export default function YearCalendar() {
   const [dayViewWidth, setDayViewWidth] = useState(480);
   const [reviewWidth, setReviewWidth] = useState(440);
   const [showLifeCalendar, setShowLifeCalendar] = useState(false);
-  const [lifeCalendarYear, setLifeCalendarYear] = useState<number | null>(null);
   const [birthYear, setBirthYear] = useState(1990);
 
   // Resize handler for side panels
@@ -849,9 +848,7 @@ export default function YearCalendar() {
         <LifeCalendar
           birthYear={birthYear}
           setBirthYear={setBirthYear}
-          onClose={() => { setShowLifeCalendar(false); setLifeCalendarYear(null); }}
-          selectedYear={lifeCalendarYear}
-          setSelectedYear={setLifeCalendarYear}
+          onClose={() => setShowLifeCalendar(false)}
         />
       )}
       </div>
