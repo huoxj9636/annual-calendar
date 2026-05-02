@@ -51,6 +51,29 @@ export default function YearCalendar() {
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const gridInnerRef = useRef<HTMLDivElement>(null);
   const [cellHeight, setCellHeight] = useState(66);
+  const [dayViewWidth, setDayViewWidth] = useState(480);
+  const [reviewWidth, setReviewWidth] = useState(440);
+
+  // Resize handler for side panels
+  const handlePanelResize = useCallback((setter: React.Dispatch<React.SetStateAction<number>>, e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = 0; // will be read from current state via closure
+    const onMouseMove = (ev: MouseEvent) => {
+      const delta = startX - ev.clientX; // dragging left = increasing width
+      setter(w => Math.min(Math.max(w + delta, 360), window.innerWidth * 0.92));
+    };
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, []);
 
   // Real-time clock with centiseconds (2-digit)
   useEffect(() => {
@@ -643,14 +666,21 @@ export default function YearCalendar() {
       {dayViewDate && (
         <div className="fixed inset-0 z-40 flex justify-end">
           <div className="absolute inset-0 bg-black/20" onClick={() => setDayViewDate(null)} />
-          <div className="relative w-[480px] max-w-[90vw] h-full bg-white shadow-2xl animate-slide-in-panel overflow-hidden">
-            <DayView
-              year={dayViewDate.year}
-              month={dayViewDate.month}
-              day={dayViewDate.day}
-              onClose={() => setDayViewDate(null)}
-              embedded
+          <div className="relative h-full bg-white shadow-2xl animate-slide-in-panel overflow-hidden flex" style={{ width: dayViewWidth, maxWidth: '92vw' }}>
+            {/* Left resize handle */}
+            <div
+              className="w-1.5 cursor-col-resize hover:bg-blue-400/30 active:bg-blue-400/50 flex-shrink-0 transition-colors z-10"
+              onMouseDown={(e) => handlePanelResize(setDayViewWidth, e)}
             />
+            <div className="flex-1 overflow-hidden">
+              <DayView
+                year={dayViewDate.year}
+                month={dayViewDate.month}
+                day={dayViewDate.day}
+                onClose={() => setDayViewDate(null)}
+                embedded
+              />
+            </div>
           </div>
         </div>
       )}
@@ -659,7 +689,12 @@ export default function YearCalendar() {
       {selectedMonth !== null && mounted && (
         <div className="fixed inset-0 z-40 flex justify-end">
           <div className="absolute inset-0 bg-black/20" onClick={() => setSelectedMonth(null)} />
-          <div className="relative w-[440px] max-w-[92vw] h-full bg-white shadow-2xl flex flex-col animate-slide-in">
+          <div className="relative h-full bg-white shadow-2xl flex flex-col animate-slide-in" style={{ width: reviewWidth, maxWidth: '92vw' }}>
+            {/* Left resize handle */}
+            <div
+              className="w-1.5 cursor-col-resize hover:bg-blue-400/30 active:bg-blue-400/50 flex-shrink-0 transition-colors z-10 absolute left-0 top-0 bottom-0"
+              onMouseDown={(e) => handlePanelResize(setReviewWidth, e)}
+            />
             {/* 头部 - 渐变 */}
             <div className="px-6 pt-6 pb-5" style={{ background: `linear-gradient(135deg, ${MONTH_COLORS[selectedMonth - 1].accent}dd, ${MONTH_COLORS[selectedMonth - 1].accent}88)` }}>
               <div className="flex items-center justify-between">
