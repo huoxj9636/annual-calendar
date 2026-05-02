@@ -335,34 +335,34 @@ export default function YearCalendar() {
       {/* Header */}
       <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/header-bg.jpeg')" }} />
-        <div className="absolute inset-0 bg-white/60 backdrop-blur-[3px]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/85 via-slate-800/75 to-indigo-900/85 backdrop-blur-[2px]" />
         <div className="relative px-8 py-1.5 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 rounded-2xl px-4 py-2">
             <button
               onClick={() => setYear((y) => y - 1)}
-              className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors text-2xl font-bold"
+              className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors text-2xl font-bold text-white/70 hover:text-white"
               aria-label="上一年"
             >
               ‹
             </button>
             <div className="flex items-center">
-              <h1 className="text-7xl font-black tracking-tight text-gray-900 leading-none">
+              <h1 className="text-7xl font-black tracking-tight text-white leading-none">
                 {year}
               </h1>
               <div className="flex flex-col ml-4">
                 <div className="flex items-center gap-2 leading-tight">
-                  <span className="text-lg text-gray-500 font-medium">
+                  <span className="text-lg text-white/60 font-medium">
                     {ganZhi}（{animal}）
                   </span>
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
-                    className="px-2.5 py-0.5 text-sm rounded-md bg-gray-900 text-white hover:bg-gray-700 transition-colors leading-tight"
+                    className="px-2.5 py-0.5 text-sm rounded-md bg-white/15 text-white/90 hover:bg-white/25 border border-white/10 transition-colors leading-tight"
                   >
                     今年
                   </button>
                 </div>
                 {mounted && clockStr && (
-                  <div className="text-2xl text-gray-500 font-mono tracking-wider tabular-nums leading-tight mt-0.5">
+                  <div className="text-2xl text-white/40 font-mono tracking-wider tabular-nums leading-tight mt-0.5">
                     {clockStr}
                   </div>
                 )}
@@ -370,7 +370,7 @@ export default function YearCalendar() {
             </div>
             <button
               onClick={() => setYear((y) => y + 1)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors text-lg font-bold"
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors text-lg font-bold text-white/70 hover:text-white"
               aria-label="下一年"
             >
               ›
@@ -379,7 +379,7 @@ export default function YearCalendar() {
 
           {/* 居中标语 */}
           <div className="absolute inset-x-0 flex justify-center pointer-events-none">
-            <span className="text-4xl font-bold tracking-[0.4em] text-gray-800 select-none" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
+            <span className="text-4xl font-bold tracking-[0.4em] text-white/90 select-none drop-shadow-[0_2px_10px_rgba(99,102,241,0.4)]" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
               永远不要放弃
             </span>
           </div>
@@ -388,13 +388,13 @@ export default function YearCalendar() {
           <div className="flex items-center gap-2.5 text-xs">
             <div className="flex items-center gap-3 text-gray-500">
               <span className="flex items-center gap-1">
-                <span className="inline-flex w-[23px] h-[23px] bg-emerald-50 rounded-md items-center justify-center text-emerald-600 text-[17px] font-bold">
+                <span className="inline-flex w-[23px] h-[23px] bg-emerald-500/20 rounded-md items-center justify-center text-emerald-400 text-[17px] font-bold">
                   ✓
                 </span>
                 <span>满意</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="inline-flex w-[23px] h-[23px] bg-rose-50 rounded-md items-center justify-center text-rose-500 text-[17px] font-bold">
+                <span className="inline-flex w-[23px] h-[23px] bg-rose-500/20 rounded-md items-center justify-center text-rose-400 text-[17px] font-bold">
                   ✗
                 </span>
                 <span>不满意</span>
@@ -409,7 +409,7 @@ export default function YearCalendar() {
             </div>
             {mounted && stats.total > 0 && (
               <div className="flex items-center gap-2 pl-3 ml-1 border-l border-gray-200">
-                <span className="text-gray-400">已过 <strong className="text-gray-700 font-semibold">{stats.total}</strong> 天</span>
+                <span className="text-white/50">已过 <strong className="text-white/80 font-semibold">{stats.total}</strong> 天</span>
                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-50 rounded-md text-emerald-700 font-semibold">
                   ✓{stats.checked}
                 </span>
@@ -574,7 +574,7 @@ export default function YearCalendar() {
                                     ? 'text-purple-600 font-medium'
                                     : cell.isWeekend
                                       ? ''
-                                      : 'text-gray-400'
+                                      : 'text-white/50'
                           }`}
                           style={
                             isPast
@@ -664,8 +664,8 @@ export default function YearCalendar() {
           <div className="bg-white px-5 pb-4 pt-3 flex-1 flex flex-col min-h-0 overflow-auto">
             {notes[`${year}-${notePopup.month}-${notePopup.day}`] && !noteDraft ? (
               <div className="mb-3">
-                <div className="text-[15px] text-gray-400 font-medium mb-1.5 tracking-wide">已记录</div>
-                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                <div className="text-[15px] text-white/50 font-medium mb-1.5 tracking-wide">已记录</div>
+                <div className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
                   {notes[`${year}-${notePopup.month}-${notePopup.day}`]}
                 </div>
               </div>
@@ -828,10 +828,10 @@ export default function YearCalendar() {
                       <span className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ backgroundColor: section.color + '15', color: section.color }}>
                         {section.icon}
                       </span>
-                      <span className="text-sm font-semibold text-gray-700">{section.label}</span>
+                      <span className="text-sm font-semibold text-white/80">{section.label}</span>
                     </div>
                     <textarea
-                      className="w-full bg-gray-50/60 rounded-2xl px-5 py-4 text-sm text-gray-700 resize-none focus:outline-none focus:bg-gray-50 transition-all placeholder:text-gray-300 leading-relaxed min-h-[160px]"
+                      className="w-full bg-gray-50/60 rounded-2xl px-5 py-4 text-sm text-white/80 resize-none focus:outline-none focus:bg-gray-50 transition-all placeholder:text-gray-300 leading-relaxed min-h-[160px]"
                       placeholder={section.placeholder}
                       defaultValue={savedValue}
                       onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => { try { localStorage.setItem(storageKey, e.target.value); } catch { /* empty */ } }}
