@@ -239,9 +239,11 @@ export default function YearCalendar() {
       if (!gridEl) return;
       const gridRect = gridEl.getBoundingClientRect();
 
-      // Collect cell rects per block
-      const blockCellMap: Record<number, Map<string, { rect: DOMRect; month: number; day: number }>> = {};
+      // Collect cell rects per block, including empty cells at block's max day for right border alignment
+      const blockCellMap: Record<number, Map<string, { rect: DOMRect; month: number; day: number; isEmpty?: boolean }>> = {};
+      const blockMaxDay: Record<number, number> = {};
       const monthRows = gridEl.querySelectorAll<HTMLElement>('[data-month-row]');
+      // First pass: collect real cells and find max day per block
       monthRows.forEach((row) => {
         const monthIdx = parseInt(row.dataset.monthRow || '0', 10);
         const cells = row.querySelectorAll<HTMLElement>('[data-day]');
@@ -255,8 +257,50 @@ export default function YearCalendar() {
             month: monthIdx + 1,
             day,
           });
+          // Track the max day column this block reaches across ALL its months
+          const block = blocks.find((b: TwelveWeekBlock) => b.index === cellData.blockIndex);
+          if (block) {
+            const blockStartDate = new Date(block.startDate);
+            const blockEndDate = new Date(block.endDate);
+            const currentMax = blockMaxDay[cellData.blockIndex] || 0;
+            let maxDays = 0;
+            // Iterate all months in the block
+            const startM = blockStartDate.getMonth() + 1;
+            const endM = blockEndDate.getMonth() + 1;
+            for (let bm = startM; bm <= endM; bm++) {
+              maxDays = Math.max(maxDays, new Date(year, bm, 0).getDate());
+            }
+            blockMaxDay[cellData.blockIndex] = Math.max(currentMax, maxDays);
+          }
         });
       });
+      // Second pass: add empty cells at maxDay for months that have fewer days
+      for (const [blockIdxStr, maxDay] of Object.entries(blockMaxDay)) {
+        const blockIdx = parseInt(blockIdxStr);
+        const cellMap = blockCellMap[blockIdx];
+        if (!cellMap) continue;
+        // Find all months in this block
+        const monthsInBlock = new Set<number>();
+        for (const [, info] of cellMap) monthsInBlock.add(info.month);
+        for (const m of monthsInBlock) {
+          const daysInThisMonth = new Date(year, m, 0).getDate();
+          if (daysInThisMonth >= maxDay) continue; // this month already has enough days
+          // Find the empty cell at maxDay position
+          const row = monthRows[m - 1];
+          if (!row) continue;
+          const cell = row.querySelector<HTMLElement>(`[data-day="${maxDay}"]`);
+          if (!cell) continue;
+          const key = `${m}-${maxDay}`;
+          if (!cellMap.has(key)) {
+            cellMap.set(key, {
+              rect: cell.getBoundingClientRect(),
+              month: m,
+              day: maxDay,
+              isEmpty: true,
+            });
+          }
+        }
+      }
 
       const paths: { d: string; color: string; blockIdx: number }[] = [];
       const amplitude = 0.3;
@@ -588,7 +632,7 @@ export default function YearCalendar() {
                       {/* Top zone: day number + lunar + check/cross, click to toggle */}
                       <div
                         className="flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-black/[0.03] transition-colors"
-                        style={{ height: '50%' }}
+                        style={{ height: '33.33%' }}
                         onClick={() => toggleDay(cell.month, cell.day)}
                         title={`${year}年${cell.month}月${cell.day}日 - 点击切换满意/不满意`}
                       >
@@ -645,7 +689,7 @@ export default function YearCalendar() {
                       {/* Bottom zone: empty area, click to open note */}
                       <div
                         className="cursor-pointer hover:bg-black/[0.03] transition-colors relative"
-                        style={{ height: '50%' }}
+                        style={{ height: '66.67%' }}
                         onClick={(e) => openNotePopup(cell.month, cell.day, e)}
                         title={`${year}年${cell.month}月${cell.day}日 - 点击添加备忘`}
                       >
