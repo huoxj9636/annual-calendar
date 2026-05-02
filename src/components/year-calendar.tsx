@@ -1,6 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import { getLunarInfo, getYearAnimal, getGanZhiYear } from '@/lib/lunar';
 import {
   precomputeYearData,
@@ -10,6 +17,7 @@ import {
   MONTH_COLORS,
   MONTH_NAMES,
   type CellData,
+  type TwelveWeekBlock,
 } from '@/lib/calendar-utils';
 
 type DayOverride = 'checked' | 'crossed';
@@ -33,6 +41,7 @@ export default function YearCalendar() {
   const [noteDraft, setNoteDraft] = useState('');
   const popupRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
+  const gridInnerRef = useRef<HTMLDivElement>(null);
   const [cellHeight, setCellHeight] = useState(44);
 
   const blocks = useMemo(() => getTwelveWeekBlocks(year), [year]);
@@ -47,9 +56,8 @@ export default function YearCalendar() {
     const calculateHeight = () => {
       if (!gridContainerRef.current) return;
       const containerHeight = gridContainerRef.current.clientHeight;
-      // 12 months + gaps (3px each = 33px) + header row (20px)
       const headerH = 20;
-      const gapsH = 11 * 3; // 11 gaps between 12 months
+      const gapsH = 11 * 3;
       const available = containerHeight - headerH - gapsH;
       const h = Math.max(24, Math.floor(available / 12));
       setCellHeight(h);
@@ -174,13 +182,13 @@ export default function YearCalendar() {
       const key = `${year}-${month}-${day}`;
       setNoteDraft(notes[key] || '');
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const popW = 220;
-      const popH = 140;
+      const popW = 360;
+      const popH = 280;
       let x = rect.left + rect.width / 2 - popW / 2;
       let y = rect.bottom + 4;
-      if (x + popW > window.innerWidth - 8) x = window.innerWidth - popW - 8;
-      if (x < 8) x = 8;
-      if (y + popH > window.innerHeight - 8) y = rect.top - popH - 4;
+      if (x + popW > window.innerWidth - 16) x = window.innerWidth - popW - 16;
+      if (x < 16) x = 16;
+      if (y + popH > window.innerHeight - 16) y = rect.top - popH - 4;
       setNotePopup({ month, day, x, y });
     },
     [year, notes],
@@ -217,6 +225,181 @@ export default function YearCalendar() {
   const ganZhi = getGanZhiYear(year);
 
   const colTemplate = `48px repeat(31, 1fr)`;
+
+  // Build SVG wave border paths for 12-week blocks
+  const [waveBorders, setWaveBorders] = useState<{ d: string; color: string; blockIdx: number }[]>([]);
+
+  useEffect(() => {
+    if (!mounted || !gridInnerRef.current) {
+      setWaveBorders([]);
+      return;
+    }
+
+    const computeBorders = () => {
+      const gridEl = gridInnerRef.current;
+      if (!gridEl) return;
+      const gridRect = gridEl.getBoundingClientRect();
+
+      const blockCellsMap: Record<number, { monthIdx: number; day: number; rect: DOMRect }[]> = {};
+
+      const monthRows = gridEl.querySelectorAll<HTMLElement>('[data-month-row]');
+      monthRows.forEach((row) => {
+        const monthIdx = parseInt(row.dataset.monthRow || '0', 10);
+        const cells = row.querySelectorAll<HTMLElement>('[data-day]');
+        cells.forEach((cell) => {
+          const day = parseInt(cell.dataset.day || '0', 10);
+          const cellData = yearData[monthIdx]?.[day - 1];
+          if (!cellData || !cellData.exists || cellData.blockIndex < 0) return;
+          if (!blockCellsMap[cellData.blockIndex]) blockCellsMap[cellData.blockIndex] = [];
+          blockCellsMap[cellData.blockIndex].push({
+            monthIdx,
+            day,
+            rect: cell.getBoundingClientRect(),
+          });
+        });
+      });
+
+      const paths: { d: string; color: string; blockIdx: number }[] = [];
+
+      const amplitude = 2;
+      const wavelength = 6;
+
+      const makeWavyLine = (
+        x1: number, y1: number,
+        x2: number, y2: number,
+      ): string => {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 2) return '';
+        const steps = Math.max(1, Math.round(len / (wavelength / 2)));
+        const ux = dx / len;
+        const uy = dy / len;
+        const px = -uy;
+        const py = ux;
+
+        let d = `M ${x1} ${y1}`;
+        for (let i = 1; i <= steps; i++) {
+          const t = i / steps;
+          const bx = x1 + dx * t;
+          const by = y1 + dy * t;
+          const offset = (i % 2 === 1 ? 1 : -1) * amplitude;
+          d += ` L ${bx + px * offset} ${by + py * offset}`;
+        }
+        return d;
+      };
+
+      for (const [blockIdxStr, cells] of Object.entries(blockCellsMap)) {
+        const blockIdx = parseInt(blockIdxStr, 10);
+        const block = blocks.find((b: TwelveWeekBlock) => b.index === blockIdx);
+        if (!block) continue;
+        const color = block.color === 'red' ? '#dc2626' : '#1a1a1a';
+
+        const byRow: Record<number, typeof cells> = {};
+        for (const c of cells) {
+          if (!byRow[c.monthIdx]) byRow[c.monthIdx] = [];
+          byRow[c.monthIdx].push(c);
+        }
+
+        for (const [, rowCells] of Object.entries(byRow)) {
+          const sorted = [...rowCells].sort((a, b) => a.day - b.day);
+          const segments: typeof sorted[] = [];
+          let current: typeof sorted = [sorted[0]];
+          for (let i = 1; i < sorted.length; i++) {
+            if (sorted[i].day === sorted[i - 1].day + 1) {
+              current.push(sorted[i]);
+            } else {
+              segments.push(current);
+              current = [sorted[i]];
+            }
+          }
+          segments.push(current);
+
+          for (const seg of segments) {
+            const firstRect = seg[0].rect;
+            const lastRect = seg[seg.length - 1].rect;
+            const monthIdx = seg[0].monthIdx;
+
+            // Top edge
+            const firstDay = seg[0].day;
+            const aboveCell = monthIdx > 0
+              ? yearData[monthIdx - 1]?.[firstDay - 1]
+              : null;
+            const isTopEdge = monthIdx === 0 ||
+              !aboveCell || !aboveCell.exists ||
+              aboveCell.blockIndex !== blockIdx;
+            if (isTopEdge) {
+              const x1 = firstRect.left - gridRect.left;
+              const y1 = firstRect.top - gridRect.top;
+              const x2 = lastRect.right - gridRect.left;
+              const d = makeWavyLine(x1, y1, x2, y1);
+              if (d) paths.push({ d, color, blockIdx });
+            }
+
+            // Bottom edge
+            const lastDay = seg[seg.length - 1].day;
+            const belowCell = monthIdx < 11
+              ? yearData[monthIdx + 1]?.[lastDay - 1]
+              : null;
+            const isBottomEdge = monthIdx === 11 ||
+              !belowCell || !belowCell.exists ||
+              belowCell.blockIndex !== blockIdx;
+            if (isBottomEdge) {
+              const x1 = firstRect.left - gridRect.left;
+              const y1 = firstRect.bottom - gridRect.top;
+              const x2 = lastRect.right - gridRect.left;
+              const d = makeWavyLine(x1, y1, x2, y1);
+              if (d) paths.push({ d, color, blockIdx });
+            }
+
+            // Left edge
+            const leftNeighbor = firstDay > 1
+              ? yearData[monthIdx]?.[firstDay - 2]
+              : null;
+            const isLeftEdge = firstDay === 1 ||
+              !leftNeighbor || !leftNeighbor.exists ||
+              leftNeighbor.blockIndex !== blockIdx;
+            if (isLeftEdge) {
+              const x1 = firstRect.left - gridRect.left;
+              const y1 = firstRect.top - gridRect.top;
+              const d = makeWavyLine(x1, y1, x1, firstRect.bottom - gridRect.top);
+              if (d) paths.push({ d, color, blockIdx });
+            }
+
+            // Right edge
+            const rightNeighbor = lastDay < 31
+              ? yearData[monthIdx]?.[lastDay]
+              : null;
+            const isRightEdge = lastDay === 31 ||
+              !rightNeighbor || !rightNeighbor.exists ||
+              rightNeighbor.blockIndex !== blockIdx;
+            if (isRightEdge) {
+              const x1 = lastRect.right - gridRect.left;
+              const y1 = lastRect.top - gridRect.top;
+              const d = makeWavyLine(x1, y1, x1, lastRect.bottom - gridRect.top);
+              if (d) paths.push({ d, color, blockIdx });
+            }
+          }
+        }
+      }
+
+      setWaveBorders(paths);
+    };
+
+    // Delay to ensure layout is stable
+    const timer = setTimeout(computeBorders, 100);
+
+    const onResize = () => {
+      clearTimeout(timer);
+      setTimeout(computeBorders, 50);
+    };
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [mounted, yearData, blocks, cellHeight]);
 
   return (
     <div className="h-screen bg-gray-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
@@ -298,13 +481,12 @@ export default function YearCalendar() {
       </header>
 
 
-
       {/* Calendar Grid - fills remaining viewport */}
       <div
         ref={gridContainerRef}
         className="flex-1 px-8 pb-6 pt-3 overflow-x-auto min-h-0"
       >
-        <div className="w-full h-full">
+        <div ref={gridInnerRef} className="w-full h-full relative">
           {/* Day number header */}
           <div
             className="grid gap-0"
@@ -328,6 +510,7 @@ export default function YearCalendar() {
             return (
               <div
                 key={monthIdx}
+                data-month-row={monthIdx}
                 className="grid gap-0"
                 style={{
                   gridTemplateColumns: colTemplate,
@@ -347,12 +530,13 @@ export default function YearCalendar() {
                   {MONTH_NAMES[monthIdx]}
                 </div>
 
-                {/* Day cells */}
+                {/* Day cells - no CSS block borders, SVG overlay handles that */}
                 {monthRow.map((cell: CellData) => {
                   if (!cell.exists) {
                     return (
                       <div
                         key={cell.day}
+                        data-day={cell.day}
                         className="border border-gray-100 bg-gray-50/50"
                         style={{ height: cellHeight }}
                       />
@@ -367,20 +551,10 @@ export default function YearCalendar() {
                   const noteKey = `${year}-${cell.month}-${cell.day}`;
                   const hasNote = mounted && notes[noteKey];
 
-                  // Build border styles for 12-week blocks
-                  const borderStyle: CSSProperties = {};
-                  if (cell.blockBorders) {
-                    const bw = '2.5px';
-                    const bc = cell.blockBorders.color;
-                    if (cell.blockBorders.top) borderStyle.borderTop = `${bw} solid ${bc}`;
-                    if (cell.blockBorders.bottom) borderStyle.borderBottom = `${bw} solid ${bc}`;
-                    if (cell.blockBorders.left) borderStyle.borderLeft = `${bw} solid ${bc}`;
-                    if (cell.blockBorders.right) borderStyle.borderRight = `${bw} solid ${bc}`;
-                  }
-
                   return (
                     <div
                       key={cell.day}
+                      data-day={cell.day}
                       className={`
                         border border-gray-200 relative
                         ${isTodayCell ? 'ring-2 ring-blue-500 ring-inset z-[5]' : ''}
@@ -389,7 +563,6 @@ export default function YearCalendar() {
                       style={{
                         height: cellHeight,
                         backgroundColor: weekendBg,
-                        ...borderStyle,
                       }}
                     >
                       {/* Top zone: day number + check/cross toggle */}
@@ -464,26 +637,46 @@ export default function YearCalendar() {
               </div>
             );
           })}
+
+          {/* SVG overlay for wavy block borders */}
+          {mounted && waveBorders.length > 0 && (
+            <svg
+              className="absolute inset-0 pointer-events-none"
+              style={{ width: '100%', height: '100%' }}
+            >
+              {waveBorders.map((p, i) => (
+                <path
+                  key={`${p.blockIdx}-${i}`}
+                  d={p.d}
+                  fill="none"
+                  stroke={p.color}
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
+            </svg>
+          )}
         </div>
       </div>
 
-      {/* Note Popup */}
+      {/* Note Popup - larger size */}
       {notePopup && mounted && (
         <div
           ref={popupRef}
-          className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-3"
+          className="fixed z-50 bg-white rounded-xl shadow-2xl border border-gray-200 p-4"
           style={{
             left: notePopup.x,
             top: notePopup.y,
-            width: 220,
+            width: 360,
           }}
         >
-          <div className="text-xs font-bold text-gray-700 mb-1.5">
+          <div className="text-sm font-bold text-gray-800 mb-2">
             {year}年{notePopup.month}月{notePopup.day}日 备忘
           </div>
           <textarea
-            className="w-full h-20 text-xs border border-gray-300 rounded p-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
-            placeholder="记录今日事项..."
+            className="w-full h-36 text-sm border border-gray-300 rounded-lg p-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 leading-relaxed"
+            placeholder="记录今日事项与行程..."
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
             autoFocus
@@ -494,9 +687,9 @@ export default function YearCalendar() {
               }
             }}
           />
-          <div className="flex justify-end gap-1.5 mt-1.5">
+          <div className="flex justify-end gap-2 mt-2">
             <button
-              className="text-[10px] px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+              className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
               onClick={() => {
                 setNotePopup(null);
                 setNoteDraft('');
@@ -505,7 +698,7 @@ export default function YearCalendar() {
               取消
             </button>
             <button
-              className="text-[10px] px-2 py-0.5 rounded bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
               onClick={saveNote}
             >
               保存
