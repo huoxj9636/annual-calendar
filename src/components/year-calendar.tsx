@@ -695,8 +695,9 @@ export default function YearCalendar() {
           {/* Header */}
           <div className="px-4 py-2.5">
             <div className="flex items-center justify-between">
-              <div className="text-white text-sm font-semibold">
-                {year}年{notePopup.month}月{notePopup.day}日
+              <div className="flex items-center gap-2.5">
+                <span className="text-white text-2xl font-bold">{notePopup.day}</span>
+                <span className="text-white/80 text-xs">{year}年{notePopup.month}月</span>
               </div>
               <button
                 className="w-6 h-6 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white/70 hover:text-white transition-colors"
