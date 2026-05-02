@@ -59,7 +59,7 @@ export default function YearCalendar() {
       const h = now.getHours().toString().padStart(2, '0');
       const m = now.getMinutes().toString().padStart(2, '0');
       const s = now.getSeconds().toString().padStart(2, '0');
-      const ms = now.getMilliseconds().toString().padStart(3, '0').slice(0, 2);
+      const ms = now.getMilliseconds().toString().padStart(2, '0').slice(0, 2);
       setClockStr(`${h}:${m}:${s}.${ms}`);
     };
     update();
@@ -271,16 +271,16 @@ export default function YearCalendar() {
               ‹
             </button>
             <div className="flex items-center">
-              <h1 className="text-6xl font-black tracking-tight text-gray-900 leading-none">
+              <h1 className="text-7xl font-black tracking-tight text-gray-900 leading-none">
                 {year}
               </h1>
-              <div className="flex flex-col ml-3">
+              <div className="flex flex-col ml-4">
                 {mounted && clockStr && (
-                  <div className="text-lg text-gray-500 font-mono tracking-wider tabular-nums leading-tight">
+                  <div className="text-2xl text-gray-500 font-mono tracking-wider tabular-nums leading-tight">
                     {clockStr}
                   </div>
                 )}
-                <span className="text-base text-gray-500 font-medium leading-tight mt-0.5">
+                <span className="text-lg text-gray-500 font-medium leading-tight mt-0.5">
                   {ganZhi}（{animal}）
                 </span>
               </div>
@@ -509,13 +509,6 @@ export default function YearCalendar() {
                           {status === 'crossed' ? '✗' : '✓'}
                         </span>
                       )}
-                      {/* 12-week block start/end star marker */}
-                      {blockMarkerDays.has(`${cell.month}-${cell.day}`) && (
-                        <span className="absolute bottom-0 right-0 text-[16px] leading-none pointer-events-none" style={{ color: cell.blockIndex % 2 === 0 ? 'rgba(220,38,38,0.6)' : 'rgba(30,30,30,0.6)' }}>
-                          {blockMarkerDays.get(`${cell.month}-${cell.day}`) === 'start' ? '★' : blockMarkerDays.get(`${cell.month}-${cell.day}`) === 'end' ? '☆' : '★☆'}
-                        </span>
-                      )}
-
                       {/* Bottom zone (2/3): click to open day view (schedule) */}
                       <div
                         className="cursor-pointer hover:bg-black/[0.03] transition-colors relative"
