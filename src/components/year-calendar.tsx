@@ -260,7 +260,7 @@ export default function YearCalendar() {
       {/* Header */}
       <header className="flex-shrink-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 print:static print:border-b z-20">
         <div className="px-8 py-1.5 flex items-center justify-between flex-wrap gap-2 relative">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 rounded-2xl px-4 py-2" style={{ background: 'linear-gradient(135deg, #f8f9ff 0%, #eef0fb 50%, #f5f3ff 100%)' }}>
             <button
               onClick={() => setYear((y) => y - 1)}
               className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors text-2xl font-bold"
@@ -321,11 +321,6 @@ export default function YearCalendar() {
                   ✗
                 </span>
                 <span>不满意</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-4 h-3 rounded border-2 border-red-500" />
-                <span className="inline-block w-4 h-3 rounded border-2 border-gray-800 -ml-1.5" />
-                <span>季度</span>
               </span>
               <span className="flex items-center gap-1">
                 <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-emerald-500">
@@ -443,7 +438,7 @@ export default function YearCalendar() {
                         height: cellHeight,
                         borderBottom: '1px solid #efefef',
                         borderRight: '1px solid #efefef',
-                        backgroundColor: isPast ? '#fafafa' : weekendBg,
+                        backgroundColor: isPast ? 'rgba(255,255,255,0.7)' : weekendBg,
                       }}
                     >
                       {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
@@ -461,7 +456,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#e5e5e5' }
+                              ? { color: '#e0e0e0' }
                               : cell.isWeekend
                                 ? { color: monthColor.text }
                                 : undefined
@@ -485,7 +480,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#eaeaea' }
+                              ? { color: '#e5e5e5' }
                               : cell.isWeekend &&
                                 !cell.isSolarTerm &&
                                 !cell.isFestival &&

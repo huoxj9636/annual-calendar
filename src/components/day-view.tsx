@@ -28,7 +28,7 @@ interface TodoItem {
   color: string;
 }
 
-const COLORS = ['#4f8ff7', '#f45b69', '#15c7a0', '#f5a623', '#9b59b6', '#e67e22', '#1abc9c', '#e74c3c'];
+const COLORS = ['#6366f1', '#f45b69', '#15c7a0', '#f5a623', '#9b59b6', '#e67e22', '#1abc9c', '#e74c3c'];
 
 interface SpeechRecognitionLike extends EventTarget {
   lang: string;
@@ -130,9 +130,13 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
   const [isListening, setIsListening] = useState(false);
   const [voiceText, setVoiceText] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('schedule');
+  const [newTodoText, setNewTodoText] = useState('');
+  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
+  const [editingTodoText, setEditingTodoText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const voiceTextRef = useRef('');
+  const addTodoInputRef = useRef<HTMLInputElement>(null);
 
   const storageKey = `dayview-events-${year}-${month}-${day}`;
   const todoKey = `dayview-todos-${year}-${month}-${day}`;
@@ -209,17 +213,22 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
     saveTodos(todos.filter(t => t.id !== id));
   };
 
-  const addTodo = () => {
-    const text = prompt('添加待办事项:');
-    if (!text?.trim()) return;
+  const updateTodoText = (id: string, text: string) => {
+    saveTodos(todos.map(t => t.id === id ? { ...t, text } : t));
+  };
+
+  const addTodoInline = () => {
+    if (!newTodoText.trim()) return;
     saveTodos([...todos, {
       id: Date.now().toString(),
-      text: text.trim(),
+      text: newTodoText.trim(),
       done: false,
       color: COLORS[todos.length % COLORS.length],
     }]);
+    setNewTodoText('');
   };
 
+  // Voice parsing: time detected → schedule; no time → todo
   const parseVoiceToEvents = (text: string) => {
     const foundTimes: { hour: number; minute: number }[] = [];
     let match: RegExpExecArray | null;
@@ -230,7 +239,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
       foundTimes.push({ hour: h + 12 <= 23 ? h + 12 : h, minute: text.includes('半') ? 30 : 0 });
     }
 
-    const morningPattern = /(?<!下午)(?:上午|早上|早晨)?\s*(\d{1,2})\s*点半?/g;
+    const morningPattern = /(?<!下午)(?:上午|早上|早晨|晚上|傍晚)?\s*(\d{1,2})\s*点半?/g;
     while ((match = morningPattern.exec(text)) !== null) {
       const h = parseInt(match[1]);
       if (h >= 0 && h <= 23) {
@@ -251,6 +260,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
       .trim();
 
     if (foundTimes.length > 0 && cleanText) {
+      // Has time → add to schedule
       const newEvts: TimeEvent[] = foundTimes.map((t, i) => {
         const startH = t.hour.toString().padStart(2, '0');
         const startM = t.minute.toString().padStart(2, '0');
@@ -266,13 +276,16 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
         };
       });
       saveEvents([...events, ...newEvts].sort((a, b) => a.time.localeCompare(b.time)));
+      setActiveTab('schedule');
     } else if (cleanText) {
+      // No time → add to todos
       saveTodos([...todos, {
         id: Date.now().toString(),
         text: cleanText,
         done: false,
         color: COLORS[todos.length % COLORS.length],
       }]);
+      setActiveTab('memo');
     }
   };
 
@@ -351,7 +364,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
     return { top, height, left: `${leftPercent}%`, width: `${widthPercent}%` };
   };
 
-  // Gradient accent colors for the header
+  // Accent color for header
   const accentGradient = 'linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa)';
 
   // ========== Sidebar Panel Content ==========
@@ -359,7 +372,6 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
     <div className="h-full flex flex-col bg-gray-50 relative">
       {/* Header with gradient */}
       <div className="flex-shrink-0 px-5 pt-5 pb-4 relative overflow-hidden" style={{ background: accentGradient }}>
-        {/* Decorative circles */}
         <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/5" />
         <div className="absolute bottom-2 -left-4 w-20 h-20 rounded-full bg-white/5" />
 
@@ -367,7 +379,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-3xl font-bold text-white">{day}</span>
+                <span className="text-3xl font-bold text-white">{day}号</span>
                 <span className="text-sm text-white/70 font-medium">{weekDay}</span>
                 {isToday && (
                   <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-medium backdrop-blur-sm">今天</span>
@@ -375,7 +387,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
               </div>
               <div className="text-xs text-white/50">{year}年{month}月</div>
               <div className="text-xs text-white/50 mt-0.5">
-                {lunarInfo.lunarMonth}月{lunarInfo.lunarDay}
+                农历{lunarInfo.lunarMonth}月{lunarInfo.lunarDay}
                 {lunarInfo.isSolarTerm && <span className="text-amber-300 ml-1">{lunarInfo.display}</span>}
                 {lunarInfo.isFestival && !lunarInfo.isSolarTerm && <span className="text-red-300 ml-1">{lunarInfo.display}</span>}
               </div>
@@ -389,8 +401,6 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
               </svg>
             </button>
           </div>
-
-
         </div>
       </div>
 
@@ -449,9 +459,6 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
               </svg>
               {isListening ? '聆听中...' : '语音'}
             </button>
-            {events.length > 0 && (
-              <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-1 rounded-full">{events.length}项</span>
-            )}
           </div>
         </div>
         {/* Voice text preview */}
@@ -484,15 +491,15 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
               )}
             </div>
 
-            {/* Add Event Form */}
+            {/* Add Event Form - TickTick style: no border, inline */}
             {showAddEvent && (
-              <div className="flex-shrink-0 px-4 py-3 bg-indigo-50/30 border-b border-indigo-100/50">
+              <div className="flex-shrink-0 px-4 py-3 bg-indigo-50/20 border-b border-indigo-100/30">
                 <input
                   type="text"
                   value={newEvent.title}
                   onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
                   placeholder="日程标题"
-                  className="w-full text-sm font-medium text-gray-800 placeholder-gray-300 focus:outline-none mb-2 bg-transparent"
+                  className="w-full text-sm font-medium text-gray-800 placeholder-gray-300 focus:outline-none mb-2 bg-transparent border-b border-transparent focus:border-indigo-200 pb-1 transition-colors"
                   autoFocus
                   onKeyDown={e => { if (e.key === 'Enter') addEvent(); }}
                 />
@@ -500,20 +507,20 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
                   <input
                     type="time" value={newEvent.time}
                     onChange={e => setNewEvent({ ...newEvent, time: e.target.value })}
-                    className="border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-300 bg-white text-[11px]"
+                    className="border-0 rounded px-2 py-1 focus:outline-none bg-white/60 text-[11px]"
                   />
                   <span className="text-gray-300">-</span>
                   <input
                     type="time" value={newEvent.endTime}
                     onChange={e => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                    className="border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-300 bg-white text-[11px]"
+                    className="border-0 rounded px-2 py-1 focus:outline-none bg-white/60 text-[11px]"
                   />
                   <input
                     type="text"
                     value={newEvent.desc}
                     onChange={e => setNewEvent({ ...newEvent, desc: e.target.value })}
                     placeholder="备注"
-                    className="flex-1 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-300 bg-white text-[11px]"
+                    className="flex-1 border-0 rounded px-2 py-1 focus:outline-none bg-white/60 text-[11px]"
                   />
                 </div>
                 <div className="flex justify-end gap-2 mt-2">
@@ -556,7 +563,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
                       <div
                         key={evt.id}
                         className={`absolute rounded-lg px-2 py-1 z-5 transition-all group overflow-hidden ${evt.done ? 'opacity-50' : ''}`}
-                        style={{ ...style, backgroundColor: `${evt.color}15`, borderLeft: `3px solid ${evt.color}` }}
+                        style={{ ...style, backgroundColor: `${evt.color}10`, borderLeft: `3px solid ${evt.color}` }}
                       >
                         <div className="flex items-center gap-1">
                           <button
@@ -590,66 +597,92 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
             </div>
           </div>
         ) : (
-          /* ===== Memo Tab ===== */
+          /* ===== Memo Tab - TickTick style ===== */
           <div className="h-full flex flex-col bg-white">
-            {/* Todo Section */}
-            <div className="flex-shrink-0 border-b border-gray-100">
-              <div className="flex items-center justify-between px-5 py-2.5">
-                <span className="text-xs font-semibold text-gray-500">待办事项</span>
-                <button
-                  onClick={addTodo}
-                  className="text-[10px] font-medium text-indigo-500 hover:text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-50 transition-colors"
-                >
-                  + 添加
-                </button>
+            {/* Todo Section - Inline editing, no borders */}
+            <div className="flex-shrink-0 border-b border-gray-100/80">
+              <div className="flex items-center justify-between px-5 pt-3 pb-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">待办事项</span>
               </div>
-              {todos.length > 0 ? (
-                <div className="px-5 pb-2.5">
-                  {todos.map(todo => (
-                    <div key={todo.id} className="flex items-center gap-2.5 py-1.5 group">
-                      <button
-                        onClick={() => toggleTodo(todo.id)}
-                        className="flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all"
-                        style={{ borderColor: todo.color, backgroundColor: todo.done ? todo.color : 'transparent' }}
+              <div className="px-4 pb-2">
+                {todos.map(todo => (
+                  <div key={todo.id} className="flex items-center gap-2.5 py-1.5 group">
+                    <button
+                      onClick={() => toggleTodo(todo.id)}
+                      className="flex-shrink-0 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center transition-all hover:shadow-sm"
+                      style={{ borderColor: todo.color, backgroundColor: todo.done ? todo.color : 'transparent' }}
+                    >
+                      {todo.done && (
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    {editingTodoId === todo.id ? (
+                      <input
+                        type="text"
+                        value={editingTodoText}
+                        onChange={e => setEditingTodoText(e.target.value)}
+                        onBlur={() => { updateTodoText(todo.id, editingTodoText); setEditingTodoId(null); }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { updateTodoText(todo.id, editingTodoText); setEditingTodoId(null); }
+                          if (e.key === 'Escape') setEditingTodoId(null);
+                        }}
+                        className="flex-1 text-sm text-gray-700 focus:outline-none border-b border-indigo-200 pb-0.5 bg-transparent"
+                        autoFocus
+                      />
+                    ) : (
+                      <span
+                        className={`text-sm flex-1 cursor-text ${todo.done ? 'line-through text-gray-300' : 'text-gray-600'}`}
+                        onClick={() => { setEditingTodoId(todo.id); setEditingTodoText(todo.text); }}
                       >
-                        {todo.done && (
-                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </button>
-                      <span className={`text-sm flex-1 ${todo.done ? 'line-through text-gray-300' : 'text-gray-600'}`}>
                         {todo.text}
                       </span>
-                      <button
-                        onClick={() => removeTodo(todo.id)}
-                        className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
+                    )}
+                    <button
+                      onClick={() => removeTodo(todo.id)}
+                      className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                {/* Add todo - inline input, TickTick style */}
+                <div className="flex items-center gap-2.5 py-1.5 mt-1">
+                  <div className="flex-shrink-0 w-[18px] h-[18px] rounded-full border-2 border-gray-200 flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <input
+                    ref={addTodoInputRef}
+                    type="text"
+                    value={newTodoText}
+                    onChange={e => setNewTodoText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') addTodoInline(); }}
+                    onBlur={() => { if (newTodoText.trim()) addTodoInline(); }}
+                    placeholder="添加待办..."
+                    className="flex-1 text-sm text-gray-600 placeholder-gray-300 focus:outline-none bg-transparent border-b border-transparent focus:border-indigo-200 pb-0.5 transition-colors"
+                  />
                 </div>
-              ) : (
-                <div className="px-5 pb-3 text-xs text-gray-300">暂无待办事项</div>
-              )}
+              </div>
             </div>
 
-            {/* Notes - full remaining space */}
+            {/* Notes - full remaining space, TickTick style */}
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex items-center justify-between px-5 py-2.5 border-b border-gray-50">
-                <span className="text-xs font-semibold text-gray-500">备忘录</span>
+              <div className="flex items-center justify-between px-5 pt-3 pb-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">备忘录</span>
                 <span className="text-[10px] text-gray-300">{noteText.length > 0 ? `${noteText.length}字` : ''}</span>
               </div>
-              <div className="flex-1 min-h-0 p-4">
+              <div className="flex-1 min-h-0 px-4 pb-4">
                 <textarea
                   value={noteText}
                   onChange={e => setNoteText(e.target.value)}
                   onBlur={saveNote}
                   placeholder="在这里记录想法、笔记、灵感..."
-                  className="w-full h-full text-sm text-gray-600 placeholder-gray-300 focus:outline-none bg-indigo-50/20 rounded-xl p-4 resize-none leading-relaxed border border-indigo-100/30 focus:border-indigo-200/50 transition-colors"
+                  className="w-full h-full text-sm text-gray-600 placeholder-gray-300 focus:outline-none bg-indigo-50/10 rounded-xl p-4 resize-none leading-relaxed border border-transparent focus:border-indigo-100 transition-colors"
                 />
               </div>
             </div>
