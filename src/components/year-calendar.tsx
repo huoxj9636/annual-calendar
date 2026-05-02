@@ -559,7 +559,7 @@ export default function YearCalendar() {
   }, [mounted, yearData, blocks, cellHeight]);
 
   return (
-    <div className="h-screen bg-gray-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 print:static print:border-b z-20">
         <div className="px-8 py-1.5 flex items-center justify-between flex-wrap gap-2 relative">
@@ -653,7 +653,7 @@ export default function YearCalendar() {
         ref={gridContainerRef}
         className="flex-1 px-8 pb-2 pt-1 overflow-x-auto min-h-0 flex justify-center"
       >
-        <div ref={gridInnerRef} className="h-full relative border-t border-l border-gray-200 rounded-sm" style={{ minWidth: '1100px' }}>
+        <div ref={gridInnerRef} className="h-full relative border-t border-l border-gray-100 rounded-lg" style={{ minWidth: '1100px' }}>
 
 
           {/* Month rows */}
@@ -735,8 +735,8 @@ export default function YearCalendar() {
                       `}
                       style={{
                         height: cellHeight,
-                        borderBottom: '1px solid #e5e7eb',
-                        borderRight: '1px solid #e5e7eb',
+                        borderBottom: '1px solid #efefef',
+                        borderRight: '1px solid #efefef',
                         backgroundColor: isPast ? '#fafafa' : weekendBg,
                       }}
                     >
@@ -839,7 +839,8 @@ export default function YearCalendar() {
                   d={p.d}
                   fill="none"
                   stroke={p.color}
-                  strokeWidth={1}
+                  strokeWidth={0.8}
+                  opacity={0.6}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -958,86 +959,79 @@ export default function YearCalendar() {
         />
       )}
 
-      {/* 月度复盘侧边栏 */}
+      {/* 月度复盘侧边栏 - TickTick风格 */}
       {selectedMonth !== null && mounted && (
         <div className="fixed inset-0 z-40 flex justify-end">
           <div className="absolute inset-0 bg-black/20" onClick={() => setSelectedMonth(null)} />
-          <div className="relative w-[400px] max-w-[90vw] h-full bg-white shadow-2xl flex flex-col">
-            {/* 侧边栏头部 */}
-            <div className="px-6 py-5 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+          <div className="relative w-[440px] max-w-[92vw] h-full bg-white shadow-2xl flex flex-col animate-slide-in">
+            {/* 头部 - 渐变 */}
+            <div className="px-6 pt-6 pb-5" style={{ background: `linear-gradient(135deg, ${MONTH_COLORS[selectedMonth - 1].accent}dd, ${MONTH_COLORS[selectedMonth - 1].accent}88)` }}>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-white/70 text-sm">{year}年</div>
-                  <div className="text-white text-2xl font-bold">{selectedMonth}月复盘总结</div>
+                  <div className="text-white/60 text-xs font-medium tracking-wider mb-1">MONTHLY REVIEW</div>
+                  <div className="text-white text-xl font-bold">{selectedMonth}月复盘</div>
+                  <div className="text-white/50 text-xs mt-0.5">{year}年{selectedMonth}月</div>
                 </div>
-                <button onClick={() => setSelectedMonth(null)} className="text-white/60 hover:text-white transition-colors p-1">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                <button onClick={() => setSelectedMonth(null)} className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </div>
+              {/* 迷你统计条 */}
+              {(() => {
+                const daysInMonth = new Date(year, selectedMonth, 0).getDate();
+                const today = new Date();
+                const isCurrentYear = year === today.getFullYear();
+                const isCurrentMonth = isCurrentYear && selectedMonth === today.getMonth() + 1;
+                const effectiveDays = isCurrentMonth ? today.getDate() : daysInMonth;
+                const storageKey = `calendar-overrides-${year}`;
+                let overrides: Record<string, string> = {};
+                try { overrides = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { /* empty */ }
+                let satisfied = 0;
+                let crossed = 0;
+                for (let d = 1; d <= effectiveDays; d++) {
+                  const key = `${year}-${selectedMonth}-${d}`;
+                  const status = overrides[key];
+                  if (status === 'crossed') crossed++;
+                  else satisfied++;
+                }
+                const rate = effectiveDays > 0 ? Math.round((satisfied / effectiveDays) * 100) : 0;
+                return (
+                  <div className="mt-4 flex items-center gap-3">
+                    <div className="flex-1 h-1.5 rounded-full bg-white/20 overflow-hidden">
+                      <div className="h-full rounded-full bg-white/80 transition-all" style={{ width: `${rate}%` }} />
+                    </div>
+                    <span className="text-white/80 text-xs font-semibold">{rate}%</span>
+                    <span className="text-white/40 text-xs">|</span>
+                    <span className="text-white/60 text-xs">{effectiveDays}天</span>
+                  </div>
+                );
+              })()}
             </div>
 
-            {/* 统计概览 */}
-            {(() => {
-              const daysInMonth = new Date(year, selectedMonth, 0).getDate();
-              const today = new Date();
-              const isCurrentYear = year === today.getFullYear();
-              const isCurrentMonth = isCurrentYear && selectedMonth === today.getMonth() + 1;
-              const effectiveDays = isCurrentMonth ? today.getDate() : daysInMonth;
-              const storageKey = `calendar-overrides-${year}`;
-              let overrides: Record<string, string> = {};
-              try { overrides = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { /* empty */ }
-              let satisfied = 0;
-              for (let d = 1; d <= effectiveDays; d++) {
-                const key = `${year}-${selectedMonth}-${d}`;
-                const status = overrides[key];
-                if (status === 'crossed') { /* unsatisfied */ }
-                else satisfied++;
-              }
-              const rate = effectiveDays > 0 ? Math.round((satisfied / effectiveDays) * 100) : 0;
-              return (
-                <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-gray-800">{effectiveDays}</div>
-                      <div className="text-xs text-gray-500">已过天数</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">{satisfied}</div>
-                      <div className="text-xs text-gray-500">满意天数</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-amber-500">{rate}%</div>
-                      <div className="text-xs text-gray-500">满意率</div>
-                    </div>
-                  </div>
-                  <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all" style={{ width: `${rate}%` }} />
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* 复盘内容区域 */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-              {(['goals', 'done', 'reflect', 'plan'] as const).map((section) => {
-                const sectionConfig = {
-                  goals: { label: '本月目标', icon: '#764ba2', placeholder: '这个月想要达成什么目标？', ring: 'focus:ring-purple-300' },
-                  done: { label: '完成情况', icon: '#22c55e', placeholder: '目标完成了多少？', ring: 'focus:ring-green-300' },
-                  reflect: { label: '反思与改进', icon: '#f59e0b', placeholder: '有什么可以改进的地方？', ring: 'focus:ring-amber-300' },
-                  plan: { label: '下月计划', icon: '#3b82f6', placeholder: '下个月有什么计划？', ring: 'focus:ring-blue-300' },
-                }[section];
-                const storageKey = `month-review-${section}-${year}-${selectedMonth}`;
+            {/* 复盘内容 - 现代卡片 */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              {([
+                { key: 'goals', label: '本月目标', icon: '🎯', color: '#8b5cf6', placeholder: '这个月想要达成什么？' },
+                { key: 'done', label: '完成情况', icon: '✅', color: '#22c55e', placeholder: '实际完成了哪些？' },
+                { key: 'reflect', label: '反思改进', icon: '💡', color: '#f59e0b', placeholder: '有什么可以改进？' },
+                { key: 'plan', label: '下月计划', icon: '🚀', color: '#3b82f6', placeholder: '下个月有什么计划？' },
+              ] as const).map((section) => {
+                const storageKey = `month-review-${section.key}-${year}-${selectedMonth}`;
+                const savedValue = (() => { try { return localStorage.getItem(storageKey) || ''; } catch { return ''; } })();
                 return (
-                  <div key={section}>
-                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: sectionConfig.icon }} />
-                      {sectionConfig.label}
-                    </label>
+                  <div key={section.key} className="group">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ backgroundColor: section.color + '15', color: section.color }}>
+                        {section.icon}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-700">{section.label}</span>
+                    </div>
                     <textarea
-                      className={`w-full border border-gray-200 rounded-lg p-3 text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 ${sectionConfig.ring} focus:border-transparent`}
+                      className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:bg-white transition-all placeholder:text-gray-300 leading-relaxed border border-transparent focus:border-gray-200"
+                      style={{ ['--tw-ring-color' as string]: section.color + '40' }}
                       rows={3}
-                      placeholder={sectionConfig.placeholder}
-                      defaultValue={(() => { try { return localStorage.getItem(storageKey) || ''; } catch { return ''; } })()}
+                      placeholder={section.placeholder}
+                      defaultValue={savedValue}
                       onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => { try { localStorage.setItem(storageKey, e.target.value); } catch { /* empty */ } }}
                     />
                   </div>
