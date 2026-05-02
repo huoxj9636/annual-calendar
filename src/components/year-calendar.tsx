@@ -174,53 +174,20 @@ function MonthView({
                   backgroundColor: isPastDay ? '#fafafa' : data.isWeekendDay ? monthColor.bg : undefined,
                 }}
               >
-                {/* Top zone: day + lunar + check */}
+                {/* Top zone: day + lunar + check toggle */}
                 <div
-                  className="p-3 cursor-pointer flex"
+                  className="p-3 cursor-pointer"
+                  onClick={() => toggleDay(month, day)}
                 >
-                  <div
-                    className="flex-1"
-                    onClick={() => onOpenDayView?.(month, day)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`text-2xl font-bold ${
-                          isPastDay ? 'text-gray-200' : data.isWeekendDay ? '' : 'text-gray-800'
-                        }`}
-                        style={isPastDay ? undefined : data.isWeekendDay ? { color: monthColor.text } : undefined}
-                      >
-                        {day}
-                      </span>
-                    </div>
+                  <div className="flex items-center justify-between">
                     <span
-                      className={`text-base leading-tight block mt-1 ${
-                        isPastDay
-                          ? 'text-gray-100'
-                          : data.isSolarTerm
-                            ? 'text-orange-600 font-medium'
-                            : data.isFestival
-                              ? 'text-red-500 font-medium'
-                              : data.isLunarFirstDay
-                                ? 'text-purple-600 font-medium'
-                                : data.isWeekendDay
-                                  ? ''
-                                  : 'text-gray-400'
+                      className={`text-2xl font-bold ${
+                        isPastDay ? 'text-gray-200' : data.isWeekendDay ? '' : 'text-gray-800'
                       }`}
-                      style={
-                        isPastDay
-                          ? undefined
-                          : data.isWeekendDay && !data.isSolarTerm && !data.isFestival && !data.isLunarFirstDay
-                            ? { color: monthColor.accent }
-                            : undefined
-                      }
+                      style={isPastDay ? undefined : data.isWeekendDay ? { color: monthColor.text } : undefined}
                     >
-                      {data.display}
+                      {day}
                     </span>
-                  </div>
-                  <div
-                    className="w-10 flex items-start justify-center pt-1"
-                    onClick={(e) => { e.stopPropagation(); toggleDay(month, day); }}
-                  >
                     {mounted && status !== 'none' && (
                       <span
                         className={`text-xl font-bold ${
@@ -231,18 +198,41 @@ function MonthView({
                       </span>
                     )}
                   </div>
+                  <span
+                    className={`text-base leading-tight block mt-1 ${
+                      isPastDay
+                        ? 'text-gray-100'
+                        : data.isSolarTerm
+                          ? 'text-orange-600 font-medium'
+                          : data.isFestival
+                            ? 'text-red-500 font-medium'
+                            : data.isLunarFirstDay
+                              ? 'text-purple-600 font-medium'
+                              : data.isWeekendDay
+                                ? ''
+                                : 'text-gray-400'
+                    }`}
+                    style={
+                      isPastDay
+                        ? undefined
+                        : data.isWeekendDay && !data.isSolarTerm && !data.isFestival && !data.isLunarFirstDay
+                          ? { color: monthColor.accent }
+                          : undefined
+                    }
+                  >
+                    {data.display}
+                  </span>
                 </div>
-                {/* Bottom zone: note */}
+                {/* Bottom zone: click to open day view */}
                 <div
-                  className="px-3 pb-3 cursor-pointer min-h-[40px]"
-                  onClick={(e) => openNotePopup(month, day, e)}
+                  className="px-3 pb-3 cursor-pointer min-h-[60px] hover:bg-black/[0.02] transition-colors"
+                  onClick={() => onOpenDayView?.(month, day)}
                 >
                   {hasNote && (
                     <div className="text-sm text-gray-400 truncate leading-tight">
                       {notes[noteKey].split('\n')[0]}
                     </div>
                   )}
-
                 </div>
               </div>
             );
@@ -738,64 +728,56 @@ export default function YearCalendar() {
                         backgroundColor: isPast ? '#fafafa' : weekendBg,
                       }}
                     >
-                      {/* Top zone (40%): left=day+lunar(click=day view), right=check/cross(click=toggle) */}
-                      <div className="flex" style={{ height: '40%' }}>
-                        {/* Left: day number + lunar → open day view */}
-                        <div
-                          className="flex-1 flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-blue-50/50 transition-colors rounded-tl-sm"
-                          onClick={() => setDayViewDate({ year, month: cell.month, day: cell.day })}
-                          title={`${year}年${cell.month}月${cell.day}日 - 点击查看日视图`}
+                      {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
+                      <div
+                        className="flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-green-50/50 transition-colors rounded-t-sm"
+                        style={{ height: '33%' }}
+                        onClick={() => toggleDay(cell.month, cell.day)}
+                        title="切换满意/不满意"
+                      >
+                        <span
+                          className={`text-[15px] font-bold leading-none ${
+                            isPast
+                              ? 'text-gray-200'
+                              : cell.isWeekend ? '' : 'text-gray-800'
+                          }`}
+                          style={
+                            isPast
+                              ? undefined
+                              : cell.isWeekend
+                                ? { color: monthColor.text }
+                                : undefined
+                          }
                         >
-                          <span
-                            className={`text-[15px] font-bold leading-none ${
-                              isPast
-                                ? 'text-gray-200'
-                                : cell.isWeekend ? '' : 'text-gray-800'
-                            }`}
-                            style={
-                              isPast
-                                ? undefined
-                                : cell.isWeekend
-                                  ? { color: monthColor.text }
+                          {cell.day}
+                        </span>
+                        <span
+                          className={`text-[9px] leading-tight mt-0.5 whitespace-nowrap ${
+                            isPast
+                              ? 'text-gray-100'
+                              : cell.isSolarTerm
+                                ? 'text-orange-600 font-medium'
+                                : cell.isFestival
+                                  ? 'text-red-500 font-medium'
+                                  : cell.isLunarFirstDay
+                                    ? 'text-purple-600 font-medium'
+                                    : cell.isWeekend
+                                      ? ''
+                                      : 'text-gray-400'
+                          }`}
+                          style={
+                            isPast
+                              ? undefined
+                              : cell.isWeekend &&
+                                !cell.isSolarTerm &&
+                                !cell.isFestival &&
+                                !cell.isLunarFirstDay
+                                  ? { color: monthColor.accent }
                                   : undefined
-                            }
-                          >
-                            {cell.day}
-                          </span>
-                          <span
-                            className={`text-[9px] leading-tight mt-0.5 whitespace-nowrap ${
-                              isPast
-                                ? 'text-gray-100'
-                                : cell.isSolarTerm
-                                  ? 'text-orange-600 font-medium'
-                                  : cell.isFestival
-                                    ? 'text-red-500 font-medium'
-                                    : cell.isLunarFirstDay
-                                      ? 'text-purple-600 font-medium'
-                                      : cell.isWeekend
-                                        ? ''
-                                        : 'text-gray-400'
-                            }`}
-                            style={
-                              isPast
-                                ? undefined
-                                : cell.isWeekend &&
-                                  !cell.isSolarTerm &&
-                                  !cell.isFestival &&
-                                  !cell.isLunarFirstDay
-                                    ? { color: monthColor.accent }
-                                    : undefined
-                            }
-                          >
-                            {cell.lunarDisplay}
-                          </span>
-                        </div>
-                        {/* Right: check/cross toggle (invisible click area) */}
-                        <div
-                          className="w-5 flex items-start justify-center pt-0.5 cursor-pointer hover:bg-green-50/50 transition-colors rounded-tr-sm"
-                          onClick={() => toggleDay(cell.month, cell.day)}
-                          title="切换满意/不满意"
-                        />
+                          }
+                        >
+                          {cell.lunarDisplay}
+                        </span>
                       </div>
                       {/* Centered check/cross watermark overlay */}
                       {mounted && status !== 'none' && (
@@ -810,12 +792,12 @@ export default function YearCalendar() {
                         </span>
                       )}
 
-                      {/* Bottom zone: empty area, click to open note */}
+                      {/* Bottom zone (2/3): click to open day view (schedule) */}
                       <div
                         className="cursor-pointer hover:bg-black/[0.03] transition-colors relative"
-                        style={{ height: '60%' }}
-                        onClick={(e) => openNotePopup(cell.month, cell.day, e)}
-                        title={`${year}年${cell.month}月${cell.day}日 - 点击添加备忘`}
+                        style={{ height: '67%' }}
+                        onClick={() => setDayViewDate({ year, month: cell.month, day: cell.day })}
+                        title={`${year}年${cell.month}月${cell.day}日 - 点击查看日程`}
                       >
                         {hasNote && (
                           <span className="absolute top-1 right-1 w-2 h-2 bg-sky-400 rounded-full" />

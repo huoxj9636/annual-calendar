@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getLunarInfo } from '@/lib/lunar';
-import { getDaysInMonth } from '@/lib/calendar-utils';
 
 interface DayViewProps {
   year: number;
@@ -21,16 +20,29 @@ interface TimeEvent {
   done: boolean;
 }
 
+interface TodoItem {
+  id: string;
+  text: string;
+  done: boolean;
+  color: string;
+}
+
 const COLORS = ['#4f8ff7', '#f45b69', '#15c7a0', '#f5a623', '#9b59b6', '#e67e22', '#1abc9c', '#e74c3c'];
 
 export default function DayView({ year, month, day, onClose }: DayViewProps) {
   const [mounted, setMounted] = useState(false);
   const [events, setEvents] = useState<TimeEvent[]>([]);
+  const [todos, setTodos] = useState<TodoItem[]>([]);
   const [noteText, setNoteText] = useState('');
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [newEvent, setNewEvent] = useState({ time: '09:00', endTime: '10:00', title: '', desc: '' });
+  const [isListening, setIsListening] = useState(false);
+  const [voiceText, setVoiceText] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<ReturnType<typeof createRecognition> | null>(null);
 
   const storageKey = `dayview-events-${year}-${month}-${day}`;
+  const todoKey = `dayview-todos-${year}-${month}-${day}`;
   const noteKey = `${year}-${month}-${day}`;
 
   useEffect(() => { setMounted(true); }, []);
@@ -39,20 +51,29 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) setEvents(JSON.parse(stored));
-    } catch {}
+    } catch { /* empty */ }
+    try {
+      const storedTodos = localStorage.getItem(todoKey);
+      if (storedTodos) setTodos(JSON.parse(storedTodos));
+    } catch { /* empty */ }
     try {
       const notesRaw = localStorage.getItem('calendar-notes');
       if (notesRaw) {
         const parsed = JSON.parse(notesRaw);
         setNoteText(parsed[noteKey] || '');
       }
-    } catch {}
-  }, [storageKey, noteKey]);
+    } catch { /* empty */ }
+  }, [storageKey, todoKey, noteKey]);
 
   const saveEvents = useCallback((evts: TimeEvent[]) => {
     setEvents(evts);
-    try { localStorage.setItem(storageKey, JSON.stringify(evts)); } catch {}
+    try { localStorage.setItem(storageKey, JSON.stringify(evts)); } catch { /* empty */ }
   }, [storageKey]);
+
+  const saveTodos = useCallback((items: TodoItem[]) => {
+    setTodos(items);
+    try { localStorage.setItem(todoKey, JSON.stringify(items)); } catch { /* empty */ }
+  }, [todoKey]);
 
   const saveNote = useCallback(() => {
     try {
@@ -60,7 +81,7 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
       const existing = raw ? JSON.parse(raw) : {};
       existing[noteKey] = noteText;
       localStorage.setItem('calendar-notes', JSON.stringify(existing));
-    } catch {}
+    } catch { /* empty */ }
   }, [noteText, noteKey]);
 
   const addEvent = () => {
@@ -74,7 +95,7 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
       color: COLORS[events.length % COLORS.length],
       done: false,
     };
-    saveEvents([...events, evt]);
+    saveEvents([...events, evt].sort((a, b) => a.time.localeCompare(b.time)));
     setNewEvent({ time: '09:00', endTime: '10:00', title: '', desc: '' });
     setShowAddEvent(false);
   };
@@ -87,6 +108,155 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
     saveEvents(events.filter(e => e.id !== id));
   };
 
+  const toggleTodo = (id: string) => {
+    saveTodos(todos.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  };
+
+  const removeTodo = (id: string) => {
+    saveTodos(todos.filter(t => t.id !== id));
+  };
+
+  // Voice recognition
+  function createRecognition() {
+    const SpeechRecognition = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+    if (!SpeechRecognition) return null;
+    const recognition = new (SpeechRecognition as new () => SpeechRecognition)();
+    return recognition;
+  }
+
+  interface SpeechRecognition extends EventTarget {
+    lang: string;
+    interimResults: boolean;
+    continuous: boolean;
+    start: () => void;
+    stop: () => void;
+    onresult: ((event: SpeechRecognitionEvent) => void) | null;
+    onerror: (() => void) | null;
+    onend: (() => void) | null;
+  }
+
+  interface SpeechRecognitionEvent {
+    results: {
+      length: number;
+      [index: number]: {
+        isFinal: boolean;
+        [index: number]: { transcript: string };
+      };
+    };
+  }
+
+  const parseVoiceToEvents = (text: string) => {
+    // Try to extract time patterns like "9点", "9点半", "上午10点", "下午3点", "15点", "3点半"
+    const timePatterns = [
+      /(?:上午|早上|早晨)?(\d{1,2})点半?/g,
+      /下午(\d{1,2})点半?/g,
+      /(\d{1,2}):(\d{2})/g,
+    ];
+
+    const foundTimes: { hour: number; minute: number }[] = [];
+
+    // Match "下午X点" → X+12
+    let match: RegExpExecArray | null;
+    const afternoonPattern = /下午\s*(\d{1,2})\s*点半?/g;
+    while ((match = afternoonPattern.exec(text)) !== null) {
+      const h = parseInt(match[1]);
+      foundTimes.push({ hour: h + 12 <= 23 ? h + 12 : h, minute: text.includes('半') ? 30 : 0 });
+    }
+
+    // Match "上午X点" or "X点" (not afternoon)
+    const morningPattern = /(?<!下午)(?:上午|早上|早晨)?\s*(\d{1,2})\s*点半?/g;
+    while ((match = morningPattern.exec(text)) !== null) {
+      const h = parseInt(match[1]);
+      if (h >= 0 && h <= 23) {
+        foundTimes.push({ hour: h, minute: text.slice(match.index).includes('半') ? 30 : 0 });
+      }
+    }
+
+    // Match HH:MM format
+    const hhmmPattern = /(\d{1,2}):(\d{2})/g;
+    while ((match = hhmmPattern.exec(text)) !== null) {
+      foundTimes.push({ hour: parseInt(match[1]), minute: parseInt(match[2]) });
+    }
+
+    // Clean title: remove time patterns
+    let cleanText = text
+      .replace(/(上午|下午|早上|早晨|晚上|傍晚)\s*/g, '')
+      .replace(/\d{1,2}点半?/g, '')
+      .replace(/\d{1,2}:\d{2}/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (foundTimes.length > 0 && cleanText) {
+      // Create timed events
+      const newEvents: TimeEvent[] = foundTimes.map((t, i) => {
+        const startH = t.hour.toString().padStart(2, '0');
+        const startM = t.minute.toString().padStart(2, '0');
+        const endH = (t.hour + 1 > 23 ? 23 : t.hour + 1).toString().padStart(2, '0');
+        return {
+          id: `${Date.now()}-${i}`,
+          time: `${startH}:${startM}`,
+          endTime: `${endH}:${startM}`,
+          title: cleanText,
+          desc: '',
+          color: COLORS[(events.length + i) % COLORS.length],
+          done: false,
+        };
+      });
+      saveEvents([...events, ...newEvents].sort((a, b) => a.time.localeCompare(b.time)));
+    } else if (cleanText) {
+      // No time found → add as todo
+      saveTodos([...todos, {
+        id: Date.now().toString(),
+        text: cleanText,
+        done: false,
+        color: COLORS[todos.length % COLORS.length],
+      }]);
+    }
+  };
+
+  const toggleVoice = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = createRecognition();
+    if (!recognition) {
+      alert('您的浏览器不支持语音识别，请使用Chrome浏览器');
+      return;
+    }
+
+    const rec = recognition as unknown as SpeechRecognition;
+    rec.lang = 'zh-CN';
+    rec.interimResults = true;
+    rec.continuous = false;
+
+    rec.onresult = (event: SpeechRecognitionEvent) => {
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setVoiceText(transcript);
+    };
+
+    rec.onerror = () => {
+      setIsListening(false);
+    };
+
+    rec.onend = () => {
+      setIsListening(false);
+      if (voiceText.trim()) {
+        parseVoiceToEvents(voiceText.trim());
+        setVoiceText('');
+      }
+    };
+
+    recognitionRef.current = rec;
+    rec.start();
+    setIsListening(true);
+  };
+
   if (!mounted) return null;
 
   const lunarInfo = getLunarInfo(year, month, day);
@@ -97,76 +267,28 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
     return now.getFullYear() === year && now.getMonth() === month - 1 && now.getDate() === day;
   })();
 
-  // Group events by time periods
-  const morningEvents = events.filter(e => parseInt(e.time) < 12);
-  const afternoonEvents = events.filter(e => parseInt(e.time) >= 12 && parseInt(e.time) < 18);
-  const eveningEvents = events.filter(e => parseInt(e.time) >= 18);
+  // Build timeline: 0-23 hours
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const now = new Date();
+  const currentHour = isToday ? now.getHours() : -1;
 
-  const EventItem = ({ evt }: { evt: TimeEvent }) => (
-    <div
-      className={`flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-gray-50 group ${evt.done ? 'opacity-50' : ''}`}
-    >
-      <button
-        onClick={() => toggleDone(evt.id)}
-        className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
-        style={{ borderColor: evt.color, backgroundColor: evt.done ? evt.color : 'transparent' }}
-      >
-        {evt.done && (
-          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        )}
-      </button>
-      <div className="flex-1 min-w-0">
-        <div className={`text-sm font-medium ${evt.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-          {evt.title}
-        </div>
-        <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5">
-          <span>{evt.time} - {evt.endTime}</span>
-          {evt.desc && <span className="text-gray-300">|</span>}
-          {evt.desc && <span>{evt.desc}</span>}
-        </div>
-      </div>
-      <button
-        onClick={() => removeEvent(evt.id)}
-        className="flex-shrink-0 text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
-  );
-
-  const TimeSection = ({ title, icon, items }: { title: string; icon: string; items: TimeEvent[] }) => {
-    if (items.length === 0 && title !== '上午') return null;
-    return (
-      <div className="mb-4">
-        <div className="flex items-center gap-2 px-3 mb-1">
-          <span className="text-sm">{icon}</span>
-          <span className="text-xs font-medium text-gray-400 tracking-wide">{title}</span>
-          {items.length > 0 && (
-            <span className="text-xs text-gray-300">{items.filter(e => e.done).length}/{items.length}</span>
-          )}
-        </div>
-        {items.length > 0 ? (
-          items.map(evt => <EventItem key={evt.id} evt={evt} />)
-        ) : (
-          <div className="px-3 py-2 text-xs text-gray-200">暂无日程</div>
-        )}
-      </div>
-    );
+  // Get events for a specific hour
+  const getEventsForHour = (h: number) => {
+    return events.filter(e => {
+      const startH = parseInt(e.time.split(':')[0]);
+      return startH === h;
+    });
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-xl overflow-hidden flex"
-        style={{ width: '780px', height: '640px', maxWidth: '95vw', maxHeight: '92vh' }}
+        className="bg-white rounded-2xl shadow-2xl overflow-hidden flex"
+        style={{ width: '900px', height: '720px', maxWidth: '96vw', maxHeight: '94vh' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Left Sidebar - Date Info */}
-        <div className="w-52 flex-shrink-0 flex flex-col" style={{ background: 'linear-gradient(160deg, #4f8ff7 0%, #6c5ce7 100%)' }}>
+        <div className="w-56 flex-shrink-0 flex flex-col" style={{ background: 'linear-gradient(160deg, #4f8ff7 0%, #6c5ce7 100%)' }}>
           <div className="p-5 flex-1 flex flex-col">
             <button onClick={onClose} className="self-end text-white/50 hover:text-white text-lg mb-3 transition-colors">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -195,9 +317,27 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
               )}
             </div>
 
-            {/* Stats */}
+            {/* Voice Input */}
             <div className="mt-auto">
-              <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
+              <button
+                onClick={toggleVoice}
+                className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all ${
+                  isListening
+                    ? 'bg-red-400/90 text-white animate-pulse'
+                    : 'bg-white/15 text-white/80 hover:bg-white/25'
+                } backdrop-blur-sm`}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+                {isListening ? '正在聆听...' : '语音添加'}
+              </button>
+              {voiceText && (
+                <div className="mt-2 text-white/70 text-xs text-center break-all">{voiceText}</div>
+              )}
+
+              {/* Stats */}
+              <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm mt-3">
                 <div className="text-white/50 text-xs mb-1">今日进度</div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
@@ -218,10 +358,13 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
         {/* Right Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100/80">
+          <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100/80">
             <div className="flex items-center gap-3">
-              <span className="text-lg font-semibold text-gray-800">日程</span>
-              <span className="text-xs text-gray-300 bg-gray-50 px-2 py-0.5 rounded">{events.length}项</span>
+              <span className="text-lg font-semibold text-gray-800">日程安排</span>
+              <span className="text-xs text-gray-300 bg-gray-50 px-2 py-0.5 rounded">{events.length}项日程</span>
+              {todos.length > 0 && (
+                <span className="text-xs text-gray-300 bg-gray-50 px-2 py-0.5 rounded">{todos.length}项待办</span>
+              )}
             </div>
             <button
               onClick={() => setShowAddEvent(!showAddEvent)}
@@ -237,7 +380,7 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
 
           {/* Add Event Form */}
           {showAddEvent && (
-            <div className="px-6 py-4 bg-gradient-to-r from-blue-50/80 to-purple-50/80 border-b border-gray-100/60">
+            <div className="px-6 py-3 bg-gradient-to-r from-blue-50/80 to-purple-50/80 border-b border-gray-100/60">
               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <input
                   type="text"
@@ -246,6 +389,7 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
                   placeholder="日程标题"
                   className="w-full text-sm font-medium text-gray-800 placeholder-gray-300 focus:outline-none mb-3"
                   autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') addEvent(); }}
                 />
                 <div className="flex items-center gap-2 text-xs text-gray-400">
                   <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -290,37 +434,129 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
             </div>
           )}
 
-          {/* Event List by Time Period */}
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            <TimeSection title="上午" icon="🌅" items={morningEvents} />
-            <TimeSection title="下午" icon="☀️" items={afternoonEvents} />
-            <TimeSection title="晚上" icon="🌙" items={eveningEvents} />
-
-            {events.length === 0 && !showAddEvent && (
-              <div className="flex flex-col items-center justify-center h-full text-gray-200">
-                <svg className="w-16 h-16 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <div className="text-sm">今天还没有日程</div>
-                <div className="text-xs mt-1">点击上方按钮添加</div>
+          {/* Timeline + Events */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto">
+            <div className="flex">
+              {/* Time Column */}
+              <div className="w-16 flex-shrink-0 border-r border-gray-100">
+                {hours.map(h => (
+                  <div
+                    key={h}
+                    className="h-10 flex items-start justify-end pr-2 pt-0"
+                    style={h === currentHour ? { color: '#4f8ff7', fontWeight: 600 } : undefined}
+                  >
+                    <span className="text-[11px] text-gray-400" style={h === currentHour ? { color: '#4f8ff7', fontWeight: 600 } : undefined}>
+                      {h.toString().padStart(2, '0')}:00
+                    </span>
+                  </div>
+                ))}
               </div>
-            )}
+
+              {/* Events Column */}
+              <div className="flex-1 relative">
+                {/* Hour grid lines */}
+                {hours.map(h => (
+                  <div key={h} className="h-10 border-b border-gray-50 relative">
+                    {h === currentHour && (
+                      <div className="absolute left-0 right-0 top-1/2 h-[2px] bg-red-400 z-10">
+                        <div className="absolute -left-1 -top-[3px] w-2 h-2 bg-red-400 rounded-full" />
+                      </div>
+                    )}
+                    {/* Events in this hour */}
+                    {getEventsForHour(h).map(evt => (
+                      <div
+                        key={evt.id}
+                        className={`absolute left-2 right-2 rounded-lg px-3 py-1.5 z-5 transition-all group ${evt.done ? 'opacity-50' : ''}`}
+                        style={{
+                          backgroundColor: `${evt.color}15`,
+                          borderLeft: `3px solid ${evt.color}`,
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => toggleDone(evt.id)}
+                            className="flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center"
+                            style={{ borderColor: evt.color, backgroundColor: evt.done ? evt.color : 'transparent' }}
+                          >
+                            {evt.done && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                          <span className={`text-xs font-medium ${evt.done ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                            {evt.title}
+                          </span>
+                          <span className="text-[10px] text-gray-400 ml-auto">
+                            {evt.time}-{evt.endTime}
+                          </span>
+                          <button
+                            onClick={() => removeEvent(evt.id)}
+                            className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Bottom Notes */}
-          <div className="border-t border-gray-100/80 px-6 py-3">
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              <input
-                type="text"
-                value={noteText}
-                onChange={e => setNoteText(e.target.value)}
-                onBlur={saveNote}
-                placeholder="备忘录..."
-                className="flex-1 text-sm text-gray-600 placeholder-gray-300 focus:outline-none bg-transparent"
-              />
+          {/* Bottom: Todos + Notes */}
+          <div className="border-t border-gray-200">
+            {/* Todos */}
+            {todos.length > 0 && (
+              <div className="px-6 py-2 border-b border-gray-100">
+                <div className="text-xs font-medium text-gray-400 mb-1.5">待办事项</div>
+                {todos.map(todo => (
+                  <div key={todo.id} className="flex items-center gap-2 py-1 group">
+                    <button
+                      onClick={() => toggleTodo(todo.id)}
+                      className="flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center"
+                      style={{ borderColor: todo.color, backgroundColor: todo.done ? todo.color : 'transparent' }}
+                    >
+                      {todo.done && (
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    <span className={`text-sm ${todo.done ? 'line-through text-gray-300' : 'text-gray-600'}`}>
+                      {todo.text}
+                    </span>
+                    <button
+                      onClick={() => removeTodo(todo.id)}
+                      className="ml-auto text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Note */}
+            <div className="px-6 py-3">
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <textarea
+                  value={noteText}
+                  onChange={e => setNoteText(e.target.value)}
+                  onBlur={saveNote}
+                  placeholder="备忘录..."
+                  className="flex-1 text-sm text-gray-600 placeholder-gray-300 focus:outline-none bg-transparent resize-none"
+                  rows={2}
+                />
+              </div>
             </div>
           </div>
         </div>
