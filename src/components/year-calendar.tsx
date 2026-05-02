@@ -272,7 +272,7 @@ export default function YearCalendar() {
             return (
               <div
                 key={monthIdx}
-                className="grid gap-0"
+                className="grid gap-0 mb-[3px]"
                 style={{
                   gridTemplateColumns: '48px repeat(31, minmax(40px, 1fr))',
                 }}
