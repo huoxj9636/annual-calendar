@@ -5,7 +5,9 @@ export interface LunarInfo {
   lunarMonth: string;
   display: string;
   isSolarTerm: boolean;
+  solarTerm: string;
   isFestival: boolean;
+  festivalName: string;
   isLunarFirstDay: boolean;
 }
 
@@ -23,17 +25,22 @@ export function getLunarInfo(year: number, month: number, day: number): LunarInf
 
   let display = lunarDay;
   let isSolarTerm = false;
+  let solarTerm = '';
   let isFestival = false;
+  let festivalName = '';
 
   if (jieQi) {
     display = jieQi;
     isSolarTerm = true;
+    solarTerm = jieQi;
   } else if (solarFestivals.length > 0) {
     display = solarFestivals[0];
     isFestival = true;
+    festivalName = solarFestivals[0];
   } else if (lunarFestivals.length > 0) {
     display = lunarFestivals[0];
     isFestival = true;
+    festivalName = lunarFestivals[0];
   } else if (isLunarFirstDay) {
     display = lunarMonth + '月';
   }
@@ -43,7 +50,9 @@ export function getLunarInfo(year: number, month: number, day: number): LunarInf
     lunarMonth,
     display,
     isSolarTerm,
+    solarTerm,
     isFestival,
+    festivalName,
     isLunarFirstDay,
   };
 }

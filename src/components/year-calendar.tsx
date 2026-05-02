@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { getLunarInfo, getYearAnimal, getGanZhiYear } from '@/lib/lunar';
 import DayView from '@/components/day-view';
+import MonthlyReview from '@/components/monthly-review';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -256,7 +257,9 @@ export default function YearCalendar() {
 
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
+    <div className="h-screen overflow-y-scroll snap-y snap-mandatory scroll-smooth" style={{ scrollbarWidth: 'none' }}>
+      {/* Page 1: Calendar */}
+      <div className="h-screen snap-start bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 border-b border-gray-200 print:static print:border-b z-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/header-bg.jpeg')" }} />
@@ -744,6 +747,12 @@ export default function YearCalendar() {
           </div>
         </div>
       )}
+      </div>
+
+      {/* Page 2: Monthly Review */}
+      <section className="h-screen snap-start overflow-y-auto">
+        <MonthlyReview year={year} />
+      </section>
     </div>
   );
 }

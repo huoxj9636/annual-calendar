@@ -151,3 +151,7 @@ body {
 .animate-slide-in { animation: slideInRight 0.3s ease-out; }
 .animate-slide-in-panel { animation: slideInRight 0.3s ease-out; }
 .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+
+/* Hide scrollbar for snap scroll container */
+.snap-y::-webkit-scrollbar { display: none; }
+.snap-y { -ms-overflow-style: none; scrollbar-width: none; }
