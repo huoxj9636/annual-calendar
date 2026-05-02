@@ -182,7 +182,7 @@ export default function YearCalendar() {
       setNoteDraft(notes[key] || '');
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
       const popW = 400;
-      const popH = 320;
+      const popH = 280;
       let x = rect.left + rect.width / 2 - popW / 2;
       let y = rect.bottom + 4;
       if (x + popW > window.innerWidth - 16) x = window.innerWidth - popW - 16;
@@ -693,24 +693,19 @@ export default function YearCalendar() {
           }}
         >
           {/* Header */}
-          <div className="px-5 pt-4 pb-3">
+          <div className="px-4 py-2.5">
             <div className="flex items-center justify-between">
-              <div>
-                <div className="text-white/60 text-[10px] font-medium tracking-wide uppercase">
-                  {year}年{notePopup.month}月
-                </div>
-                <div className="text-white text-lg font-bold mt-0.5">
-                  {notePopup.day}日
-                </div>
+              <div className="text-white text-sm font-semibold">
+                {year}年{notePopup.month}月{notePopup.day}日
               </div>
               <button
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white/70 hover:text-white transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white/70 hover:text-white transition-colors"
                 onClick={() => {
                   setNotePopup(null);
                   setNoteDraft('');
                 }}
               >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M1 1l12 12M13 1L1 13" />
                 </svg>
               </button>

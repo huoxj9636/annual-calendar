@@ -266,18 +266,18 @@ export function precomputeYearData(
 
 // Month theme colors for weekend backgrounds
 export const MONTH_COLORS = [
-  { bg: '#f48fb1', accent: '#e91e63', text: '#880e4f' },   // 1月 - 粉紫
-  { bg: '#ffab91', accent: '#ff5722', text: '#bf360c' },   // 2月 - 暖橙
-  { bg: '#ce93d8', accent: '#9c27b0', text: '#6a1b9a' },   // 3月 - 浅紫
-  { bg: '#90caf9', accent: '#1e88e5', text: '#0d47a1' },   // 4月 - 浅蓝
-  { bg: '#fff176', accent: '#f9a825', text: '#f57f17' },   // 5月 - 米黄
-  { bg: '#b39ddb', accent: '#5e35b1', text: '#4527a0' },   // 6月 - 灰紫
-  { bg: '#a5d6a7', accent: '#43a047', text: '#1b5e20' },   // 7月 - 草绿
-  { bg: '#bcaaa4', accent: '#6d4c41', text: '#3e2723' },   // 8月 - 暖棕
-  { bg: '#80deea', accent: '#00acc1', text: '#006064' },   // 9月 - 湖蓝
-  { bg: '#ef9a9a', accent: '#e53935', text: '#b71c1c' },   // 10月 - 深红
-  { bg: '#80cbc4', accent: '#00897b', text: '#004d40' },   // 11月 - 薄荷
-  { bg: '#ffe082', accent: '#ffa000', text: '#e65100' },   // 12月 - 琥珀
+  { bg: '#f8bbd0', accent: '#e91e63', text: '#880e4f' },   // 1月 - 粉紫
+  { bg: '#ffccbc', accent: '#ff5722', text: '#bf360c' },   // 2月 - 暖橙
+  { bg: '#e1bee7', accent: '#9c27b0', text: '#6a1b9a' },   // 3月 - 浅紫
+  { bg: '#bbdefb', accent: '#1e88e5', text: '#0d47a1' },   // 4月 - 浅蓝
+  { bg: '#fff9c4', accent: '#f9a825', text: '#f57f17' },   // 5月 - 米黄
+  { bg: '#d1c4e9', accent: '#5e35b1', text: '#4527a0' },   // 6月 - 灰紫
+  { bg: '#c8e6c9', accent: '#43a047', text: '#1b5e20' },   // 7月 - 草绿
+  { bg: '#d7ccc8', accent: '#6d4c41', text: '#3e2723' },   // 8月 - 暖棕
+  { bg: '#b2ebf2', accent: '#00acc1', text: '#006064' },   // 9月 - 湖蓝
+  { bg: '#ffcdd2', accent: '#e53935', text: '#b71c1c' },   // 10月 - 深红
+  { bg: '#b2dfdb', accent: '#00897b', text: '#004d40' },   // 11月 - 薄荷
+  { bg: '#ffecb3', accent: '#ffa000', text: '#e65100' },   // 12月 - 琥珀
 ];
 
 export const MONTH_NAMES = [
