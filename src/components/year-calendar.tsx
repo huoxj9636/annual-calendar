@@ -168,7 +168,7 @@ function MonthView({
                   hover:shadow-sm
                 `}
                 style={{
-                  backgroundColor: isPastDay ? '#f7f7f7' : data.isWeekendDay ? monthColor.bg : undefined,
+                  backgroundColor: isPastDay ? '#fafafa' : data.isWeekendDay ? monthColor.bg : undefined,
                 }}
               >
                 {/* Top zone: day + lunar + check */}
@@ -179,7 +179,7 @@ function MonthView({
                   <div className="flex items-center justify-between">
                     <span
                       className={`text-2xl font-bold ${
-                        isPastDay ? 'text-gray-300' : data.isWeekendDay ? '' : 'text-gray-800'
+                        isPastDay ? 'text-gray-200' : data.isWeekendDay ? '' : 'text-gray-800'
                       }`}
                       style={isPastDay ? undefined : data.isWeekendDay ? { color: monthColor.text } : undefined}
                     >
@@ -198,7 +198,7 @@ function MonthView({
                   <span
                     className={`text-base leading-tight block mt-1 ${
                       isPastDay
-                        ? 'text-gray-200'
+                        ? 'text-gray-100'
                         : data.isSolarTerm
                           ? 'text-orange-600 font-medium'
                           : data.isFestival
@@ -562,7 +562,7 @@ export default function YearCalendar() {
     <div className="h-screen bg-gray-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 print:static print:border-b z-20">
-        <div className="px-8 py-1.5 flex items-center justify-between flex-wrap gap-2">
+        <div className="px-8 py-1.5 flex items-center justify-between flex-wrap gap-2 relative">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setYear((y) => y - 1)}
@@ -579,11 +579,6 @@ export default function YearCalendar() {
                 {ganZhi}（{animal}）
               </span>
             </div>
-            <div className="flex-1 flex justify-center">
-              <span className="text-3xl font-bold tracking-[0.4em] text-gray-800 select-none" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
-                永远不要放弃
-              </span>
-            </div>
             <button
               onClick={() => setYear((y) => y + 1)}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors text-lg font-bold"
@@ -597,6 +592,13 @@ export default function YearCalendar() {
             >
               今年
             </button>
+          </div>
+
+          {/* 居中标语 */}
+          <div className="absolute inset-x-0 flex justify-center pointer-events-none">
+            <span className="text-3xl font-bold tracking-[0.4em] text-gray-800 select-none" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
+              永远不要放弃
+            </span>
           </div>
 
           {/* Legend & Stats */}
@@ -723,7 +725,7 @@ export default function YearCalendar() {
                         height: cellHeight,
                         borderBottom: '1px solid #e5e7eb',
                         borderRight: '1px solid #e5e7eb',
-                        backgroundColor: isPast ? '#f7f7f7' : weekendBg,
+                        backgroundColor: isPast ? '#fafafa' : weekendBg,
                       }}
                     >
                       {/* Top zone: day number + lunar + check/cross, click to toggle */}
@@ -737,7 +739,7 @@ export default function YearCalendar() {
                           <span
                             className={`text-[15px] font-bold leading-none ${
                               isPast
-                                ? 'text-gray-300'
+                                ? 'text-gray-200'
                                 : cell.isWeekend ? '' : 'text-gray-800'
                             }`}
                             style={
@@ -765,7 +767,7 @@ export default function YearCalendar() {
                         <span
                           className={`text-[9px] leading-tight mt-0.5 whitespace-nowrap ${
                             isPast
-                              ? 'text-gray-200'
+                              ? 'text-gray-100'
                               : cell.isSolarTerm
                                 ? 'text-orange-600 font-medium'
                                 : cell.isFestival
