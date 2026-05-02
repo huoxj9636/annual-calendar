@@ -16,6 +16,9 @@ import {
   isToday,
   MONTH_COLORS,
   MONTH_NAMES,
+  getDaysInMonth,
+  getDayOfWeek,
+  isWeekend,
   type CellData,
   type TwelveWeekBlock,
 } from '@/lib/calendar-utils';
@@ -31,6 +34,210 @@ interface NotePopup {
   y: number;
 }
 
+/* ===== Month View Component ===== */
+const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
+
+interface MonthViewProps {
+  year: number;
+  month: number;
+  mounted: boolean;
+  todayStr: string;
+  overrides: Record<string, 'checked' | 'crossed'>;
+  notes: Record<string, string>;
+  getDayStatus: (month: number, day: number) => 'checked' | 'crossed' | 'auto' | 'none';
+  toggleDay: (month: number, day: number) => void;
+  openNotePopup: (month: number, day: number, e: ReactMouseEvent) => void;
+  onBack: () => void;
+}
+
+function MonthView({
+  year,
+  month,
+  mounted,
+  todayStr,
+  overrides,
+  notes,
+  getDayStatus,
+  toggleDay,
+  openNotePopup,
+  onBack,
+}: MonthViewProps) {
+  const monthColor = MONTH_COLORS[month - 1];
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDayOfWeek = getDayOfWeek(year, month, 1);
+
+  // Get lunar info for each day
+  const dayData = useMemo(() => {
+    const result: { day: number; display: string; isSolarTerm: boolean; isFestival: boolean; isLunarFirstDay: boolean; isWeekendDay: boolean }[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const info = getLunarInfo(year, month, d);
+      result.push({
+        day: d,
+        display: info.display,
+        isSolarTerm: info.isSolarTerm,
+        isFestival: info.isFestival,
+        isLunarFirstDay: info.isLunarFirstDay,
+        isWeekendDay: isWeekend(year, month, d),
+      });
+    }
+    return result;
+  }, [year, month, daysInMonth]);
+
+  // Build calendar grid rows (weeks)
+  const weeks = useMemo(() => {
+    const rows: (number | null)[][] = [];
+    let currentRow: (number | null)[] = [];
+    // Fill leading blanks
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      currentRow.push(null);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      currentRow.push(d);
+      if (currentRow.length === 7) {
+        rows.push(currentRow);
+        currentRow = [];
+      }
+    }
+    // Fill trailing blanks
+    if (currentRow.length > 0) {
+      while (currentRow.length < 7) currentRow.push(null);
+      rows.push(currentRow);
+    }
+    return rows;
+  }, [daysInMonth, firstDayOfWeek]);
+
+  return (
+    <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
+      {/* Month header */}
+      <div className="w-full flex items-center justify-between mb-4">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-sm text-gray-600 font-medium"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M10 3L5 8l5 5" />
+          </svg>
+          返回年历
+        </button>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold" style={{ color: monthColor.text }}>
+            {month}月
+          </h2>
+          <span className="text-sm text-gray-400">{year}年</span>
+        </div>
+        <div className="w-24" /> {/* Spacer for centering */}
+      </div>
+
+      {/* Weekday header */}
+      <div className="w-full grid grid-cols-7 gap-1 mb-1">
+        {WEEKDAY_LABELS.map((label, i) => (
+          <div
+            key={i}
+            className={`text-center text-xs font-semibold py-1.5 rounded-md ${
+              i === 0 || i === 6 ? 'text-red-400' : 'text-gray-400'
+            }`}
+          >
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="w-full grid grid-cols-7 gap-1">
+        {weeks.flatMap((week, wi) =>
+          week.map((day, di) => {
+            if (day === null) {
+              return <div key={`${wi}-${di}`} className="rounded-lg" style={{ minHeight: 72 }} />;
+            }
+
+            const data = dayData[day - 1];
+            const status = mounted ? getDayStatus(month, day) : 'none';
+            const isTodayCell = mounted && todayStr === `${year}-${month}-${day}`;
+            const noteKey = `${year}-${month}-${day}`;
+            const hasNote = mounted && notes[noteKey];
+
+            return (
+              <div
+                key={day}
+                className={`
+                  rounded-lg border transition-colors relative
+                  ${isTodayCell ? 'ring-2 ring-blue-500 z-[5]' : 'border-gray-100'}
+                  ${data.isWeekendDay ? '' : 'bg-white'}
+                  hover:shadow-sm
+                `}
+                style={{
+                  minHeight: 72,
+                  backgroundColor: data.isWeekendDay ? monthColor.bg : undefined,
+                }}
+              >
+                {/* Top zone: day + lunar + check */}
+                <div
+                  className="p-1.5 cursor-pointer"
+                  onClick={() => toggleDay(month, day)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`text-base font-bold ${
+                        data.isWeekendDay ? '' : 'text-gray-800'
+                      }`}
+                      style={data.isWeekendDay ? { color: monthColor.text } : undefined}
+                    >
+                      {day}
+                    </span>
+                    {mounted && status !== 'none' && (
+                      <span
+                        className={`text-xs font-bold ${
+                          status === 'crossed' ? 'text-red-500' : 'text-green-600'
+                        }`}
+                      >
+                        {status === 'crossed' ? '✗' : '✓'}
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={`text-[10px] leading-tight block mt-0.5 ${
+                      data.isSolarTerm
+                        ? 'text-orange-600 font-medium'
+                        : data.isFestival
+                          ? 'text-red-500 font-medium'
+                          : data.isLunarFirstDay
+                            ? 'text-purple-600 font-medium'
+                            : data.isWeekendDay
+                              ? ''
+                              : 'text-gray-400'
+                    }`}
+                    style={
+                      data.isWeekendDay && !data.isSolarTerm && !data.isFestival && !data.isLunarFirstDay
+                        ? { color: monthColor.accent }
+                        : undefined
+                    }
+                  >
+                    {data.display}
+                  </span>
+                </div>
+                {/* Bottom zone: note */}
+                <div
+                  className="px-1.5 pb-1.5 cursor-pointer"
+                  onClick={(e) => openNotePopup(month, day, e)}
+                >
+                  {hasNote && (
+                    <div className="text-[9px] text-gray-400 truncate leading-tight">
+                      {notes[noteKey].split('\n')[0]}
+                    </div>
+                  )}
+                  {hasNote && (
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-sky-400 rounded-full" />
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function YearCalendar() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [overrides, setOverrides] = useState<DayOverrides>({});
@@ -40,6 +247,7 @@ export default function YearCalendar() {
   const [notePopup, setNotePopup] = useState<NotePopup | null>(null);
   const [popupSize, setPopupSize] = useState({ w: 400, h: 320 });
   const [noteDraft, setNoteDraft] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const gridInnerRef = useRef<HTMLDivElement>(null);
@@ -182,15 +390,15 @@ export default function YearCalendar() {
       const key = `${year}-${month}-${day}`;
       setNoteDraft(notes[key] || '');
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const popW = 400;
-      const popH = 280;
+      const popW = 530;
+      const popH = 320;
       let x = rect.left + rect.width / 2 - popW / 2;
       let y = rect.bottom + 4;
       if (x + popW > window.innerWidth - 16) x = window.innerWidth - popW - 16;
       if (x < 16) x = 16;
       if (y + popH > window.innerHeight - 16) y = rect.top - popH - 4;
       setNotePopup({ month, day, x, y });
-      setPopupSize({ w: 400, h: 320 });
+      setPopupSize({ w: 530, h: 320 });
     },
     [year, notes],
   );
@@ -565,6 +773,7 @@ export default function YearCalendar() {
         ref={gridContainerRef}
         className="flex-1 px-8 pb-6 pt-3 overflow-x-auto min-h-0"
       >
+        {selectedMonth === null ? (
         <div ref={gridInnerRef} className="w-full h-full relative border-t border-l border-gray-200 rounded-sm">
 
 
@@ -583,13 +792,15 @@ export default function YearCalendar() {
               >
                 {/* Month label */}
                 <div
-                  className="flex items-center justify-center text-[11px] font-extrabold sticky left-0 bg-gray-50 z-10 print:bg-white rounded mx-0.5"
+                  className="flex items-center justify-center text-[11px] font-extrabold sticky left-0 bg-gray-50 z-10 print:bg-white rounded mx-0.5 cursor-pointer hover:opacity-80 transition-opacity"
                   style={{
                     height: cellHeight,
                     color: monthColor.text,
                     border: `1.5px solid ${monthColor.text}`,
                     backgroundColor: `${monthColor.bg}`,
                   }}
+                  onClick={() => setSelectedMonth(monthIdx + 1)}
+                  title={`点击查看${monthIdx + 1}月详细视图`}
                 >
                   {MONTH_NAMES[monthIdx]}
                 </div>
@@ -726,6 +937,21 @@ export default function YearCalendar() {
             </svg>
           )}
         </div>
+        ) : (
+        /* ===== Monthly View ===== */
+        <MonthView
+          year={year}
+          month={selectedMonth}
+          mounted={mounted}
+          todayStr={todayStr}
+          overrides={overrides}
+          notes={notes}
+          getDayStatus={getDayStatus}
+          toggleDay={toggleDay}
+          openNotePopup={openNotePopup}
+          onBack={() => setSelectedMonth(null)}
+        />
+        )}
       </div>
 
       {/* Note Popup - TickTick inspired */}
