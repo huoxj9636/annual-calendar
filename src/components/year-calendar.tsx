@@ -520,10 +520,11 @@ export default function YearCalendar() {
         const rightRectLast = rightCellLast.getBoundingClientRect();
 
         // Calculate coordinates relative to grid
+        const gap = 2; // gap between adjacent quarters
         const left = leftRect.right - gridRect.left + 1; // right edge of month label
         const right = Math.max(rightRectFirst.right, rightRectLast.right) - gridRect.left;
-        const top = firstRowRect.top - gridRect.top;
-        const bottom = lastRowRect.bottom - gridRect.top;
+        const top = firstRowRect.top - gridRect.top + gap;
+        const bottom = lastRowRect.bottom - gridRect.top - gap;
 
         // Draw 4 wavy lines forming a rectangle
         // Top edge
