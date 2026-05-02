@@ -252,14 +252,14 @@ export default function YearCalendar() {
           <div
             className="grid gap-0"
             style={{
-              gridTemplateColumns: '56px repeat(31, minmax(38px, 1fr))',
+              gridTemplateColumns: '48px repeat(31, minmax(40px, 1fr))',
             }}
           >
             <div className="h-7" /> {/* Empty corner */}
             {Array.from({ length: 31 }, (_, i) => (
               <div
                 key={i + 1}
-                className="h-7 flex items-center justify-center text-xs font-semibold text-gray-500"
+                className="h-6 flex items-center justify-center text-[10px] font-medium text-gray-400"
               >
                 {i + 1}
               </div>
@@ -274,12 +274,12 @@ export default function YearCalendar() {
                 key={monthIdx}
                 className="grid gap-0"
                 style={{
-                  gridTemplateColumns: '56px repeat(31, minmax(38px, 1fr))',
+                  gridTemplateColumns: '48px repeat(31, minmax(40px, 1fr))',
                 }}
               >
                 {/* Month label */}
                 <div
-                  className="flex items-center justify-center text-sm font-bold py-1 sticky left-0 bg-gray-50 z-10 print:bg-white"
+                  className="flex items-center justify-center text-xs font-bold sticky left-0 bg-gray-50 z-10 print:bg-white"
                   style={{ color: monthColor.text }}
                 >
                   {MONTH_NAMES[monthIdx]}
@@ -291,7 +291,8 @@ export default function YearCalendar() {
                     return (
                       <div
                         key={cell.day}
-                        className="h-12 border border-gray-100 bg-gray-50/50"
+                        className="border border-gray-100 bg-gray-50/50"
+                        style={{ height: '44px' }}
                       />
                     );
                   }
@@ -317,26 +318,27 @@ export default function YearCalendar() {
                     <div
                       key={cell.day}
                       className={`
-                        h-12 border border-gray-200 relative cursor-pointer
+                        border border-gray-200 relative cursor-pointer
                         transition-all duration-100 hover:brightness-95 hover:z-[5] hover:shadow-md
                         ${isTodayCell ? 'ring-2 ring-blue-500 ring-inset z-[5]' : ''}
                         ${!cell.isWeekend ? 'bg-white' : ''}
                       `}
                       style={{
+                        height: '44px',
                         backgroundColor: weekendBg,
                         ...borderStyle,
                       }}
                       onClick={() => toggleDay(cell.month, cell.day)}
                       title={`${year}年${cell.month}月${cell.day}日 - 点击切换状态`}
                     >
-                      <div className="flex flex-col items-center justify-center h-full px-0.5">
+                      <div className="flex flex-col items-start justify-start pt-1 pl-1.5 h-full">
                         {/* Day number + status */}
-                        <div className="flex items-center gap-0.5 leading-none">
+                        <div className="flex items-baseline gap-0.5 leading-none">
                           <span
-                            className={`text-xs font-semibold ${
+                            className={`text-sm font-bold ${
                               cell.isWeekend
                                 ? ''
-                                : 'text-gray-700'
+                                : 'text-gray-800'
                             }`}
                             style={
                               cell.isWeekend
@@ -348,7 +350,7 @@ export default function YearCalendar() {
                           </span>
                           {mounted && status !== 'none' && (
                             <span
-                              className={`text-[10px] font-bold ${
+                              className={`text-[8px] font-bold ${
                                 status === 'crossed'
                                   ? 'text-red-500'
                                   : 'text-green-600'
@@ -360,11 +362,11 @@ export default function YearCalendar() {
                         </div>
                         {/* Lunar display */}
                         <span
-                          className={`text-[9px] leading-tight truncate max-w-full text-center ${
+                          className={`text-[7px] leading-tight truncate max-w-full ${
                             cell.isSolarTerm
-                              ? 'text-orange-600 font-semibold'
+                              ? 'text-orange-600 font-medium'
                               : cell.isFestival
-                                ? 'text-red-500 font-semibold'
+                                ? 'text-red-500 font-medium'
                                 : cell.isLunarFirstDay
                                   ? 'text-purple-600 font-medium'
                                   : cell.isWeekend
@@ -376,7 +378,7 @@ export default function YearCalendar() {
                             !cell.isSolarTerm &&
                             !cell.isFestival &&
                             !cell.isLunarFirstDay
-                              ? { color: monthColor.accent + '99' }
+                              ? { color: monthColor.accent + '80' }
                               : undefined
                           }
                         >
