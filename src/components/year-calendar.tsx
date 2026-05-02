@@ -622,7 +622,10 @@ export default function YearCalendar() {
                 <span>季度</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="inline-block w-3 h-3 bg-sky-400 rounded-full" />
+                <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-emerald-500">
+                  <path d="M3 3.5A1.5 1.5 0 014.5 2h7A1.5 1.5 0 0113 3.5v9a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 12.5v-9zM4.5 3a.5.5 0 00-.5.5v9a.5.5 0 00.5.5h7a.5.5 0 00.5-.5v-9a.5.5 0 00-.5-.5h-7z"/>
+                  <path d="M6 7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5z"/>
+                </svg>
                 <span>备注</span>
               </span>
             </div>
@@ -702,6 +705,16 @@ export default function YearCalendar() {
                   const weekendBg = cell.isWeekend ? monthColor.bg : undefined;
                   const noteKey = `${year}-${cell.month}-${cell.day}`;
                   const hasNote = mounted && notes[noteKey];
+                  const hasDayViewData = mounted && (() => {
+                    try {
+                      const evts = localStorage.getItem(`dayview-events-${year}-${cell.month}-${cell.day}`);
+                      const todos = localStorage.getItem(`dayview-todos-${year}-${cell.month}-${cell.day}`);
+                      const hasEvts = evts && JSON.parse(evts).length > 0;
+                      const hasTodos = todos && JSON.parse(todos).length > 0;
+                      return hasEvts || hasTodos;
+                    } catch { return false; }
+                  })();
+                  const hasAnyNote = hasNote || hasDayViewData;
                   const cellDateStr = `${year}-${String(cell.month).padStart(2, '0')}-${String(cell.day).padStart(2, '0')}`;
                   const isPast = mounted && (() => {
                     if (!todayStr) return false;
@@ -799,8 +812,13 @@ export default function YearCalendar() {
                         onClick={() => setDayViewDate({ year, month: cell.month, day: cell.day })}
                         title={`${year}年${cell.month}月${cell.day}日 - 点击查看日程`}
                       >
-                        {hasNote && (
-                          <span className="absolute top-1 right-1 w-2 h-2 bg-sky-400 rounded-full" />
+                        {hasAnyNote && (
+                          <span className="absolute top-0.5 right-0.5 flex items-center justify-center w-3 h-3">
+                            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-emerald-500">
+                              <path d="M3 3.5A1.5 1.5 0 014.5 2h7A1.5 1.5 0 0113 3.5v9a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 12.5v-9zM4.5 3a.5.5 0 00-.5.5v9a.5.5 0 00.5.5h7a.5.5 0 00.5-.5v-9a.5.5 0 00-.5-.5h-7z"/>
+                              <path d="M6 7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5z"/>
+                            </svg>
+                          </span>
                         )}
                       </div>
                     </div>
