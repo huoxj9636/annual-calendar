@@ -18,9 +18,10 @@ interface TimeEvent {
   title: string;
   desc: string;
   color: string;
+  done: boolean;
 }
 
-const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+const COLORS = ['#4f8ff7', '#f45b69', '#15c7a0', '#f5a623', '#9b59b6', '#e67e22', '#1abc9c', '#e74c3c'];
 
 export default function DayView({ year, month, day, onClose }: DayViewProps) {
   const [mounted, setMounted] = useState(false);
@@ -71,10 +72,15 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
       title: newEvent.title,
       desc: newEvent.desc,
       color: COLORS[events.length % COLORS.length],
+      done: false,
     };
     saveEvents([...events, evt]);
     setNewEvent({ time: '09:00', endTime: '10:00', title: '', desc: '' });
     setShowAddEvent(false);
+  };
+
+  const toggleDone = (id: string) => {
+    saveEvents(events.map(e => e.id === id ? { ...e, done: !e.done } : e));
   };
 
   const removeEvent = (id: string) => {
@@ -85,139 +91,237 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
 
   const lunarInfo = getLunarInfo(year, month, day);
   const date = new Date(year, month - 1, day);
-  const weekDay = ['日', '一', '二', '三', '四', '五', '六'][date.getDay()];
-  const daysInMonth = getDaysInMonth(year, month);
+  const weekDay = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()];
   const isToday = (() => {
     const now = new Date();
     return now.getFullYear() === year && now.getMonth() === month - 1 && now.getDate() === day;
   })();
 
-  const hours = Array.from({ length: 24 }, (_, i) => i);
+  // Group events by time periods
+  const morningEvents = events.filter(e => parseInt(e.time) < 12);
+  const afternoonEvents = events.filter(e => parseInt(e.time) >= 12 && parseInt(e.time) < 18);
+  const eveningEvents = events.filter(e => parseInt(e.time) >= 18);
 
-  const getEventsForHour = (h: number) =>
-    events.filter(e => {
-      const eh = parseInt(e.time.split(':')[0], 10);
-      return eh === h;
-    });
+  const EventItem = ({ evt }: { evt: TimeEvent }) => (
+    <div
+      className={`flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-gray-50 group ${evt.done ? 'opacity-50' : ''}`}
+    >
+      <button
+        onClick={() => toggleDone(evt.id)}
+        className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+        style={{ borderColor: evt.color, backgroundColor: evt.done ? evt.color : 'transparent' }}
+      >
+        {evt.done && (
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className={`text-sm font-medium ${evt.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+          {evt.title}
+        </div>
+        <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5">
+          <span>{evt.time} - {evt.endTime}</span>
+          {evt.desc && <span className="text-gray-300">|</span>}
+          {evt.desc && <span>{evt.desc}</span>}
+        </div>
+      </div>
+      <button
+        onClick={() => removeEvent(evt.id)}
+        className="flex-shrink-0 text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+
+  const TimeSection = ({ title, icon, items }: { title: string; icon: string; items: TimeEvent[] }) => {
+    if (items.length === 0 && title !== '上午') return null;
+    return (
+      <div className="mb-4">
+        <div className="flex items-center gap-2 px-3 mb-1">
+          <span className="text-sm">{icon}</span>
+          <span className="text-xs font-medium text-gray-400 tracking-wide">{title}</span>
+          {items.length > 0 && (
+            <span className="text-xs text-gray-300">{items.filter(e => e.done).length}/{items.length}</span>
+          )}
+        </div>
+        {items.length > 0 ? (
+          items.map(evt => <EventItem key={evt.id} evt={evt} />)
+        ) : (
+          <div className="px-3 py-2 text-xs text-gray-200">暂无日程</div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-2xl overflow-hidden flex"
-        style={{ width: '860px', height: '680px', maxWidth: '95vw', maxHeight: '90vh' }}
+        className="bg-white rounded-2xl shadow-xl overflow-hidden flex"
+        style={{ width: '780px', height: '640px', maxWidth: '95vw', maxHeight: '92vh' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Left: Date Info */}
-        <div className="w-56 flex-shrink-0 bg-gradient-to-b from-slate-700 to-slate-900 text-white p-6 flex flex-col">
-          <button onClick={onClose} className="self-end text-white/60 hover:text-white text-xl mb-4">✕</button>
-          <div className="text-6xl font-bold leading-none">{day}</div>
-          <div className="text-lg mt-2 font-medium">{year}年{month}月</div>
-          <div className="text-sm mt-1 text-white/70">星期{weekDay}</div>
-          <div className="mt-4 pt-4 border-t border-white/20">
-            <div className="text-xs text-white/50 uppercase tracking-wider mb-1">农历</div>
-            <div className="text-base">{lunarInfo.lunarMonth}月{lunarInfo.lunarDay}</div>
-            {lunarInfo.isSolarTerm && <div className="text-sm text-amber-300 mt-1">{lunarInfo.display}</div>}
-            {lunarInfo.isFestival && <div className="text-sm text-red-300 mt-1">{lunarInfo.display}</div>}
-          </div>
-          {isToday && (
-            <div className="mt-4 bg-blue-500 text-white text-xs px-3 py-1 rounded-full self-start font-medium">今天</div>
-          )}
-          <div className="mt-auto">
-            <div className="text-xs text-white/40 mb-1">备忘</div>
-            <textarea
-              value={noteText}
-              onChange={e => setNoteText(e.target.value)}
-              onBlur={saveNote}
-              placeholder="写点什么..."
-              className="w-full bg-white/10 text-white text-sm rounded-lg p-3 resize-none h-28 placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
-            />
+        {/* Left Sidebar - Date Info */}
+        <div className="w-52 flex-shrink-0 flex flex-col" style={{ background: 'linear-gradient(160deg, #4f8ff7 0%, #6c5ce7 100%)' }}>
+          <div className="p-5 flex-1 flex flex-col">
+            <button onClick={onClose} className="self-end text-white/50 hover:text-white text-lg mb-3 transition-colors">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="text-white/60 text-sm font-medium">{year}年{month}月</div>
+            <div className="text-white text-7xl font-extralight leading-none mt-1">{day}</div>
+            <div className="text-white/80 text-sm mt-2">{weekDay}</div>
+
+            {isToday && (
+              <span className="mt-3 self-start bg-white/20 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm font-medium">
+                今天
+              </span>
+            )}
+
+            <div className="mt-6 pt-4 border-t border-white/15">
+              <div className="text-white/40 text-xs uppercase tracking-widest mb-2">农历</div>
+              <div className="text-white text-base font-light">{lunarInfo.lunarMonth}月{lunarInfo.lunarDay}</div>
+              {lunarInfo.isSolarTerm && (
+                <div className="text-amber-300 text-sm mt-1 font-medium">{lunarInfo.display}</div>
+              )}
+              {lunarInfo.isFestival && !lunarInfo.isSolarTerm && (
+                <div className="text-red-300 text-sm mt-1 font-medium">{lunarInfo.display}</div>
+              )}
+            </div>
+
+            {/* Stats */}
+            <div className="mt-auto">
+              <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
+                <div className="text-white/50 text-xs mb-1">今日进度</div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white/60 rounded-full transition-all"
+                      style={{ width: `${events.length > 0 ? (events.filter(e => e.done).length / events.length * 100) : 0}%` }}
+                    />
+                  </div>
+                  <span className="text-white/60 text-xs">
+                    {events.length > 0 ? `${events.filter(e => e.done).length}/${events.length}` : '0'}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Right: Timeline */}
+        {/* Right Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <div className="text-base font-semibold text-gray-800">日程安排</div>
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100/80">
+            <div className="flex items-center gap-3">
+              <span className="text-lg font-semibold text-gray-800">日程</span>
+              <span className="text-xs text-gray-300 bg-gray-50 px-2 py-0.5 rounded">{events.length}项</span>
+            </div>
             <button
-              onClick={() => setShowAddEvent(true)}
-              className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-1.5 rounded-lg font-medium transition-colors"
+              onClick={() => setShowAddEvent(!showAddEvent)}
+              className="flex items-center gap-1.5 text-sm font-medium text-white px-4 py-2 rounded-xl transition-all hover:shadow-md"
+              style={{ background: 'linear-gradient(135deg, #4f8ff7, #6c5ce7)' }}
             >
-              + 添加日程
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              添加日程
             </button>
           </div>
 
           {/* Add Event Form */}
           {showAddEvent && (
-            <div className="px-6 py-3 bg-blue-50 border-b border-blue-100">
-              <div className="flex items-center gap-3 mb-2">
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-50/80 to-purple-50/80 border-b border-gray-100/60">
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <input
-                  type="time" value={newEvent.time}
-                  onChange={e => setNewEvent({ ...newEvent, time: e.target.value })}
-                  className="text-sm border rounded px-2 py-1 w-24"
-                />
-                <span className="text-gray-400">-</span>
-                <input
-                  type="time" value={newEvent.endTime}
-                  onChange={e => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                  className="text-sm border rounded px-2 py-1 w-24"
-                />
-                <input
-                  type="text" value={newEvent.title}
+                  type="text"
+                  value={newEvent.title}
                   onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
                   placeholder="日程标题"
-                  className="text-sm border rounded px-3 py-1 flex-1"
+                  className="w-full text-sm font-medium text-gray-800 placeholder-gray-300 focus:outline-none mb-3"
                   autoFocus
                 />
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text" value={newEvent.desc}
-                  onChange={e => setNewEvent({ ...newEvent, desc: e.target.value })}
-                  placeholder="描述（可选）"
-                  className="text-sm border rounded px-3 py-1 flex-1"
-                  onKeyDown={e => { if (e.key === 'Enter') addEvent(); }}
-                />
-                <button onClick={addEvent} className="bg-blue-500 text-white text-sm px-3 py-1 rounded">确认</button>
-                <button onClick={() => setShowAddEvent(false)} className="text-gray-400 text-sm px-2">取消</button>
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <input
+                    type="time" value={newEvent.time}
+                    onChange={e => setNewEvent({ ...newEvent, time: e.target.value })}
+                    className="border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-300"
+                  />
+                  <span className="text-gray-300">至</span>
+                  <input
+                    type="time" value={newEvent.endTime}
+                    onChange={e => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                    className="border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-300"
+                  />
+                  <input
+                    type="text"
+                    value={newEvent.desc}
+                    onChange={e => setNewEvent({ ...newEvent, desc: e.target.value })}
+                    placeholder="备注"
+                    className="flex-1 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-300"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-3">
+                  <button
+                    onClick={() => setShowAddEvent(false)}
+                    className="text-sm text-gray-400 hover:text-gray-600 px-3 py-1.5 transition-colors"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={addEvent}
+                    disabled={!newEvent.title.trim()}
+                    className="text-sm font-medium text-white px-4 py-1.5 rounded-lg transition-all disabled:opacity-40"
+                    style={{ background: 'linear-gradient(135deg, #4f8ff7, #6c5ce7)' }}
+                  >
+                    添加
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Timeline */}
-          <div className="flex-1 overflow-y-auto px-6 py-2">
-            {hours.map(h => {
-              const hourEvents = getEventsForHour(h);
-              return (
-                <div key={h} className="flex group hover:bg-gray-50/50 rounded">
-                  <div className="w-14 flex-shrink-0 text-right text-xs text-gray-400 py-3 pr-3 border-r border-gray-100">
-                    {String(h).padStart(2, '0')}:00
-                  </div>
-                  <div className="flex-1 py-2 pl-3 min-h-[44px] relative">
-                    {hourEvents.map(evt => (
-                      <div
-                        key={evt.id}
-                        className="rounded-lg px-3 py-2 mb-1 flex items-center justify-between"
-                        style={{ backgroundColor: evt.color + '18', borderLeft: `3px solid ${evt.color}` }}
-                      >
-                        <div>
-                          <div className="text-sm font-medium text-gray-800">{evt.title}</div>
-                          <div className="text-xs text-gray-500">
-                            {evt.time} - {evt.endTime}
-                            {evt.desc && <span className="ml-2 text-gray-400">{evt.desc}</span>}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => removeEvent(evt.id)}
-                          className="text-gray-300 hover:text-red-400 text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+          {/* Event List by Time Period */}
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <TimeSection title="上午" icon="🌅" items={morningEvents} />
+            <TimeSection title="下午" icon="☀️" items={afternoonEvents} />
+            <TimeSection title="晚上" icon="🌙" items={eveningEvents} />
+
+            {events.length === 0 && !showAddEvent && (
+              <div className="flex flex-col items-center justify-center h-full text-gray-200">
+                <svg className="w-16 h-16 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div className="text-sm">今天还没有日程</div>
+                <div className="text-xs mt-1">点击上方按钮添加</div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Notes */}
+          <div className="border-t border-gray-100/80 px-6 py-3">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <input
+                type="text"
+                value={noteText}
+                onChange={e => setNoteText(e.target.value)}
+                onBlur={saveNote}
+                placeholder="备忘录..."
+                className="flex-1 text-sm text-gray-600 placeholder-gray-300 focus:outline-none bg-transparent"
+              />
+            </div>
           </div>
         </div>
       </div>

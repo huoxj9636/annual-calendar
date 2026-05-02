@@ -242,9 +242,7 @@ function MonthView({
                       {notes[noteKey].split('\n')[0]}
                     </div>
                   )}
-                  {hasNote && (
-                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-sky-400 rounded-full" />
-                  )}
+
                 </div>
               </div>
             );
