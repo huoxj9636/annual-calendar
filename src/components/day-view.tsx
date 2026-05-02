@@ -372,8 +372,9 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
     <div className="h-full flex flex-col bg-gray-50 relative">
       {/* Header with gradient */}
       <div className="flex-shrink-0 px-5 pt-5 pb-4 relative overflow-hidden" style={{ background: accentGradient }}>
-        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/5" />
-        <div className="absolute bottom-2 -left-4 w-20 h-20 rounded-full bg-white/5" />
+        <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-white/[0.06]" />
+        <div className="absolute bottom-0 -left-6 w-24 h-24 rounded-full bg-white/[0.04]" />
+        <div className="absolute top-1/2 right-1/3 w-16 h-16 rounded-full bg-white/[0.03]" />
 
         <div className="relative z-10">
           <div className="flex items-start justify-between">

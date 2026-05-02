@@ -225,27 +225,27 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50 px-8 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50/80 via-white to-stone-50/80 px-8 py-6">
       {/* Title */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-3xl font-black text-gray-900 tracking-tight">{year} 年度复盘</h2>
-          <p className="text-gray-400 mt-1">下拉回到日历 · 数据实时同步</p>
+          <p className="text-gray-400 mt-1 text-sm">下拉回到日历 · 数据实时同步</p>
         </div>
-        <div className="flex gap-4">
-          <div className="text-center px-5 py-3 rounded-2xl bg-white shadow-sm border border-gray-100">
+        <div className="flex gap-3">
+          <div className="text-center px-5 py-3 rounded-2xl bg-white/80 shadow-sm border border-gray-100/60 backdrop-blur-sm">
             <div className="text-2xl font-black text-emerald-600">{yearAvg.satisfactionRate}%</div>
             <div className="text-xs text-gray-400 mt-0.5">年满意度</div>
           </div>
-          <div className="text-center px-5 py-3 rounded-2xl bg-white shadow-sm border border-gray-100">
+          <div className="text-center px-5 py-3 rounded-2xl bg-white/80 shadow-sm border border-gray-100/60 backdrop-blur-sm">
             <div className="text-2xl font-black text-blue-600">{yearAvg.scheduleRate}%</div>
             <div className="text-xs text-gray-400 mt-0.5">日程密度</div>
           </div>
-          <div className="text-center px-5 py-3 rounded-2xl bg-white shadow-sm border border-gray-100">
+          <div className="text-center px-5 py-3 rounded-2xl bg-white/80 shadow-sm border border-gray-100/60 backdrop-blur-sm">
             <div className="text-2xl font-black text-amber-600">{yearAvg.todoRate}%</div>
             <div className="text-xs text-gray-400 mt-0.5">待办完成</div>
           </div>
-          <div className="text-center px-5 py-3 rounded-2xl bg-white shadow-sm border border-gray-100">
+          <div className="text-center px-5 py-3 rounded-2xl bg-white/80 shadow-sm border border-gray-100/60 backdrop-blur-sm">
             <div className="text-2xl font-black text-purple-600">{yearAvg.memoRate}%</div>
             <div className="text-xs text-gray-400 mt-0.5">备忘活跃</div>
           </div>

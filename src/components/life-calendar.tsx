@@ -558,11 +558,13 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
     <div className="fixed inset-0 z-50 flex justify-start">
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
       <div
-        className="relative h-full bg-white shadow-2xl overflow-hidden flex flex-col animate-slide-in-left"
+        className="relative h-full bg-gradient-to-b from-slate-50 to-white shadow-2xl overflow-hidden flex flex-col animate-slide-in-left"
         style={{ width: Math.min(520, window.innerWidth * 0.92), maxWidth: '92vw' }}
       >
         {/* Header */}
-        <div className="flex-shrink-0 bg-gradient-to-br from-slate-800 via-slate-700 to-indigo-900 px-5 py-4 text-white">
+        <div className="flex-shrink-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-950 px-5 py-4 text-white relative overflow-hidden">
+          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-indigo-500/10" />
+          <div className="absolute bottom-0 left-1/3 w-20 h-20 rounded-full bg-violet-500/8" />
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold tracking-wide">人生旅程</h2>
             <button

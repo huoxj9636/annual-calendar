@@ -331,11 +331,11 @@ export default function YearCalendar() {
   return (
     <div ref={scrollContainerRef} className="h-screen overflow-y-scroll" style={{ scrollbarWidth: 'none' }}>
       {/* Page 1: Calendar */}
-      <div className="h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
+      <div className="h-screen bg-gradient-to-br from-slate-50/80 via-gray-50 to-stone-100/80 print:bg-white print:h-auto flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-gray-200 print:static print:border-b z-20 relative overflow-hidden">
+      <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/header-bg.jpeg')" }} />
-        <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-white/60 backdrop-blur-[3px]" />
         <div className="relative px-8 py-1.5 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 rounded-2xl px-4 py-2">
             <button
@@ -459,12 +459,12 @@ export default function YearCalendar() {
               >
                 {/* Month label */}
                 <div
-                  className="flex items-center justify-center text-[17px] font-extrabold sticky left-0 bg-gray-50 z-10 print:bg-white rounded mx-0.5 cursor-pointer hover:opacity-80 transition-opacity"
+                  className="flex items-center justify-center text-[17px] font-extrabold sticky left-0 bg-gray-50/80 backdrop-blur-sm z-10 print:bg-white rounded-lg mx-0.5 cursor-pointer hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md"
                   style={{
                     height: cellHeight,
                     color: monthColor.text,
-                    border: `1px solid ${monthColor.text}30`,
-                    backgroundColor: `${monthColor.bg}80`,
+                    border: `1px solid ${monthColor.text}20`,
+                    backgroundColor: `${monthColor.bg}60`,
                   }}
                   onClick={() => setSelectedMonth(monthIdx + 1)}
                   title={`点击查看${monthIdx + 1}月详细视图`}
@@ -527,20 +527,21 @@ export default function YearCalendar() {
                       key={cell.day}
                       data-day={cell.day}
                       className={`
-                        relative
-                        ${isTodayCell ? 'ring-2 ring-blue-500 ring-inset z-[5]' : ''}
-                        ${!cell.isWeekend ? 'bg-white' : ''}
+                        relative rounded-sm
+                        ${isTodayCell ? 'ring-2 ring-indigo-500/70 ring-inset z-[5] shadow-sm shadow-indigo-200/50' : ''}
+                        ${!cell.isWeekend ? 'bg-white/80' : ''}
                       `}
                       style={{
                         height: cellHeight,
-                        borderBottom: '1px solid #efefef',
-                        borderRight: '1px solid #efefef',
-                        backgroundColor: isPast ? 'rgba(255,255,255,0.7)' : weekendBg,
+                        borderBottom: '1px solid rgba(0,0,0,0.03)',
+                        borderRight: '1px solid rgba(0,0,0,0.03)',
+                        backgroundColor: isPast ? 'rgba(255,255,255,0.5)' : weekendBg,
+                        transition: 'all 0.15s ease',
                       }}
                     >
                       {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
                       <div
-                        className="flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-green-50/50 transition-colors rounded-t-sm"
+                        className="flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-indigo-50/50 active:bg-indigo-100/50 transition-colors rounded-sm"
                         style={{ height: '33%' }}
                         onClick={() => toggleDay(cell.month, cell.day)}
                         title="切换满意/不满意"
@@ -603,7 +604,7 @@ export default function YearCalendar() {
                       )}
                       {/* Bottom zone (2/3): click to open day view */}
                       <div
-                        className="cursor-pointer hover:bg-black/[0.03] transition-colors"
+                        className="cursor-pointer hover:bg-indigo-50/30 transition-colors rounded-b-sm"
                         style={{ height: '67%' }}
                         onClick={() => setDayViewDate({ year, month: cell.month, day: cell.day })}
                       />
