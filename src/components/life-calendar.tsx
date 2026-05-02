@@ -562,14 +562,13 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
         style={{ width: Math.min(520, window.innerWidth * 0.92), maxWidth: '92vw' }}
       >
         {/* Header */}
-        <div className="flex-shrink-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-950 px-5 py-4 text-white relative overflow-hidden">
-          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-indigo-500/10" />
-          <div className="absolute bottom-0 left-1/3 w-20 h-20 rounded-full bg-violet-500/8" />
+        <div className="flex-shrink-0 bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-4 text-white relative overflow-hidden">
+          
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold tracking-wide">人生旅程</h2>
             <button
               onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors"
             >
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M1 1l12 12M13 1L1 13" />
