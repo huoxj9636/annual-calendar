@@ -259,18 +259,18 @@ export function precomputeYearData(
 
 // Month theme colors for weekend backgrounds
 export const MONTH_COLORS = [
-  { bg: '#f8f0f0', accent: '#c09098', text: '#a07880' },   // 1月 - 玫瑰灰
-  { bg: '#f8f3ee', accent: '#c0a080', text: '#9a8868' },   // 2月 - 暖杏灰
-  { bg: '#f2eff8', accent: '#9888b8', text: '#7868a0' },   // 3月 - 丁香灰
-  { bg: '#eef1f8', accent: '#7888b0', text: '#5870a0' },   // 4月 - 雾蓝
-  { bg: '#f5f4ec', accent: '#a8a070', text: '#888068' },   // 5月 - 橄榄米
-  { bg: '#f0eff8', accent: '#8878b0', text: '#6858a0' },   // 6月 - 薰衣草
-  { bg: '#ecf4ef', accent: '#70a888', text: '#588868' },   // 7月 - 苔绿灰
-  { bg: '#f8f2ed', accent: '#b09080', text: '#907868' },   // 8月 - 暖灰棕
-  { bg: '#ecf2f8', accent: '#7898b8', text: '#5080a0' },   // 9月 - 灰蓝
-  { bg: '#f8eff0', accent: '#b88890', text: '#a07080' },   // 10月 - 酒红灰
-  { bg: '#ecf4f8', accent: '#70a0b0', text: '#508890' },   // 11月 - 灰青
-  { bg: '#f8f5ee', accent: '#b8a870', text: '#a09068' },   // 12月 - 暮金
+  { bg: '#fdf2f4', accent: '#ec4899', text: '#be185d' },   // 1月 - 粉 (童年)
+  { bg: '#fff7ed', accent: '#f97316', text: '#c2410c' },   // 2月 - 橙 (少年)
+  { bg: '#fefce8', accent: '#ca8a04', text: '#a16207' },   // 3月 - 黄 (青春)
+  { bg: '#f0fdf4', accent: '#16a34a', text: '#15803d' },   // 4月 - 绿 (青春)
+  { bg: '#f0fdfa', accent: '#0d9488', text: '#0f766e' },   // 5月 - 青绿 (青年)
+  { bg: '#f0f9ff', accent: '#0891b2', text: '#0e7490' },   // 6月 - 蓝 (青年)
+  { bg: '#eff6ff', accent: '#2563eb', text: '#1d4ed8' },   // 7月 - 靛蓝 (而立)
+  { bg: '#f5f3ff', accent: '#7c3aed', text: '#6d28d9' },   // 8月 - 紫 (不惑)
+  { bg: '#fdf4ff', accent: '#a855f7', text: '#9333ea' },   // 9月 - 紫红 (知天命)
+  { bg: '#fdf2f4', accent: '#e879a0', text: '#be185d' },   // 10月 - 粉 (耳顺)
+  { bg: '#fff7ed', accent: '#e8a050', text: '#b45309' },   // 11月 - 橙 (古稀)
+  { bg: '#f5f3ff', accent: '#8b5cf6', text: '#7c3aed' },   // 12月 - 紫 (回归)
 ];
 
 export const MONTH_NAMES = [

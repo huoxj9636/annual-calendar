@@ -340,7 +340,7 @@ export default function YearCalendar() {
           <div className="flex items-center gap-3 rounded-2xl px-4 py-2">
             <button
               onClick={() => setYear((y) => y - 1)}
-              className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-[#f5f2ef] active:bg-[#ece8e3] transition-colors text-2xl font-bold text-[#b0a8a0] hover:text-[#4a4458]"
+              className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-[#f5f2ef] active:bg-[#ece8e3] transition-colors text-2xl font-bold text-[#8b8680] hover:text-[#5c5ba8]"
               aria-label="上一年"
             >
               ‹
@@ -362,7 +362,7 @@ export default function YearCalendar() {
                   </button>
                 </div>
                 {mounted && clockStr && (
-                  <div className="text-2xl text-[#8b8680]/40 font-mono tracking-wider tabular-nums leading-tight mt-0.5">
+                  <div className="text-2xl text-[#5c5ba8]/25 font-mono tracking-wider tabular-nums leading-tight mt-0.5">
                     {clockStr}
                   </div>
                 )}
@@ -370,7 +370,7 @@ export default function YearCalendar() {
             </div>
             <button
               onClick={() => setYear((y) => y + 1)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f5f2ef] active:bg-[#ece8e3] transition-colors text-lg font-bold text-[#b0a8a0] hover:text-[#4a4458]"
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f5f2ef] active:bg-[#ece8e3] transition-colors text-lg font-bold text-[#8b8680] hover:text-[#5c5ba8]"
               aria-label="下一年"
             >
               ›
@@ -528,7 +528,7 @@ export default function YearCalendar() {
                       data-day={cell.day}
                       className={`
                         relative rounded-md overflow-hidden
-                        ${isTodayCell ? 'ring-2 ring-indigo-400/80 ring-inset z-[5] shadow-[0_0_12px_rgba(99,102,241,0.25)]' : ''}
+                        ${isTodayCell ? 'ring-2 ring-[#5c5ba8]/70 ring-inset z-[5] shadow-[0_0_12px_rgba(92,91,168,0.25)]' : ''}
                         ${!cell.isWeekend ? 'bg-white/90' : ''}
                       `}
                       style={{
@@ -541,7 +541,7 @@ export default function YearCalendar() {
                     >
                       {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
                       <div
-                        className="flex flex-col items-start pl-1.5 pt-1 cursor-pointer hover:bg-indigo-100/40 active:bg-indigo-200/40 transition-colors rounded-t-md"
+                        className="flex flex-col items-start pl-1.5 pt-1 cursor-pointer hover:bg-[#5c5ba8]/8 active:bg-[#5c5ba8]/15 transition-colors rounded-t-md"
                         style={{ height: '33%' }}
                         onClick={() => toggleDay(cell.month, cell.day)}
                         title="切换满意/不满意"
@@ -610,7 +610,7 @@ export default function YearCalendar() {
                       />
                       {/* Blue dot indicator at top-right of entire cell */}
                       {hasAnyNote && (
-                        <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.5)]" />
+                        <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-gradient-to-br from-[#7c7cb8] to-[#5c5ba8] shadow-[0_0_6px_rgba(92,91,168,0.5)]" />
                       )}
                     </div>
                   );
