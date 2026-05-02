@@ -270,21 +270,19 @@ export default function YearCalendar() {
             >
               ‹
             </button>
-            <div className="flex items-end gap-2">
-              <div className="flex flex-col items-start">
-                <h1 className="text-6xl font-black tracking-tight text-gray-900 leading-none">
-                  {year}
-                </h1>
-                <div className="flex items-baseline gap-2 mt-0.5">
-                  <span className="text-base text-gray-500 font-medium">
-                    {ganZhi}（{animal}）
-                  </span>
-                </div>
+            <div className="flex items-center">
+              <h1 className="text-6xl font-black tracking-tight text-gray-900 leading-none">
+                {year}
+              </h1>
+              <div className="flex flex-col ml-3">
                 {mounted && clockStr && (
-                  <div className="text-lg text-gray-400 font-mono tracking-wider tabular-nums mt-0.5">
+                  <div className="text-lg text-gray-500 font-mono tracking-wider tabular-nums leading-tight">
                     {clockStr}
                   </div>
                 )}
+                <span className="text-base text-gray-500 font-medium leading-tight mt-0.5">
+                  {ganZhi}（{animal}）
+                </span>
               </div>
             </div>
             <button
@@ -445,7 +443,7 @@ export default function YearCalendar() {
                         height: cellHeight,
                         borderBottom: '1px solid #efefef',
                         borderRight: '1px solid #efefef',
-                        backgroundColor: isPast ? '#fdfdfe' : weekendBg,
+                        backgroundColor: isPast ? '#f3f3f3' : weekendBg,
                       }}
                     >
                       {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
@@ -463,7 +461,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#e0e0e0' }
+                              ? { color: '#d0d0d0' }
                               : cell.isWeekend
                                 ? { color: monthColor.text }
                                 : undefined
@@ -487,7 +485,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#e8e8e8' }
+                              ? { color: '#d5d5d5' }
                               : cell.isWeekend &&
                                 !cell.isSolarTerm &&
                                 !cell.isFestival &&
