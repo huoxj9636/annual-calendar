@@ -331,7 +331,7 @@ export default function YearCalendar() {
   return (
     <div ref={scrollContainerRef} className="h-screen overflow-y-scroll" style={{ scrollbarWidth: 'none' }}>
       {/* Page 1: Calendar */}
-      <div className="h-screen bg-gradient-to-br from-slate-50/80 via-gray-50 to-stone-100/80 print:bg-white print:h-auto flex flex-col overflow-hidden">
+      <div className="h-screen bg-[#f8f6f2] print:bg-white print:h-auto flex flex-col overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/header-bg.jpeg')" }} />
@@ -535,7 +535,7 @@ export default function YearCalendar() {
                         height: cellHeight,
                         borderBottom: '1px solid rgba(148,163,184,0.18)',
                         borderRight: '1px solid rgba(148,163,184,0.18)',
-                        backgroundColor: isPast ? (cell.isWeekend ? 'rgba(220,223,230,0.8)' : 'rgba(232,234,238,0.8)') : weekendBg,
+                        backgroundColor: isPast ? (cell.isWeekend ? 'rgba(228,230,236,0.7)' : 'rgba(240,242,245,0.65)') : weekendBg,
                         transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
                       }}
                     >
@@ -554,7 +554,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#a0a0a0' }
+                              ? { color: '#bfbfbf' }
                               : cell.isWeekend
                                 ? { color: monthColor.text }
                                 : undefined
@@ -578,7 +578,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#b0b0b0' }
+                              ? { color: '#d0d0d0' }
                               : cell.isWeekend &&
                                 !cell.isSolarTerm &&
                                 !cell.isFestival &&
@@ -595,8 +595,8 @@ export default function YearCalendar() {
                         <span
                           className={`absolute inset-0 flex items-center justify-center text-[22px] font-bold leading-none pointer-events-none ${
                             status === 'crossed'
-                              ? 'text-red-400/40'
-                              : 'text-green-500/40'
+                              ? 'text-red-500/70'
+                              : 'text-emerald-500/70'
                           }`}
                         >
                           {status === 'crossed' ? '✗' : '✓'}
