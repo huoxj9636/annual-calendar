@@ -335,7 +335,7 @@ export default function YearCalendar() {
       {/* Header */}
       <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/header-bg.jpeg')" }} />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/85 via-slate-800/75 to-indigo-900/85 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 glass-dark" />
         <div className="relative px-8 py-1.5 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 rounded-2xl px-4 py-2">
             <button
@@ -346,7 +346,7 @@ export default function YearCalendar() {
               ‹
             </button>
             <div className="flex items-center">
-              <h1 className="text-7xl font-black tracking-tight text-white leading-none">
+              <h1 className="text-7xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-200 leading-none">
                 {year}
               </h1>
               <div className="flex flex-col ml-4">
@@ -362,7 +362,7 @@ export default function YearCalendar() {
                   </button>
                 </div>
                 {mounted && clockStr && (
-                  <div className="text-2xl text-white/40 font-mono tracking-wider tabular-nums leading-tight mt-0.5">
+                  <div className="text-2xl text-amber-200/40 font-mono tracking-wider tabular-nums leading-tight mt-0.5">
                     {clockStr}
                   </div>
                 )}
@@ -379,7 +379,7 @@ export default function YearCalendar() {
 
           {/* 居中标语 */}
           <div className="absolute inset-x-0 flex justify-center pointer-events-none">
-            <span className="text-4xl font-bold tracking-[0.4em] text-white/90 select-none drop-shadow-[0_2px_10px_rgba(99,102,241,0.4)]" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
+            <span className="text-4xl font-bold tracking-[0.5em] text-transparent bg-clip-text bg-gradient-to-r from-amber-300/80 via-yellow-200 to-amber-300/80 select-none drop-shadow-[0_0_30px_rgba(217,170,80,0.3)]" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
               永远不要放弃
             </span>
           </div>
@@ -459,7 +459,7 @@ export default function YearCalendar() {
               >
                 {/* Month label */}
                 <div
-                  className="flex items-center justify-center text-[17px] font-extrabold sticky left-0 bg-gray-50/80 backdrop-blur-sm z-10 print:bg-white rounded-lg mx-0.5 cursor-pointer hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md"
+                  className="flex items-center justify-center text-[17px] font-extrabold sticky left-0 z-10 rounded-xl mx-0.5 cursor-pointer hover:scale-110 transition-all duration-300 shadow-sm hover:shadow-lg backdrop-blur-md"
                   style={{
                     height: cellHeight,
                     color: monthColor.text,
@@ -527,21 +527,21 @@ export default function YearCalendar() {
                       key={cell.day}
                       data-day={cell.day}
                       className={`
-                        relative rounded-sm
-                        ${isTodayCell ? 'ring-2 ring-indigo-500/70 ring-inset z-[5] shadow-sm shadow-indigo-200/50' : ''}
-                        ${!cell.isWeekend ? 'bg-white/80' : ''}
+                        relative rounded-md overflow-hidden
+                        ${isTodayCell ? 'ring-2 ring-indigo-400/80 ring-inset z-[5] shadow-[0_0_12px_rgba(99,102,241,0.25)]' : ''}
+                        ${!cell.isWeekend ? 'bg-white/90' : ''}
                       `}
                       style={{
                         height: cellHeight,
-                        borderBottom: '1px solid rgba(0,0,0,0.03)',
-                        borderRight: '1px solid rgba(0,0,0,0.03)',
-                        backgroundColor: isPast ? 'rgba(255,255,255,0.5)' : weekendBg,
-                        transition: 'all 0.15s ease',
+                        borderBottom: '1px solid rgba(148,163,184,0.12)',
+                        borderRight: '1px solid rgba(148,163,184,0.12)',
+                        backgroundColor: isPast ? 'rgba(250,250,252,0.55)' : weekendBg,
+                        transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
                       }}
                     >
                       {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
                       <div
-                        className="flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-indigo-50/50 active:bg-indigo-100/50 transition-colors rounded-sm"
+                        className="flex flex-col items-start pl-1.5 pt-1 cursor-pointer hover:bg-indigo-100/40 active:bg-indigo-200/40 transition-colors rounded-t-md"
                         style={{ height: '33%' }}
                         onClick={() => toggleDay(cell.month, cell.day)}
                         title="切换满意/不满意"
@@ -604,13 +604,13 @@ export default function YearCalendar() {
                       )}
                       {/* Bottom zone (2/3): click to open day view */}
                       <div
-                        className="cursor-pointer hover:bg-indigo-50/30 transition-colors rounded-b-sm"
+                        className="cursor-pointer hover:bg-gradient-to-b hover:from-indigo-50/20 hover:to-violet-50/30 transition-all duration-200 rounded-b-sm"
                         style={{ height: '67%' }}
                         onClick={() => setDayViewDate({ year, month: cell.month, day: cell.day })}
                       />
                       {/* Blue dot indicator at top-right of entire cell */}
                       {hasAnyNote && (
-                        <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-blue-500" />
+                        <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.5)]" />
                       )}
                     </div>
                   );
@@ -727,7 +727,7 @@ export default function YearCalendar() {
       {dayViewDate && (
         <div className="fixed inset-0 z-40 flex justify-end">
           <div className="absolute inset-0 bg-black/20" onClick={() => setDayViewDate(null)} />
-          <div className="relative h-full bg-white shadow-2xl animate-slide-in-panel overflow-hidden flex" style={{ width: dayViewWidth, maxWidth: '92vw' }}>
+          <div className="relative h-full bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/30 animate-slide-in-panel overflow-hidden flex" style={{ width: dayViewWidth, maxWidth: '92vw' }}>
             {/* Left resize handle */}
             <div
               className="w-1.5 cursor-col-resize hover:bg-blue-400/30 active:bg-blue-400/50 flex-shrink-0 transition-colors z-10"
@@ -750,7 +750,7 @@ export default function YearCalendar() {
       {selectedMonth !== null && mounted && (
         <div className="fixed inset-0 z-40 flex justify-end">
           <div className="absolute inset-0 bg-black/20" onClick={() => setSelectedMonth(null)} />
-          <div className="relative h-full bg-white shadow-2xl flex flex-col animate-slide-in" style={{ width: reviewWidth, maxWidth: '92vw' }}>
+          <div className="relative h-full bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/30 flex flex-col animate-slide-in" style={{ width: reviewWidth, maxWidth: '92vw' }}>
             {/* Left resize handle */}
             <div
               className="w-1.5 cursor-col-resize hover:bg-blue-400/30 active:bg-blue-400/50 flex-shrink-0 transition-colors z-10 absolute left-0 top-0 bottom-0"

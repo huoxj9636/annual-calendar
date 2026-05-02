@@ -365,7 +365,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
   };
 
   // Accent color for header
-  const accentGradient = 'linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa)';
+  const accentGradient = 'linear-gradient(135deg, #1e1b4b, #312e81, #4338ca, #6366f1)';
 
   // ========== Sidebar Panel Content ==========
   const panelContent = (
