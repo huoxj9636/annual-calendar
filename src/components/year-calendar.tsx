@@ -182,8 +182,8 @@ export default function YearCalendar() {
       const key = `${year}-${month}-${day}`;
       setNoteDraft(notes[key] || '');
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const popW = 360;
-      const popH = 280;
+      const popW = 420;
+      const popH = 340;
       let x = rect.left + rect.width / 2 - popW / 2;
       let y = rect.bottom + 4;
       if (x + popW > window.innerWidth - 16) x = window.innerWidth - popW - 16;
@@ -240,7 +240,7 @@ export default function YearCalendar() {
       if (!gridEl) return;
       const gridRect = gridEl.getBoundingClientRect();
 
-      const blockCellsMap: Record<number, { monthIdx: number; day: number; rect: DOMRect }[]> = {};
+      const blockCellsMap: Record<number, DOMRect[]> = {};
 
       const monthRows = gridEl.querySelectorAll<HTMLElement>('[data-month-row]');
       monthRows.forEach((row) => {
@@ -251,18 +251,14 @@ export default function YearCalendar() {
           const cellData = yearData[monthIdx]?.[day - 1];
           if (!cellData || !cellData.exists || cellData.blockIndex < 0) return;
           if (!blockCellsMap[cellData.blockIndex]) blockCellsMap[cellData.blockIndex] = [];
-          blockCellsMap[cellData.blockIndex].push({
-            monthIdx,
-            day,
-            rect: cell.getBoundingClientRect(),
-          });
+          blockCellsMap[cellData.blockIndex].push(cell.getBoundingClientRect());
         });
       });
 
       const paths: { d: string; color: string; blockIdx: number }[] = [];
 
-      const amplitude = 2;
-      const wavelength = 6;
+      const amplitude = 1.2;
+      const wavelength = 4;
 
       const makeWavyLine = (
         x1: number, y1: number,
@@ -289,97 +285,34 @@ export default function YearCalendar() {
         return d;
       };
 
-      for (const [blockIdxStr, cells] of Object.entries(blockCellsMap)) {
+      // For each block, compute one bounding rectangle and draw a wavy border around it
+      for (const [blockIdxStr, rects] of Object.entries(blockCellsMap)) {
         const blockIdx = parseInt(blockIdxStr, 10);
         const block = blocks.find((b: TwelveWeekBlock) => b.index === blockIdx);
         if (!block) continue;
         const color = block.color === 'red' ? '#dc2626' : '#1a1a1a';
 
-        const byRow: Record<number, typeof cells> = {};
-        for (const c of cells) {
-          if (!byRow[c.monthIdx]) byRow[c.monthIdx] = [];
-          byRow[c.monthIdx].push(c);
+        // Find bounding box of all cells in this block
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const r of rects) {
+          const l = r.left - gridRect.left;
+          const t = r.top - gridRect.top;
+          const ri = r.right - gridRect.left;
+          const b = r.bottom - gridRect.top;
+          if (l < minX) minX = l;
+          if (t < minY) minY = t;
+          if (ri > maxX) maxX = ri;
+          if (b > maxY) maxY = b;
         }
 
-        for (const [, rowCells] of Object.entries(byRow)) {
-          const sorted = [...rowCells].sort((a, b) => a.day - b.day);
-          const segments: typeof sorted[] = [];
-          let current: typeof sorted = [sorted[0]];
-          for (let i = 1; i < sorted.length; i++) {
-            if (sorted[i].day === sorted[i - 1].day + 1) {
-              current.push(sorted[i]);
-            } else {
-              segments.push(current);
-              current = [sorted[i]];
-            }
-          }
-          segments.push(current);
+        // Draw 4 sides of one rectangle with wavy lines
+        const top = makeWavyLine(minX, minY, maxX, minY);
+        const right = makeWavyLine(maxX, minY, maxX, maxY);
+        const bottom = makeWavyLine(maxX, maxY, minX, maxY);
+        const left = makeWavyLine(minX, maxY, minX, minY);
 
-          for (const seg of segments) {
-            const firstRect = seg[0].rect;
-            const lastRect = seg[seg.length - 1].rect;
-            const monthIdx = seg[0].monthIdx;
-
-            // Top edge
-            const firstDay = seg[0].day;
-            const aboveCell = monthIdx > 0
-              ? yearData[monthIdx - 1]?.[firstDay - 1]
-              : null;
-            const isTopEdge = monthIdx === 0 ||
-              !aboveCell || !aboveCell.exists ||
-              aboveCell.blockIndex !== blockIdx;
-            if (isTopEdge) {
-              const x1 = firstRect.left - gridRect.left;
-              const y1 = firstRect.top - gridRect.top;
-              const x2 = lastRect.right - gridRect.left;
-              const d = makeWavyLine(x1, y1, x2, y1);
-              if (d) paths.push({ d, color, blockIdx });
-            }
-
-            // Bottom edge
-            const lastDay = seg[seg.length - 1].day;
-            const belowCell = monthIdx < 11
-              ? yearData[monthIdx + 1]?.[lastDay - 1]
-              : null;
-            const isBottomEdge = monthIdx === 11 ||
-              !belowCell || !belowCell.exists ||
-              belowCell.blockIndex !== blockIdx;
-            if (isBottomEdge) {
-              const x1 = firstRect.left - gridRect.left;
-              const y1 = firstRect.bottom - gridRect.top;
-              const x2 = lastRect.right - gridRect.left;
-              const d = makeWavyLine(x1, y1, x2, y1);
-              if (d) paths.push({ d, color, blockIdx });
-            }
-
-            // Left edge
-            const leftNeighbor = firstDay > 1
-              ? yearData[monthIdx]?.[firstDay - 2]
-              : null;
-            const isLeftEdge = firstDay === 1 ||
-              !leftNeighbor || !leftNeighbor.exists ||
-              leftNeighbor.blockIndex !== blockIdx;
-            if (isLeftEdge) {
-              const x1 = firstRect.left - gridRect.left;
-              const y1 = firstRect.top - gridRect.top;
-              const d = makeWavyLine(x1, y1, x1, firstRect.bottom - gridRect.top);
-              if (d) paths.push({ d, color, blockIdx });
-            }
-
-            // Right edge
-            const rightNeighbor = lastDay < 31
-              ? yearData[monthIdx]?.[lastDay]
-              : null;
-            const isRightEdge = lastDay === 31 ||
-              !rightNeighbor || !rightNeighbor.exists ||
-              rightNeighbor.blockIndex !== blockIdx;
-            if (isRightEdge) {
-              const x1 = lastRect.right - gridRect.left;
-              const y1 = lastRect.top - gridRect.top;
-              const d = makeWavyLine(x1, y1, x1, lastRect.bottom - gridRect.top);
-              if (d) paths.push({ d, color, blockIdx });
-            }
-          }
+        for (const d of [top, right, bottom, left]) {
+          if (d) paths.push({ d, color, blockIdx });
         }
       }
 
@@ -650,7 +583,7 @@ export default function YearCalendar() {
                   d={p.d}
                   fill="none"
                   stroke={p.color}
-                  strokeWidth={2.5}
+                  strokeWidth={1.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -668,14 +601,14 @@ export default function YearCalendar() {
           style={{
             left: notePopup.x,
             top: notePopup.y,
-            width: 360,
+            width: 420,
           }}
         >
           <div className="text-sm font-bold text-gray-800 mb-2">
             {year}年{notePopup.month}月{notePopup.day}日 备忘
           </div>
           <textarea
-            className="w-full h-36 text-sm border border-gray-300 rounded-lg p-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 leading-relaxed"
+            className="w-full h-48 text-sm border border-gray-300 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 leading-relaxed"
             placeholder="记录今日事项与行程..."
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
