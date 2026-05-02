@@ -45,10 +45,27 @@ export default function YearCalendar() {
   const [noteDraft, setNoteDraft] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [dayViewDate, setDayViewDate] = useState<{ year: number; month: number; day: number } | null>(null);
+  const [clockStr, setClockStr] = useState('');
   const popupRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const gridInnerRef = useRef<HTMLDivElement>(null);
   const [cellHeight, setCellHeight] = useState(66);
+
+  // Real-time clock with milliseconds
+  useEffect(() => {
+    if (!mounted) return;
+    const update = () => {
+      const now = new Date();
+      const h = now.getHours().toString().padStart(2, '0');
+      const m = now.getMinutes().toString().padStart(2, '0');
+      const s = now.getSeconds().toString().padStart(2, '0');
+      const ms = now.getMilliseconds().toString().padStart(3, '0');
+      setClockStr(`${h}:${m}:${s}.${ms}`);
+    };
+    update();
+    const id = setInterval(update, 47); // ~21fps for smooth ms
+    return () => clearInterval(id);
+  }, [mounted]);
 
   const blocks = useMemo(() => getTwelveWeekBlocks(year), [year]);
 
@@ -254,12 +271,21 @@ export default function YearCalendar() {
               ‹
             </button>
             <div className="flex items-end gap-2">
-              <h1 className="text-7xl font-black tracking-tight text-gray-900 leading-none">
-                {year}
-              </h1>
-              <span className="text-base text-gray-500 font-medium pb-1">
-                {ganZhi}（{animal}）
-              </span>
+              <div className="flex flex-col items-start">
+                <h1 className="text-7xl font-black tracking-tight text-gray-900 leading-none">
+                  {year}
+                </h1>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-base text-gray-500 font-medium">
+                    {ganZhi}（{animal}）
+                  </span>
+                  {mounted && clockStr && (
+                    <span className="text-xs text-gray-400 font-mono tracking-wider tabular-nums">
+                      {clockStr}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
             <button
               onClick={() => setYear((y) => y + 1)}

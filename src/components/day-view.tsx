@@ -58,7 +58,6 @@ function createRecognition(): SpeechRecognitionLike | null {
   return recognition;
 }
 
-// Compute overlapping event layout: assign each event a column index and total columns
 interface EventLayout {
   columnIndex: number;
   totalColumns: number;
@@ -68,14 +67,12 @@ function computeEventLayout(events: TimeEvent[]): Map<string, EventLayout> {
   const layout = new Map<string, EventLayout>();
   if (events.length === 0) return layout;
 
-  // Sort by start time, then by duration (longer first)
   const sorted = [...events].sort((a, b) => {
     const startDiff = a.time.localeCompare(b.time);
     if (startDiff !== 0) return startDiff;
     return b.endTime.localeCompare(a.endTime);
   });
 
-  // Group overlapping events
   const groups: TimeEvent[][] = [];
   let currentGroup: TimeEvent[] = [sorted[0]];
   let groupEnd = sorted[0].endTime;
@@ -83,7 +80,6 @@ function computeEventLayout(events: TimeEvent[]): Map<string, EventLayout> {
   for (let i = 1; i < sorted.length; i++) {
     const evt = sorted[i];
     if (evt.time < groupEnd) {
-      // Overlapping
       currentGroup.push(evt);
       if (evt.endTime > groupEnd) groupEnd = evt.endTime;
     } else {
@@ -94,7 +90,6 @@ function computeEventLayout(events: TimeEvent[]): Map<string, EventLayout> {
   }
   groups.push(currentGroup);
 
-  // Assign columns within each group
   for (const group of groups) {
     const columns: string[][] = [];
     for (const evt of group) {
@@ -112,7 +107,6 @@ function computeEventLayout(events: TimeEvent[]): Map<string, EventLayout> {
         columns.push([evt.id]);
       }
     }
-
     const totalColumns = columns.length;
     for (let c = 0; c < columns.length; c++) {
       for (const id of columns[c]) {
@@ -124,6 +118,8 @@ function computeEventLayout(events: TimeEvent[]): Map<string, EventLayout> {
   return layout;
 }
 
+type TabType = 'schedule' | 'memo';
+
 export default function DayView({ year, month, day, onClose, embedded }: DayViewProps) {
   const [mounted, setMounted] = useState(false);
   const [events, setEvents] = useState<TimeEvent[]>([]);
@@ -133,11 +129,10 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
   const [newEvent, setNewEvent] = useState({ time: '09:00', endTime: '10:00', title: '', desc: '' });
   const [isListening, setIsListening] = useState(false);
   const [voiceText, setVoiceText] = useState('');
-  const [notePanelHeight, setNotePanelHeight] = useState(120);
+  const [activeTab, setActiveTab] = useState<TabType>('schedule');
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const voiceTextRef = useRef('');
-  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   const storageKey = `dayview-events-${year}-${month}-${day}`;
   const todoKey = `dayview-todos-${year}-${month}-${day}`;
@@ -212,6 +207,17 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
 
   const removeTodo = (id: string) => {
     saveTodos(todos.filter(t => t.id !== id));
+  };
+
+  const addTodo = () => {
+    const text = prompt('添加待办事项:');
+    if (!text?.trim()) return;
+    saveTodos([...todos, {
+      id: Date.now().toString(),
+      text: text.trim(),
+      done: false,
+      color: COLORS[todos.length % COLORS.length],
+    }]);
   };
 
   const parseVoiceToEvents = (text: string) => {
@@ -315,30 +321,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
     setIsListening(true);
   };
 
-  // Drag handler for note panel
-  const handleDragStart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    dragRef.current = { startY: e.clientY, startHeight: notePanelHeight };
-
-    const handleDragMove = (me: MouseEvent) => {
-      if (!dragRef.current) return;
-      const delta = dragRef.current.startY - me.clientY;
-      setNotePanelHeight(Math.max(60, Math.min(400, dragRef.current.startHeight + delta)));
-    };
-
-    const handleDragEnd = () => {
-      dragRef.current = null;
-      document.removeEventListener('mousemove', handleDragMove);
-      document.removeEventListener('mouseup', handleDragEnd);
-    };
-
-    document.addEventListener('mousemove', handleDragMove);
-    document.addEventListener('mouseup', handleDragEnd);
-  };
-
   const hours = Array.from({ length: 24 }, (_, i) => i);
-
-  // Compute overlapping event layout - must be before any early return (hooks rule)
   const eventLayout = useMemo(() => computeEventLayout(events), [events]);
 
   if (!mounted) return null;
@@ -354,295 +337,323 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
   const now = new Date();
   const currentHour = isToday ? now.getHours() : -1;
 
-  // Calculate event top/height based on time
   const getEventStyle = (evt: TimeEvent, layout: EventLayout) => {
     const [startH, startM] = evt.time.split(':').map(Number);
     const [endH, endM] = evt.endTime.split(':').map(Number);
     const startMinutes = startH * 60 + startM;
     const endMinutes = endH * 60 + endM;
-    const HOUR_HEIGHT = 36; // h-9 = 36px
+    const HOUR_HEIGHT = 36;
     const top = (startMinutes / 60) * HOUR_HEIGHT;
     const height = Math.max(20, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT);
     const widthPercent = 100 / layout.totalColumns;
     const leftPercent = layout.columnIndex * widthPercent;
 
-    return {
-      top,
-      height,
-      left: `${leftPercent}%`,
-      width: `${widthPercent}%`,
-    };
+    return { top, height, left: `${leftPercent}%`, width: `${widthPercent}%` };
   };
+
+  // Gradient accent colors for the header
+  const accentGradient = 'linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa)';
 
   // ========== Sidebar Panel Content ==========
   const panelContent = (
-    <div className="h-full flex flex-col bg-white relative">
-      {/* Header - Date Info */}
-      <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-gray-100">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-3xl font-bold text-gray-900">{day}</span>
-              <span className="text-sm text-gray-400 font-medium">{weekDay}</span>
-              {isToday && (
-                <span className="text-[10px] bg-blue-500 text-white px-1.5 py-0.5 rounded-full font-medium">今天</span>
-              )}
-            </div>
-            <div className="text-xs text-gray-400">{year}年{month}月</div>
-            <div className="text-xs text-gray-400 mt-0.5">
-              {lunarInfo.lunarMonth}月{lunarInfo.lunarDay}
-              {lunarInfo.isSolarTerm && <span className="text-amber-500 ml-1">{lunarInfo.display}</span>}
-              {lunarInfo.isFestival && !lunarInfo.isSolarTerm && <span className="text-red-400 ml-1">{lunarInfo.display}</span>}
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+    <div className="h-full flex flex-col bg-gray-50 relative">
+      {/* Header with gradient */}
+      <div className="flex-shrink-0 px-5 pt-5 pb-4 relative overflow-hidden" style={{ background: accentGradient }}>
+        {/* Decorative circles */}
+        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/5" />
+        <div className="absolute bottom-2 -left-4 w-20 h-20 rounded-full bg-white/5" />
 
-        {/* Voice + Add buttons row */}
-        <div className="flex items-center gap-2 mt-3">
-          <button
-            onClick={() => setShowAddEvent(!showAddEvent)}
-            className="flex items-center gap-1.5 text-xs font-medium text-white px-3 py-1.5 rounded-lg transition-all hover:shadow-sm"
-            style={{ background: 'linear-gradient(135deg, #4f8ff7, #6c5ce7)' }}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            添加日程
-          </button>
-          <button
-            onClick={toggleVoice}
-            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all ${
-              isListening
-                ? 'bg-red-50 text-red-500 border border-red-200'
-                : 'bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-200'
-            }`}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-            </svg>
-            {isListening ? '聆听中...' : '语音添加'}
-          </button>
-          {events.length > 0 && (
-            <span className="text-[10px] text-gray-300 bg-gray-50 px-2 py-1 rounded-full ml-auto">{events.length}项日程</span>
+        <div className="relative z-10">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-3xl font-bold text-white">{day}</span>
+                <span className="text-sm text-white/70 font-medium">{weekDay}</span>
+                {isToday && (
+                  <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-medium backdrop-blur-sm">今天</span>
+                )}
+              </div>
+              <div className="text-xs text-white/50">{year}年{month}月</div>
+              <div className="text-xs text-white/50 mt-0.5">
+                {lunarInfo.lunarMonth}月{lunarInfo.lunarDay}
+                {lunarInfo.isSolarTerm && <span className="text-amber-300 ml-1">{lunarInfo.display}</span>}
+                {lunarInfo.isFestival && !lunarInfo.isSolarTerm && <span className="text-red-300 ml-1">{lunarInfo.display}</span>}
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Voice input */}
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              onClick={toggleVoice}
+              className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all backdrop-blur-sm ${
+                isListening
+                  ? 'bg-red-500/30 text-red-100 border border-red-300/30'
+                  : 'bg-white/10 text-white/70 hover:bg-white/20 border border-white/10'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+              {isListening ? '聆听中...' : '语音添加'}
+            </button>
+            {events.length > 0 && (
+              <span className="text-[10px] text-white/40 bg-white/10 px-2 py-1 rounded-full ml-auto backdrop-blur-sm">{events.length}项日程</span>
+            )}
+          </div>
+
+          {/* Voice text preview */}
+          {voiceText && (
+            <div className="mt-2 text-xs text-blue-200 bg-white/10 px-3 py-1.5 rounded-lg break-all backdrop-blur-sm">
+              {voiceText}
+            </div>
           )}
         </div>
-
-        {/* Voice text preview */}
-        {voiceText && (
-          <div className="mt-2 text-xs text-blue-500 bg-blue-50 px-3 py-1.5 rounded-lg break-all">
-            {voiceText}
-          </div>
-        )}
-
-        {/* Add Event Form */}
-        {showAddEvent && (
-          <div className="mt-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
-            <input
-              type="text"
-              value={newEvent.title}
-              onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
-              placeholder="日程标题"
-              className="w-full text-sm font-medium text-gray-800 placeholder-gray-300 focus:outline-none mb-2 bg-transparent"
-              autoFocus
-              onKeyDown={e => { if (e.key === 'Enter') addEvent(); }}
-            />
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <input
-                type="time" value={newEvent.time}
-                onChange={e => setNewEvent({ ...newEvent, time: e.target.value })}
-                className="border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-300 bg-white text-[11px]"
-              />
-              <span className="text-gray-300">-</span>
-              <input
-                type="time" value={newEvent.endTime}
-                onChange={e => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                className="border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-300 bg-white text-[11px]"
-              />
-              <input
-                type="text"
-                value={newEvent.desc}
-                onChange={e => setNewEvent({ ...newEvent, desc: e.target.value })}
-                placeholder="备注"
-                className="flex-1 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-300 bg-white text-[11px]"
-              />
-            </div>
-            <div className="flex justify-end gap-2 mt-2">
-              <button
-                onClick={() => setShowAddEvent(false)}
-                className="text-xs text-gray-400 hover:text-gray-600 px-3 py-1 transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={addEvent}
-                disabled={!newEvent.title.trim()}
-                className="text-xs font-medium text-white px-3 py-1 rounded-lg transition-all disabled:opacity-40"
-                style={{ background: 'linear-gradient(135deg, #4f8ff7, #6c5ce7)' }}
-              >
-                添加
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Timeline + Floating Note Panel */}
-      <div className="flex-1 overflow-hidden relative">
-        {/* Timeline - always full height */}
-        <div ref={scrollRef} className="h-full overflow-y-auto">
-          <div className="flex relative" style={{ minHeight: `${24 * 36}px` }}>
-            {/* Time Column */}
-            <div className="w-12 flex-shrink-0 border-r border-gray-50">
-              {hours.map(h => (
-                <div
-                  key={h}
-                  className="flex items-start justify-end pr-1.5"
-                  style={{ height: 36 }}
-                >
-                  <span
-                    className="text-[10px] pt-0"
-                    style={h === currentHour ? { color: '#4f8ff7', fontWeight: 600 } : { color: '#c4c4c4' }}
-                  >
-                    {h.toString().padStart(2, '0')}:00
-                  </span>
-                </div>
-              ))}
+      {/* Tab Switcher */}
+      <div className="flex-shrink-0 bg-white border-b border-gray-100 px-5 pt-2">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setActiveTab('schedule')}
+            className={`relative px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
+              activeTab === 'schedule'
+                ? 'text-indigo-600 bg-indigo-50/50'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              日程
+            </span>
+            {activeTab === 'schedule' && (
+              <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ background: accentGradient }} />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('memo')}
+            className={`relative px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
+              activeTab === 'memo'
+                ? 'text-indigo-600 bg-indigo-50/50'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              备忘
+            </span>
+            {activeTab === 'memo' && (
+              <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ background: accentGradient }} />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === 'schedule' ? (
+          /* ===== Schedule Tab ===== */
+          <div className="h-full flex flex-col bg-white">
+            {/* Add Event Bar */}
+            <div className="flex-shrink-0 px-4 py-2 border-b border-gray-50 flex items-center gap-2">
+              <button
+                onClick={() => setShowAddEvent(!showAddEvent)}
+                className="flex items-center gap-1.5 text-xs font-medium text-white px-3 py-1.5 rounded-lg transition-all hover:shadow-sm"
+                style={{ background: accentGradient }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                添加日程
+              </button>
+              {todos.length > 0 && (
+                <span className="text-[10px] text-gray-300 bg-gray-50 px-2 py-1 rounded-full">{todos.length}项待办</span>
+              )}
             </div>
 
-            {/* Events Column - absolute positioned events */}
-            <div className="flex-1 relative">
-              {/* Hour grid lines */}
-              {hours.map(h => (
-                <div key={h} className="border-b border-gray-50/80 relative" style={{ height: 36 }}>
-                  {h === currentHour && (
-                    <div className="absolute left-0 right-0 top-1/2 h-[2px] bg-red-400 z-10">
-                      <div className="absolute -left-1 -top-[3px] w-2 h-2 bg-red-400 rounded-full" />
-                    </div>
-                  )}
+            {/* Add Event Form */}
+            {showAddEvent && (
+              <div className="flex-shrink-0 px-4 py-3 bg-indigo-50/30 border-b border-indigo-100/50">
+                <input
+                  type="text"
+                  value={newEvent.title}
+                  onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
+                  placeholder="日程标题"
+                  className="w-full text-sm font-medium text-gray-800 placeholder-gray-300 focus:outline-none mb-2 bg-transparent"
+                  autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') addEvent(); }}
+                />
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <input
+                    type="time" value={newEvent.time}
+                    onChange={e => setNewEvent({ ...newEvent, time: e.target.value })}
+                    className="border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-300 bg-white text-[11px]"
+                  />
+                  <span className="text-gray-300">-</span>
+                  <input
+                    type="time" value={newEvent.endTime}
+                    onChange={e => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                    className="border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-300 bg-white text-[11px]"
+                  />
+                  <input
+                    type="text"
+                    value={newEvent.desc}
+                    onChange={e => setNewEvent({ ...newEvent, desc: e.target.value })}
+                    placeholder="备注"
+                    className="flex-1 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-300 bg-white text-[11px]"
+                  />
                 </div>
-              ))}
+                <div className="flex justify-end gap-2 mt-2">
+                  <button onClick={() => setShowAddEvent(false)} className="text-xs text-gray-400 hover:text-gray-600 px-3 py-1 transition-colors">取消</button>
+                  <button onClick={addEvent} disabled={!newEvent.title.trim()} className="text-xs font-medium text-white px-3 py-1 rounded-lg transition-all disabled:opacity-40" style={{ background: accentGradient }}>添加</button>
+                </div>
+              </div>
+            )}
 
-              {/* Events - absolutely positioned for overlap support */}
-              {events.map(evt => {
-                const layout = eventLayout.get(evt.id) || { columnIndex: 0, totalColumns: 1 };
-                const style = getEventStyle(evt, layout);
-                return (
-                  <div
-                    key={evt.id}
-                    className={`absolute rounded-lg px-2 py-1 z-5 transition-all group overflow-hidden ${evt.done ? 'opacity-50' : ''}`}
-                    style={{
-                      ...style,
-                      backgroundColor: `${evt.color}15`,
-                      borderLeft: `3px solid ${evt.color}`,
-                    }}
-                  >
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => toggleDone(evt.id)}
-                        className="flex-shrink-0 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center"
-                        style={{ borderColor: evt.color, backgroundColor: evt.done ? evt.color : 'transparent' }}
+            {/* Timeline */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
+              <div className="flex relative" style={{ minHeight: `${24 * 36}px` }}>
+                {/* Time Column */}
+                <div className="w-12 flex-shrink-0 border-r border-gray-50">
+                  {hours.map(h => (
+                    <div key={h} className="flex items-start justify-end pr-1.5" style={{ height: 36 }}>
+                      <span className="text-[10px] pt-0" style={h === currentHour ? { color: '#6366f1', fontWeight: 600 } : { color: '#c4c4c4' }}>
+                        {h.toString().padStart(2, '0')}:00
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Events Column */}
+                <div className="flex-1 relative">
+                  {hours.map(h => (
+                    <div key={h} className="border-b border-gray-50/80 relative" style={{ height: 36 }}>
+                      {h === currentHour && (
+                        <div className="absolute left-0 right-0 top-1/2 h-[2px] bg-red-400 z-10">
+                          <div className="absolute -left-1 -top-[3px] w-2 h-2 bg-red-400 rounded-full" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {events.map(evt => {
+                    const layout = eventLayout.get(evt.id) || { columnIndex: 0, totalColumns: 1 };
+                    const style = getEventStyle(evt, layout);
+                    return (
+                      <div
+                        key={evt.id}
+                        className={`absolute rounded-lg px-2 py-1 z-5 transition-all group overflow-hidden ${evt.done ? 'opacity-50' : ''}`}
+                        style={{ ...style, backgroundColor: `${evt.color}15`, borderLeft: `3px solid ${evt.color}` }}
                       >
-                        {evt.done && (
-                          <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => toggleDone(evt.id)}
+                            className="flex-shrink-0 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center"
+                            style={{ borderColor: evt.color, backgroundColor: evt.done ? evt.color : 'transparent' }}
+                          >
+                            {evt.done && (
+                              <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                          <span className={`text-[11px] font-medium truncate ${evt.done ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                            {evt.title}
+                          </span>
+                          {layout.totalColumns <= 2 && (
+                            <span className="text-[9px] text-gray-400 ml-auto flex-shrink-0">{evt.time}-{evt.endTime}</span>
+                          )}
+                          <button onClick={() => removeEvent(evt.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ===== Memo Tab ===== */
+          <div className="h-full flex flex-col bg-white">
+            {/* Todo Section */}
+            <div className="flex-shrink-0 border-b border-gray-100">
+              <div className="flex items-center justify-between px-5 py-2.5">
+                <span className="text-xs font-semibold text-gray-500">待办事项</span>
+                <button
+                  onClick={addTodo}
+                  className="text-[10px] font-medium text-indigo-500 hover:text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-50 transition-colors"
+                >
+                  + 添加
+                </button>
+              </div>
+              {todos.length > 0 ? (
+                <div className="px-5 pb-2.5">
+                  {todos.map(todo => (
+                    <div key={todo.id} className="flex items-center gap-2.5 py-1.5 group">
+                      <button
+                        onClick={() => toggleTodo(todo.id)}
+                        className="flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all"
+                        style={{ borderColor: todo.color, backgroundColor: todo.done ? todo.color : 'transparent' }}
+                      >
+                        {todo.done && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
                         )}
                       </button>
-                      <span className={`text-[11px] font-medium truncate ${evt.done ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                        {evt.title}
+                      <span className={`text-sm flex-1 ${todo.done ? 'line-through text-gray-300' : 'text-gray-600'}`}>
+                        {todo.text}
                       </span>
-                      {layout.totalColumns <= 2 && (
-                        <span className="text-[9px] text-gray-400 ml-auto flex-shrink-0">
-                          {evt.time}-{evt.endTime}
-                        </span>
-                      )}
                       <button
-                        onClick={() => removeEvent(evt.id)}
-                        className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                        onClick={() => removeTodo(todo.id)}
+                        className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                       >
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
                     </div>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              ) : (
+                <div className="px-5 pb-3 text-xs text-gray-300">暂无待办事项</div>
+              )}
             </div>
-          </div>
-        </div>
 
-        {/* Floating Note Panel - draggable, overlays on timeline */}
-        <div
-          className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-20 flex flex-col"
-          style={{ height: notePanelHeight }}
-        >
-          {/* Drag handle */}
-          <div
-            className="flex-shrink-0 flex items-center justify-center py-1 cursor-row-resize hover:bg-gray-50 transition-colors"
-            onMouseDown={handleDragStart}
-          >
-            <div className="w-8 h-1 rounded-full bg-gray-300" />
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-5 pb-2 min-h-0">
-            {/* Todos */}
-            {todos.length > 0 && (
-              <div className="pb-2 border-b border-gray-100 mb-2">
-                <div className="text-[10px] font-medium text-gray-400 mb-1">待办事项</div>
-                {todos.map(todo => (
-                  <div key={todo.id} className="flex items-center gap-2 py-0.5 group">
-                    <button
-                      onClick={() => toggleTodo(todo.id)}
-                      className="flex-shrink-0 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center"
-                      style={{ borderColor: todo.color, backgroundColor: todo.done ? todo.color : 'transparent' }}
-                    >
-                      {todo.done && (
-                        <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                    <span className={`text-xs ${todo.done ? 'line-through text-gray-300' : 'text-gray-600'}`}>
-                      {todo.text}
-                    </span>
-                    <button
-                      onClick={() => removeTodo(todo.id)}
-                      className="ml-auto text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+            {/* Notes - full remaining space */}
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="flex items-center justify-between px-5 py-2.5 border-b border-gray-50">
+                <span className="text-xs font-semibold text-gray-500">备忘录</span>
+                <span className="text-[10px] text-gray-300">{noteText.length > 0 ? `${noteText.length}字` : ''}</span>
               </div>
-            )}
-
-            {/* Note */}
-            <div className="flex items-start gap-2">
-              <svg className="w-3.5 h-3.5 text-gray-300 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              <textarea
-                value={noteText}
-                onChange={e => setNoteText(e.target.value)}
-                onBlur={saveNote}
-                placeholder="备忘录..."
-                className="flex-1 text-xs text-gray-600 placeholder-gray-300 focus:outline-none bg-transparent resize-none"
-                style={{ minHeight: 30, maxHeight: notePanelHeight - 60 }}
-              />
+              <div className="flex-1 min-h-0 p-4">
+                <textarea
+                  value={noteText}
+                  onChange={e => setNoteText(e.target.value)}
+                  onBlur={saveNote}
+                  placeholder="在这里记录想法、笔记、灵感..."
+                  className="w-full h-full text-sm text-gray-600 placeholder-gray-300 focus:outline-none bg-indigo-50/20 rounded-xl p-4 resize-none leading-relaxed border border-indigo-100/30 focus:border-indigo-200/50 transition-colors"
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -651,7 +662,6 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
     return panelContent;
   }
 
-  // Non-embedded: standalone overlay mode (fallback)
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/20" />
