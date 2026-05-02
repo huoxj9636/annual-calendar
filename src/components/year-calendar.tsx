@@ -38,6 +38,7 @@ export default function YearCalendar() {
   const [mounted, setMounted] = useState(false);
   const [todayStr, setTodayStr] = useState('');
   const [notePopup, setNotePopup] = useState<NotePopup | null>(null);
+  const [popupSize, setPopupSize] = useState({ w: 400, h: 320 });
   const [noteDraft, setNoteDraft] = useState('');
   const popupRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -189,6 +190,7 @@ export default function YearCalendar() {
       if (x < 16) x = 16;
       if (y + popH > window.innerHeight - 16) y = rect.top - popH - 4;
       setNotePopup({ month, day, x, y });
+      setPopupSize({ w: 400, h: 320 });
     },
     [year, notes],
   );
@@ -730,11 +732,14 @@ export default function YearCalendar() {
       {notePopup && mounted && (
         <div
           ref={popupRef}
-          className="fixed z-50 rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+          className="fixed z-50 rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col"
           style={{
             left: notePopup.x,
             top: notePopup.y,
-            width: 400,
+            width: popupSize.w,
+            height: popupSize.h,
+            minWidth: 280,
+            minHeight: 200,
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           }}
         >
@@ -760,7 +765,7 @@ export default function YearCalendar() {
           </div>
 
           {/* Body */}
-          <div className="bg-white px-5 pb-4 pt-3">
+          <div className="bg-white px-5 pb-4 pt-3 flex-1 flex flex-col min-h-0 overflow-auto">
             {notes[`${year}-${notePopup.month}-${notePopup.day}`] && !noteDraft ? (
               <div className="mb-3">
                 <div className="text-[10px] text-gray-400 font-medium mb-1.5 tracking-wide">已记录</div>
@@ -770,7 +775,7 @@ export default function YearCalendar() {
               </div>
             ) : null}
             <textarea
-              className="w-full h-36 text-sm border-0 border-b border-gray-100 p-0 pb-3 resize-none focus:outline-none focus:border-indigo-300 leading-relaxed text-gray-800 placeholder:text-gray-300"
+              className="w-full flex-1 min-h-[80px] text-sm border-0 border-b border-gray-100 p-0 pb-3 resize-none focus:outline-none focus:border-indigo-300 leading-relaxed text-gray-800 placeholder:text-gray-300"
               placeholder="记录今日事项与行程..."
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
@@ -792,6 +797,34 @@ export default function YearCalendar() {
                 保存
               </button>
             </div>
+          </div>
+          {/* Resize handle */}
+          <div
+            className="absolute right-1 bottom-1 w-4 h-4 cursor-se-resize flex items-end justify-end"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const startX = e.clientX;
+              const startY = e.clientY;
+              const startW = popupSize.w;
+              const startH = popupSize.h;
+              const onMove = (me: MouseEvent) => {
+                setPopupSize({
+                  w: Math.max(280, startW + me.clientX - startX),
+                  h: Math.max(200, startH + me.clientY - startY),
+                });
+              };
+              const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+              };
+              document.addEventListener('mousemove', onMove);
+              document.addEventListener('mouseup', onUp);
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" className="text-white/40">
+              <path d="M9 1L1 9M9 4L4 9M9 7L7 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
           </div>
         </div>
       )}
