@@ -847,12 +847,18 @@ export default function YearCalendar() {
         </div>
       )}
       {dayViewDate && (
-        <DayView
-          year={dayViewDate.year}
-          month={dayViewDate.month}
-          day={dayViewDate.day}
-          onClose={() => setDayViewDate(null)}
-        />
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <div className="absolute inset-0 bg-black/20" onClick={() => setDayViewDate(null)} />
+          <div className="relative w-[480px] max-w-[90vw] h-full bg-white shadow-2xl animate-slide-in-panel overflow-hidden">
+            <DayView
+              year={dayViewDate.year}
+              month={dayViewDate.month}
+              day={dayViewDate.day}
+              onClose={() => setDayViewDate(null)}
+              embedded
+            />
+          </div>
+        </div>
       )}
 
       {/* 月度复盘侧边栏 - TickTick风格 */}
