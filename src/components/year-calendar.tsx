@@ -690,7 +690,14 @@ export default function YearCalendar() {
                   const noteKey = `${year}-${cell.month}-${cell.day}`;
                   const hasNote = mounted && notes[noteKey];
                   const cellDateStr = `${year}-${String(cell.month).padStart(2, '0')}-${String(cell.day).padStart(2, '0')}`;
-                  const isPast = mounted && todayStr && cellDateStr < todayStr;
+                  const isPast = mounted && (() => {
+                    if (!todayStr) return false;
+                    const cellYear = parseInt(cellDateStr.slice(0, 4));
+                    const todayYear = parseInt(todayStr.slice(0, 4));
+                    if (cellYear < todayYear) return true;
+                    if (cellYear > todayYear) return false;
+                    return cellDateStr < todayStr;
+                  })();
 
                   return (
                     <div
