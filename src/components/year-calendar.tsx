@@ -59,7 +59,7 @@ export default function YearCalendar() {
       const h = now.getHours().toString().padStart(2, '0');
       const m = now.getMinutes().toString().padStart(2, '0');
       const s = now.getSeconds().toString().padStart(2, '0');
-      const ms = now.getMilliseconds().toString().padStart(3, '0');
+      const ms = now.getMilliseconds().toString().padStart(3, '0').slice(0, 2);
       setClockStr(`${h}:${m}:${s}.${ms}`);
     };
     update();
@@ -272,19 +272,19 @@ export default function YearCalendar() {
             </button>
             <div className="flex items-end gap-2">
               <div className="flex flex-col items-start">
-                <h1 className="text-7xl font-black tracking-tight text-gray-900 leading-none">
+                <h1 className="text-6xl font-black tracking-tight text-gray-900 leading-none">
                   {year}
                 </h1>
                 <div className="flex items-baseline gap-2 mt-0.5">
                   <span className="text-base text-gray-500 font-medium">
                     {ganZhi}（{animal}）
                   </span>
-                  {mounted && clockStr && (
-                    <span className="text-xs text-gray-400 font-mono tracking-wider tabular-nums">
-                      {clockStr}
-                    </span>
-                  )}
                 </div>
+                {mounted && clockStr && (
+                  <div className="text-lg text-gray-400 font-mono tracking-wider tabular-nums mt-0.5">
+                    {clockStr}
+                  </div>
+                )}
               </div>
             </div>
             <button
@@ -304,7 +304,7 @@ export default function YearCalendar() {
 
           {/* 居中标语 */}
           <div className="absolute inset-x-0 flex justify-center pointer-events-none">
-            <span className="text-3xl font-bold tracking-[0.4em] text-gray-800 select-none" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
+            <span className="text-4xl font-bold tracking-[0.4em] text-gray-800 select-none" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
               永远不要放弃
             </span>
           </div>
@@ -445,7 +445,7 @@ export default function YearCalendar() {
                         height: cellHeight,
                         borderBottom: '1px solid #efefef',
                         borderRight: '1px solid #efefef',
-                        backgroundColor: isPast ? '#fafafa' : weekendBg,
+                        backgroundColor: isPast ? '#fdfdfe' : weekendBg,
                       }}
                     >
                       {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
@@ -458,12 +458,12 @@ export default function YearCalendar() {
                         <span
                           className={`text-[15px] font-bold leading-none ${
                             isPast
-                              ? 'text-gray-200'
+                              ? ''
                               : cell.isWeekend ? '' : 'text-gray-800'
                           }`}
                           style={
                             isPast
-                              ? undefined
+                              ? { color: '#e0e0e0' }
                               : cell.isWeekend
                                 ? { color: monthColor.text }
                                 : undefined
@@ -474,7 +474,7 @@ export default function YearCalendar() {
                         <span
                           className={`text-[9px] leading-tight mt-0.5 whitespace-nowrap ${
                             isPast
-                              ? 'text-gray-100'
+                              ? ''
                               : cell.isSolarTerm
                                 ? 'text-orange-600 font-medium'
                                 : cell.isFestival
@@ -487,7 +487,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? undefined
+                              ? { color: '#e8e8e8' }
                               : cell.isWeekend &&
                                 !cell.isSolarTerm &&
                                 !cell.isFestival &&

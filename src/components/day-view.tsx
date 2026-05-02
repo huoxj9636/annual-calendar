@@ -390,36 +390,11 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
             </button>
           </div>
 
-          {/* Voice input */}
-          <div className="flex items-center gap-2 mt-3">
-            <button
-              onClick={toggleVoice}
-              className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all backdrop-blur-sm ${
-                isListening
-                  ? 'bg-red-500/30 text-red-100 border border-red-300/30'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20 border border-white/10'
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-              {isListening ? '聆听中...' : '语音添加'}
-            </button>
-            {events.length > 0 && (
-              <span className="text-[10px] text-white/40 bg-white/10 px-2 py-1 rounded-full ml-auto backdrop-blur-sm">{events.length}项日程</span>
-            )}
-          </div>
 
-          {/* Voice text preview */}
-          {voiceText && (
-            <div className="mt-2 text-xs text-blue-200 bg-white/10 px-3 py-1.5 rounded-lg break-all backdrop-blur-sm">
-              {voiceText}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Tab Switcher */}
+      {/* Tab Switcher + Voice Button */}
       <div className="flex-shrink-0 bg-white border-b border-gray-100 px-5 pt-2">
         <div className="flex items-center gap-1">
           <button
@@ -458,7 +433,33 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
               <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ background: accentGradient }} />
             )}
           </button>
+
+          {/* Voice button on the right side */}
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={toggleVoice}
+              className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all ${
+                isListening
+                  ? 'bg-red-50 text-red-600 border border-red-200 shadow-sm shadow-red-100'
+                  : 'bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-200'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+              {isListening ? '聆听中...' : '语音'}
+            </button>
+            {events.length > 0 && (
+              <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-1 rounded-full">{events.length}项</span>
+            )}
+          </div>
         </div>
+        {/* Voice text preview */}
+        {voiceText && (
+          <div className="mt-1 mb-1 text-xs text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg break-all">
+            {voiceText}
+          </div>
+        )}
       </div>
 
       {/* Tab Content */}
