@@ -379,7 +379,7 @@ export default function YearCalendar() {
 
           {/* 居中标语 */}
           <div className="absolute inset-x-0 flex justify-center pointer-events-none">
-            <span className="text-4xl font-bold tracking-[0.4em] text-[#8b8680] select-none tracking-[0.3em]" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
+            <span className="text-3xl font-extralight tracking-[0.6em] text-[#8b8680]/60 select-none" style={{ fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.6em' }}>
               永远不要放弃
             </span>
           </div>
