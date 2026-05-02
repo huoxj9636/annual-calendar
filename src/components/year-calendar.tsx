@@ -533,9 +533,9 @@ export default function YearCalendar() {
                       `}
                       style={{
                         height: cellHeight,
-                        borderBottom: '1px solid rgba(148,163,184,0.12)',
-                        borderRight: '1px solid rgba(148,163,184,0.12)',
-                        backgroundColor: isPast ? 'rgba(250,250,252,0.55)' : weekendBg,
+                        borderBottom: '1px solid rgba(148,163,184,0.18)',
+                        borderRight: '1px solid rgba(148,163,184,0.18)',
+                        backgroundColor: isPast ? (cell.isWeekend ? 'rgba(240,242,248,0.7)' : 'rgba(248,249,252,0.6)') : weekendBg,
                         transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
                       }}
                     >
@@ -554,7 +554,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#e0e0e0' }
+                              ? { color: '#bbb' }
                               : cell.isWeekend
                                 ? { color: monthColor.text }
                                 : undefined
@@ -578,7 +578,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#e5e5e5' }
+                              ? { color: '#ccc' }
                               : cell.isWeekend &&
                                 !cell.isSolarTerm &&
                                 !cell.isFestival &&
