@@ -51,6 +51,9 @@ export default function YearCalendar() {
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const gridInnerRef = useRef<HTMLDivElement>(null);
   const [cellHeight, setCellHeight] = useState(66);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isSnapping = useRef(false);
+  const scrollTimeout = useRef<ReturnType<typeof setTimeout>>(null);
   const [dayViewWidth, setDayViewWidth] = useState(480);
   const [reviewWidth, setReviewWidth] = useState(440);
 
@@ -190,6 +193,49 @@ export default function YearCalendar() {
     };
   }, [notePopup, saveNote]);
 
+  // Custom scroll snap with controlled animation speed
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (isSnapping.current) return;
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+      scrollTimeout.current = setTimeout(() => {
+        const scrollTop = container.scrollTop;
+        const pageHeight = container.clientHeight;
+        const currentPage = Math.round(scrollTop / pageHeight);
+        const targetScroll = currentPage * pageHeight;
+        if (Math.abs(scrollTop - targetScroll) > 5) {
+          isSnapping.current = true;
+          const startY = scrollTop;
+          const diff = targetScroll - startY;
+          const duration = 600; // ms - slow animation
+          const startTime = performance.now();
+          const animate = (now: number) => {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            // ease-out cubic
+            const eased = 1 - Math.pow(1 - progress, 3);
+            container.scrollTop = startY + diff * eased;
+            if (progress < 1) {
+              requestAnimationFrame(animate);
+            } else {
+              isSnapping.current = false;
+            }
+          };
+          requestAnimationFrame(animate);
+        }
+      }, 150); // wait 150ms after scroll stops
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+    };
+  }, []);
+
   const getDayStatus = useCallback(
     (month: number, day: number): 'checked' | 'crossed' | 'auto' | 'none' => {
       const key = `${year}-${month}-${day}`;
@@ -280,9 +326,9 @@ export default function YearCalendar() {
 
 
   return (
-    <div className="h-screen overflow-y-scroll snap-y snap-proximity" style={{ scrollbarWidth: 'none' }}>
+    <div ref={scrollContainerRef} className="h-screen overflow-y-scroll" style={{ scrollbarWidth: 'none' }}>
       {/* Page 1: Calendar */}
-      <div className="h-screen snap-start bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
+      <div className="h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 border-b border-gray-200 print:static print:border-b z-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/header-bg.jpeg')" }} />
@@ -785,7 +831,7 @@ export default function YearCalendar() {
       </div>
 
       {/* Page 2: Monthly Review */}
-      <section className="h-screen snap-start overflow-y-auto">
+      <section className="h-screen overflow-y-auto">
         <MonthlyReview year={year} />
       </section>
     </div>
