@@ -252,7 +252,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
       foundTimes.push({ hour: parseInt(match[1]), minute: parseInt(match[2]) });
     }
 
-    let cleanText = text
+    const cleanText = text
       .replace(/(上午|下午|早上|早晨|晚上|傍晚)\s*/g, '')
       .replace(/\d{1,2}点半?/g, '')
       .replace(/\d{1,2}:\d{2}/g, '')

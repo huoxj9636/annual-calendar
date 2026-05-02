@@ -2,7 +2,7 @@
 
 ### 项目概述
 
-年度计划日历应用，支持 12 周工作法区块划分、农历/节气显示、每日满意度勾选功能。
+年度计划日历应用，支持 12 周工作法区块划分、农历/节气显示、每日满意度勾选、日视图日程管理、月度复盘、人生旅途行动模板等功能。
 
 ### 版本技术栈
 
@@ -25,6 +25,9 @@
 │   │   └── globals.css         # 全局样式
 │   ├── components/
 │   │   ├── year-calendar.tsx   # 年历核心组件 (Client Component)
+│   │   ├── day-view.tsx        # 日视图侧边栏 (日程/备忘Tab切换)
+│   │   ├── monthly-review.tsx  # 月度复盘页面 (满意度/热力图/趋势)
+│   │   ├── life-calendar.tsx   # 人生旅途侧边栏 (9阶段交互式行动模板)
 │   │   └── ui/                 # Shadcn UI 组件库
 │   ├── lib/
 │   │   ├── lunar.ts            # 农历计算工具 (lunar-javascript 封装)
@@ -45,11 +48,18 @@
 3. **农历/节气显示**: 每天显示对应农历日期、节气、节日
 4. **12 周工作法框选**: 每年 4 个 12 周区块，红/黑边框交替标识
 5. **满意度勾选**: 过去天数自动 ✓，点击切换 ✓↔✗，状态存储在 localStorage
+6. **日视图侧边栏**: 点击日期右侧滑出，日程/备忘Tab切换，语音识别智能分流，事件并列布局
+7. **月度复盘页面**: 下滑翻页进入，自动定位当前月，满意度/热力图/趋势分析
+8. **人生旅途侧边栏**: 左侧箭头滑出，9阶段交互式行动模板，可勾选行动项，可添加到日历计划
 
 ## 关键数据流
 
 - `yearData = precomputeYearData(year, blocks, getLunarInfo)` — 年度数据预计算
 - 勾选状态: `localStorage['calendar-overrides-{year}']` — JSON 格式 `{ "year-month-day": "checked"|"crossed" }`
+- 日程事件: `localStorage['dayview-events-{year}-{month}-{day}']`
+- 待办事项: `localStorage['dayview-todos-{year}-{month}-{day}']`
+- 备忘录: `localStorage['calendar-notes-{year}']`
+- 人生旅途进度: `localStorage['life-calendar-progress']` — 嵌套对象 `{stageKey: {catKey: {actionId: {done, addedToCalendar}}}}`
 - 12 周区块: `getTwelveWeekBlocks(year)` — 返回 4 个 block，每 block 84 天
 
 ## 包管理规范

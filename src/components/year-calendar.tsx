@@ -18,9 +18,6 @@ import {
   isToday,
   MONTH_COLORS,
   MONTH_NAMES,
-  getDaysInMonth,
-  getDayOfWeek,
-  isWeekend,
   type CellData,
 } from '@/lib/calendar-utils';
 
@@ -64,7 +61,6 @@ export default function YearCalendar() {
   const handlePanelResize = useCallback((setter: React.Dispatch<React.SetStateAction<number>>, e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
-    const startWidth = 0; // will be read from current state via closure
     const onMouseMove = (ev: MouseEvent) => {
       const delta = startX - ev.clientX; // dragging left = increasing width
       setter(w => Math.min(Math.max(w + delta, 360), window.innerWidth * 0.92));
@@ -303,28 +299,6 @@ export default function YearCalendar() {
   const colTemplate = `52px repeat(31, minmax(28px, 1fr))`;
 
   // Build SVG wave border paths for quarter blocks
-  // Simplified approach: draw a wavy rectangle around each quarter
-  // Calculate 12-week block start/end days for star markers
-  const blockMarkerDays = useMemo(() => {
-    if (!blocks || blocks.length === 0) return new Map<string, 'start' | 'end' | 'both'>();
-    const markers = new Map<string, 'start' | 'end' | 'both'>();
-    for (let i = 0; i < blocks.length; i++) {
-      const block = blocks[i];
-      const start = block.startDate;
-      const end = block.endDate;
-      const startKey = `${start.getMonth() + 1}-${start.getDate()}`;
-      const endKey = `${end.getMonth() + 1}-${end.getDate()}`;
-      const existingStart = markers.get(startKey);
-      const existingEnd = markers.get(endKey);
-      if (startKey === endKey) {
-        markers.set(startKey, 'both');
-      } else {
-        markers.set(startKey, existingStart === 'end' || existingStart === 'both' ? 'both' : 'start');
-        markers.set(endKey, existingEnd === 'start' || existingEnd === 'both' ? 'both' : 'end');
-      }
-    }
-    return markers;
-  }, [blocks]);
 
 
 
