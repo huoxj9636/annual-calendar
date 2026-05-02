@@ -519,7 +519,7 @@ export default function YearCalendar() {
         ref={gridContainerRef}
         className="flex-1 px-8 pb-6 pt-3 overflow-x-auto min-h-0"
       >
-        <div ref={gridInnerRef} className="w-full h-full relative">
+        <div ref={gridInnerRef} className="w-full h-full relative border-t border-l border-gray-200 rounded-sm">
 
 
           {/* Month rows */}
@@ -537,11 +537,11 @@ export default function YearCalendar() {
               >
                 {/* Month label */}
                 <div
-                  className="flex items-center justify-center text-[10px] font-bold sticky left-0 bg-gray-50 z-10 print:bg-white rounded-md mx-0.5"
+                  className="flex items-center justify-center text-[10px] font-bold sticky left-0 bg-gray-50 z-10 print:bg-white rounded mx-0.5"
                   style={{
                     height: cellHeight,
                     color: monthColor.text,
-                    border: `2px solid ${monthColor.text}`,
+                    border: `1.5px solid ${monthColor.text}`,
                     backgroundColor: `${monthColor.bg}`,
                   }}
                 >
@@ -555,7 +555,7 @@ export default function YearCalendar() {
                       <div
                         key={cell.day}
                         data-day={cell.day}
-                        className="border border-gray-100 bg-gray-50/50"
+                        className="bg-gray-50/30"
                         style={{ height: cellHeight }}
                       />
                     );
@@ -574,12 +574,14 @@ export default function YearCalendar() {
                       key={cell.day}
                       data-day={cell.day}
                       className={`
-                        border border-gray-200 relative
+                        relative
                         ${isTodayCell ? 'ring-2 ring-blue-500 ring-inset z-[5]' : ''}
                         ${!cell.isWeekend ? 'bg-white' : ''}
                       `}
                       style={{
                         height: cellHeight,
+                        borderBottom: '1px solid #e5e7eb',
+                        borderRight: '1px solid #e5e7eb',
                         backgroundColor: weekendBg,
                       }}
                     >
@@ -696,7 +698,7 @@ export default function YearCalendar() {
           <div className="px-4 py-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="text-white text-2xl font-bold">{notePopup.day}</span>
+                <span className="text-white text-2xl font-bold">{notePopup.day}日</span>
                 <span className="text-white/80 text-xs">{year}年{notePopup.month}月</span>
               </div>
               <button
