@@ -432,7 +432,7 @@ export default function YearCalendar() {
   const animal = getYearAnimal(year);
   const ganZhi = getGanZhiYear(year);
 
-  const colTemplate = `48px repeat(31, 1fr)`;
+  const colTemplate = `52px repeat(31, minmax(28px, 1fr))`;
 
   // Build SVG wave border paths for quarter blocks
   // Simplified approach: draw a wavy rectangle around each quarter
@@ -635,10 +635,10 @@ export default function YearCalendar() {
       {/* Calendar Grid - fills remaining viewport */}
       <div
         ref={gridContainerRef}
-        className="flex-1 px-8 pb-2 pt-1 overflow-x-auto min-h-0"
+        className="flex-1 px-8 pb-2 pt-1 overflow-x-auto min-h-0 flex justify-center"
       >
         {selectedMonth === null ? (
-        <div ref={gridInnerRef} className="w-full h-full relative border-t border-l border-gray-200 rounded-sm">
+        <div ref={gridInnerRef} className="h-full relative border-t border-l border-gray-200 rounded-sm" style={{ minWidth: '1100px' }}>
 
 
           {/* Month rows */}
@@ -708,7 +708,7 @@ export default function YearCalendar() {
                     >
                       {/* Top zone: day number + lunar + check/cross, click to toggle */}
                       <div
-                        className="flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-black/[0.03] transition-colors overflow-visible"
+                        className="flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-black/[0.03] transition-colors"
                         style={{ height: '40%' }}
                         onClick={() => toggleDay(cell.month, cell.day)}
                         title={`${year}年${cell.month}月${cell.day}日 - 点击切换满意/不满意`}
@@ -739,7 +739,7 @@ export default function YearCalendar() {
                           )}
                         </div>
                         <span
-                          className={`text-[11px] leading-tight truncate max-w-full mt-0.5 ${
+                          className={`text-[9px] leading-tight mt-0.5 whitespace-nowrap ${
                             cell.isSolarTerm
                               ? 'text-orange-600 font-medium'
                               : cell.isFestival
