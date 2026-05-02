@@ -790,24 +790,12 @@ export default function YearCalendar() {
                             {cell.lunarDisplay}
                           </span>
                         </div>
-                        {/* Right: check/cross toggle */}
+                        {/* Right: check/cross toggle (invisible click area) */}
                         <div
                           className="w-5 flex items-start justify-center pt-0.5 cursor-pointer hover:bg-green-50/50 transition-colors rounded-tr-sm"
                           onClick={() => toggleDay(cell.month, cell.day)}
                           title="切换满意/不满意"
-                        >
-                          {mounted && status !== 'none' && (
-                            <span
-                              className={`text-[10px] font-bold leading-none ${
-                                status === 'crossed'
-                                  ? 'text-red-400'
-                                  : 'text-green-500'
-                              }`}
-                            >
-                              {status === 'crossed' ? '✗' : '✓'}
-                            </span>
-                          )}
-                        </div>
+                        />
                       </div>
                       {/* Centered check/cross watermark overlay */}
                       {mounted && status !== 'none' && (
