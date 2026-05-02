@@ -280,7 +280,7 @@ export default function YearCalendar() {
 
 
   return (
-    <div className="h-screen overflow-y-scroll snap-y snap-mandatory scroll-smooth" style={{ scrollbarWidth: 'none' }}>
+    <div className="h-screen overflow-y-scroll snap-y snap-proximity" style={{ scrollbarWidth: 'none' }}>
       {/* Page 1: Calendar */}
       <div className="h-screen snap-start bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
       {/* Header */}
