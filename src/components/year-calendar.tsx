@@ -434,7 +434,8 @@ export default function YearCalendar() {
 
   const colTemplate = `48px repeat(31, 1fr)`;
 
-  // Build SVG wave border paths for 12-week blocks
+  // Build SVG wave border paths for quarter blocks
+  // Simplified approach: draw a wavy rectangle around each quarter
   const [waveBorders, setWaveBorders] = useState<{ d: string; color: string; blockIdx: number }[]>([]);
 
   useEffect(() => {
@@ -447,69 +448,7 @@ export default function YearCalendar() {
       const gridEl = gridInnerRef.current;
       if (!gridEl) return;
       const gridRect = gridEl.getBoundingClientRect();
-
-      // Collect cell rects per block, including empty cells at block's max day for right border alignment
-      const blockCellMap: Record<number, Map<string, { rect: DOMRect; month: number; day: number; isEmpty?: boolean }>> = {};
-      const blockMaxDay: Record<number, number> = {};
       const monthRows = gridEl.querySelectorAll<HTMLElement>('[data-month-row]');
-      // First pass: collect real cells and find max day per block
-      monthRows.forEach((row) => {
-        const monthIdx = parseInt(row.dataset.monthRow || '0', 10);
-        const cells = row.querySelectorAll<HTMLElement>('[data-day]');
-        cells.forEach((cell) => {
-          const day = parseInt(cell.dataset.day || '0', 10);
-          const cellData = yearData[monthIdx]?.[day - 1];
-          if (!cellData || !cellData.exists || cellData.blockIndex < 0) return;
-          if (!blockCellMap[cellData.blockIndex]) blockCellMap[cellData.blockIndex] = new Map();
-          blockCellMap[cellData.blockIndex].set(`${monthIdx + 1}-${day}`, {
-            rect: cell.getBoundingClientRect(),
-            month: monthIdx + 1,
-            day,
-          });
-          // Track the max day column this block reaches across ALL its months
-          const block = blocks.find((b: TwelveWeekBlock) => b.index === cellData.blockIndex);
-          if (block) {
-            const blockStartDate = new Date(block.startDate);
-            const blockEndDate = new Date(block.endDate);
-            const currentMax = blockMaxDay[cellData.blockIndex] || 0;
-            let maxDays = 0;
-            // Iterate all months in the block
-            const startM = blockStartDate.getMonth() + 1;
-            const endM = blockEndDate.getMonth() + 1;
-            for (let bm = startM; bm <= endM; bm++) {
-              maxDays = Math.max(maxDays, new Date(year, bm, 0).getDate());
-            }
-            blockMaxDay[cellData.blockIndex] = Math.max(currentMax, maxDays);
-          }
-        });
-      });
-      // Second pass: add empty cells at maxDay for months that have fewer days
-      for (const [blockIdxStr, maxDay] of Object.entries(blockMaxDay)) {
-        const blockIdx = parseInt(blockIdxStr);
-        const cellMap = blockCellMap[blockIdx];
-        if (!cellMap) continue;
-        // Find all months in this block
-        const monthsInBlock = new Set<number>();
-        for (const [, info] of cellMap) monthsInBlock.add(info.month);
-        for (const m of monthsInBlock) {
-          const daysInThisMonth = new Date(year, m, 0).getDate();
-          if (daysInThisMonth >= maxDay) continue; // this month already has enough days
-          // Find the empty cell at maxDay position
-          const row = monthRows[m - 1];
-          if (!row) continue;
-          const cell = row.querySelector<HTMLElement>(`[data-day="${maxDay}"]`);
-          if (!cell) continue;
-          const key = `${m}-${maxDay}`;
-          if (!cellMap.has(key)) {
-            cellMap.set(key, {
-              rect: cell.getBoundingClientRect(),
-              month: m,
-              day: maxDay,
-              isEmpty: true,
-            });
-          }
-        }
-      }
 
       const paths: { d: string; color: string; blockIdx: number }[] = [];
       const amplitude = 0.3;
@@ -536,140 +475,66 @@ export default function YearCalendar() {
         return d;
       };
 
-      for (const [blockIdxStr, cellMap] of Object.entries(blockCellMap)) {
-        const blockIdx = parseInt(blockIdxStr, 10);
-        const block = blocks.find((b: TwelveWeekBlock) => b.index === blockIdx);
-        if (!block) continue;
-        const color = block.color === 'red' ? '#dc2626' : '#1a1a1a';
+      // For each quarter (Q1-Q4), find the bounding rectangle and draw wavy border
+      const quarterRanges = [
+        { startMonth: 0, endMonth: 2 },  // Q1: rows 0-2
+        { startMonth: 3, endMonth: 5 },  // Q2: rows 3-5
+        { startMonth: 6, endMonth: 8 },  // Q3: rows 6-8
+        { startMonth: 9, endMonth: 11 }, // Q4: rows 9-11
+      ];
 
-        // Build Set of cell keys for O(1) neighbor lookup
-        const cellKeys = new Set(cellMap.keys());
+      for (let qi = 0; qi < 4; qi++) {
+        const q = quarterRanges[qi];
+        const color = qi % 2 === 0 ? '#dc2626' : '#1a1a1a';
 
-        // Group cells by month with position info
-        const byMonth: Record<number, { day: number; left: number; right: number; top: number; bottom: number }[]> = {};
-        for (const [, info] of cellMap) {
-          if (!byMonth[info.month]) byMonth[info.month] = [];
-          byMonth[info.month].push({
-            day: info.day,
-            left: info.rect.left - gridRect.left,
-            right: info.rect.right - gridRect.left,
-            top: info.rect.top - gridRect.top,
-            bottom: info.rect.bottom - gridRect.top,
-          });
-        }
-        for (const m of Object.keys(byMonth)) {
-          byMonth[parseInt(m)].sort((a, b) => a.day - b.day);
-        }
+        // Find the first row (top of quarter)
+        const firstRow = monthRows[q.startMonth];
+        // Find the last row (bottom of quarter)
+        const lastRow = monthRows[q.endMonth];
+        if (!firstRow || !lastRow) continue;
 
-        // ---- TOP EDGES ----
-        // A cell (m, d) needs top edge if cellKeys does NOT contain (m-1, d)
-        // AND (m-1, d) actually exists as a valid date in the calendar
-        for (const mStr of Object.keys(byMonth)) {
-          const m = parseInt(mStr);
-          const cells = byMonth[m];
-          const topCells = cells.filter(c => {
-            // No neighbor above in this block
-            if (cellKeys.has(`${m - 1}-${c.day}`)) return false;
-            // If month above has this day in the block, we're interior - skip
-            // If m=1, always need top edge
-            if (m === 1) return true;
-            // Check if the cell above exists in the calendar at all
-            // If not (e.g. Feb 31), this is not a real boundary - skip
-            const aboveInBlock = cellMap.get(`${m - 1}-${c.day}`);
-            if (!aboveInBlock) {
-              // Cell above doesn't exist in this block - could be boundary or non-existent date
-              // Check if the date is valid at all
-              const daysInMonthAbove = new Date(year, m - 1, 0).getDate();
-              if (c.day > daysInMonthAbove) return false; // date doesn't exist in month above, not a real boundary
-            }
-            return true;
-          });
-          // Merge contiguous topCells by day
-          for (let i = 0; i < topCells.length;) {
-            let j = i;
-            while (j + 1 < topCells.length && topCells[j + 1].day === topCells[j].day + 1) j++;
-            const d = makeWavyLine(topCells[i].left, topCells[i].top, topCells[j].right, topCells[j].top);
-            if (d) paths.push({ d, color, blockIdx });
-            i = j + 1;
-          }
-        }
+        const firstRowRect = firstRow.getBoundingClientRect();
+        const lastRowRect = lastRow.getBoundingClientRect();
 
-        // ---- BOTTOM EDGES ----
-        for (const mStr of Object.keys(byMonth)) {
-          const m = parseInt(mStr);
-          const cells = byMonth[m];
-          const bottomCells = cells.filter(c => {
-            if (cellKeys.has(`${m + 1}-${c.day}`)) return false;
-            if (m === 12) return true;
-            const daysInMonthBelow = new Date(year, m + 1, 0).getDate();
-            if (c.day > daysInMonthBelow) return false;
-            return true;
-          });
-          for (let i = 0; i < bottomCells.length;) {
-            let j = i;
-            while (j + 1 < bottomCells.length && bottomCells[j + 1].day === bottomCells[j].day + 1) j++;
-            const d = makeWavyLine(bottomCells[j].right, bottomCells[j].bottom, bottomCells[i].left, bottomCells[i].bottom);
-            if (d) paths.push({ d, color, blockIdx });
-            i = j + 1;
-          }
-        }
+        // Find the month label cell (first child) for left edge
+        const monthLabelFirst = firstRow.querySelector<HTMLElement>(':scope > div:first-child');
+        const monthLabelLast = lastRow.querySelector<HTMLElement>(':scope > div:first-child');
+        if (!monthLabelFirst || !monthLabelLast) continue;
 
-        // ---- LEFT EDGES ----
-        // Collect all day columns
-        const allDays = new Set<number>();
-        for (const [, info] of cellMap) allDays.add(info.day);
+        const leftRect = monthLabelFirst.getBoundingClientRect();
+        const leftRectLast = monthLabelLast.getBoundingClientRect();
 
-        for (const dayCol of allDays) {
-          // Get months that have this day, sorted
-          const dayMonths = Object.keys(byMonth)
-            .map(Number)
-            .filter(m => byMonth[m].some(c => c.day === dayCol))
-            .sort((a, b) => a - b);
+        // Find the rightmost cell (day 31) for right edge
+        // Use the last row's day 31 cell to get the right edge
+        const rightCellFirst = firstRow.querySelector<HTMLElement>('[data-day="31"]');
+        const rightCellLast = lastRow.querySelector<HTMLElement>('[data-day="31"]');
+        if (!rightCellFirst || !rightCellLast) continue;
 
-          // Cells needing left edge: cellKeys does NOT contain (m, dayCol-1)
-          const leftCells = dayMonths.filter(m => {
-            if (cellKeys.has(`${m}-${dayCol - 1}`)) return false;
-            if (dayCol === 1) return true;
-            // Check if the cell to the left exists in this block
-            const leftInBlock = cellMap.get(`${m}-${dayCol - 1}`);
-            if (!leftInBlock) {
-              // Cell to the left doesn't exist in this block
-              // Check if the month has enough days for dayCol-1
-              const daysInMonth = new Date(year, m, 0).getDate();
-              if (dayCol - 1 > daysInMonth) return false; // shouldn't happen but safety
-            }
-            return true;
-          });
-          // Merge contiguous by month
-          for (let i = 0; i < leftCells.length;) {
-            let j = i;
-            while (j + 1 < leftCells.length && leftCells[j + 1] === leftCells[j] + 1) j++;
-            const startCell = byMonth[leftCells[i]].find(c => c.day === dayCol)!;
-            const endCell = byMonth[leftCells[j]].find(c => c.day === dayCol)!;
-            const d = makeWavyLine(startCell.left, startCell.top, endCell.left, endCell.bottom);
-            if (d) paths.push({ d, color, blockIdx });
-            i = j + 1;
-          }
+        const rightRectFirst = rightCellFirst.getBoundingClientRect();
+        const rightRectLast = rightCellLast.getBoundingClientRect();
 
-          // ---- RIGHT EDGES ----
-          // Cells needing right edge: cellKeys does NOT contain (m, dayCol+1)
-          const rightCells = dayMonths.filter(m => {
-            if (cellKeys.has(`${m}-${dayCol + 1}`)) return false;
-            const daysInMonth = new Date(year, m, 0).getDate();
-            if (dayCol === daysInMonth) return true; // last day of month, always right edge
-            // If dayCol+1 doesn't exist in this block, need right edge
-            return true;
-          });
-          for (let i = 0; i < rightCells.length;) {
-            let j = i;
-            while (j + 1 < rightCells.length && rightCells[j + 1] === rightCells[j] + 1) j++;
-            const startCell = byMonth[rightCells[i]].find(c => c.day === dayCol)!;
-            const endCell = byMonth[rightCells[j]].find(c => c.day === dayCol)!;
-            const d = makeWavyLine(endCell.right, endCell.bottom, startCell.right, startCell.top);
-            if (d) paths.push({ d, color, blockIdx });
-            i = j + 1;
-          }
-        }
+        // Calculate coordinates relative to grid
+        const left = leftRect.right - gridRect.left + 1; // right edge of month label
+        const right = Math.max(rightRectFirst.right, rightRectLast.right) - gridRect.left;
+        const top = firstRowRect.top - gridRect.top;
+        const bottom = lastRowRect.bottom - gridRect.top;
+
+        // Draw 4 wavy lines forming a rectangle
+        // Top edge
+        const topPath = makeWavyLine(left, top, right, top);
+        if (topPath) paths.push({ d: topPath, color, blockIdx: qi });
+
+        // Bottom edge
+        const bottomPath = makeWavyLine(right, bottom, left, bottom);
+        if (bottomPath) paths.push({ d: bottomPath, color, blockIdx: qi });
+
+        // Left edge
+        const leftPath = makeWavyLine(left, bottom, left, top);
+        if (leftPath) paths.push({ d: leftPath, color, blockIdx: qi });
+
+        // Right edge
+        const rightPath = makeWavyLine(right, top, right, bottom);
+        if (rightPath) paths.push({ d: rightPath, color, blockIdx: qi });
       }
 
       setWaveBorders(paths);
@@ -843,8 +708,8 @@ export default function YearCalendar() {
                     >
                       {/* Top zone: day number + lunar + check/cross, click to toggle */}
                       <div
-                        className="flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-black/[0.03] transition-colors"
-                        style={{ height: '33.33%' }}
+                        className="flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-black/[0.03] transition-colors overflow-visible"
+                        style={{ height: '40%' }}
                         onClick={() => toggleDay(cell.month, cell.day)}
                         title={`${year}年${cell.month}月${cell.day}日 - 点击切换满意/不满意`}
                       >
@@ -901,7 +766,7 @@ export default function YearCalendar() {
                       {/* Bottom zone: empty area, click to open note */}
                       <div
                         className="cursor-pointer hover:bg-black/[0.03] transition-colors relative"
-                        style={{ height: '66.67%' }}
+                        style={{ height: '60%' }}
                         onClick={(e) => openNotePopup(cell.month, cell.day, e)}
                         title={`${year}年${cell.month}月${cell.day}日 - 点击添加备忘`}
                       >
