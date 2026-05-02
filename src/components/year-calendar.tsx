@@ -529,16 +529,24 @@ export default function YearCalendar() {
                       className={`
                         relative rounded-md overflow-hidden
                         ${isTodayCell ? 'ring-2 ring-[#5c5ba8]/70 ring-inset z-[5] shadow-[0_0_12px_rgba(92,91,168,0.25)]' : ''}
-                        ${!cell.isWeekend ? 'bg-white/90' : ''}
                       `}
                       style={{
                         height: cellHeight,
                         borderBottom: '1px solid rgba(148,163,184,0.18)',
                         borderRight: '1px solid rgba(148,163,184,0.18)',
-                        backgroundColor: isPast ? (cell.isWeekend ? 'rgba(228,230,236,0.7)' : 'rgba(240,242,245,0.65)') : weekendBg,
+                        backgroundColor: weekendBg,
                         transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
                       }}
                     >
+                      {/* Past overlay: covers inner area only, borders stay consistent */}
+                      {isPast && (
+                        <div
+                          className="absolute inset-0 rounded-md pointer-events-none"
+                          style={{ backgroundColor: cell.isWeekend ? 'rgba(228,230,236,0.55)' : 'rgba(240,242,245,0.5)' }}
+                        />
+                      )}
+                      {/* Content wrapper above overlay */}
+                      <div className="relative z-10 h-full flex flex-col">
                       {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
                       <div
                         className="flex flex-col items-start pl-1.5 pt-1 cursor-pointer hover:bg-[#5c5ba8]/8 active:bg-[#5c5ba8]/15 transition-colors rounded-t-md"
@@ -610,8 +618,9 @@ export default function YearCalendar() {
                       />
                       {/* Blue dot indicator at top-right of entire cell */}
                       {hasAnyNote && (
-                        <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-gradient-to-br from-[#7c7cb8] to-[#5c5ba8] shadow-[0_0_6px_rgba(92,91,168,0.5)]" />
+                        <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-gradient-to-br from-[#7c7cb8] to-[#5c5ba8] shadow-[0_0_6px_rgba(92,91,168,0.5)] z-20" />
                       )}
+                      </div>{/* end content wrapper */}
                     </div>
                   );
                 })}
