@@ -160,7 +160,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
         setNoteText(parsed[noteKey] || '');
       }
     } catch { /* empty */ }
-  }, [storageKey, todoKey, noteKey]);
+  }, [storageKey, todoKey, noteKey, year]);
 
   const saveEvents = useCallback((evts: TimeEvent[]) => {
     setEvents(evts);

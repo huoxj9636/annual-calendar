@@ -5,8 +5,6 @@ import { getLunarInfo } from '@/lib/lunar';
 import {
   getDaysInMonth,
   isWeekend,
-  MONTH_NAMES,
-  getDayOfWeek,
 } from '@/lib/calendar-utils';
 
 interface MonthlyReviewProps {
@@ -193,7 +191,7 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
         heatMap,
       };
     });
-  }, [year, mounted]);
+  }, [year]);
 
   // Year average stats
   const yearAvg = useMemo(() => {
