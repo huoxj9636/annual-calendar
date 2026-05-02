@@ -56,9 +56,8 @@ export default function YearCalendar() {
     const calculateHeight = () => {
       if (!gridContainerRef.current) return;
       const containerHeight = gridContainerRef.current.clientHeight;
-      const headerH = 20;
-      const gapsH = 11 * 3;
-      const available = containerHeight - headerH - gapsH;
+      const gapsH = 11 * 2;
+      const available = containerHeight - gapsH;
       const h = Math.max(24, Math.floor(available / 12));
       setCellHeight(h);
     };
@@ -182,8 +181,8 @@ export default function YearCalendar() {
       const key = `${year}-${month}-${day}`;
       setNoteDraft(notes[key] || '');
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const popW = 420;
-      const popH = 340;
+      const popW = 400;
+      const popH = 320;
       let x = rect.left + rect.width / 2 - popW / 2;
       let y = rect.bottom + 4;
       if (x + popW > window.innerWidth - 16) x = window.innerWidth - popW - 16;
@@ -521,22 +520,7 @@ export default function YearCalendar() {
         className="flex-1 px-8 pb-6 pt-3 overflow-x-auto min-h-0"
       >
         <div ref={gridInnerRef} className="w-full h-full relative">
-          {/* Day number header */}
-          <div
-            className="grid gap-0"
-            style={{ gridTemplateColumns: colTemplate }}
-          >
-            <div className="flex items-center justify-center" style={{ height: 20 }} />
-            {Array.from({ length: 31 }, (_, i) => (
-              <div
-                key={i + 1}
-                className="flex items-center justify-center text-[9px] font-medium text-gray-400"
-                style={{ height: 20 }}
-              >
-                {i + 1}
-              </div>
-            ))}
-          </div>
+
 
           {/* Month rows */}
           {yearData.map((monthRow, monthIdx) => {
@@ -548,7 +532,7 @@ export default function YearCalendar() {
                 className="grid gap-0"
                 style={{
                   gridTemplateColumns: colTemplate,
-                  marginBottom: monthIdx < 11 ? 3 : 0,
+                  marginBottom: monthIdx < 11 ? 2 : 0,
                 }}
               >
                 {/* Month label */}
@@ -599,47 +583,40 @@ export default function YearCalendar() {
                         backgroundColor: weekendBg,
                       }}
                     >
-                      {/* Top zone: day number + check/cross toggle */}
+                      {/* Top zone: day number + lunar + check/cross, click to toggle */}
                       <div
-                        className="flex items-start justify-start pt-0.5 pl-1 cursor-pointer hover:bg-black/[0.03] transition-colors"
+                        className="flex flex-col items-start pl-1 pt-0.5 cursor-pointer hover:bg-black/[0.03] transition-colors"
                         style={{ height: '50%' }}
                         onClick={() => toggleDay(cell.month, cell.day)}
                         title={`${year}年${cell.month}月${cell.day}日 - 点击切换满意/不满意`}
                       >
-                        <span
-                          className={`text-[10px] font-bold leading-none ${
-                            cell.isWeekend ? '' : 'text-gray-800'
-                          }`}
-                          style={
-                            cell.isWeekend
-                              ? { color: monthColor.text }
-                              : undefined
-                          }
-                        >
-                          {cell.day}
-                        </span>
-                        {mounted && status !== 'none' && (
+                        <div className="flex items-center gap-0.5">
                           <span
-                            className={`text-[8px] font-bold leading-none ${
-                              status === 'crossed'
-                                ? 'text-red-500'
-                                : 'text-green-600'
+                            className={`text-[10px] font-bold leading-none ${
+                              cell.isWeekend ? '' : 'text-gray-800'
                             }`}
+                            style={
+                              cell.isWeekend
+                                ? { color: monthColor.text }
+                                : undefined
+                            }
                           >
-                            {status === 'crossed' ? '✗' : '✓'}
+                            {cell.day}
                           </span>
-                        )}
-                      </div>
-
-                      {/* Bottom zone: lunar display + note indicator, click to open note */}
-                      <div
-                        className="flex items-start pl-1 pr-0.5 cursor-pointer hover:bg-black/[0.03] transition-colors relative"
-                        style={{ height: '50%' }}
-                        onClick={(e) => openNotePopup(cell.month, cell.day, e)}
-                        title={`${year}年${cell.month}月${cell.day}日 - 点击添加备忘`}
-                      >
+                          {mounted && status !== 'none' && (
+                            <span
+                              className={`text-[8px] font-bold leading-none ${
+                                status === 'crossed'
+                                  ? 'text-red-500'
+                                  : 'text-green-600'
+                              }`}
+                            >
+                              {status === 'crossed' ? '✗' : '✓'}
+                            </span>
+                          )}
+                        </div>
                         <span
-                          className={`text-[7px] leading-tight truncate max-w-full ${
+                          className={`text-[7px] leading-tight truncate max-w-full mt-0.5 ${
                             cell.isSolarTerm
                               ? 'text-orange-600 font-medium'
                               : cell.isFestival
@@ -661,8 +638,17 @@ export default function YearCalendar() {
                         >
                           {cell.lunarDisplay}
                         </span>
+                      </div>
+
+                      {/* Bottom zone: empty area, click to open note */}
+                      <div
+                        className="cursor-pointer hover:bg-black/[0.03] transition-colors relative"
+                        style={{ height: '50%' }}
+                        onClick={(e) => openNotePopup(cell.month, cell.day, e)}
+                        title={`${year}年${cell.month}月${cell.day}日 - 点击添加备忘`}
+                      >
                         {hasNote && (
-                          <span className="absolute top-0 right-0.5 w-1.5 h-1.5 bg-blue-400 rounded-full" />
+                          <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-sky-400 rounded-full" />
                         )}
                       </div>
                     </div>
@@ -694,49 +680,76 @@ export default function YearCalendar() {
         </div>
       </div>
 
-      {/* Note Popup - larger size */}
+      {/* Note Popup - TickTick inspired */}
       {notePopup && mounted && (
         <div
           ref={popupRef}
-          className="fixed z-50 bg-white rounded-xl shadow-2xl border border-gray-200 p-4"
+          className="fixed z-50 rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
           style={{
             left: notePopup.x,
             top: notePopup.y,
-            width: 420,
+            width: 400,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           }}
         >
-          <div className="text-sm font-bold text-gray-800 mb-2">
-            {year}年{notePopup.month}月{notePopup.day}日 备忘
+          {/* Header */}
+          <div className="px-5 pt-4 pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-white/60 text-[10px] font-medium tracking-wide uppercase">
+                  {year}年{notePopup.month}月
+                </div>
+                <div className="text-white text-lg font-bold mt-0.5">
+                  {notePopup.day}日
+                </div>
+              </div>
+              <button
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white/70 hover:text-white transition-colors"
+                onClick={() => {
+                  setNotePopup(null);
+                  setNoteDraft('');
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M1 1l12 12M13 1L1 13" />
+                </svg>
+              </button>
+            </div>
           </div>
-          <textarea
-            className="w-full h-48 text-sm border border-gray-300 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 leading-relaxed"
-            placeholder="记录今日事项与行程..."
-            value={noteDraft}
-            onChange={(e) => setNoteDraft(e.target.value)}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                saveNote();
-              }
-            }}
-          />
-          <div className="flex justify-end gap-2 mt-2">
-            <button
-              className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
-              onClick={() => {
-                setNotePopup(null);
-                setNoteDraft('');
+
+          {/* Body */}
+          <div className="bg-white px-5 pb-4 pt-3">
+            {notes[`${year}-${notePopup.month}-${notePopup.day}`] && !noteDraft ? (
+              <div className="mb-3">
+                <div className="text-[10px] text-gray-400 font-medium mb-1.5 tracking-wide">已记录</div>
+                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {notes[`${year}-${notePopup.month}-${notePopup.day}`]}
+                </div>
+              </div>
+            ) : null}
+            <textarea
+              className="w-full h-36 text-sm border-0 border-b border-gray-100 p-0 pb-3 resize-none focus:outline-none focus:border-indigo-300 leading-relaxed text-gray-800 placeholder:text-gray-300"
+              placeholder="记录今日事项与行程..."
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  saveNote();
+                }
               }}
-            >
-              取消
-            </button>
-            <button
-              className="text-xs px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-              onClick={saveNote}
-            >
-              保存
-            </button>
+            />
+            <div className="flex items-center justify-between mt-3">
+              <span className="text-[10px] text-gray-300">Enter 保存 · Shift+Enter 换行</span>
+              <button
+                className="px-5 py-1.5 rounded-full text-xs font-semibold text-white transition-all hover:shadow-md active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+                onClick={saveNote}
+              >
+                保存
+              </button>
+            </div>
           </div>
         </div>
       )}
