@@ -152,7 +152,7 @@ function MonthView({
 
             const data = dayData[day - 1];
             const status = mounted ? getDayStatus(month, day) : 'none';
-            const isTodayCell = mounted && todayStr === `${year}-${month}-${day}`;
+            const isTodayCell = mounted && todayStr === `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const noteKey = `${year}-${month}-${day}`;
             const hasNote = mounted && notes[noteKey];
 
@@ -279,7 +279,7 @@ export default function YearCalendar() {
     setMounted(true);
     const now = new Date();
     setTodayStr(
-      `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`,
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
     );
     try {
       const savedOverrides = localStorage.getItem(`calendar-overrides-${year}`);
@@ -685,11 +685,11 @@ export default function YearCalendar() {
                   const status = mounted ? getDayStatus(cell.month, cell.day) : 'none';
                   const isTodayCell =
                     mounted &&
-                    todayStr === `${year}-${cell.month}-${cell.day}`;
+                    todayStr === `${year}-${String(cell.month).padStart(2, '0')}-${String(cell.day).padStart(2, '0')}`;
                   const weekendBg = cell.isWeekend ? monthColor.bg : undefined;
                   const noteKey = `${year}-${cell.month}-${cell.day}`;
                   const hasNote = mounted && notes[noteKey];
-                  const cellDateStr = `${year}-${cell.month}-${cell.day}`;
+                  const cellDateStr = `${year}-${String(cell.month).padStart(2, '0')}-${String(cell.day).padStart(2, '0')}`;
                   const isPast = mounted && todayStr && cellDateStr < todayStr;
 
                   return (
