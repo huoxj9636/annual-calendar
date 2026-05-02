@@ -58,6 +58,7 @@ export default function YearCalendar() {
   const [showLifeCalendar, setShowLifeCalendar] = useState(false);
   const [birthYear, setBirthYear] = useState(1990);
   const [skinKey, setSkinKey] = useState<string>(DEFAULT_SKIN);
+  const [showSkinPicker, setShowSkinPicker] = useState(false);
 
   // Resize handler for side panels
   const handlePanelResize = useCallback((setter: React.Dispatch<React.SetStateAction<number>>, e: React.MouseEvent) => {
@@ -341,6 +342,17 @@ export default function YearCalendar() {
                   >
                     今年
                   </button>
+                  {/* Skin picker toggle */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowSkinPicker(v => !v)}
+                      className="flex items-center gap-1.5 px-2.5 py-0.5 text-sm rounded-md bg-white/60 hover:bg-white/80 border border-[#e8e4df] transition-colors leading-tight cursor-pointer"
+                      title="切换皮肤"
+                    >
+                      <span className="w-3.5 h-3.5 rounded-full inline-block border border-white/50 shadow-sm" style={{ background: skin.swatch }} />
+                      <span className="text-[#4a4458]">{skin.label}</span>
+                    </button>
+                  </div>
                 </div>
                 {mounted && clockStr && (
                   <div className="text-2xl text-[#5c5ba8]/25 font-mono tracking-wider tabular-nums leading-tight mt-0.5">
@@ -404,6 +416,45 @@ export default function YearCalendar() {
             )}
           </div>
         </div>
+      {/* Skin Picker Dropdown */}
+      {showSkinPicker && (
+        <div className="absolute top-full left-0 right-0 z-50 animate-fade-in" style={{ background: skin.panelBg + 'ee', backdropFilter: 'blur(20px)' }}>
+          <div className="max-w-3xl mx-auto px-6 py-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold" style={{ color: skin.textPrimary }}>选择皮肤</h3>
+              <button onClick={() => setShowSkinPicker(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none cursor-pointer">&times;</button>
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+              {SKINS.map(s => {
+                const isActive = skinKey === s.key;
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() => { setSkinKey(s.key); setShowSkinPicker(false); }}
+                    className={`relative rounded-xl p-3 text-left transition-all cursor-pointer border-2 ${isActive ? 'scale-[1.02] shadow-lg' : 'hover:scale-[1.01] hover:shadow-md'}`}
+                    style={{
+                      background: s.cardBg,
+                      borderColor: isActive ? s.swatch : 'transparent',
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-5 h-5 rounded-md inline-block shadow-sm flex-shrink-0" style={{ background: s.swatch }}>
+                        {isActive && <span className="flex items-center justify-center w-full h-full text-white text-xs">✓</span>}
+                      </span>
+                      <div>
+                        <span className="font-bold text-sm block leading-tight" style={{ color: s.textPrimary }}>{s.label}</span>
+                        <span className="text-xs opacity-40 leading-tight">{s.key.charAt(0).toUpperCase() + s.key.slice(1)}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs opacity-50 mb-2 leading-snug" style={{ color: s.textPrimary }}>{s.slogan}</p>
+                    <div className="h-6 rounded-md overflow-hidden" style={{ background: `linear-gradient(135deg, ${s.headerFrom}, ${s.headerTo})` }} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
       </header>
 
 
