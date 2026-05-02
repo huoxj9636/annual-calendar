@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getLunarInfo } from '@/lib/lunar';
 
 interface DayViewProps {
@@ -58,6 +58,72 @@ function createRecognition(): SpeechRecognitionLike | null {
   return recognition;
 }
 
+// Compute overlapping event layout: assign each event a column index and total columns
+interface EventLayout {
+  columnIndex: number;
+  totalColumns: number;
+}
+
+function computeEventLayout(events: TimeEvent[]): Map<string, EventLayout> {
+  const layout = new Map<string, EventLayout>();
+  if (events.length === 0) return layout;
+
+  // Sort by start time, then by duration (longer first)
+  const sorted = [...events].sort((a, b) => {
+    const startDiff = a.time.localeCompare(b.time);
+    if (startDiff !== 0) return startDiff;
+    return b.endTime.localeCompare(a.endTime);
+  });
+
+  // Group overlapping events
+  const groups: TimeEvent[][] = [];
+  let currentGroup: TimeEvent[] = [sorted[0]];
+  let groupEnd = sorted[0].endTime;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const evt = sorted[i];
+    if (evt.time < groupEnd) {
+      // Overlapping
+      currentGroup.push(evt);
+      if (evt.endTime > groupEnd) groupEnd = evt.endTime;
+    } else {
+      groups.push(currentGroup);
+      currentGroup = [evt];
+      groupEnd = evt.endTime;
+    }
+  }
+  groups.push(currentGroup);
+
+  // Assign columns within each group
+  for (const group of groups) {
+    const columns: string[][] = [];
+    for (const evt of group) {
+      let placed = false;
+      for (let c = 0; c < columns.length; c++) {
+        const lastInCol = columns[c][columns[c].length - 1];
+        const lastEvt = group.find(e => e.id === lastInCol);
+        if (lastEvt && lastEvt.endTime <= evt.time) {
+          columns[c].push(evt.id);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        columns.push([evt.id]);
+      }
+    }
+
+    const totalColumns = columns.length;
+    for (let c = 0; c < columns.length; c++) {
+      for (const id of columns[c]) {
+        layout.set(id, { columnIndex: c, totalColumns });
+      }
+    }
+  }
+
+  return layout;
+}
+
 export default function DayView({ year, month, day, onClose, embedded }: DayViewProps) {
   const [mounted, setMounted] = useState(false);
   const [events, setEvents] = useState<TimeEvent[]>([]);
@@ -67,9 +133,11 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
   const [newEvent, setNewEvent] = useState({ time: '09:00', endTime: '10:00', title: '', desc: '' });
   const [isListening, setIsListening] = useState(false);
   const [voiceText, setVoiceText] = useState('');
+  const [notePanelHeight, setNotePanelHeight] = useState(120);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const voiceTextRef = useRef('');
+  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   const storageKey = `dayview-events-${year}-${month}-${day}`;
   const todoKey = `dayview-todos-${year}-${month}-${day}`;
@@ -247,6 +315,32 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
     setIsListening(true);
   };
 
+  // Drag handler for note panel
+  const handleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { startY: e.clientY, startHeight: notePanelHeight };
+
+    const handleDragMove = (me: MouseEvent) => {
+      if (!dragRef.current) return;
+      const delta = dragRef.current.startY - me.clientY;
+      setNotePanelHeight(Math.max(60, Math.min(400, dragRef.current.startHeight + delta)));
+    };
+
+    const handleDragEnd = () => {
+      dragRef.current = null;
+      document.removeEventListener('mousemove', handleDragMove);
+      document.removeEventListener('mouseup', handleDragEnd);
+    };
+
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+  };
+
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+
+  // Compute overlapping event layout - must be before any early return (hooks rule)
+  const eventLayout = useMemo(() => computeEventLayout(events), [events]);
+
   if (!mounted) return null;
 
   const lunarInfo = getLunarInfo(year, month, day);
@@ -257,20 +351,32 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
     return now.getFullYear() === year && now.getMonth() === month - 1 && now.getDate() === day;
   })();
 
-  const hours = Array.from({ length: 24 }, (_, i) => i);
   const now = new Date();
   const currentHour = isToday ? now.getHours() : -1;
 
-  const getEventsForHour = (h: number) => {
-    return events.filter(e => {
-      const startH = parseInt(e.time.split(':')[0]);
-      return startH === h;
-    });
+  // Calculate event top/height based on time
+  const getEventStyle = (evt: TimeEvent, layout: EventLayout) => {
+    const [startH, startM] = evt.time.split(':').map(Number);
+    const [endH, endM] = evt.endTime.split(':').map(Number);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    const HOUR_HEIGHT = 36; // h-9 = 36px
+    const top = (startMinutes / 60) * HOUR_HEIGHT;
+    const height = Math.max(20, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT);
+    const widthPercent = 100 / layout.totalColumns;
+    const leftPercent = layout.columnIndex * widthPercent;
+
+    return {
+      top,
+      height,
+      left: `${leftPercent}%`,
+      width: `${widthPercent}%`,
+    };
   };
 
   // ========== Sidebar Panel Content ==========
   const panelContent = (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-white relative">
       {/* Header - Date Info */}
       <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-gray-100">
         <div className="flex items-start justify-between">
@@ -388,45 +494,57 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
         )}
       </div>
 
-      {/* Timeline */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
-        <div className="flex">
-          {/* Time Column */}
-          <div className="w-12 flex-shrink-0 border-r border-gray-50">
-            {hours.map(h => (
-              <div
-                key={h}
-                className="h-9 flex items-start justify-end pr-1.5 pt-0"
-              >
-                <span
-                  className="text-[10px]"
-                  style={h === currentHour ? { color: '#4f8ff7', fontWeight: 600 } : { color: '#c4c4c4' }}
+      {/* Timeline + Floating Note Panel */}
+      <div className="flex-1 overflow-hidden relative">
+        {/* Timeline - always full height */}
+        <div ref={scrollRef} className="h-full overflow-y-auto">
+          <div className="flex relative" style={{ minHeight: `${24 * 36}px` }}>
+            {/* Time Column */}
+            <div className="w-12 flex-shrink-0 border-r border-gray-50">
+              {hours.map(h => (
+                <div
+                  key={h}
+                  className="flex items-start justify-end pr-1.5"
+                  style={{ height: 36 }}
                 >
-                  {h.toString().padStart(2, '0')}:00
-                </span>
-              </div>
-            ))}
-          </div>
+                  <span
+                    className="text-[10px] pt-0"
+                    style={h === currentHour ? { color: '#4f8ff7', fontWeight: 600 } : { color: '#c4c4c4' }}
+                  >
+                    {h.toString().padStart(2, '0')}:00
+                  </span>
+                </div>
+              ))}
+            </div>
 
-          {/* Events Column */}
-          <div className="flex-1 relative">
-            {hours.map(h => (
-              <div key={h} className="h-9 border-b border-gray-50/80 relative">
-                {h === currentHour && (
-                  <div className="absolute left-0 right-0 top-1/2 h-[2px] bg-red-400 z-10">
-                    <div className="absolute -left-1 -top-[3px] w-2 h-2 bg-red-400 rounded-full" />
-                  </div>
-                )}
-                {getEventsForHour(h).map(evt => (
+            {/* Events Column - absolute positioned events */}
+            <div className="flex-1 relative">
+              {/* Hour grid lines */}
+              {hours.map(h => (
+                <div key={h} className="border-b border-gray-50/80 relative" style={{ height: 36 }}>
+                  {h === currentHour && (
+                    <div className="absolute left-0 right-0 top-1/2 h-[2px] bg-red-400 z-10">
+                      <div className="absolute -left-1 -top-[3px] w-2 h-2 bg-red-400 rounded-full" />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Events - absolutely positioned for overlap support */}
+              {events.map(evt => {
+                const layout = eventLayout.get(evt.id) || { columnIndex: 0, totalColumns: 1 };
+                const style = getEventStyle(evt, layout);
+                return (
                   <div
                     key={evt.id}
-                    className={`absolute left-1 right-1 rounded-lg px-2.5 py-1 z-5 transition-all group ${evt.done ? 'opacity-50' : ''}`}
+                    className={`absolute rounded-lg px-2 py-1 z-5 transition-all group overflow-hidden ${evt.done ? 'opacity-50' : ''}`}
                     style={{
-                      backgroundColor: `${evt.color}12`,
+                      ...style,
+                      backgroundColor: `${evt.color}15`,
                       borderLeft: `3px solid ${evt.color}`,
                     }}
                   >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() => toggleDone(evt.id)}
                         className="flex-shrink-0 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center"
@@ -441,9 +559,11 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
                       <span className={`text-[11px] font-medium truncate ${evt.done ? 'line-through text-gray-400' : 'text-gray-700'}`}>
                         {evt.title}
                       </span>
-                      <span className="text-[9px] text-gray-400 ml-auto flex-shrink-0">
-                        {evt.time}-{evt.endTime}
-                      </span>
+                      {layout.totalColumns <= 2 && (
+                        <span className="text-[9px] text-gray-400 ml-auto flex-shrink-0">
+                          {evt.time}-{evt.endTime}
+                        </span>
+                      )}
                       <button
                         onClick={() => removeEvent(evt.id)}
                         className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
@@ -454,62 +574,73 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Bottom: Todos + Notes */}
-      <div className="flex-shrink-0 border-t border-gray-200">
-        {/* Todos */}
-        {todos.length > 0 && (
-          <div className="px-5 py-2 border-b border-gray-100">
-            <div className="text-[10px] font-medium text-gray-400 mb-1">待办事项</div>
-            {todos.map(todo => (
-              <div key={todo.id} className="flex items-center gap-2 py-0.5 group">
-                <button
-                  onClick={() => toggleTodo(todo.id)}
-                  className="flex-shrink-0 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center"
-                  style={{ borderColor: todo.color, backgroundColor: todo.done ? todo.color : 'transparent' }}
-                >
-                  {todo.done && (
-                    <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-                <span className={`text-xs ${todo.done ? 'line-through text-gray-300' : 'text-gray-600'}`}>
-                  {todo.text}
-                </span>
-                <button
-                  onClick={() => removeTodo(todo.id)}
-                  className="ml-auto text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ))}
+        {/* Floating Note Panel - draggable, overlays on timeline */}
+        <div
+          className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-20 flex flex-col"
+          style={{ height: notePanelHeight }}
+        >
+          {/* Drag handle */}
+          <div
+            className="flex-shrink-0 flex items-center justify-center py-1 cursor-row-resize hover:bg-gray-50 transition-colors"
+            onMouseDown={handleDragStart}
+          >
+            <div className="w-8 h-1 rounded-full bg-gray-300" />
           </div>
-        )}
 
-        {/* Note */}
-        <div className="px-5 py-2.5">
-          <div className="flex items-start gap-2">
-            <svg className="w-3.5 h-3.5 text-gray-300 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            <textarea
-              value={noteText}
-              onChange={e => setNoteText(e.target.value)}
-              onBlur={saveNote}
-              placeholder="备忘录..."
-              className="flex-1 text-xs text-gray-600 placeholder-gray-300 focus:outline-none bg-transparent resize-none"
-              rows={2}
-            />
+          <div className="flex-1 overflow-y-auto px-5 pb-2 min-h-0">
+            {/* Todos */}
+            {todos.length > 0 && (
+              <div className="pb-2 border-b border-gray-100 mb-2">
+                <div className="text-[10px] font-medium text-gray-400 mb-1">待办事项</div>
+                {todos.map(todo => (
+                  <div key={todo.id} className="flex items-center gap-2 py-0.5 group">
+                    <button
+                      onClick={() => toggleTodo(todo.id)}
+                      className="flex-shrink-0 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center"
+                      style={{ borderColor: todo.color, backgroundColor: todo.done ? todo.color : 'transparent' }}
+                    >
+                      {todo.done && (
+                        <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    <span className={`text-xs ${todo.done ? 'line-through text-gray-300' : 'text-gray-600'}`}>
+                      {todo.text}
+                    </span>
+                    <button
+                      onClick={() => removeTodo(todo.id)}
+                      className="ml-auto text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Note */}
+            <div className="flex items-start gap-2">
+              <svg className="w-3.5 h-3.5 text-gray-300 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <textarea
+                value={noteText}
+                onChange={e => setNoteText(e.target.value)}
+                onBlur={saveNote}
+                placeholder="备忘录..."
+                className="flex-1 text-xs text-gray-600 placeholder-gray-300 focus:outline-none bg-transparent resize-none"
+                style={{ minHeight: 30, maxHeight: notePanelHeight - 60 }}
+              />
+            </div>
           </div>
         </div>
       </div>

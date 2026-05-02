@@ -6,7 +6,6 @@ import {
   useCallback,
   useMemo,
   useRef,
-  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { getLunarInfo, getYearAnimal, getGanZhiYear } from '@/lib/lunar';
 import DayView from '@/components/day-view';
@@ -21,7 +20,6 @@ import {
   getDayOfWeek,
   isWeekend,
   type CellData,
-  type TwelveWeekBlock,
 } from '@/lib/calendar-utils';
 
 type DayOverride = 'checked' | 'crossed';
@@ -35,213 +33,6 @@ interface NotePopup {
   y: number;
 }
 
-/* ===== Month View Component ===== */
-const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
-
-interface MonthViewProps {
-  year: number;
-  month: number;
-  mounted: boolean;
-  todayStr: string;
-  overrides: Record<string, 'checked' | 'crossed'>;
-  notes: Record<string, string>;
-  getDayStatus: (month: number, day: number) => 'checked' | 'crossed' | 'auto' | 'none';
-  toggleDay: (month: number, day: number) => void;
-  openNotePopup: (month: number, day: number, e: ReactMouseEvent) => void;
-  onBack: () => void;
-  onOpenDayView?: (month: number, day: number) => void;
-}
-
-function MonthView({
-  year,
-  month,
-  mounted,
-  todayStr,
-  overrides,
-  notes,
-  getDayStatus,
-  toggleDay,
-  openNotePopup,
-  onBack,
-  onOpenDayView,
-}: MonthViewProps) {
-  const monthColor = MONTH_COLORS[month - 1];
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDayOfWeek = getDayOfWeek(year, month, 1);
-
-  // Get lunar info for each day
-  const dayData = useMemo(() => {
-    const result: { day: number; display: string; isSolarTerm: boolean; isFestival: boolean; isLunarFirstDay: boolean; isWeekendDay: boolean }[] = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const info = getLunarInfo(year, month, d);
-      result.push({
-        day: d,
-        display: info.display,
-        isSolarTerm: info.isSolarTerm,
-        isFestival: info.isFestival,
-        isLunarFirstDay: info.isLunarFirstDay,
-        isWeekendDay: isWeekend(year, month, d),
-      });
-    }
-    return result;
-  }, [year, month, daysInMonth]);
-
-  // Build calendar grid rows (weeks)
-  const weeks = useMemo(() => {
-    const rows: (number | null)[][] = [];
-    let currentRow: (number | null)[] = [];
-    // Fill leading blanks
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      currentRow.push(null);
-    }
-    for (let d = 1; d <= daysInMonth; d++) {
-      currentRow.push(d);
-      if (currentRow.length === 7) {
-        rows.push(currentRow);
-        currentRow = [];
-      }
-    }
-    // Fill trailing blanks
-    if (currentRow.length > 0) {
-      while (currentRow.length < 7) currentRow.push(null);
-      rows.push(currentRow);
-    }
-    return rows;
-  }, [daysInMonth, firstDayOfWeek]);
-
-  return (
-    <div className="flex flex-col items-center w-full h-full">
-      {/* Month header */}
-      <div className="w-full max-w-4xl flex items-center justify-between mb-4 px-2">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors text-lg text-gray-600 font-medium"
-        >
-          <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M10 3L5 8l5 5" />
-          </svg>
-          返回年历
-        </button>
-        <div className="flex items-center gap-3">
-          <h2 className="text-4xl font-bold" style={{ color: monthColor.text }}>
-            {month}月
-          </h2>
-          <span className="text-xl text-gray-400">{year}年</span>
-        </div>
-        <div className="w-28" /> {/* Spacer for centering */}
-      </div>
-
-      {/* Weekday header */}
-      <div className="w-full max-w-4xl grid grid-cols-7 gap-2 mb-2 px-2">
-        {WEEKDAY_LABELS.map((label, i) => (
-          <div
-            key={i}
-            className={`text-center text-lg font-semibold py-2 rounded-md ${
-              i === 0 || i === 6 ? 'text-red-400' : 'text-gray-400'
-            }`}
-          >
-            {label}
-          </div>
-        ))}
-      </div>
-
-      {/* Calendar grid */}
-      <div className="w-full max-w-4xl grid grid-cols-7 gap-2 px-2 flex-1">
-        {weeks.flatMap((week, wi) =>
-          week.map((day, di) => {
-            if (day === null) {
-              return <div key={`${wi}-${di}`} className="rounded-lg" />;
-            }
-
-            const data = dayData[day - 1];
-            const status = mounted ? getDayStatus(month, day) : 'none';
-            const isTodayCell = mounted && todayStr === `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const cellDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const isPastDay = mounted && todayStr && year < parseInt(todayStr.substring(0, 4)) || (year === parseInt(todayStr.substring(0, 4)) && cellDateStr < todayStr);
-            const noteKey = `${year}-${month}-${day}`;
-            const hasNote = mounted && notes[noteKey];
-
-            return (
-              <div
-                key={day}
-                className={`
-                  rounded-lg border transition-colors relative
-                  ${isTodayCell ? 'ring-2 ring-blue-500 z-[5]' : 'border-gray-100'}
-                  ${data.isWeekendDay ? '' : 'bg-white'}
-                  hover:shadow-sm
-                `}
-                style={{
-                  backgroundColor: isPastDay ? '#fafafa' : data.isWeekendDay ? monthColor.bg : undefined,
-                }}
-              >
-                {/* Top zone: day + lunar + check toggle */}
-                <div
-                  className="p-3 cursor-pointer"
-                  onClick={() => toggleDay(month, day)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-2xl font-bold ${
-                        isPastDay ? 'text-gray-200' : data.isWeekendDay ? '' : 'text-gray-800'
-                      }`}
-                      style={isPastDay ? undefined : data.isWeekendDay ? { color: monthColor.text } : undefined}
-                    >
-                      {day}
-                    </span>
-                    {mounted && status !== 'none' && (
-                      <span
-                        className={`text-xl font-bold ${
-                          status === 'crossed' ? 'text-red-400/40' : 'text-green-500/40'
-                        }`}
-                      >
-                        {status === 'crossed' ? '✗' : '✓'}
-                      </span>
-                    )}
-                  </div>
-                  <span
-                    className={`text-base leading-tight block mt-1 ${
-                      isPastDay
-                        ? 'text-gray-100'
-                        : data.isSolarTerm
-                          ? 'text-orange-600 font-medium'
-                          : data.isFestival
-                            ? 'text-red-500 font-medium'
-                            : data.isLunarFirstDay
-                              ? 'text-purple-600 font-medium'
-                              : data.isWeekendDay
-                                ? ''
-                                : 'text-gray-400'
-                    }`}
-                    style={
-                      isPastDay
-                        ? undefined
-                        : data.isWeekendDay && !data.isSolarTerm && !data.isFestival && !data.isLunarFirstDay
-                          ? { color: monthColor.accent }
-                          : undefined
-                    }
-                  >
-                    {data.display}
-                  </span>
-                </div>
-                {/* Bottom zone: click to open day view */}
-                <div
-                  className="px-3 pb-3 cursor-pointer min-h-[60px] hover:bg-black/[0.02] transition-colors"
-                  onClick={() => onOpenDayView?.(month, day)}
-                >
-                  {hasNote && (
-                    <div className="text-sm text-gray-400 truncate leading-tight">
-                      {notes[noteKey].split('\n')[0]}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function YearCalendar() {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -391,24 +182,6 @@ export default function YearCalendar() {
     [year, overrides],
   );
 
-  const openNotePopup = useCallback(
-    (month: number, day: number, e: ReactMouseEvent) => {
-      const key = `${year}-${month}-${day}`;
-      setNoteDraft(notes[key] || '');
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const popW = 530;
-      const popH = 320;
-      let x = rect.left + rect.width / 2 - popW / 2;
-      let y = rect.bottom + 4;
-      if (x + popW > window.innerWidth - 16) x = window.innerWidth - popW - 16;
-      if (x < 16) x = 16;
-      if (y + popH > window.innerHeight - 16) y = rect.top - popH - 4;
-      setNotePopup({ month, day, x, y });
-      setPopupSize({ w: 530, h: 320 });
-    },
-    [year, notes],
-  );
-
   // Calculate completion stats
   const stats = useMemo(() => {
     if (!mounted) return { checked: 0, crossed: 0, total: 0, rate: 0 };
@@ -463,7 +236,7 @@ export default function YearCalendar() {
       }
     }
     return markers;
-  }, [blocks, year]);
+  }, [blocks]);
 
 
 
@@ -584,8 +357,8 @@ export default function YearCalendar() {
                   style={{
                     height: cellHeight,
                     color: monthColor.text,
-                    border: `1.5px solid ${monthColor.text}`,
-                    backgroundColor: `${monthColor.bg}`,
+                    border: `1px solid ${monthColor.text}30`,
+                    backgroundColor: `${monthColor.bg}80`,
                   }}
                   onClick={() => setSelectedMonth(monthIdx + 1)}
                   title={`点击查看${monthIdx + 1}月详细视图`}
@@ -714,7 +487,7 @@ export default function YearCalendar() {
                       )}
                       {/* 12-week block start/end star marker */}
                       {blockMarkerDays.has(`${cell.month}-${cell.day}`) && (
-                        <span className="absolute bottom-0 right-0 text-[10px] leading-none pointer-events-none" style={{ color: cell.blockIndex % 2 === 0 ? 'rgba(220,38,38,0.5)' : 'rgba(30,30,30,0.5)' }}>
+                        <span className="absolute bottom-0 right-0 text-[16px] leading-none pointer-events-none" style={{ color: cell.blockIndex % 2 === 0 ? 'rgba(220,38,38,0.6)' : 'rgba(30,30,30,0.6)' }}>
                           {blockMarkerDays.get(`${cell.month}-${cell.day}`) === 'start' ? '★' : blockMarkerDays.get(`${cell.month}-${cell.day}`) === 'end' ? '☆' : '★☆'}
                         </span>
                       )}
