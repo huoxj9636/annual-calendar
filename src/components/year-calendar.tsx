@@ -335,7 +335,7 @@ export default function YearCalendar() {
                         {/* Day number + status */}
                         <div className="flex items-baseline gap-0.5 leading-none">
                           <span
-                            className={`text-sm font-bold ${
+                            className={`text-[10px] font-bold ${
                               cell.isWeekend
                                 ? ''
                                 : 'text-gray-800'
@@ -378,7 +378,7 @@ export default function YearCalendar() {
                             !cell.isSolarTerm &&
                             !cell.isFestival &&
                             !cell.isLunarFirstDay
-                              ? { color: monthColor.accent + '80' }
+                              ? { color: monthColor.accent }
                               : undefined
                           }
                         >
