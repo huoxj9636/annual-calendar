@@ -22,25 +22,20 @@ export interface TwelveWeekBlock {
 export function getTwelveWeekBlocks(year: number): TwelveWeekBlock[] {
   const blocks: TwelveWeekBlock[] = [];
   const colors: ('red' | 'black')[] = ['red', 'black', 'red', 'black'];
-  const quarters = [
-    { startMonth: 0, endMonth: 2 },  // Q1: Jan-Mar
-    { startMonth: 3, endMonth: 5 },  // Q2: Apr-Jun
-    { startMonth: 6, endMonth: 8 },  // Q3: Jul-Sep
-    { startMonth: 9, endMonth: 11 }, // Q4: Oct-Dec
-  ];
+  const startOfYear = new Date(year, 0, 1);
 
   for (let i = 0; i < 4; i++) {
-    const q = quarters[i];
-    const startDate = new Date(year, q.startMonth, 1);
-    const endDay = new Date(year, q.endMonth + 1, 0).getDate();
-    const endDate = new Date(year, q.endMonth, endDay);
+    const startDate = new Date(startOfYear);
+    startDate.setDate(startDate.getDate() + i * 84); // 12 weeks = 84 days
+    const endDate = new Date(startOfYear);
+    endDate.setDate(endDate.getDate() + (i + 1) * 84 - 1); // 84th day of block
 
     blocks.push({
       index: i,
       startDate,
       endDate,
       color: colors[i],
-      label: `Q${i + 1}`,
+      label: `P${i + 1}`,
     });
   }
 

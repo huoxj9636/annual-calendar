@@ -443,120 +443,29 @@ export default function YearCalendar() {
 
   // Build SVG wave border paths for quarter blocks
   // Simplified approach: draw a wavy rectangle around each quarter
-  const [waveBorders, setWaveBorders] = useState<{ d: string; color: string; blockIdx: number }[]>([]);
-
-  useEffect(() => {
-    if (!mounted || !gridInnerRef.current) {
-      setWaveBorders([]);
-      return;
-    }
-
-    const computeBorders = () => {
-      const gridEl = gridInnerRef.current;
-      if (!gridEl) return;
-      const gridRect = gridEl.getBoundingClientRect();
-      const monthRows = gridEl.querySelectorAll<HTMLElement>('[data-month-row]');
-
-      const paths: { d: string; color: string; blockIdx: number }[] = [];
-      const amplitude = 0.3;
-      const wavelength = 4;
-
-      const makeWavyLine = (x1: number, y1: number, x2: number, y2: number): string => {
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const len = Math.sqrt(dx * dx + dy * dy);
-        if (len < 2) return '';
-        const steps = Math.max(1, Math.round(len / (wavelength / 2)));
-        const ux = dx / len;
-        const uy = dy / len;
-        const px = -uy;
-        const py = ux;
-        let d = `M ${x1} ${y1}`;
-        for (let i = 1; i <= steps; i++) {
-          const t = i / steps;
-          const bx = x1 + dx * t;
-          const by = y1 + dy * t;
-          const offset = (i % 2 === 1 ? 1 : -1) * amplitude;
-          d += ` L ${bx + px * offset} ${by + py * offset}`;
-        }
-        return d;
-      };
-
-      // For each quarter (Q1-Q4), find the bounding rectangle and draw wavy border
-      const quarterRanges = [
-        { startMonth: 0, endMonth: 2 },  // Q1: rows 0-2
-        { startMonth: 3, endMonth: 5 },  // Q2: rows 3-5
-        { startMonth: 6, endMonth: 8 },  // Q3: rows 6-8
-        { startMonth: 9, endMonth: 11 }, // Q4: rows 9-11
-      ];
-
-      for (let qi = 0; qi < 4; qi++) {
-        const q = quarterRanges[qi];
-        const color = qi % 2 === 0 ? '#dc2626' : '#1a1a1a';
-
-        // Find the first row (top of quarter)
-        const firstRow = monthRows[q.startMonth];
-        // Find the last row (bottom of quarter)
-        const lastRow = monthRows[q.endMonth];
-        if (!firstRow || !lastRow) continue;
-
-        const firstRowRect = firstRow.getBoundingClientRect();
-        const lastRowRect = lastRow.getBoundingClientRect();
-
-        // Find the month label cell (first child) for left edge
-        const monthLabelFirst = firstRow.querySelector<HTMLElement>(':scope > div:first-child');
-        const monthLabelLast = lastRow.querySelector<HTMLElement>(':scope > div:first-child');
-        if (!monthLabelFirst || !monthLabelLast) continue;
-
-        const leftRect = monthLabelFirst.getBoundingClientRect();
-        const leftRectLast = monthLabelLast.getBoundingClientRect();
-
-        // Use grid's right edge directly - all rows have 31 columns in the DOM
-        // Just use the last child of the first row to get the right edge
-        const lastCellFirst = firstRow.querySelector<HTMLElement>(':scope > div:last-child');
-        if (!lastCellFirst) continue;
-
-        const lastCellRect = lastCellFirst.getBoundingClientRect();
-
-        // Calculate coordinates relative to grid
-        const gap = 1; // gap between adjacent quarters
-        const left = leftRect.right - gridRect.left + 1; // right edge of month label
-        const right = lastCellRect.right - gridRect.left;
-        const top = firstRowRect.top - gridRect.top + gap;
-        const bottom = lastRowRect.bottom - gridRect.top - gap;
-
-        // Draw 4 wavy lines forming a rectangle
-        // Top edge
-        const topPath = makeWavyLine(left, top, right, top);
-        if (topPath) paths.push({ d: topPath, color, blockIdx: qi });
-
-        // Bottom edge
-        const bottomPath = makeWavyLine(right, bottom, left, bottom);
-        if (bottomPath) paths.push({ d: bottomPath, color, blockIdx: qi });
-
-        // Left edge
-        const leftPath = makeWavyLine(left, bottom, left, top);
-        if (leftPath) paths.push({ d: leftPath, color, blockIdx: qi });
-
-        // Right edge
-        const rightPath = makeWavyLine(right, top, right, bottom);
-        if (rightPath) paths.push({ d: rightPath, color, blockIdx: qi });
+  // Calculate 12-week block start/end days for star markers
+  const blockMarkerDays = useMemo(() => {
+    if (!blocks || blocks.length === 0) return new Map<string, 'start' | 'end' | 'both'>();
+    const markers = new Map<string, 'start' | 'end' | 'both'>();
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
+      const start = block.startDate;
+      const end = block.endDate;
+      const startKey = `${start.getMonth() + 1}-${start.getDate()}`;
+      const endKey = `${end.getMonth() + 1}-${end.getDate()}`;
+      const existingStart = markers.get(startKey);
+      const existingEnd = markers.get(endKey);
+      if (startKey === endKey) {
+        markers.set(startKey, 'both');
+      } else {
+        markers.set(startKey, existingStart === 'end' || existingStart === 'both' ? 'both' : 'start');
+        markers.set(endKey, existingEnd === 'start' || existingEnd === 'both' ? 'both' : 'end');
       }
+    }
+    return markers;
+  }, [blocks, year]);
 
-      setWaveBorders(paths);
-    };
 
-    const timer = setTimeout(computeBorders, 100);
-    const onResize = () => {
-      clearTimeout(timer);
-      setTimeout(computeBorders, 50);
-    };
-    window.addEventListener('resize', onResize);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', onResize);
-    };
-  }, [mounted, yearData, blocks, cellHeight]);
 
   return (
     <div className="h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
@@ -803,6 +712,12 @@ export default function YearCalendar() {
                           {status === 'crossed' ? '✗' : '✓'}
                         </span>
                       )}
+                      {/* 12-week block start/end star marker */}
+                      {blockMarkerDays.has(`${cell.month}-${cell.day}`) && (
+                        <span className="absolute bottom-0 right-0 text-[10px] leading-none pointer-events-none" style={{ color: cell.blockIndex % 2 === 0 ? 'rgba(220,38,38,0.5)' : 'rgba(30,30,30,0.5)' }}>
+                          {blockMarkerDays.get(`${cell.month}-${cell.day}`) === 'start' ? '★' : blockMarkerDays.get(`${cell.month}-${cell.day}`) === 'end' ? '☆' : '★☆'}
+                        </span>
+                      )}
 
                       {/* Bottom zone (2/3): click to open day view (schedule) */}
                       <div
@@ -827,26 +742,7 @@ export default function YearCalendar() {
             );
           })}
 
-          {/* SVG overlay for wavy block borders */}
-          {mounted && waveBorders.length > 0 && (
-            <svg
-              className="absolute inset-0 pointer-events-none"
-              style={{ width: '100%', height: '100%' }}
-            >
-              {waveBorders.map((p, i) => (
-                <path
-                  key={`${p.blockIdx}-${i}`}
-                  d={p.d}
-                  fill="none"
-                  stroke={p.color}
-                  strokeWidth={0.5}
-                  opacity={0.35}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
-            </svg>
-          )}
+
         </div>
       </div>
 
@@ -1039,7 +935,7 @@ export default function YearCalendar() {
                       <span className="text-sm font-semibold text-gray-700">{section.label}</span>
                     </div>
                     <textarea
-                      className="w-full bg-gray-50/60 rounded-2xl px-5 py-4 text-sm text-gray-700 resize-none focus:outline-none focus:bg-gray-50 transition-all placeholder:text-gray-300 leading-relaxed min-h-[100px]"
+                      className="w-full bg-gray-50/60 rounded-2xl px-5 py-4 text-sm text-gray-700 resize-none focus:outline-none focus:bg-gray-50 transition-all placeholder:text-gray-300 leading-relaxed min-h-[160px]"
                       placeholder={section.placeholder}
                       defaultValue={savedValue}
                       onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => { try { localStorage.setItem(storageKey, e.target.value); } catch { /* empty */ } }}
