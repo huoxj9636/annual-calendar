@@ -689,6 +689,8 @@ export default function YearCalendar() {
                   const weekendBg = cell.isWeekend ? monthColor.bg : undefined;
                   const noteKey = `${year}-${cell.month}-${cell.day}`;
                   const hasNote = mounted && notes[noteKey];
+                  const cellDateStr = `${year}-${cell.month}-${cell.day}`;
+                  const isPast = mounted && todayStr && cellDateStr < todayStr;
 
                   return (
                     <div
@@ -703,7 +705,7 @@ export default function YearCalendar() {
                         height: cellHeight,
                         borderBottom: '1px solid #e5e7eb',
                         borderRight: '1px solid #e5e7eb',
-                        backgroundColor: weekendBg,
+                        backgroundColor: isPast ? '#f0f0f0' : weekendBg,
                       }}
                     >
                       {/* Top zone: day number + lunar + check/cross, click to toggle */}
@@ -716,12 +718,16 @@ export default function YearCalendar() {
                         <div className="flex items-center gap-0.5">
                           <span
                             className={`text-[15px] font-bold leading-none ${
-                              cell.isWeekend ? '' : 'text-gray-800'
+                              isPast
+                                ? 'text-gray-400'
+                                : cell.isWeekend ? '' : 'text-gray-800'
                             }`}
                             style={
-                              cell.isWeekend
-                                ? { color: monthColor.text }
-                                : undefined
+                              isPast
+                                ? undefined
+                                : cell.isWeekend
+                                  ? { color: monthColor.text }
+                                  : undefined
                             }
                           >
                             {cell.day}
@@ -740,23 +746,27 @@ export default function YearCalendar() {
                         </div>
                         <span
                           className={`text-[9px] leading-tight mt-0.5 whitespace-nowrap ${
-                            cell.isSolarTerm
-                              ? 'text-orange-600 font-medium'
-                              : cell.isFestival
-                                ? 'text-red-500 font-medium'
-                                : cell.isLunarFirstDay
-                                  ? 'text-purple-600 font-medium'
-                                  : cell.isWeekend
-                                    ? ''
-                                    : 'text-gray-400'
+                            isPast
+                              ? 'text-gray-300'
+                              : cell.isSolarTerm
+                                ? 'text-orange-600 font-medium'
+                                : cell.isFestival
+                                  ? 'text-red-500 font-medium'
+                                  : cell.isLunarFirstDay
+                                    ? 'text-purple-600 font-medium'
+                                    : cell.isWeekend
+                                      ? ''
+                                      : 'text-gray-400'
                           }`}
                           style={
-                            cell.isWeekend &&
-                            !cell.isSolarTerm &&
-                            !cell.isFestival &&
-                            !cell.isLunarFirstDay
-                              ? { color: monthColor.accent }
-                              : undefined
+                            isPast
+                              ? undefined
+                              : cell.isWeekend &&
+                                !cell.isSolarTerm &&
+                                !cell.isFestival &&
+                                !cell.isLunarFirstDay
+                                  ? { color: monthColor.accent }
+                                  : undefined
                           }
                         >
                           {cell.lunarDisplay}
