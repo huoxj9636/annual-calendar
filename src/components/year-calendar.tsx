@@ -1039,9 +1039,7 @@ export default function YearCalendar() {
                       <span className="text-sm font-semibold text-gray-700">{section.label}</span>
                     </div>
                     <textarea
-                      className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:bg-white transition-all placeholder:text-gray-300 leading-relaxed border border-transparent focus:border-gray-200"
-                      style={{ ['--tw-ring-color' as string]: section.color + '40' }}
-                      rows={3}
+                      className="w-full bg-gray-50/60 rounded-2xl px-5 py-4 text-sm text-gray-700 resize-none focus:outline-none focus:bg-gray-50 transition-all placeholder:text-gray-300 leading-relaxed min-h-[100px]"
                       placeholder={section.placeholder}
                       defaultValue={savedValue}
                       onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => { try { localStorage.setItem(storageKey, e.target.value); } catch { /* empty */ } }}
