@@ -491,11 +491,11 @@ export default function YearCalendar() {
             >
               ‹
             </button>
-            <div className="flex items-baseline gap-2">
-              <h1 className="text-3xl font-black tracking-tight text-gray-900">
+            <div className="flex items-end gap-2">
+              <h1 className="text-5xl font-black tracking-tight text-gray-900 leading-none">
                 {year}
               </h1>
-              <span className="text-base text-gray-500 font-medium">
+              <span className="text-sm text-gray-500 font-medium pb-0.5">
                 {ganZhi}（{animal}）
               </span>
             </div>
