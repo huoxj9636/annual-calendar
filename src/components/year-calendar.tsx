@@ -153,6 +153,8 @@ function MonthView({
             const data = dayData[day - 1];
             const status = mounted ? getDayStatus(month, day) : 'none';
             const isTodayCell = mounted && todayStr === `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const cellDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isPastDay = mounted && todayStr && year < parseInt(todayStr.substring(0, 4)) || (year === parseInt(todayStr.substring(0, 4)) && cellDateStr < todayStr);
             const noteKey = `${year}-${month}-${day}`;
             const hasNote = mounted && notes[noteKey];
 
@@ -166,7 +168,7 @@ function MonthView({
                   hover:shadow-sm
                 `}
                 style={{
-                  backgroundColor: data.isWeekendDay ? monthColor.bg : undefined,
+                  backgroundColor: isPastDay ? '#f7f7f7' : data.isWeekendDay ? monthColor.bg : undefined,
                 }}
               >
                 {/* Top zone: day + lunar + check */}
@@ -177,9 +179,9 @@ function MonthView({
                   <div className="flex items-center justify-between">
                     <span
                       className={`text-2xl font-bold ${
-                        data.isWeekendDay ? '' : 'text-gray-800'
+                        isPastDay ? 'text-gray-300' : data.isWeekendDay ? '' : 'text-gray-800'
                       }`}
-                      style={data.isWeekendDay ? { color: monthColor.text } : undefined}
+                      style={isPastDay ? undefined : data.isWeekendDay ? { color: monthColor.text } : undefined}
                     >
                       {day}
                     </span>
@@ -195,20 +197,24 @@ function MonthView({
                   </div>
                   <span
                     className={`text-base leading-tight block mt-1 ${
-                      data.isSolarTerm
-                        ? 'text-orange-600 font-medium'
-                        : data.isFestival
-                          ? 'text-red-500 font-medium'
-                          : data.isLunarFirstDay
-                            ? 'text-purple-600 font-medium'
-                            : data.isWeekendDay
-                              ? ''
-                              : 'text-gray-400'
+                      isPastDay
+                        ? 'text-gray-200'
+                        : data.isSolarTerm
+                          ? 'text-orange-600 font-medium'
+                          : data.isFestival
+                            ? 'text-red-500 font-medium'
+                            : data.isLunarFirstDay
+                              ? 'text-purple-600 font-medium'
+                              : data.isWeekendDay
+                                ? ''
+                                : 'text-gray-400'
                     }`}
                     style={
-                      data.isWeekendDay && !data.isSolarTerm && !data.isFestival && !data.isLunarFirstDay
-                        ? { color: monthColor.accent }
-                        : undefined
+                      isPastDay
+                        ? undefined
+                        : data.isWeekendDay && !data.isSolarTerm && !data.isFestival && !data.isLunarFirstDay
+                          ? { color: monthColor.accent }
+                          : undefined
                     }
                   >
                     {data.display}
@@ -573,8 +579,10 @@ export default function YearCalendar() {
                 {ganZhi}（{animal}）
               </span>
             </div>
-            <div className="text-lg font-bold tracking-widest text-gray-700 select-none" style={{ letterSpacing: '0.3em' }}>
-              永远不要放弃
+            <div className="flex-1 flex justify-center">
+              <span className="text-3xl font-bold tracking-[0.4em] text-gray-800 select-none" style={{ fontFamily: '"STKaiti", "KaiTi", "楷体", serif' }}>
+                永远不要放弃
+              </span>
             </div>
             <button
               onClick={() => setYear((y) => y + 1)}
@@ -715,7 +723,7 @@ export default function YearCalendar() {
                         height: cellHeight,
                         borderBottom: '1px solid #e5e7eb',
                         borderRight: '1px solid #e5e7eb',
-                        backgroundColor: isPast ? '#f0f0f0' : weekendBg,
+                        backgroundColor: isPast ? '#f7f7f7' : weekendBg,
                       }}
                     >
                       {/* Top zone: day number + lunar + check/cross, click to toggle */}
@@ -729,7 +737,7 @@ export default function YearCalendar() {
                           <span
                             className={`text-[15px] font-bold leading-none ${
                               isPast
-                                ? 'text-gray-400'
+                                ? 'text-gray-300'
                                 : cell.isWeekend ? '' : 'text-gray-800'
                             }`}
                             style={
@@ -757,7 +765,7 @@ export default function YearCalendar() {
                         <span
                           className={`text-[9px] leading-tight mt-0.5 whitespace-nowrap ${
                             isPast
-                              ? 'text-gray-300'
+                              ? 'text-gray-200'
                               : cell.isSolarTerm
                                 ? 'text-orange-600 font-medium'
                                 : cell.isFestival
