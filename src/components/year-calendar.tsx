@@ -535,7 +535,7 @@ export default function YearCalendar() {
                         height: cellHeight,
                         borderBottom: '1px solid rgba(148,163,184,0.18)',
                         borderRight: '1px solid rgba(148,163,184,0.18)',
-                        backgroundColor: isPast ? (cell.isWeekend ? 'rgba(240,242,248,0.7)' : 'rgba(248,249,252,0.6)') : weekendBg,
+                        backgroundColor: isPast ? (cell.isWeekend ? 'rgba(230,233,240,0.75)' : 'rgba(240,242,246,0.7)') : weekendBg,
                         transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
                       }}
                     >
