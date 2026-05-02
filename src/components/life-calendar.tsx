@@ -1,11 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { SKINS, DEFAULT_SKIN, type SkinTheme } from '@/lib/skins';
 
 interface LifeCalendarProps {
   birthYear: number;
   setBirthYear: (year: number) => void;
   onClose: () => void;
+  /** 当前选中的皮肤 key，与父组件共享 */
+  skinKey?: string;
+  onSkinChange?: (key: string) => void;
 }
 
 interface ActionItem {
@@ -27,10 +31,6 @@ interface Stage {
   label: string;
   range: string;
   emoji: string;
-  color: string;
-  border: string;
-  accent: string;
-  bg: string;
   start: number;
   end: number;
   slogan: string;
@@ -39,7 +39,7 @@ interface Stage {
 
 const STAGES: Stage[] = [
   {
-    key: 'childhood', label: '童年', range: '0-5岁', emoji: '🌱', color: '#f9a8d4', border: '#f9a8d450', accent: '#ec4899', bg: '#fdf2f8', start: 0, end: 5,
+    key: 'childhood', label: '童年', range: '0-5岁', emoji: '🌱', start: 0, end: 5,
     slogan: '万物皆可探索',
     categories: [
       { key: 'body', title: '身体成长', icon: '🏃', actions: [
@@ -70,7 +70,7 @@ const STAGES: Stage[] = [
     ]
   },
   {
-    key: 'youth', label: '少年', range: '6-11岁', emoji: '🌿', color: '#fdba74', border: '#fdba7450', accent: '#f59e0b', bg: '#fffbeb', start: 6, end: 11,
+    key: 'youth', label: '少年', range: '6-11岁', emoji: '🌿', start: 6, end: 11,
     slogan: '好奇心是最棒的老师',
     categories: [
       { key: 'study', title: '学业基础', icon: '📚', actions: [
@@ -100,7 +100,7 @@ const STAGES: Stage[] = [
     ]
   },
   {
-    key: 'teenager', label: '青春', range: '12-17岁', emoji: '🌳', color: '#86efac', border: '#86efac50', accent: '#22c55e', bg: '#f0fdf4', start: 12, end: 17,
+    key: 'teenager', label: '青春', range: '12-17岁', emoji: '🌳', start: 12, end: 17,
     slogan: '找到自己热爱的事',
     categories: [
       { key: 'academics', title: '学业进阶', icon: '📖', actions: [
@@ -130,7 +130,7 @@ const STAGES: Stage[] = [
     ]
   },
   {
-    key: 'young-adult', label: '青年', range: '18-29岁', emoji: '🚀', color: '#5eead4', border: '#5eead450', accent: '#14b8a6', bg: '#f0fdfa', start: 18, end: 29,
+    key: 'young-adult', label: '青年', range: '18-29岁', emoji: '🚀', start: 18, end: 29,
     slogan: '用行动丈量世界的广度',
     categories: [
       { key: 'career', title: '职业探索', icon: '💼', actions: [
@@ -162,7 +162,7 @@ const STAGES: Stage[] = [
     ]
   },
   {
-    key: 'thirties', label: '而立', range: '30-39岁', emoji: '⛰️', color: '#7dd3fc', border: '#7dd3fc50', accent: '#0ea5e9', bg: '#f0f9ff', start: 30, end: 39,
+    key: 'thirties', label: '而立', range: '30-39岁', emoji: '⛰️', start: 30, end: 39,
     slogan: '在深耕中建立不可替代性',
     categories: [
       { key: 'career', title: '事业深耕', icon: '🏔️', actions: [
@@ -188,13 +188,13 @@ const STAGES: Stage[] = [
       { key: 'health', title: '健康管理', icon: '🏋️', actions: [
         { id: 'th15', text: '每年做一次全面体检', done: false, addedToCalendar: false },
         { id: 'th16', text: '养成每周3次有氧运动习惯', done: false, addedToCalendar: false },
-        { id: 'th17', text: '注意颈椎腰椎，建立工位 ergonomics', done: false, addedToCalendar: false },
+        { id: 'th17', text: '注意颈椎腰椎，调整工位', done: false, addedToCalendar: false },
         { id: 'th18', text: '学会2种以上放松和冥想技巧', done: false, addedToCalendar: false },
       ]},
     ]
   },
   {
-    key: 'forties', label: '不惑', range: '40-49岁', emoji: '🏔️', color: '#a5b4fc', border: '#a5b4fc50', accent: '#6366f1', bg: '#eef2ff', start: 40, end: 49,
+    key: 'forties', label: '不惑', range: '40-49岁', emoji: '🏔️', start: 40, end: 49,
     slogan: '知道自己要什么，更知道自己不要什么',
     categories: [
       { key: 'career', title: '事业进阶', icon: '🎯', actions: [
@@ -223,7 +223,7 @@ const STAGES: Stage[] = [
     ]
   },
   {
-    key: 'fifties', label: '知天命', range: '50-59岁', emoji: '🌅', color: '#c4b5fd', border: '#c4b5fd50', accent: '#8b5cf6', bg: '#f5f3ff', start: 50, end: 59,
+    key: 'fifties', label: '知天命', range: '50-59岁', emoji: '🌅', start: 50, end: 59,
     slogan: '享受从参与者到传承者的转变',
     categories: [
       { key: 'legacy', title: '经验传承', icon: '📜', actions: [
@@ -249,13 +249,13 @@ const STAGES: Stage[] = [
     ]
   },
   {
-    key: 'sixties', label: '耳顺', range: '60-69岁', emoji: '🌾', color: '#d8b4fe', border: '#d8b4fe50', accent: '#a855f7', bg: '#faf5ff', start: 60, end: 69,
+    key: 'sixties', label: '耳顺', range: '60-69岁', emoji: '🌾', start: 60, end: 69,
     slogan: '人生下半场，活出真正的自己',
     categories: [
       { key: 'retire', title: '退休规划', icon: '🏖️', actions: [
         { id: 'si1', text: '制定退休后的日程表，保持节奏感', done: false, addedToCalendar: false },
         { id: 'si2', text: '评估退休金是否足够，调整支出', done: false, addedToCalendar: false },
-        { id: 'si3', text: '找到退休后的身份认同(不只是XX退休)', done: false, addedToCalendar: false },
+        { id: 'si3', text: '找到退休后的身份认同', done: false, addedToCalendar: false },
       ]},
       { key: 'family', title: '家庭温情', icon: '👴', actions: [
         { id: 'si4', text: '每周和子女通一次电话', done: false, addedToCalendar: false },
@@ -275,7 +275,7 @@ const STAGES: Stage[] = [
     ]
   },
   {
-    key: 'seventies', label: '古稀', range: '70-79岁', emoji: '🌕', color: '#f0abfc', border: '#f0abfc50', accent: '#d946ef', bg: '#fdf4ff', start: 70, end: 79,
+    key: 'seventies', label: '古稀', range: '70-79岁', emoji: '🌕', start: 70, end: 79,
     slogan: '每一天都是礼物',
     categories: [
       { key: 'wisdom', title: '智慧传承', icon: '📝', actions: [
@@ -302,20 +302,75 @@ const STAGES: Stage[] = [
   },
 ];
 
-export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeCalendarProps) {
+/* ── Skin Picker Card ── */
+function SkinCard({ skin, isSelected, onClick }: { skin: SkinTheme; isSelected: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative rounded-xl p-3 text-left transition-all duration-200 border-2 hover:scale-[1.02] active:scale-[0.98]"
+      style={{
+        background: skin.cardBg,
+        borderColor: isSelected ? skin.swatch : skin.divider,
+        boxShadow: isSelected ? `0 0 0 1px ${skin.swatch}, 0 4px 12px ${skin.swatch}30` : 'none',
+      }}
+    >
+      {/* Swatch + check */}
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: skin.swatch }}>
+          {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-semibold text-sm" style={{ color: skin.textPrimary }}>{skin.label}</span>
+            <span className="text-[10px]" style={{ color: skin.textMuted }}>{skin.labelEn}</span>
+          </div>
+          <p className="text-[10px] truncate" style={{ color: skin.textMuted }}>{skin.slogan}</p>
+        </div>
+      </div>
+      {/* Preview strip */}
+      <div className="h-8 rounded-lg overflow-hidden" style={{ background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.swatch} 50%, ${skin.headerTo} 100%)` }} />
+    </button>
+  );
+}
+
+/* ── Main Component ── */
+export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey, onSkinChange }: LifeCalendarProps) {
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [stageData, setStageData] = useState<Record<string, Record<string, Record<string, ActionItem>>>>({});
+  const [showSkinPicker, setShowSkinPicker] = useState(false);
+  const [innerSkin, setInnerSkin] = useState<string>(DEFAULT_SKIN);
+
+  // Use shared skin key if provided, else internal
+  const activeSkinKey = skinKey ?? innerSkin;
+  const skin = SKINS.find(s => s.key === activeSkinKey) ?? SKINS[0];
+
+  const handleSkinChange = (key: string) => {
+    if (onSkinChange) {
+      onSkinChange(key);
+    } else {
+      setInnerSkin(key);
+      try { localStorage.setItem('life-calendar-skin', key); } catch { /* ignore */ }
+    }
+  };
 
   const currentYear = new Date().getFullYear();
   const currentAge = currentYear - birthYear;
 
-  // Load saved progress from localStorage
+  // Load saved progress + skin
   useEffect(() => {
+    // Load skin if not managed externally
+    if (!skinKey) {
+      try {
+        const savedSkin = localStorage.getItem('life-calendar-skin');
+        if (savedSkin && SKINS.find(s => s.key === savedSkin)) setInnerSkin(savedSkin);
+      } catch { /* ignore */ }
+    }
+
     try {
       const saved = localStorage.getItem('life-calendar-progress');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Merge saved data into STAGES structure
         const data: Record<string, Record<string, Record<string, ActionItem>>> = {};
         STAGES.forEach(stage => {
           data[stage.key] = {};
@@ -323,52 +378,40 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
             data[stage.key][cat.key] = {};
             cat.actions.forEach(action => {
               const savedAction = parsed[stage.key]?.[cat.key]?.[action.id];
-              data[stage.key][cat.key][action.id] = savedAction 
-                ? { ...action, ...savedAction } 
-                : action;
+              data[stage.key][cat.key][action.id] = savedAction ? { ...action, ...savedAction } : action;
             });
           });
         });
         setStageData(data);
       } else {
-        // Initialize with default data
         const data: Record<string, Record<string, Record<string, ActionItem>>> = {};
         STAGES.forEach(stage => {
           data[stage.key] = {};
           stage.categories.forEach(cat => {
             data[stage.key][cat.key] = {};
-            cat.actions.forEach(action => {
-              data[stage.key][cat.key][action.id] = { ...action };
-            });
+            cat.actions.forEach(action => { data[stage.key][cat.key][action.id] = { ...action }; });
           });
         });
         setStageData(data);
       }
     } catch {
-      // Initialize on error
       const data: Record<string, Record<string, Record<string, ActionItem>>> = {};
       STAGES.forEach(stage => {
         data[stage.key] = {};
         stage.categories.forEach(cat => {
           data[stage.key][cat.key] = {};
-          cat.actions.forEach(action => {
-            data[stage.key][cat.key][action.id] = { ...action };
-          });
+          cat.actions.forEach(action => { data[stage.key][cat.key][action.id] = { ...action }; });
         });
       });
       setStageData(data);
     }
 
-    // Auto-expand current stage
     const current = STAGES.find(s => currentAge >= s.start && currentAge <= s.end);
     if (current) setExpandedStage(current.key);
-  }, [currentAge]);
+  }, [currentAge, skinKey]);
 
-  // Save to localStorage
   const saveData = useCallback((data: Record<string, Record<string, Record<string, ActionItem>>>) => {
-    try {
-      localStorage.setItem('life-calendar-progress', JSON.stringify(data));
-    } catch { /* ignore */ }
+    try { localStorage.setItem('life-calendar-progress', JSON.stringify(data)); } catch { /* ignore */ }
   }, []);
 
   const toggleAction = (stageKey: string, catKey: string, actionId: string) => {
@@ -376,10 +419,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
       const next = { ...prev };
       next[stageKey] = { ...next[stageKey] };
       next[stageKey][catKey] = { ...next[stageKey][catKey] };
-      next[stageKey][catKey][actionId] = {
-        ...next[stageKey][catKey][actionId],
-        done: !next[stageKey][catKey][actionId].done,
-      };
+      next[stageKey][catKey][actionId] = { ...next[stageKey][catKey][actionId], done: !next[stageKey][catKey][actionId].done };
       saveData(next);
       return next;
     });
@@ -391,10 +431,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
       next[stageKey] = { ...next[stageKey] };
       next[stageKey][catKey] = { ...next[stageKey][catKey] };
       const action = next[stageKey][catKey][actionId];
-      next[stageKey][catKey][actionId] = {
-        ...action,
-        addedToCalendar: !action.addedToCalendar,
-      };
+      next[stageKey][catKey][actionId] = { ...action, addedToCalendar: !action.addedToCalendar };
       saveData(next);
       return next;
     });
@@ -403,13 +440,9 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
   const getStageProgress = (stage: Stage) => {
     const stageD = stageData[stage.key];
     if (!stageD) return 0;
-    let total = 0;
-    let done = 0;
+    let total = 0, done = 0;
     stage.categories.forEach(cat => {
-      cat.actions.forEach(action => {
-        total++;
-        if (stageD[cat.key]?.[action.id]?.done) done++;
-      });
+      cat.actions.forEach(action => { total++; if (stageD[cat.key]?.[action.id]?.done) done++; });
     });
     return total > 0 ? Math.round((done / total) * 100) : 0;
   };
@@ -421,9 +454,11 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
   };
 
   return (
-    <div className="fixed top-0 left-0 z-50 h-full w-[480px] animate-slide-in-left shadow-2xl flex flex-col bg-white">
+    <div className="fixed top-0 left-0 z-50 h-full w-[480px] animate-slide-in-left shadow-2xl flex flex-col transition-colors duration-500"
+      style={{ background: skin.panelBg }}>
+
       {/* Resize handle */}
-      <div className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-[#5c5ba8]/40 z-50 transition-colors"
+      <div className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-white/20 z-50 transition-colors"
         onMouseDown={(e) => {
           const startX = e.clientX;
           const panel = (e.target as HTMLElement).parentElement!;
@@ -440,17 +475,29 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
       />
 
       {/* Header */}
-      <div className="flex-shrink-0 px-6 py-5 text-white relative" style={{ background: 'linear-gradient(135deg, #3d3552 0%, #4a4458 50%, #5c5ba8 100%)' }}>
+      <div className="flex-shrink-0 px-6 py-5 text-white relative overflow-hidden"
+        style={{ background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.swatch} 60%, ${skin.headerTo} 100%)` }}>
+        {/* Decorative circles */}
+        <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-white/5" />
+        <div className="absolute -right-2 -bottom-8 w-20 h-20 rounded-full bg-white/5" />
+
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-semibold tracking-wide">人生旅途</h2>
-            <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors text-sm">✕</button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setShowSkinPicker(!showSkinPicker)}
+                className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors text-sm"
+                title="选择皮肤">
+                <span className="w-4 h-4 rounded-full inline-block border-2 border-white/60" style={{ background: skin.swatch }} />
+              </button>
+              <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors text-sm">✕</button>
+            </div>
           </div>
-          <div className="flex items-center gap-3 text-sm text-white/60">
+          <div className="flex items-center gap-3 text-sm text-white/70">
             <span>出生年份</span>
             <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}
               className="w-20 px-2 py-1 rounded bg-white/15 text-white text-center border border-white/10 focus:outline-none focus:border-white/30" />
-            <span className="text-white/40">|</span>
+            <span className="text-white/30">|</span>
             <span>当前 {currentAge} 岁</span>
           </div>
           {/* Progress bar */}
@@ -463,60 +510,77 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
         </div>
       </div>
 
+      {/* Skin Picker Panel */}
+      {showSkinPicker && (
+        <div className="flex-shrink-0 border-b px-4 py-4 animate-fade-in" style={{ background: skin.cardBg, borderColor: skin.divider }}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold" style={{ color: skin.textPrimary }}>选择皮肤</h3>
+            <button onClick={() => setShowSkinPicker(false)} className="text-xs" style={{ color: skin.textMuted }}>收起</button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {SKINS.map(s => (
+              <SkinCard key={s.key} skin={s} isSelected={s.key === activeSkinKey} onClick={() => handleSkinChange(s.key)} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Stages List */}
-      <div className="flex-1 overflow-y-auto py-4 px-4 space-y-3">
-        {STAGES.map(stage => {
+      <div className="flex-1 overflow-y-auto py-4 px-4 space-y-3 sidebar-scroll">
+        {STAGES.map((stage, idx) => {
           const status = getStageStatus(stage);
           const isExpanded = expandedStage === stage.key;
           const progress = getStageProgress(stage);
           const stageD = stageData[stage.key];
+          const sc = skin.stageColors[idx] ?? skin.stageColors[0];
 
           return (
             <div key={stage.key} className="rounded-xl overflow-hidden transition-all duration-300"
               style={{
-                border: `1px solid ${isExpanded ? stage.border : '#e8e4df'}`,
-                boxShadow: isExpanded ? `0 4px 20px ${stage.border}` : 'none',
+                background: skin.cardBg,
+                border: `1px solid ${isExpanded ? sc.border : skin.divider}`,
+                boxShadow: isExpanded ? `0 4px 20px ${sc.border}40` : 'none',
               }}>
-              {/* Stage Header - clickable */}
+              {/* Stage Header */}
               <button onClick={() => setExpandedStage(isExpanded ? null : stage.key)}
-                className="w-full px-4 py-3 flex items-center gap-3 text-left transition-colors hover:opacity-90"
-                style={{ background: isExpanded ? stage.bg : (status === 'past' ? '#fafaf8' : status === 'current' ? stage.bg : 'white') }}>
+                className="w-full px-4 py-3 flex items-center gap-3 text-left transition-colors"
+                style={{ background: isExpanded ? sc.bg : (status === 'current' ? sc.bg : skin.cardBg) }}>
                 {/* Color dot */}
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
-                  style={{ background: stage.color + '30' }}>
+                  style={{ background: sc.color + '40' }}>
                   {stage.emoji}
                 </div>
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-[#1a1a2e] text-sm">{stage.label}</span>
-                    <span className="text-xs text-[#8b8680]">{stage.range}</span>
+                    <span className="font-semibold text-sm" style={{ color: skin.textPrimary }}>{stage.label}</span>
+                    <span className="text-xs" style={{ color: skin.textMuted }}>{stage.range}</span>
                     {status === 'current' && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-medium" style={{ background: stage.accent }}>当前</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-medium" style={{ background: sc.accent }}>当前</span>
                     )}
                     {status === 'past' && progress === 100 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-600 font-medium">完成</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: skin.plannedBg, color: skin.plannedText }}>完成</span>
                     )}
                   </div>
-                  {!isExpanded && <p className="text-xs text-[#8b8680] mt-0.5 truncate">{stage.slogan}</p>}
+                  {!isExpanded && <p className="text-xs mt-0.5 truncate" style={{ color: skin.textMuted }}>{stage.slogan}</p>}
                 </div>
                 {/* Progress ring */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-xs font-medium" style={{ color: progress > 0 ? stage.accent : '#c8c4be' }}>{progress}%</span>
+                  <span className="text-xs font-medium" style={{ color: progress > 0 ? sc.accent : skin.textMuted }}>{progress}%</span>
                   <svg width="28" height="28" viewBox="0 0 28 28" className="-rotate-90">
-                    <circle cx="14" cy="14" r="11" fill="none" stroke="#e8e4df" strokeWidth="2.5" />
-                    <circle cx="14" cy="14" r="11" fill="none" stroke={stage.accent} strokeWidth="2.5"
+                    <circle cx="14" cy="14" r="11" fill="none" stroke={skin.progressTrack} strokeWidth="2.5" />
+                    <circle cx="14" cy="14" r="11" fill="none" stroke={sc.accent} strokeWidth="2.5"
                       strokeDasharray={`${progress * 0.691} 69.1`} strokeLinecap="round" />
                   </svg>
-                  <span className="text-[#8b8680] text-xs">{isExpanded ? '▲' : '▼'}</span>
+                  <span className="text-xs" style={{ color: skin.textMuted }}>{isExpanded ? '▲' : '▼'}</span>
                 </div>
               </button>
 
               {/* Expanded Content */}
               {isExpanded && (
-                <div className="animate-fade-in" style={{ background: stage.bg }}>
-                  <div className="px-4 py-2 border-b" style={{ borderColor: stage.border }}>
-                    <p className="text-xs font-medium" style={{ color: stage.accent }}>「{stage.slogan}」</p>
+                <div className="animate-fade-in" style={{ background: sc.bg }}>
+                  <div className="px-4 py-2 border-b" style={{ borderColor: sc.border + '60' }}>
+                    <p className="text-xs font-medium" style={{ color: sc.accent }}>「{stage.slogan}」</p>
                   </div>
                   <div className="px-4 py-3 space-y-4">
                     {stage.categories.map(cat => {
@@ -528,10 +592,10 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
                         <div key={cat.key}>
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-sm">{cat.icon}</span>
-                            <span className="text-sm font-medium text-[#1a1a2e]">{cat.title}</span>
-                            <span className="text-[10px] text-[#8b8680] ml-auto">{catDone}/{catTotal}</span>
+                            <span className="text-sm font-medium" style={{ color: skin.textPrimary }}>{cat.title}</span>
+                            <span className="text-[10px] ml-auto" style={{ color: skin.textMuted }}>{catDone}/{catTotal}</span>
                           </div>
-                          <div className="space-y-1.5">
+                          <div className="space-y-1">
                             {cat.actions.map(action => {
                               const saved = stageD?.[cat.key]?.[action.id];
                               const isDone = saved?.done ?? false;
@@ -539,20 +603,35 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose }: LifeC
 
                               return (
                                 <div key={action.id}
-                                  className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg transition-colors hover:bg-white/60 group"
-                                  style={{ opacity: status === 'past' && !isDone ? 0.4 : 1 }}>
+                                  className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg transition-colors group"
+                                  style={{
+                                    background: skin.isDark ? (isDone ? 'transparent' : 'transparent') : 'transparent',
+                                    opacity: status === 'past' && !isDone ? 0.4 : 1,
+                                  }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = skin.isDark ? sc.color + '15' : 'rgba(255,255,255,0.6)'; }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
                                   {/* Checkbox */}
                                   <button onClick={() => toggleAction(stage.key, cat.key, action.id)}
-                                    className={`w-[18px] h-[18px] rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${isDone ? 'border-emerald-400 bg-emerald-400' : 'border-[#c8c4be] hover:border-[#8b8680]'}`}>
+                                    className="w-[18px] h-[18px] rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all"
+                                    style={{
+                                      borderColor: isDone ? skin.checkboxDone : (skin.isDark ? '#64748b' : '#c8c4be'),
+                                      background: isDone ? skin.checkboxDone : 'transparent',
+                                    }}>
                                     {isDone && <span className="text-white text-[9px] font-bold">✓</span>}
                                   </button>
                                   {/* Text */}
-                                  <span className={`text-[13px] leading-5 flex-1 ${isDone ? 'line-through text-[#8b8680]' : 'text-[#1a1a2e]'}`}>
+                                  <span className={`text-[13px] leading-5 flex-1 ${isDone ? 'line-through' : ''}`}
+                                    style={{ color: isDone ? skin.textMuted : skin.textPrimary }}>
                                     {action.text}
                                   </span>
                                   {/* Add to calendar button */}
                                   <button onClick={() => addToCalendar(stage.key, cat.key, action.id)}
-                                    className={`flex-shrink-0 text-[10px] px-2 py-1 rounded-full transition-all opacity-0 group-hover:opacity-100 ${isAdded ? 'bg-[#5c5ba8]/10 text-[#5c5ba8] opacity-100' : 'bg-white text-[#8b8680] hover:text-[#5c5ba8] border border-[#e8e4df]'}`}
+                                    className={`flex-shrink-0 text-[10px] px-2 py-1 rounded-full transition-all opacity-0 group-hover:opacity-100 ${isAdded ? 'opacity-100' : ''}`}
+                                    style={{
+                                      background: isAdded ? skin.plannedBg : skin.planBtnBg,
+                                      color: isAdded ? skin.plannedText : skin.textMuted,
+                                      border: isAdded ? 'none' : `1px solid ${skin.divider}`,
+                                    }}
                                     title={isAdded ? '已加入计划' : '加入我的年历'}>
                                     {isAdded ? '✓ 已计划' : '+ 计划'}
                                   </button>

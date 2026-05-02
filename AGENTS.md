@@ -32,6 +32,7 @@
 │   ├── lib/
 │   │   ├── lunar.ts            # 农历计算工具 (lunar-javascript 封装)
 │   │   ├── calendar-utils.ts   # 日历工具 (月份天数、周末判断、12周区块、边框计算)
+│   │   ├── skins.ts            # 皮肤主题系统 (8套皮肤定义)
 │   │   └── utils.ts            # 通用工具函数 (cn)
 │   ├── hooks/                  # 自定义 Hooks
 │   └── types/

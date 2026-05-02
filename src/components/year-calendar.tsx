@@ -11,6 +11,7 @@ import { getLunarInfo, getYearAnimal, getGanZhiYear } from '@/lib/lunar';
 import DayView from '@/components/day-view';
 import MonthlyReview from '@/components/monthly-review';
 import LifeCalendar from '@/components/life-calendar';
+import { SKINS, DEFAULT_SKIN } from '@/lib/skins';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -56,6 +57,7 @@ export default function YearCalendar() {
   const [reviewWidth, setReviewWidth] = useState(440);
   const [showLifeCalendar, setShowLifeCalendar] = useState(false);
   const [birthYear, setBirthYear] = useState(1990);
+  const [skinKey, setSkinKey] = useState<string>(DEFAULT_SKIN);
 
   // Resize handler for side panels
   const handlePanelResize = useCallback((setter: React.Dispatch<React.SetStateAction<number>>, e: React.MouseEvent) => {
@@ -92,6 +94,7 @@ export default function YearCalendar() {
   }, [mounted]);
 
   const blocks = useMemo(() => getTwelveWeekBlocks(year), [year]);
+  const skin = useMemo(() => SKINS.find(s => s.key === skinKey) ?? SKINS[0], [skinKey]);
 
   const yearData = useMemo(
     () => precomputeYearData(year, blocks, getLunarInfo),
@@ -128,6 +131,10 @@ export default function YearCalendar() {
       const savedNotes = localStorage.getItem(`calendar-notes-${year}`);
       if (savedNotes) setNotes(JSON.parse(savedNotes));
       else setNotes({});
+
+      // Load skin preference
+      const savedSkin = localStorage.getItem('life-calendar-skin');
+      if (savedSkin && SKINS.find(s => s.key === savedSkin)) setSkinKey(savedSkin);
     } catch {
       setOverrides({});
       setNotes({});
@@ -405,10 +412,13 @@ export default function YearCalendar() {
         {/* Left arrow for Life Calendar */}
         <button
           onClick={() => setShowLifeCalendar(true)}
-          className="flex-shrink-0 w-8 flex items-center justify-center bg-gradient-to-r from-indigo-50/80 to-transparent hover:from-indigo-100 transition-all group cursor-pointer z-10"
-          title="4000周人生"
+          className="flex-shrink-0 w-8 flex items-center justify-center transition-all group cursor-pointer z-10"
+          style={{ background: `linear-gradient(to right, ${skin.swatch}15, transparent)` }}
+          title="人生旅途"
         >
-          <span className="text-indigo-300 group-hover:text-indigo-500 transition-colors text-2xl">‹</span>
+          <span className="transition-colors text-2xl" style={{ color: `${skin.swatch}80` }}>
+            <span className="group-hover:opacity-100 opacity-60 transition-opacity">‹</span>
+          </span>
         </button>
 
         <div
@@ -833,6 +843,8 @@ export default function YearCalendar() {
           birthYear={birthYear}
           setBirthYear={setBirthYear}
           onClose={() => setShowLifeCalendar(false)}
+          skinKey={skinKey}
+          onSkinChange={setSkinKey}
         />
       )}
       </div>
