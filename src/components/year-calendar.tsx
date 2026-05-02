@@ -185,10 +185,10 @@ function MonthView({
                     >
                       {day}
                     </span>
-                    {mounted && status !== 'none' && (
+                      {mounted && status !== 'none' && (
                       <span
-                        className={`text-xl font-bold ${
-                          status === 'crossed' ? 'text-red-500' : 'text-green-600'
+                        className={`absolute inset-0 flex items-center justify-center text-5xl font-bold pointer-events-none ${
+                          status === 'crossed' ? 'text-red-400/30' : 'text-green-500/30'
                         }`}
                       >
                         {status === 'crossed' ? '✗' : '✓'}
@@ -754,10 +754,10 @@ export default function YearCalendar() {
                           </span>
                           {mounted && status !== 'none' && (
                             <span
-                              className={`text-[12px] font-bold leading-none ${
+                              className={`absolute inset-0 flex items-center justify-center text-[28px] font-bold leading-none pointer-events-none ${
                                 status === 'crossed'
-                                  ? 'text-red-500'
-                                  : 'text-green-600'
+                                  ? 'text-red-400/40'
+                                  : 'text-green-500/40'
                               }`}
                             >
                               {status === 'crossed' ? '✗' : '✓'}
