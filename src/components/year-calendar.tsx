@@ -754,7 +754,7 @@ export default function YearCalendar() {
                           </span>
                           {mounted && status !== 'none' && (
                             <span
-                              className={`absolute inset-0 flex items-center justify-center text-[28px] font-bold leading-none pointer-events-none ${
+                              className={`absolute inset-0 flex items-center justify-center text-[22px] font-bold leading-none pointer-events-none ${
                                 status === 'crossed'
                                   ? 'text-red-400/40'
                                   : 'text-green-500/40'
