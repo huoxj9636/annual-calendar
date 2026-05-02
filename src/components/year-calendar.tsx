@@ -573,6 +573,9 @@ export default function YearCalendar() {
                 {ganZhi}（{animal}）
               </span>
             </div>
+            <div className="text-lg font-bold tracking-widest text-gray-700 select-none" style={{ letterSpacing: '0.3em' }}>
+              永远不要放弃
+            </div>
             <button
               onClick={() => setYear((y) => y + 1)}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors text-lg font-bold"
