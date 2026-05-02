@@ -16,6 +16,7 @@ import {
   isToday,
   MONTH_COLORS,
   MONTH_NAMES,
+  getDaysInMonth,
   type CellData,
   type TwelveWeekBlock,
 } from '@/lib/calendar-utils';
@@ -240,7 +241,8 @@ export default function YearCalendar() {
       if (!gridEl) return;
       const gridRect = gridEl.getBoundingClientRect();
 
-      const blockCellsMap: Record<number, DOMRect[]> = {};
+      // Collect cell rects per block, organized by (month, day) to handle empty cells
+      const blockCellMap: Record<number, Map<string, { rect: DOMRect; month: number; day: number }>> = {};
 
       const monthRows = gridEl.querySelectorAll<HTMLElement>('[data-month-row]');
       monthRows.forEach((row) => {
@@ -250,15 +252,19 @@ export default function YearCalendar() {
           const day = parseInt(cell.dataset.day || '0', 10);
           const cellData = yearData[monthIdx]?.[day - 1];
           if (!cellData || !cellData.exists || cellData.blockIndex < 0) return;
-          if (!blockCellsMap[cellData.blockIndex]) blockCellsMap[cellData.blockIndex] = [];
-          blockCellsMap[cellData.blockIndex].push(cell.getBoundingClientRect());
+          if (!blockCellMap[cellData.blockIndex]) blockCellMap[cellData.blockIndex] = new Map();
+          blockCellMap[cellData.blockIndex].set(`${monthIdx + 1}-${day}`, {
+            rect: cell.getBoundingClientRect(),
+            month: monthIdx + 1,
+            day,
+          });
         });
       });
 
       const paths: { d: string; color: string; blockIdx: number }[] = [];
 
-      const amplitude = 1.2;
-      const wavelength = 4;
+      const amplitude = 0.6;
+      const wavelength = 3;
 
       const makeWavyLine = (
         x1: number, y1: number,
@@ -285,34 +291,156 @@ export default function YearCalendar() {
         return d;
       };
 
-      // For each block, compute one bounding rectangle and draw a wavy border around it
-      for (const [blockIdxStr, rects] of Object.entries(blockCellsMap)) {
+      // For each block, draw outline segments that skip empty cells
+      for (const [blockIdxStr, cellMap] of Object.entries(blockCellMap)) {
         const blockIdx = parseInt(blockIdxStr, 10);
         const block = blocks.find((b: TwelveWeekBlock) => b.index === blockIdx);
         if (!block) continue;
         const color = block.color === 'red' ? '#dc2626' : '#1a1a1a';
 
-        // Find bounding box of all cells in this block
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const r of rects) {
-          const l = r.left - gridRect.left;
-          const t = r.top - gridRect.top;
-          const ri = r.right - gridRect.left;
-          const b = r.bottom - gridRect.top;
-          if (l < minX) minX = l;
-          if (t < minY) minY = t;
-          if (ri > maxX) maxX = ri;
-          if (b > maxY) maxY = b;
+        // Group cells by month for row-aware processing
+        const byMonth: Record<number, { day: number; left: number; right: number; top: number; bottom: number }[]> = {};
+        for (const [, info] of cellMap) {
+          if (!byMonth[info.month]) byMonth[info.month] = [];
+          const l = info.rect.left - gridRect.left;
+          const t = info.rect.top - gridRect.top;
+          const r = info.rect.right - gridRect.left;
+          const b = info.rect.bottom - gridRect.top;
+          byMonth[info.month].push({ day: info.day, left: l, right: r, top: t, bottom: b });
         }
 
-        // Draw 4 sides of one rectangle with wavy lines
-        const top = makeWavyLine(minX, minY, maxX, minY);
-        const right = makeWavyLine(maxX, minY, maxX, maxY);
-        const bottom = makeWavyLine(maxX, maxY, minX, maxY);
-        const left = makeWavyLine(minX, maxY, minX, minY);
+        // Sort each month's cells by day
+        for (const m of Object.keys(byMonth)) {
+          byMonth[parseInt(m)].sort((a, b) => a.day - b.day);
+        }
 
-        for (const d of [top, right, bottom, left]) {
-          if (d) paths.push({ d, color, blockIdx });
+        // Find contiguous horizontal segments per month (break at empty cells)
+        interface HSegment { month: number; dayStart: number; dayEnd: number; left: number; right: number; top: number; bottom: number }
+        const hSegments: HSegment[] = [];
+        const months = Object.keys(byMonth).map(Number).sort((a, b) => a - b);
+
+        for (const m of months) {
+          const cells = byMonth[m];
+          if (cells.length === 0) continue;
+          let segStart = cells[0];
+          for (let i = 1; i <= cells.length; i++) {
+            const isEnd = i === cells.length;
+            const isGap = !isEnd && cells[i].day !== cells[i - 1].day + 1;
+            if (isEnd || isGap) {
+              const segEnd = cells[i - 1];
+              hSegments.push({
+                month: m,
+                dayStart: segStart.day,
+                dayEnd: segEnd.day,
+                left: segStart.left,
+                right: segEnd.right,
+                top: segStart.top,
+                bottom: segEnd.bottom,
+              });
+              if (!isEnd) segStart = cells[i];
+            }
+          }
+        }
+
+        // Draw top and bottom edges for each horizontal segment
+        for (const seg of hSegments) {
+          // Check if this segment needs a top edge (no same-block cell above)
+          let needsTop = true;
+          const aboveMonth = seg.month - 1;
+          if (byMonth[aboveMonth]) {
+            const above = byMonth[aboveMonth];
+            const hasFullAbove = above.some(c => c.day >= seg.dayStart && c.day <= seg.dayEnd);
+            if (hasFullAbove) needsTop = false;
+          }
+          if (needsTop) {
+            const d = makeWavyLine(seg.left, seg.top, seg.right, seg.top);
+            if (d) paths.push({ d, color, blockIdx });
+          }
+
+          // Check if this segment needs a bottom edge
+          let needsBottom = true;
+          const belowMonth = seg.month + 1;
+          if (byMonth[belowMonth]) {
+            const below = byMonth[belowMonth];
+            const hasFullBelow = below.some(c => c.day >= seg.dayStart && c.day <= seg.dayEnd);
+            if (hasFullBelow) needsBottom = false;
+          }
+          if (needsBottom) {
+            const d = makeWavyLine(seg.right, seg.bottom, seg.left, seg.bottom);
+            if (d) paths.push({ d, color, blockIdx });
+          }
+        }
+
+        // Draw left and right edges for each column
+        // Collect all unique day columns that have cells
+        const allDays = new Set<number>();
+        for (const [, info] of cellMap) {
+          allDays.add(info.day);
+        }
+
+        for (const dayCol of allDays) {
+          // Find contiguous vertical segments for this day column
+          const monthCols = months
+            .filter(m => byMonth[m].some(c => c.day === dayCol))
+            .map(m => {
+              const c = byMonth[m].find(cc => cc.day === dayCol)!;
+              return { month: m, top: c.top, bottom: c.bottom, left: c.left, right: c.right };
+            })
+            .sort((a, b) => a.month - b.month);
+
+          // Break into contiguous vertical segments (adjacent months)
+          const vSegments: { top: number; bottom: number; left: number; right: number; monthStart: number; monthEnd: number }[] = [];
+          let vStart = monthCols[0];
+          for (let i = 1; i <= monthCols.length; i++) {
+            const isEnd = i === monthCols.length;
+            const isGap = !isEnd && monthCols[i].month !== monthCols[i - 1].month + 1;
+            if (isEnd || isGap) {
+              const vEnd = monthCols[i - 1];
+              vSegments.push({
+                top: vStart.top,
+                bottom: vEnd.bottom,
+                left: vStart.left,
+                right: vStart.right,
+                monthStart: vStart.month,
+                monthEnd: vEnd.month,
+              });
+              if (!isEnd) vStart = monthCols[i];
+            }
+          }
+
+          for (const vSeg of vSegments) {
+            // Left edge: no same-block cell to the left
+            let needsLeft = true;
+            if (dayCol > 1) {
+              // Check if previous day exists in all months of this vertical segment
+              const hasPrevDay = months
+                .filter(m => m >= vSeg.monthStart && m <= vSeg.monthEnd)
+                .every(m => byMonth[m]?.some(c => c.day === dayCol - 1));
+              if (hasPrevDay) needsLeft = false;
+            }
+            if (needsLeft) {
+              const d = makeWavyLine(vSeg.left, vSeg.top, vSeg.left, vSeg.bottom);
+              if (d) paths.push({ d, color, blockIdx });
+            }
+
+            // Right edge: no same-block cell to the right
+            let needsRight = true;
+            const daysInLastMonth = getDaysInMonth(year, vSeg.monthEnd);
+            if (dayCol < daysInLastMonth) {
+              const hasNextDay = months
+                .filter(m => m >= vSeg.monthStart && m <= vSeg.monthEnd)
+                .every(m => {
+                  const dim = getDaysInMonth(year, m);
+                  if (dayCol >= dim) return false;
+                  return byMonth[m]?.some(c => c.day === dayCol + 1);
+                });
+              if (hasNextDay) needsRight = false;
+            }
+            if (needsRight) {
+              const d = makeWavyLine(vSeg.right, vSeg.top, vSeg.right, vSeg.bottom);
+              if (d) paths.push({ d, color, blockIdx });
+            }
+          }
         }
       }
 
