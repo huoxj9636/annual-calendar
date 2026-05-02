@@ -147,13 +147,6 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
   }
 
   const parseVoiceToEvents = (text: string) => {
-    // Try to extract time patterns like "9点", "9点半", "上午10点", "下午3点", "15点", "3点半"
-    const timePatterns = [
-      /(?:上午|早上|早晨)?(\d{1,2})点半?/g,
-      /下午(\d{1,2})点半?/g,
-      /(\d{1,2}):(\d{2})/g,
-    ];
-
     const foundTimes: { hour: number; minute: number }[] = [];
 
     // Match "下午X点" → X+12
