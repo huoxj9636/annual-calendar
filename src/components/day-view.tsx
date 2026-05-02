@@ -40,6 +40,7 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
   const [voiceText, setVoiceText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<ReturnType<typeof createRecognition> | null>(null);
+  const voiceTextRef = useRef('');
 
   const storageKey = `dayview-events-${year}-${month}-${day}`;
   const todoKey = `dayview-todos-${year}-${month}-${day}`;
@@ -230,13 +231,14 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
     const rec = recognition as unknown as SpeechRecognition;
     rec.lang = 'zh-CN';
     rec.interimResults = true;
-    rec.continuous = false;
+    rec.continuous = true;
 
     rec.onresult = (event: SpeechRecognitionEvent) => {
       let transcript = '';
       for (let i = 0; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript;
       }
+      voiceTextRef.current = transcript;
       setVoiceText(transcript);
     };
 
@@ -246,9 +248,11 @@ export default function DayView({ year, month, day, onClose }: DayViewProps) {
 
     rec.onend = () => {
       setIsListening(false);
-      if (voiceText.trim()) {
-        parseVoiceToEvents(voiceText.trim());
+      const finalText = voiceTextRef.current.trim();
+      if (finalText) {
+        parseVoiceToEvents(finalText);
         setVoiceText('');
+        voiceTextRef.current = '';
       }
     };
 
