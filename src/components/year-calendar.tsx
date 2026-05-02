@@ -258,9 +258,11 @@ export default function YearCalendar() {
   return (
     <div className="h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50 print:bg-white print:h-auto flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex-shrink-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 print:static print:border-b z-20">
-        <div className="px-8 py-1.5 flex items-center justify-between flex-wrap gap-2 relative">
-          <div className="flex items-center gap-3 rounded-2xl px-4 py-2" style={{ background: 'linear-gradient(135deg, #f8f9ff 0%, #eef0fb 50%, #f5f3ff 100%)' }}>
+      <header className="flex-shrink-0 border-b border-gray-200 print:static print:border-b z-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/header-bg.jpeg')" }} />
+        <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px]" />
+        <div className="relative px-8 py-1.5 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3 rounded-2xl px-4 py-2">
             <button
               onClick={() => setYear((y) => y - 1)}
               className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors text-2xl font-bold"
@@ -414,7 +416,17 @@ export default function YearCalendar() {
                       return hasEvts || hasTodos;
                     } catch { return false; }
                   })();
-                  const hasAnyNote = hasNote || hasDayViewData;
+                  // Also check day-view memo text stored in calendar-notes-${year}
+                  const hasDayViewMemo = mounted && (() => {
+                    try {
+                      const raw = localStorage.getItem(`calendar-notes-${year}`);
+                      if (!raw) return false;
+                      const parsed = JSON.parse(raw);
+                      const memoKey = `${year}-${cell.month}-${cell.day}`;
+                      return !!parsed[memoKey] && parsed[memoKey].trim().length > 0;
+                    } catch { return false; }
+                  })();
+                  const hasAnyNote = hasNote || hasDayViewData || hasDayViewMemo;
                   const cellDateStr = `${year}-${String(cell.month).padStart(2, '0')}-${String(cell.day).padStart(2, '0')}`;
                   const isPast = mounted && (() => {
                     if (!todayStr) return false;
@@ -512,12 +524,7 @@ export default function YearCalendar() {
                         title={`${year}年${cell.month}月${cell.day}日 - 点击查看日程`}
                       >
                         {hasAnyNote && (
-                          <span className="absolute top-0.5 right-0.5 flex items-center justify-center w-3 h-3">
-                            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-emerald-500">
-                              <path d="M3 3.5A1.5 1.5 0 014.5 2h7A1.5 1.5 0 0113 3.5v9a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 12.5v-9zM4.5 3a.5.5 0 00-.5.5v9a.5.5 0 00.5.5h7a.5.5 0 00.5-.5v-9a.5.5 0 00-.5-.5h-7z"/>
-                              <path d="M6 7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5z"/>
-                            </svg>
-                          </span>
+                          <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-blue-500" />
                         )}
                       </div>
                     </div>

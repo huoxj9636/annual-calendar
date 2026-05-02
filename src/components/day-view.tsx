@@ -154,7 +154,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
       if (storedTodos) setTodos(JSON.parse(storedTodos));
     } catch { /* empty */ }
     try {
-      const notesRaw = localStorage.getItem('calendar-notes');
+      const notesRaw = localStorage.getItem(`calendar-notes-${year}`);
       if (notesRaw) {
         const parsed = JSON.parse(notesRaw);
         setNoteText(parsed[noteKey] || '');
@@ -174,12 +174,12 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
 
   const saveNote = useCallback(() => {
     try {
-      const raw = localStorage.getItem('calendar-notes');
+      const raw = localStorage.getItem(`calendar-notes-${year}`);
       const existing = raw ? JSON.parse(raw) : {};
       existing[noteKey] = noteText;
-      localStorage.setItem('calendar-notes', JSON.stringify(existing));
+      localStorage.setItem(`calendar-notes-${year}`, JSON.stringify(existing));
     } catch { /* empty */ }
-  }, [noteText, noteKey]);
+  }, [noteText, noteKey, year]);
 
   const addEvent = () => {
     if (!newEvent.title.trim()) return;
