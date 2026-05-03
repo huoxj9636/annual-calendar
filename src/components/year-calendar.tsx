@@ -858,18 +858,21 @@ export default function YearCalendar() {
               onMouseDown={(e) => handlePanelResize(setReviewWidth, 'calendar-review-width', e)}
             />
             {/* 头部 - 背景图+渐变 */}
-            <div className="px-5 pt-5 pb-4 relative overflow-hidden" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
+            <div className="px-5 pt-4 pb-3 relative overflow-hidden" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
               <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }} />
               <div className="relative z-10 flex items-center justify-between">
                 <div>
-                  <div className="text-white/60 text-xs font-medium tracking-wider mb-1">MONTHLY REVIEW</div>
-                  <div className="text-white text-xl font-bold">{selectedMonth}月复盘</div>
-                  <div className="text-white/50 text-xs mt-0.5">{year}年{selectedMonth}月</div>
+                  <div className="text-white/60 text-xs font-medium tracking-wider mb-0.5">MONTHLY REVIEW</div>
+                  <div className="text-white text-lg font-bold">{selectedMonth}月复盘</div>
                 </div>
-                <button onClick={() => setSelectedMonth(null)} className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                <button onClick={() => setSelectedMonth(null)} className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </div>
+            </div>
+
+            {/* 复盘内容 - 现代卡片 */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
               {/* 迷你统计条 */}
               {(() => {
                 const daysInMonth = new Date(year, selectedMonth, 0).getDate();
@@ -890,32 +893,28 @@ export default function YearCalendar() {
                 }
                 const rate = effectiveDays > 0 ? Math.round((satisfied / effectiveDays) * 100) : 0;
                 return (
-                  <div className="mt-4 space-y-2.5">
+                  <div className="rounded-xl p-3 space-y-2" style={{ background: skin.cardBg }}>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-gray-900 text-sm">✓</span>
-                        <span className="text-gray-700 text-xs font-medium">{satisfied}天满意</span>
+                        <span style={{ color: skin.checkColor }} className="text-sm">✓</span>
+                        <span style={{ color: skin.textSecondary }} className="text-xs font-medium">{satisfied}天满意</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-gray-900 text-sm">✗</span>
-                        <span className="text-gray-700 text-xs font-medium">{crossed}天不满意</span>
+                        <span style={{ color: skin.crossColor }} className="text-sm">✗</span>
+                        <span style={{ color: skin.textSecondary }} className="text-xs font-medium">{crossed}天不满意</span>
                       </div>
                       <div className="flex-1" />
-                      <span className="text-gray-500 text-xs">{effectiveDays}天</span>
+                      <span style={{ color: skin.textMuted }} className="text-xs">{effectiveDays}天</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-1.5 rounded-full bg-white/20 overflow-hidden">
-                        <div className="h-full rounded-full bg-white/80 transition-all" style={{ width: `${rate}%` }} />
+                      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: skin.divider }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${rate}%`, background: skin.swatch }} />
                       </div>
-                      <span className="text-gray-700 text-xs font-semibold">{rate}%</span>
+                      <span style={{ color: skin.textPrimary }} className="text-xs font-semibold">{rate}%</span>
                     </div>
                   </div>
                 );
               })()}
-            </div>
-
-            {/* 复盘内容 - 现代卡片 */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
               {([
                 { key: 'goals', label: '本月目标', icon: '🎯', color: '#8b5cf6', placeholder: '这个月想要达成什么？' },
                 { key: 'done', label: '完成情况', icon: '✅', color: '#22c55e', placeholder: '实际完成了哪些？' },
