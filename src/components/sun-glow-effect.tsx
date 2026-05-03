@@ -41,15 +41,18 @@ export function SunGlowEffect() {
 
   useEffect(() => {
     setMounted(true);
-    const update = () => {
-      const hour = new Date().getHours();
-      phaseRef.current = getSunPhase(hour);
-    };
-    update();
-    const timer = setInterval(update, 60000);
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    // Small delay to ensure canvas is rendered after mounted state triggers re-render
+    const initTimer = setTimeout(() => {
+      const update = () => {
+        const hour = new Date().getHours();
+        phaseRef.current = getSunPhase(hour);
+      };
+      update();
+      const timer = setInterval(update, 60000);
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -208,12 +211,18 @@ export function SunGlowEffect() {
     const resizeObs = new ResizeObserver(resizeCanvas);
     if (canvas.parentElement) resizeObs.observe(canvas.parentElement);
 
-    animRef.current = requestAnimationFrame(draw);
+      animRef.current = requestAnimationFrame(draw);
+
+      return () => {
+        clearInterval(timer);
+        cancelAnimationFrame(animRef.current);
+        resizeObs.disconnect();
+      };
+    }, 50); // 50ms delay to ensure canvas is mounted and rendered
 
     return () => {
-      clearInterval(timer);
+      clearTimeout(initTimer);
       cancelAnimationFrame(animRef.current);
-      resizeObs.disconnect();
     };
   }, []);
 
