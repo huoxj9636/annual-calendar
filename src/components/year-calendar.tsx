@@ -318,9 +318,10 @@ export default function YearCalendar() {
       {/* Header */}
       <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ background: skin.headerBgStyle }} />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.15) 100%)" }} />
-        <div className="relative px-8 py-1.5 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3 rounded-2xl px-4 py-2">
+        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
+
+        <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3 rounded-2xl px-5 py-2.5 backdrop-blur-sm" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
             <button
               onClick={() => setYear((y) => y - 1)}
               className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold"
@@ -332,8 +333,8 @@ export default function YearCalendar() {
               ‹
             </button>
             <div className="flex items-center">
-              <h1 className="text-7xl font-black tracking-tight leading-none"
-              style={{ color: skin.textPrimary }}>
+              <h1 className="text-7xl font-black tracking-tighter leading-none"
+              style={{ color: skin.textPrimary, textShadow: `0 1px 2px ${skin.swatch}15` }}>
                 {year}
               </h1>
               <div className="flex flex-col ml-4">
@@ -348,16 +349,18 @@ export default function YearCalendar() {
                   >
                     今年
                   </button>
-                  {/* Skin picker toggle */}
+                  {/* Skin picker toggle - palette icon */}
                   <div className="relative">
                     <button
                       onClick={() => setShowSkinPicker(v => !v)}
-                      className="flex items-center gap-1.5 px-2.5 py-0.5 text-sm rounded-md bg-white/60 hover:bg-white/80 border transition-colors leading-tight cursor-pointer"
-                      style={{ borderColor: skin.divider }}
+                      className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                      style={{
+                        background: `conic-gradient(from 0deg, ${skin.swatch}, ${skin.sidebarTo}, ${skin.tabActive}, ${skin.checkColor}, ${skin.swatch})`,
+                        boxShadow: `0 2px 8px ${skin.swatch}40`,
+                      }}
                       title="切换皮肤"
                     >
-                      <span className="w-3.5 h-3.5 rounded-full inline-block border border-white/50 shadow-sm" style={{ background: skin.swatch }} />
-                      <span style={{ color: skin.textPrimary }}>{skin.label}</span>
+                      <span className="block w-3 h-3 rounded-full bg-white/90 shadow-inner" />
                     </button>
                   </div>
                 </div>
@@ -383,7 +386,7 @@ export default function YearCalendar() {
 
           {/* 居中标语 */}
           <div className="absolute inset-x-0 flex justify-center pointer-events-none">
-            <span className="text-3xl font-extralight tracking-[0.6em] select-none"
+            <span className="text-2xl font-light tracking-[0.5em] select-none"
             style={{ color: skin.textMuted, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.6em' }}>
               永远不要放弃
             </span>
@@ -434,41 +437,45 @@ export default function YearCalendar() {
             )}
           </div>
         </div>
-      {/* Skin Picker Dropdown */}
+      {/* Skin Picker Dropdown - premium glass panel */}
       {showSkinPicker && (
-        <div className="absolute top-full left-0 right-0 z-50 animate-fade-in" style={{ background: skin.panelBg + 'ee', backdropFilter: 'blur(20px)' }}>
-          <div className="max-w-3xl mx-auto px-6 py-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold" style={{ color: skin.textPrimary }}>选择皮肤</h3>
-              <button onClick={() => setShowSkinPicker(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none cursor-pointer">&times;</button>
-            </div>
-            <div className="grid grid-cols-4 gap-3">
-              {SKINS.map(s => {
-                const isActive = skinKey === s.key;
-                return (
-                  <button
-                    key={s.key}
-                    onClick={() => { setSkinKey(s.key); setShowSkinPicker(false); }}
-                    className={`relative rounded-xl p-3 text-left transition-all cursor-pointer border-2 ${isActive ? 'scale-[1.02] shadow-lg' : 'hover:scale-[1.01] hover:shadow-md'}`}
-                    style={{
-                      background: s.cardBg,
-                      borderColor: isActive ? s.swatch : 'transparent',
-                    }}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="w-5 h-5 rounded-md inline-block shadow-sm flex-shrink-0" style={{ background: s.swatch }}>
-                        {isActive && <span className="flex items-center justify-center w-full h-full text-white text-xs">✓</span>}
-                      </span>
-                      <div>
-                        <span className="font-bold text-sm block leading-tight" style={{ color: s.textPrimary }}>{s.label}</span>
-                        <span className="text-xs opacity-40 leading-tight">{s.key.charAt(0).toUpperCase() + s.key.slice(1)}</span>
+        <div className="absolute top-full left-0 right-0 z-50 animate-fade-in" onClick={() => setShowSkinPicker(false)}>
+          <div className="mx-auto max-w-2xl px-8 pt-3 pb-5" onClick={e => e.stopPropagation()}>
+            <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: skin.panelBg + 'f5', backdropFilter: 'blur(24px)', border: `1px solid ${skin.divider}` }}>
+              <div className="px-5 pt-4 pb-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${skin.divider}` }}>
+                <h3 className="text-sm font-semibold tracking-wide" style={{ color: skin.textSecondary }}>选择皮肤</h3>
+                <button onClick={() => setShowSkinPicker(false)} className="w-6 h-6 rounded-full flex items-center justify-center transition-colors cursor-pointer text-sm" style={{ color: skin.textMuted, backgroundColor: skin.divider + '60' }}>&times;</button>
+              </div>
+              <div className="grid grid-cols-4 gap-2.5 p-5">
+                {SKINS.map(s => {
+                  const isActive = skinKey === s.key;
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => { setSkinKey(s.key); setShowSkinPicker(false); }}
+                      className="relative rounded-xl p-3 text-left transition-all cursor-pointer overflow-hidden group"
+                      style={{
+                        background: isActive ? s.swatch + '10' : 'transparent',
+                        border: isActive ? `2px solid ${s.swatch}60` : '2px solid transparent',
+                        boxShadow: isActive ? `0 4px 16px ${s.swatch}20` : 'none',
+                      }}
+                      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = s.swatch + '08'; e.currentTarget.style.borderColor = s.swatch + '30'; } }}
+                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; } }}
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="w-6 h-6 rounded-lg shadow-sm flex-shrink-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${s.swatch}, ${s.sidebarTo})` }}>
+                          {isActive && <span className="text-white text-[10px] font-bold">✓</span>}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-[13px] block leading-tight truncate" style={{ color: s.textPrimary }}>{s.label}</span>
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-xs opacity-50 mb-2 leading-snug" style={{ color: s.textPrimary }}>{s.slogan}</p>
-                    <div className="h-6 rounded-md overflow-hidden" style={{ background: `linear-gradient(135deg, ${s.headerFrom}, ${s.headerTo})` }} />
-                  </button>
-                );
-              })}
+                      <p className="text-[11px] leading-snug mb-2 truncate" style={{ color: s.textMuted }}>{s.slogan}</p>
+                      <div className="h-5 rounded-md overflow-hidden" style={{ background: `linear-gradient(135deg, ${s.swatch}40, ${s.sidebarTo}60, ${s.tabActive}40)` }} />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -495,7 +502,7 @@ export default function YearCalendar() {
           className="flex-1 px-8 pb-2 pt-1 overflow-x-auto min-h-0 flex justify-center"
         >
         <div ref={gridInnerRef} className="h-full relative rounded-lg"
-          style={{ borderTop: `1px solid ${skin.cellBorder}`, borderLeft: `1px solid ${skin.cellBorder}`, minWidth: '1100px' }}>
+          style={{ borderTop: `0.5px solid ${skin.cellBorder}`, borderLeft: `0.5px solid ${skin.cellBorder}`, minWidth: '1100px' }}>
 
 
           {/* Month rows */}
@@ -585,8 +592,8 @@ export default function YearCalendar() {
                       `}
                       style={{
                         height: cellHeight,
-                        borderBottom: `1px solid ${skin.cellBorder}`,
-                        borderRight: `1px solid ${skin.cellBorder}`,
+                        borderBottom: `0.5px solid ${skin.cellBorder}`,
+                        borderRight: `0.5px solid ${skin.cellBorder}`,
                         backgroundColor: weekendBg,
                         transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
                         ...(isTodayCell ? { '--tw-ring-color': skin.todayRing + 'b3', boxShadow: `0 0 12px ${skin.todayRing}40` } as React.CSSProperties : {}),
