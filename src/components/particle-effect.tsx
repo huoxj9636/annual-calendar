@@ -12,6 +12,9 @@ interface Particle {
   life: number;
   maxLife: number;
   hue: number;
+  tailLen: number;
+  flicker: number;
+  flickerSpeed: number;
 }
 
 interface ParticleEffectProps {
@@ -19,12 +22,11 @@ interface ParticleEffectProps {
   count?: number;
 }
 
-export default function ParticleEffect({ color, count = 60 }: ParticleEffectProps) {
+export default function ParticleEffect({ color, count = 50 }: ParticleEffectProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const animRef = useRef<number>(0);
 
-  // Parse color to get base hue
   const getBaseHue = (c: string): number => {
     if (!c || c === '#fff' || c === '#ffffff' || c === 'white') return 45;
     const hex = c.replace('#', '');
@@ -60,27 +62,31 @@ export default function ParticleEffect({ color, count = 60 }: ParticleEffectProp
     };
     resize();
 
-    const createParticle = (): Particle => {
+    const createParticle = (fromLeft?: boolean): Particle => {
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
+      const goingRight = fromLeft !== undefined ? fromLeft : Math.random() > 0.3;
       return {
-        x: Math.random() * w,
-        y: Math.random() * h - h,
-        size: Math.random() * 2.5 + 0.8,
-        speedX: (Math.random() - 0.5) * 0.3,
-        speedY: Math.random() * 0.4 + 0.15,
-        opacity: Math.random() * 0.5 + 0.15,
+        x: goingRight ? -10 - Math.random() * 40 : w + 10 + Math.random() * 40,
+        y: Math.random() * h,
+        size: Math.random() * 1.8 + 0.5,
+        speedX: goingRight ? (Math.random() * 0.6 + 0.2) : -(Math.random() * 0.4 + 0.1),
+        speedY: (Math.random() - 0.5) * 0.08,
+        opacity: Math.random() * 0.4 + 0.1,
         life: 0,
-        maxLife: Math.random() * 400 + 200,
-        hue: baseHue + (Math.random() - 0.5) * 40,
+        maxLife: Math.random() * 500 + 300,
+        hue: baseHue + (Math.random() - 0.5) * 30,
+        tailLen: Math.random() * 18 + 8,
+        flicker: Math.random() * Math.PI * 2,
+        flickerSpeed: Math.random() * 0.03 + 0.01,
       };
     };
 
-    // Initialize particles
+    // Initialize particles spread across the canvas
     particlesRef.current = Array.from({ length: count }, () => {
       const p = createParticle();
-      p.y = Math.random() * canvas.offsetHeight; // spread initially
-      p.life = Math.random() * p.maxLife;
+      p.x = Math.random() * canvas.offsetWidth;
+      p.life = Math.random() * p.maxLife * 0.6;
       return p;
     });
 
@@ -95,21 +101,43 @@ export default function ParticleEffect({ color, count = 60 }: ParticleEffectProp
         p.x += p.speedX;
         p.y += p.speedY;
         p.life++;
+        p.flicker += p.flickerSpeed;
 
-        // Fade in/out based on life
+        // Life-based fade
         const lifeRatio = p.life / p.maxLife;
         let alpha = p.opacity;
-        if (lifeRatio < 0.1) alpha *= lifeRatio / 0.1;
-        else if (lifeRatio > 0.8) alpha *= (1 - lifeRatio) / 0.2;
+        if (lifeRatio < 0.15) alpha *= lifeRatio / 0.15;
+        else if (lifeRatio > 0.75) alpha *= (1 - lifeRatio) / 0.25;
 
-        // Draw particle as a soft circle
+        // Gentle flicker
+        alpha *= 0.7 + 0.3 * Math.sin(p.flicker);
+        alpha = Math.max(0, Math.min(1, alpha));
+
+        if (alpha < 0.01) continue;
+
+        // Draw tail (line trailing behind particle)
+        const tailX = p.x - p.speedX * p.tailLen;
+        const tailY = p.y - p.speedY * p.tailLen;
+        const grad = ctx.createLinearGradient(tailX, tailY, p.x, p.y);
+        grad.addColorStop(0, `hsla(${p.hue}, 25%, 88%, 0)`);
+        grad.addColorStop(1, `hsla(${p.hue}, 25%, 88%, ${alpha})`);
+
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(p.x, p.y);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = p.size * 0.8;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // Draw head glow
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 30%, 90%, ${alpha})`;
+        ctx.fillStyle = `hsla(${p.hue}, 20%, 95%, ${alpha})`;
         ctx.fill();
 
         // Respawn if dead or out of bounds
-        if (p.life >= p.maxLife || p.y > h + 10 || p.x < -10 || p.x > w + 10) {
+        if (p.life >= p.maxLife || p.x > w + 50 || p.x < -50 || p.y < -20 || p.y > h + 20) {
           particles[i] = createParticle();
         }
       }
