@@ -469,37 +469,13 @@ export default function YearCalendar() {
           <div className="mx-auto max-w-3xl px-6 pt-2 pb-4" onClick={e => e.stopPropagation()}>
             <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: skin.panelBg + 'f5', backdropFilter: 'blur(24px)', border: `1px solid ${skin.divider}` }}>
               <div className="px-4 pt-3 pb-2 flex items-center justify-between" style={{ borderBottom: `1px solid ${skin.divider}` }}>
-                <h3 className="text-sm font-semibold tracking-wide" style={{ color: skin.textSecondary }}>选择皮肤</h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-semibold tracking-wide" style={{ color: skin.textSecondary }}>选择皮肤</h3>
+                  <button onClick={() => { setSkinKey(''); localStorage.removeItem('life-calendar-skin'); setShowSkinPicker(false); }} className="text-xs px-2 py-0.5 rounded transition-colors cursor-pointer" style={{ color: skin.textMuted, backgroundColor: skin.divider + '40' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = skin.divider + '80'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = skin.divider + '40'; }}>默认</button>
+                </div>
                 <button onClick={() => setShowSkinPicker(false)} className="w-6 h-6 rounded-full flex items-center justify-center transition-colors cursor-pointer text-sm" style={{ color: skin.textMuted, backgroundColor: skin.divider + '60' }}>&times;</button>
               </div>
               <div className="grid grid-cols-4 gap-3 p-4">
-                {/* Default / No Skin option */}
-                {(() => {
-                  const isActive = skinKey === '';
-                  return (
-                    <button
-                      onClick={() => { setSkinKey(''); localStorage.removeItem('life-calendar-skin'); setShowSkinPicker(false); }}
-                      className="relative rounded-xl overflow-hidden transition-all cursor-pointer group"
-                      style={{
-                        border: isActive ? `2px solid ${NO_SKIN.swatch}` : `1px solid rgba(0,0,0,0.08)`,
-                        boxShadow: isActive ? `0 4px 16px ${NO_SKIN.swatch}30` : 'none',
-                      }}
-                      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = NO_SKIN.swatch + '50'; } }}
-                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; } }}
-                    >
-                      <div className="h-20 relative" style={{ background: `linear-gradient(135deg, ${NO_SKIN.headerFrom} 0%, ${NO_SKIN.headerTo} 100%)` }}>
-                        {isActive && (
-                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: NO_SKIN.swatch }}>
-                            ✓
-                          </div>
-                        )}
-                      </div>
-                      <div className="px-2 py-1.5 text-center" style={{ backgroundColor: NO_SKIN.panelBg }}>
-                        <span className="text-xs font-semibold" style={{ color: NO_SKIN.textPrimary }}>{NO_SKIN.label}</span>
-                      </div>
-                    </button>
-                  );
-                })()}
                 {SKINS.map(s => {
                   const isActive = skinKey === s.key;
                   return (
