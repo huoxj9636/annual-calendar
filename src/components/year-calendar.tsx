@@ -825,8 +825,7 @@ export default function YearCalendar() {
         </div>
       )}
       {dayViewDate && (
-        <div className="fixed inset-0 z-40 flex justify-end">
-          <div className="absolute inset-0 bg-black/20" onClick={() => setDayViewDate(null)} />
+        <div className="fixed top-0 right-0 bottom-0 z-40 flex">
           <div className="relative h-full backdrop-blur-xl shadow-2xl border-l animate-slide-in-panel overflow-hidden flex"
           style={{ width: dayViewWidth, maxWidth: '92vw', background: skin.panelBg + 'f2', borderColor: skin.divider }}>
             {/* Left resize handle */}
@@ -850,8 +849,7 @@ export default function YearCalendar() {
 
       {/* 月度复盘侧边栏 - TickTick风格 */}
       {selectedMonth !== null && mounted && (
-        <div className="fixed inset-0 z-40 flex justify-end">
-          <div className="absolute inset-0 bg-black/20" onClick={() => setSelectedMonth(null)} />
+        <div className="fixed top-0 right-0 bottom-0 z-40 flex">
           <div className="relative h-full backdrop-blur-xl shadow-2xl border-l flex flex-col animate-slide-in"
           style={{ width: reviewWidth, maxWidth: '92vw', background: skin.panelBg + 'f2', borderColor: skin.divider }}>
             {/* Left resize handle */}
