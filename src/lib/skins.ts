@@ -72,8 +72,10 @@ export interface SkinTheme {
   /** 侧边栏头部渐变 from→to */
   sidebarFrom: string;
   sidebarTo: string;
-  /** 头部背景样式 (CSS background) */
-  headerBgStyle: string;
+  /** 头部背景图路径 */
+  headerBgImage: string;
+  /** 头部背景样式 (CSS background, 图片之上的叠加渐变) */
+  headerBgOverlay: string;
   /** 暗色模式相关 */
   isDark: boolean;
 }
@@ -238,7 +240,9 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#059669',
     sidebarFrom: '#065f46',
     sidebarTo: '#059669',
-    headerBgStyle: 'linear-gradient(160deg, #d1fae5 0%, #a7f3d0 30%, #6ee7b7 60%, #34d399 100%), radial-gradient(ellipse at 15% 80%, rgba(167,243,208,0.6) 0%, transparent 50%), radial-gradient(ellipse at 85% 20%, rgba(52,211,153,0.4) 0%, transparent 45%), radial-gradient(circle at 50% 50%, rgba(110,231,183,0.3) 0%, transparent 60%)',
+    headerBgImage: '/skins/emerald.jpg',
+    headerBgOverlay: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.10) 50%, rgba(0,0,0,0.05) 100%)',
+
     isDark: false,
   },
   {
@@ -288,7 +292,9 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#2563eb',
     sidebarFrom: '#1e3a5f',
     sidebarTo: '#2563eb',
-    headerBgStyle: 'linear-gradient(160deg, #dbeafe 0%, #93c5fd 30%, #60a5fa 60%, #3b82f6 100%), radial-gradient(ellipse at 20% 70%, rgba(147,197,253,0.6) 0%, transparent 50%), radial-gradient(ellipse at 80% 30%, rgba(96,165,250,0.4) 0%, transparent 45%), radial-gradient(circle at 50% 50%, rgba(59,130,246,0.3) 0%, transparent 60%)',
+    headerBgImage: '/skins/ocean.jpg',
+    headerBgOverlay: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.10) 50%, rgba(0,0,0,0.05) 100%)',
+
     isDark: false,
   },
   {
@@ -338,7 +344,9 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#ea580c',
     sidebarFrom: '#7c2d12',
     sidebarTo: '#ea580c',
-    headerBgStyle: 'linear-gradient(160deg, #ffedd5 0%, #fdba74 30%, #fb923c 60%, #f97316 100%), radial-gradient(ellipse at 25% 75%, rgba(253,186,116,0.6) 0%, transparent 50%), radial-gradient(ellipse at 75% 25%, rgba(251,146,60,0.4) 0%, transparent 45%), radial-gradient(circle at 50% 50%, rgba(249,115,22,0.3) 0%, transparent 60%)',
+    headerBgImage: '/skins/sunset.jpg',
+    headerBgOverlay: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.10) 50%, rgba(0,0,0,0.05) 100%)',
+
     isDark: false,
   },
   {
@@ -388,7 +396,9 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#7c3aed',
     sidebarFrom: '#4c1d95',
     sidebarTo: '#7c3aed',
-    headerBgStyle: 'linear-gradient(160deg, #ede9fe 0%, #c4b5fd 30%, #a78bfa 60%, #8b5cf6 100%), radial-gradient(ellipse at 20% 80%, rgba(196,181,253,0.6) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(167,139,250,0.4) 0%, transparent 45%), radial-gradient(circle at 50% 50%, rgba(139,92,246,0.3) 0%, transparent 60%)',
+    headerBgImage: '/skins/violet.jpg',
+    headerBgOverlay: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.10) 50%, rgba(0,0,0,0.05) 100%)',
+
     isDark: false,
   },
   {
@@ -438,7 +448,9 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#db2777',
     sidebarFrom: '#831843',
     sidebarTo: '#db2777',
-    headerBgStyle: 'linear-gradient(160deg, #fce7f3 0%, #f9a8d4 30%, #f472b6 60%, #ec4899 100%), radial-gradient(ellipse at 30% 70%, rgba(249,168,212,0.6) 0%, transparent 50%), radial-gradient(ellipse at 70% 30%, rgba(244,114,182,0.4) 0%, transparent 45%), radial-gradient(circle at 50% 50%, rgba(236,72,153,0.3) 0%, transparent 60%)',
+    headerBgImage: '/skins/sakura.jpg',
+    headerBgOverlay: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.10) 50%, rgba(0,0,0,0.05) 100%)',
+
     isDark: false,
   },
   {
@@ -488,7 +500,9 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#60a5fa',
     sidebarFrom: '#0f172a',
     sidebarTo: '#1e293b',
-    headerBgStyle: 'linear-gradient(160deg, #1e293b 0%, #334155 30%, #475569 60%, #64748b 100%), radial-gradient(ellipse at 25% 75%, rgba(51,65,85,0.5) 0%, transparent 50%), radial-gradient(ellipse at 75% 25%, rgba(71,85,105,0.3) 0%, transparent 45%), radial-gradient(circle at 50% 50%, rgba(100,116,139,0.15) 0%, transparent 60%)',
+    headerBgImage: '/skins/dark.jpg',
+    headerBgOverlay: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.3) 100%)',
+
     isDark: true,
   },
   {
@@ -538,7 +552,9 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#15803d',
     sidebarFrom: '#14532d',
     sidebarTo: '#15803d',
-    headerBgStyle: 'linear-gradient(160deg, #dcfce7 0%, #86efac 30%, #4ade80 60%, #22c55e 100%), radial-gradient(ellipse at 20% 80%, rgba(134,239,172,0.6) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(74,222,128,0.4) 0%, transparent 45%), radial-gradient(circle at 50% 50%, rgba(34,197,94,0.3) 0%, transparent 60%)',
+    headerBgImage: '/skins/forest.jpg',
+    headerBgOverlay: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.10) 50%, rgba(0,0,0,0.05) 100%)',
+
     isDark: false,
   },
   {
@@ -588,7 +604,9 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#9333ea',
     sidebarFrom: '#581c87',
     sidebarTo: '#9333ea',
-    headerBgStyle: 'linear-gradient(160deg, #f3e8ff 0%, #d8b4fe 30%, #c084fc 60%, #a855f7 100%), radial-gradient(ellipse at 20% 75%, rgba(216,180,254,0.6) 0%, transparent 50%), radial-gradient(ellipse at 80% 25%, rgba(192,132,252,0.4) 0%, transparent 45%), radial-gradient(circle at 50% 50%, rgba(168,85,247,0.3) 0%, transparent 60%)',
+    headerBgImage: '/skins/lavender.jpg',
+    headerBgOverlay: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.10) 50%, rgba(0,0,0,0.05) 100%)',
+
     isDark: false,
   },
 ];

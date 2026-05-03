@@ -329,7 +329,7 @@ function SkinCard({ skin, isSelected, onClick }: { skin: SkinTheme; isSelected: 
         </div>
       </div>
       {/* Preview strip */}
-      <div className="h-8 rounded-lg overflow-hidden" style={{ background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.swatch} 50%, ${skin.headerTo} 100%)` }} />
+      <div className="h-8 rounded-lg overflow-hidden" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }} />
     </button>
   );
 }
@@ -476,7 +476,8 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
 
       {/* Header */}
       <div className="flex-shrink-0 px-6 py-5 text-white relative overflow-hidden"
-        style={{ background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.swatch} 60%, ${skin.headerTo} 100%)` }}>
+        style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+          <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
         {/* Decorative circles */}
         <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-white/5" />
         <div className="absolute -right-2 -bottom-8 w-20 h-20 rounded-full bg-white/5" />
