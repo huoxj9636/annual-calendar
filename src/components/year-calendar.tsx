@@ -313,7 +313,7 @@ export default function YearCalendar() {
   return (
     <div ref={scrollContainerRef} className="h-screen overflow-y-scroll" style={{ scrollbarWidth: 'none' }}>
       {/* Page 1: Calendar */}
-      <div className="h-screen print:bg-white print:h-auto flex flex-col overflow-hidden"
+      <div className="h-screen print:bg-white print:h-auto flex flex-col overflow-hidden relative"
       style={{ backgroundColor: skin.bodyBg }}>
       {/* Header */}
       <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
@@ -351,21 +351,18 @@ export default function YearCalendar() {
                   >
                     今年
                   </button>
-                  {/* Skin picker toggle - palette icon */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowSkinPicker(v => !v)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shadow-md"
-                      style={{
-                        background: `conic-gradient(from 0deg, ${skin.swatch}, ${skin.sidebarTo}, ${skin.tabActive}, ${skin.checkColor}, ${skin.swatch})`,
-                        boxShadow: `0 2px 8px ${skin.swatch}40`,
-                        border: '2px solid rgba(255,255,255,0.4)',
-                      }}
-                      title="切换皮肤"
-                    >
-                      <span className="block w-3.5 h-3.5 rounded-full bg-white/90 shadow-inner" />
-                    </button>
-                  </div>
+                  {/* Skin picker toggle */}
+                  <button
+                    onClick={() => setShowSkinPicker(v => !v)}
+                    className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 relative group"
+                    style={{
+                      background: `conic-gradient(from 0deg, #34d399, #059669, #f59e0b, #ef4444, #8b5cf6, #ec4899, #34d399)`,
+                      boxShadow: `0 0 0 2px rgba(255,255,255,0.6), 0 2px 12px rgba(0,0,0,0.15)`,
+                    }}
+                    title="切换皮肤"
+                  >
+                    <span className="block w-4 h-4 rounded-full bg-white shadow-sm" />
+                  </button>
                 </div>
                 {mounted && clockStr && (
                   <div className="text-xl font-mono tracking-wider tabular-nums leading-tight mt-1"
@@ -440,9 +437,11 @@ export default function YearCalendar() {
             )}
           </div>
         </div>
-      {/* Skin Picker Dropdown - premium glass panel */}
+      </header>
+
+      {/* Skin Picker Dropdown - outside header to avoid overflow-hidden clipping */}
       {showSkinPicker && (
-        <div className="absolute top-full left-0 right-0 z-50 animate-fade-in" onClick={() => setShowSkinPicker(false)}>
+        <div className="absolute top-0 left-0 right-0 z-50 animate-fade-in" onClick={() => setShowSkinPicker(false)}>
           <div className="mx-auto max-w-2xl px-8 pt-3 pb-5" onClick={e => e.stopPropagation()}>
             <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: skin.panelBg + 'f5', backdropFilter: 'blur(24px)', border: `1px solid ${skin.divider}` }}>
               <div className="px-5 pt-4 pb-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${skin.divider}` }}>
@@ -483,7 +482,6 @@ export default function YearCalendar() {
           </div>
         </div>
       )}
-      </header>
 
 
       {/* Calendar Grid - fills remaining viewport */}
