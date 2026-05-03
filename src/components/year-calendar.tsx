@@ -858,7 +858,7 @@ export default function YearCalendar() {
               onMouseDown={(e) => handlePanelResize(setReviewWidth, 'calendar-review-width', e)}
             />
             {/* 头部 - 背景图+渐变 */}
-            <div className="px-5 pt-12 pb-5 relative overflow-hidden" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
+            <div className="px-5 pt-10 pb-5 relative overflow-hidden" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
               <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }} />
               <div className="relative z-10 flex items-center justify-between">
                 <div>
