@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getLunarInfo } from '@/lib/lunar';
+import { SKINS, DEFAULT_SKIN } from '@/lib/skins';
+import type { SkinTheme } from '@/lib/skins';
 
 interface DayViewProps {
   year: number;
@@ -9,6 +11,7 @@ interface DayViewProps {
   day: number;
   onClose: () => void;
   embedded?: boolean;
+  skin?: SkinTheme;
 }
 
 interface TimeEvent {
@@ -120,7 +123,8 @@ function computeEventLayout(events: TimeEvent[]): Map<string, EventLayout> {
 
 type TabType = 'schedule' | 'memo';
 
-export default function DayView({ year, month, day, onClose, embedded }: DayViewProps) {
+export default function DayView({ year, month, day, onClose, embedded, skin: skinProp }: DayViewProps) {
+  const skin = skinProp ?? SKINS.find(s => s.key === DEFAULT_SKIN) ?? SKINS[0];
   const [mounted, setMounted] = useState(false);
   const [events, setEvents] = useState<TimeEvent[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
@@ -365,13 +369,12 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
   };
 
   // Accent color for header
-  const accentGradient = 'linear-gradient(135deg, #3b82f6, #2563eb, #1d4ed8)';
 
   // ========== Sidebar Panel Content ==========
   const panelContent = (
-    <div className="h-full flex flex-col bg-gray-50 relative">
+    <div className="h-full flex flex-col relative" style={{ backgroundColor: skin.panelBg }}>
       {/* Header with gradient */}
-      <div className="flex-shrink-0 px-5 pt-5 pb-4 relative" style={{ background: accentGradient }}>
+      <div className="flex-shrink-0 px-5 pt-5 pb-4 relative" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}, ${skin.sidebarTo})` }}>
         <div className="relative z-10">
           <div className="flex items-start justify-between">
             <div>
@@ -406,11 +409,8 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
         <div className="flex items-center gap-1">
           <button
             onClick={() => setActiveTab('schedule')}
-            className={`relative px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
-              activeTab === 'schedule'
-                ? 'text-indigo-600 bg-indigo-50/50'
-                : 'text-[#8b8680] hover:text-[#4a4458] hover:bg-gray-50'
-            }`}
+            className="relative px-4 py-2 text-sm font-medium rounded-t-lg transition-all"
+            style={{ color: activeTab === 'schedule' ? skin.tabActive : skin.textSecondary, backgroundColor: activeTab === 'schedule' ? skin.tabActive + '0a' : 'transparent' }}
           >
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -419,16 +419,13 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
               日程
             </span>
             {activeTab === 'schedule' && (
-              <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ background: accentGradient }} />
+              <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ background: `linear-gradient(90deg, ${skin.tabActive}, ${skin.swatch})` }} />
             )}
           </button>
           <button
             onClick={() => setActiveTab('memo')}
-            className={`relative px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
-              activeTab === 'memo'
-                ? 'text-indigo-600 bg-indigo-50/50'
-                : 'text-[#8b8680] hover:text-[#4a4458] hover:bg-gray-50'
-            }`}
+            className="relative px-4 py-2 text-sm font-medium rounded-t-lg transition-all"
+            style={{ color: activeTab === 'memo' ? skin.tabActive : skin.textSecondary, backgroundColor: activeTab === 'memo' ? skin.tabActive + '0a' : 'transparent' }}
           >
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -437,7 +434,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
               备忘
             </span>
             {activeTab === 'memo' && (
-              <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ background: accentGradient }} />
+              <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ background: `linear-gradient(90deg, ${skin.tabActive}, ${skin.swatch})` }} />
             )}
           </button>
 
@@ -460,7 +457,8 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
         </div>
         {/* Voice text preview */}
         {voiceText && (
-          <div className="mt-1 mb-1 text-xs text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg break-all">
+          <div className="mt-1 mb-1 text-xs px-3 py-1.5 rounded-lg break-all"
+          style={{ color: skin.tabActive, backgroundColor: skin.tabActive + "10" }}>
             {voiceText}
           </div>
         )}
@@ -470,13 +468,13 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
       <div className="flex-1 overflow-hidden">
         {activeTab === 'schedule' ? (
           /* ===== Schedule Tab ===== */
-          <div className="h-full flex flex-col bg-white">
+          <div className="h-full flex flex-col" style={{ backgroundColor: skin.cardBg }}>
             {/* Add Event Bar */}
             <div className="flex-shrink-0 px-4 py-2 border-b border-gray-50 flex items-center gap-2">
               <button
                 onClick={() => setShowAddEvent(!showAddEvent)}
                 className="flex items-center gap-1.5 text-xs font-medium text-white px-3 py-1.5 rounded-lg transition-all hover:shadow-sm"
-                style={{ background: accentGradient }}
+                style={{ background: `linear-gradient(90deg, ${skin.tabActive}, ${skin.swatch})` }}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -490,13 +488,14 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
 
             {/* Add Event Form - TickTick style: no border, inline */}
             {showAddEvent && (
-              <div className="flex-shrink-0 px-4 py-3 bg-indigo-50/20 border-b border-indigo-100/30">
+              <div className="flex-shrink-0 px-4 py-3 border-b"
+              style={{ backgroundColor: skin.tabActive + "08", borderColor: skin.tabActive + "20" }}>
                 <input
                   type="text"
                   value={newEvent.title}
                   onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
                   placeholder="日程标题"
-                  className="w-full text-sm font-medium text-gray-800 placeholder-gray-300 focus:outline-none mb-2 bg-transparent border-b border-transparent focus:border-indigo-200 pb-1 transition-colors"
+                  className="w-full text-sm font-medium text-gray-800 placeholder-gray-300 focus:outline-none mb-2 bg-transparent border-b border-transparent  pb-1 transition-colors"
                   autoFocus
                   onKeyDown={e => { if (e.key === 'Enter') addEvent(); }}
                 />
@@ -521,8 +520,9 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
                   />
                 </div>
                 <div className="flex justify-end gap-2 mt-2">
-                  <button onClick={() => setShowAddEvent(false)} className="text-xs text-[#8b8680] hover:text-[#4a4458] px-3 py-1 transition-colors">取消</button>
-                  <button onClick={addEvent} disabled={!newEvent.title.trim()} className="text-xs font-medium text-white px-3 py-1 rounded-lg transition-all disabled:opacity-40" style={{ background: accentGradient }}>添加</button>
+                  <button onClick={() => setShowAddEvent(false)} className="text-xs px-3 py-1 transition-colors"
+                  style={{color: skin.textSecondary}}>取消</button>
+                  <button onClick={addEvent} disabled={!newEvent.title.trim()} className="text-xs font-medium text-white px-3 py-1 rounded-lg transition-all disabled:opacity-40" style={{ background: `linear-gradient(90deg, ${skin.tabActive}, ${skin.swatch})` }}>添加</button>
                 </div>
               </div>
             )}
@@ -534,7 +534,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
                 <div className="w-12 flex-shrink-0 border-r border-gray-50">
                   {hours.map(h => (
                     <div key={h} className="flex items-start justify-end pr-1.5" style={{ height: 36 }}>
-                      <span className="text-[10px] pt-0" style={h === currentHour ? { color: '#6366f1', fontWeight: 600 } : { color: '#c4c4c4' }}>
+                      <span className="text-[10px] pt-0" style={h === currentHour ? { color: skin.tabActive, fontWeight: 600 } : { color: skin.textMuted }}>
                         {h.toString().padStart(2, '0')}:00
                       </span>
                     </div>
@@ -595,7 +595,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
           </div>
         ) : (
           /* ===== Memo Tab - TickTick style ===== */
-          <div className="h-full flex flex-col bg-white">
+          <div className="h-full flex flex-col" style={{ backgroundColor: skin.cardBg }}>
             {/* Todo Section - Inline editing, no borders */}
             <div className="flex-shrink-0 border-b border-gray-100/80">
               <div className="flex items-center justify-between px-5 pt-3 pb-1">
@@ -625,7 +625,8 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
                           if (e.key === 'Enter') { updateTodoText(todo.id, editingTodoText); setEditingTodoId(null); }
                           if (e.key === 'Escape') setEditingTodoId(null);
                         }}
-                        className="flex-1 text-sm text-gray-700 focus:outline-none border-b border-indigo-200 pb-0.5 bg-transparent"
+                        className="flex-1 text-sm text-gray-700 focus:outline-none border-b pb-0.5 bg-transparent"
+                        style={{ borderColor: skin.tabActive + "60" }}
                         autoFocus
                       />
                     ) : (
@@ -661,7 +662,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
                     onKeyDown={e => { if (e.key === 'Enter') addTodoInline(); }}
                     onBlur={() => { if (newTodoText.trim()) addTodoInline(); }}
                     placeholder="添加待办..."
-                    className="flex-1 text-sm text-gray-600 placeholder-gray-300 focus:outline-none bg-transparent border-b border-transparent focus:border-indigo-200 pb-0.5 transition-colors"
+                    className="flex-1 text-sm text-gray-600 placeholder-gray-300 focus:outline-none bg-transparent border-b border-transparent  pb-0.5 transition-colors"
                   />
                 </div>
               </div>
@@ -679,7 +680,7 @@ export default function DayView({ year, month, day, onClose, embedded }: DayView
                   onChange={e => setNoteText(e.target.value)}
                   onBlur={saveNote}
                   placeholder="在这里记录想法、笔记、灵感..."
-                  className="w-full h-full text-sm text-gray-600 placeholder-gray-300 focus:outline-none bg-indigo-50/10 rounded-xl p-4 resize-none leading-relaxed border border-transparent focus:border-indigo-100 transition-colors"
+                  className="w-full h-full text-sm text-gray-600 placeholder-gray-300 focus:outline-none bg-indigo-50/10 rounded-xl p-4 resize-none leading-relaxed border border-transparent  transition-colors"
                 />
               </div>
             </div>

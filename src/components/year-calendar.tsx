@@ -313,27 +313,33 @@ export default function YearCalendar() {
   return (
     <div ref={scrollContainerRef} className="h-screen overflow-y-scroll" style={{ scrollbarWidth: 'none' }}>
       {/* Page 1: Calendar */}
-      <div className="h-screen bg-[#f8f6f2] print:bg-white print:h-auto flex flex-col overflow-hidden">
+      <div className="h-screen print:bg-white print:h-auto flex flex-col overflow-hidden"
+      style={{ backgroundColor: skin.bodyBg }}>
       {/* Header */}
       <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/header-bg.jpeg')" }} />
-        <div className="absolute inset-0 bg-[#faf9f7]/90 backdrop-blur-[4px]" />
+        <div className="absolute inset-0 backdrop-blur-[4px]" style={{ backgroundColor: skin.headerOverlay + "e6" }} />
         <div className="relative px-8 py-1.5 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 rounded-2xl px-4 py-2">
             <button
               onClick={() => setYear((y) => y - 1)}
-              className="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-[#f5f2ef] active:bg-[#ece8e3] transition-colors text-2xl font-bold text-[#8b8680] hover:text-[#5c5ba8]"
+              className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold"
+              style={{ color: skin.textMuted }}
+              onMouseEnter={e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }}
+              onMouseLeave={e => { e.currentTarget.style.color = skin.textMuted; e.currentTarget.style.backgroundColor = 'transparent'; }}
               aria-label="上一年"
             >
               ‹
             </button>
             <div className="flex items-center">
-              <h1 className="text-7xl font-black tracking-tight text-[#1a1a2e] leading-none">
+              <h1 className="text-7xl font-black tracking-tight leading-none"
+              style={{ color: skin.textPrimary }}>
                 {year}
               </h1>
               <div className="flex flex-col ml-4">
                 <div className="flex items-center gap-2 leading-tight">
-                  <span className="text-lg text-gray-500 font-medium">
+                  <span className="text-lg font-medium"
+                    style={{ color: skin.textSecondary }}>
                     {ganZhi}（{animal}）
                   </span>
                   <button
@@ -346,16 +352,18 @@ export default function YearCalendar() {
                   <div className="relative">
                     <button
                       onClick={() => setShowSkinPicker(v => !v)}
-                      className="flex items-center gap-1.5 px-2.5 py-0.5 text-sm rounded-md bg-white/60 hover:bg-white/80 border border-[#e8e4df] transition-colors leading-tight cursor-pointer"
+                      className="flex items-center gap-1.5 px-2.5 py-0.5 text-sm rounded-md bg-white/60 hover:bg-white/80 border transition-colors leading-tight cursor-pointer"
+                      style={{ borderColor: skin.divider }}
                       title="切换皮肤"
                     >
                       <span className="w-3.5 h-3.5 rounded-full inline-block border border-white/50 shadow-sm" style={{ background: skin.swatch }} />
-                      <span className="text-[#4a4458]">{skin.label}</span>
+                      <span style={{ color: skin.textPrimary }}>{skin.label}</span>
                     </button>
                   </div>
                 </div>
                 {mounted && clockStr && (
-                  <div className="text-2xl text-[#5c5ba8]/25 font-mono tracking-wider tabular-nums leading-tight mt-0.5">
+                  <div className="text-2xl font-mono tracking-wider tabular-nums leading-tight mt-0.5 opacity-25"
+                    style={{ color: skin.swatch }}>
                     {clockStr}
                   </div>
                 )}
@@ -363,7 +371,10 @@ export default function YearCalendar() {
             </div>
             <button
               onClick={() => setYear((y) => y + 1)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f5f2ef] active:bg-[#ece8e3] transition-colors text-lg font-bold text-[#8b8680] hover:text-[#5c5ba8]"
+              className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-lg font-bold"
+              style={{ color: skin.textMuted }}
+              onMouseEnter={e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }}
+              onMouseLeave={e => { e.currentTarget.style.color = skin.textMuted; e.currentTarget.style.backgroundColor = 'transparent'; }}
               aria-label="下一年"
             >
               ›
@@ -372,7 +383,8 @@ export default function YearCalendar() {
 
           {/* 居中标语 */}
           <div className="absolute inset-x-0 flex justify-center pointer-events-none">
-            <span className="text-3xl font-extralight tracking-[0.6em] text-[#8b8680]/60 select-none" style={{ fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.6em' }}>
+            <span className="text-3xl font-extralight tracking-[0.6em] select-none"
+            style={{ color: skin.textMuted, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.6em' }}>
               永远不要放弃
             </span>
           </div>
@@ -381,19 +393,22 @@ export default function YearCalendar() {
           <div className="flex items-center gap-2.5 text-xs">
             <div className="flex items-center gap-3 text-gray-500">
               <span className="flex items-center gap-1">
-                <span className="inline-flex w-[23px] h-[23px] bg-emerald-50 rounded-md items-center justify-center text-emerald-500 text-[17px] font-bold">
+                <span className="inline-flex w-[23px] h-[23px] rounded-md items-center justify-center text-[17px] font-bold"
+                style={{ backgroundColor: skin.checkColor + "10", color: skin.checkColor }}>
                   ✓
                 </span>
                 <span>满意</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="inline-flex w-[23px] h-[23px] bg-rose-50 rounded-md items-center justify-center text-rose-500 text-[17px] font-bold">
+                <span className="inline-flex w-[23px] h-[23px] rounded-md items-center justify-center text-[17px] font-bold"
+                style={{ backgroundColor: skin.crossColor + "10", color: skin.crossColor }}>
                   ✗
                 </span>
                 <span>不满意</span>
               </span>
               <span className="flex items-center gap-1">
-                <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-emerald-500">
+                <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3"
+                  style={{ color: skin.swatch }}>
                   <path d="M3 3.5A1.5 1.5 0 014.5 2h7A1.5 1.5 0 0113 3.5v9a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 12.5v-9zM4.5 3a.5.5 0 00-.5.5v9a.5.5 0 00.5.5h7a.5.5 0 00.5-.5v-9a.5.5 0 00-.5-.5h-7z"/>
                   <path d="M6 7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5z"/>
                 </svg>
@@ -403,13 +418,16 @@ export default function YearCalendar() {
             {mounted && stats.total > 0 && (
               <div className="flex items-center gap-2 pl-3 ml-1 border-l border-gray-200">
                 <span className="text-gray-400">已过 <strong className="text-gray-700 font-semibold">{stats.total}</strong> 天</span>
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-50 rounded-md text-emerald-700 font-semibold">
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-semibold"
+                    style={{ backgroundColor: skin.checkColor + "10", color: skin.checkColor }}>
                   ✓{stats.checked}
                 </span>
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-rose-50 rounded-md text-rose-600 font-semibold">
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-semibold"
+                    style={{ backgroundColor: skin.crossColor + "10", color: skin.crossColor }}>
                   ✗{stats.crossed}
                 </span>
-                <span className="inline-flex items-center px-2 py-0.5 bg-gray-900 text-white rounded-md font-bold text-xs">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs text-white"
+                    style={{ backgroundColor: skin.swatch }}>
                   {stats.rate}%
                 </span>
               </div>
@@ -476,7 +494,8 @@ export default function YearCalendar() {
           ref={gridContainerRef}
           className="flex-1 px-8 pb-2 pt-1 overflow-x-auto min-h-0 flex justify-center"
         >
-        <div ref={gridInnerRef} className="h-full relative border-t border-l border-gray-100 rounded-lg" style={{ minWidth: '1100px' }}>
+        <div ref={gridInnerRef} className="h-full relative rounded-lg"
+          style={{ borderTop: `1px solid ${skin.cellBorder}`, borderLeft: `1px solid ${skin.cellBorder}`, minWidth: '1100px' }}>
 
 
           {/* Month rows */}
@@ -563,28 +582,29 @@ export default function YearCalendar() {
                       data-day={cell.day}
                       className={`
                         relative rounded-md overflow-hidden
-                        ${isTodayCell ? 'ring-2 ring-[#5c5ba8]/70 ring-inset z-[5] shadow-[0_0_12px_rgba(92,91,168,0.25)]' : ''}
+                        ${isTodayCell ? 'ring-2 ring-inset z-[5]' : ''}
                       `}
                       style={{
                         height: cellHeight,
-                        borderBottom: '1px solid rgba(148,163,184,0.18)',
-                        borderRight: '1px solid rgba(148,163,184,0.18)',
+                        borderBottom: `1px solid ${skin.cellBorder}`,
+                        borderRight: `1px solid ${skin.cellBorder}`,
                         backgroundColor: weekendBg,
                         transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
+                        ...(isTodayCell ? { '--tw-ring-color': skin.todayRing + 'b3', boxShadow: `0 0 12px ${skin.todayRing}40` } as React.CSSProperties : {}),
                       }}
                     >
                       {/* Past overlay: covers inner area only, borders stay consistent */}
                       {isPast && (
                         <div
                           className="absolute inset-0 rounded-md pointer-events-none"
-                          style={{ backgroundColor: cell.isWeekend ? 'rgba(228,230,236,0.55)' : 'rgba(240,242,245,0.5)' }}
+                          style={{ backgroundColor: cell.isWeekend ? skin.pastWeekendBg : skin.pastBg }}
                         />
                       )}
                       {/* Content wrapper above overlay */}
                       <div className="relative z-10 h-full flex flex-col">
                       {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
                       <div
-                        className="flex flex-col items-start pl-1.5 pt-1 cursor-pointer hover:bg-[#5c5ba8]/8 active:bg-[#5c5ba8]/15 transition-colors rounded-t-md"
+                        className="flex flex-col items-start pl-1.5 pt-1 cursor-pointer  transition-colors rounded-t-md"
                         style={{ height: '33%' }}
                         onClick={() => toggleDay(cell.month, cell.day)}
                         title="切换满意/不满意"
@@ -597,7 +617,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#bfbfbf' }
+                              ? { color: skin.pastText }
                               : cell.isWeekend
                                 ? { color: monthColor.text }
                                 : undefined
@@ -621,7 +641,7 @@ export default function YearCalendar() {
                           }`}
                           style={
                             isPast
-                              ? { color: '#d0d0d0' }
+                              ? { color: skin.pastSubtext }
                               : cell.isWeekend &&
                                 !cell.isSolarTerm &&
                                 !cell.isFestival &&
@@ -636,24 +656,22 @@ export default function YearCalendar() {
                       {/* Centered check/cross watermark overlay */}
                       {mounted && status !== 'none' && (
                         <span
-                          className={`absolute inset-0 flex items-center justify-center text-[22px] font-bold leading-none pointer-events-none ${
-                            status === 'crossed'
-                              ? 'text-red-500/70'
-                              : 'text-emerald-500/70'
-                          }`}
+                          className="absolute inset-0 flex items-center justify-center text-[22px] font-bold leading-none pointer-events-none"
+                          style={{ color: status === 'crossed' ? skin.crossColor + 'b3' : skin.checkColor + 'b3' }}
                         >
                           {status === 'crossed' ? '✗' : '✓'}
                         </span>
                       )}
                       {/* Bottom zone (2/3): click to open day view */}
                       <div
-                        className="cursor-pointer hover:bg-gradient-to-b hover:from-indigo-50/20 hover:to-violet-50/30 transition-all duration-200 rounded-b-sm"
+                        className="cursor-pointer  transition-all duration-200 rounded-b-sm"
                         style={{ height: '67%' }}
                         onClick={() => setDayViewDate({ year, month: cell.month, day: cell.day })}
                       />
                       {/* Blue dot indicator at top-right of entire cell */}
                       {hasAnyNote && (
-                        <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-gradient-to-br from-[#7c7cb8] to-[#5c5ba8] shadow-[0_0_6px_rgba(92,91,168,0.5)] z-20" />
+                        <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full z-20"
+                      style={{ background: `linear-gradient(135deg, ${skin.blueDot}cc, ${skin.blueDot})`, boxShadow: `0 0 6px ${skin.blueDot}80` }} />
                       )}
                       </div>{/* end content wrapper */}
                     </div>
@@ -680,7 +698,7 @@ export default function YearCalendar() {
             height: popupSize.h,
             minWidth: 280,
             minHeight: 200,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: `linear-gradient(135deg, ${skin.sidebarFrom}, ${skin.sidebarTo})`,
           }}
         >
           {/* Header */}
@@ -731,7 +749,7 @@ export default function YearCalendar() {
               <span className="text-[15px] text-gray-300">Enter 保存 · Shift+Enter 换行</span>
               <button
                 className="px-5 py-1.5 rounded-full text-xs font-semibold text-white transition-all hover:shadow-md active:scale-95"
-                style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+                style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}, ${skin.sidebarTo})` }}
                 onClick={saveNote}
               >
                 保存
@@ -771,7 +789,8 @@ export default function YearCalendar() {
       {dayViewDate && (
         <div className="fixed inset-0 z-40 flex justify-end">
           <div className="absolute inset-0 bg-black/20" onClick={() => setDayViewDate(null)} />
-          <div className="relative h-full bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/30 animate-slide-in-panel overflow-hidden flex" style={{ width: dayViewWidth, maxWidth: '92vw' }}>
+          <div className="relative h-full backdrop-blur-xl shadow-2xl border-l animate-slide-in-panel overflow-hidden flex"
+          style={{ width: dayViewWidth, maxWidth: '92vw', background: skin.panelBg + 'f2', borderColor: skin.divider }}>
             {/* Left resize handle */}
             <div
               className="w-1.5 cursor-col-resize hover:bg-blue-400/30 active:bg-blue-400/50 flex-shrink-0 transition-colors z-10"
@@ -784,6 +803,7 @@ export default function YearCalendar() {
                 day={dayViewDate.day}
                 onClose={() => setDayViewDate(null)}
                 embedded
+                skin={skin}
               />
             </div>
           </div>
@@ -794,14 +814,15 @@ export default function YearCalendar() {
       {selectedMonth !== null && mounted && (
         <div className="fixed inset-0 z-40 flex justify-end">
           <div className="absolute inset-0 bg-black/20" onClick={() => setSelectedMonth(null)} />
-          <div className="relative h-full bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/30 flex flex-col animate-slide-in" style={{ width: reviewWidth, maxWidth: '92vw' }}>
+          <div className="relative h-full backdrop-blur-xl shadow-2xl border-l flex flex-col animate-slide-in"
+          style={{ width: reviewWidth, maxWidth: '92vw', background: skin.panelBg + 'f2', borderColor: skin.divider }}>
             {/* Left resize handle */}
             <div
               className="w-1.5 cursor-col-resize hover:bg-blue-400/30 active:bg-blue-400/50 flex-shrink-0 transition-colors z-10 absolute left-0 top-0 bottom-0"
               onMouseDown={(e) => handlePanelResize(setReviewWidth, e)}
             />
             {/* 头部 - 渐变 */}
-            <div className="px-6 pt-6 pb-5" style={{ background: `linear-gradient(135deg, ${MONTH_COLORS[selectedMonth - 1].accent}dd, ${MONTH_COLORS[selectedMonth - 1].accent}88)` }}>
+            <div className="px-6 pt-6 pb-5" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }}>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-gray-500 text-xs font-medium tracking-wider mb-1">MONTHLY REVIEW</div>
@@ -902,7 +923,7 @@ export default function YearCalendar() {
 
       {/* Page 2: Monthly Review */}
       <section className="h-screen overflow-y-auto">
-        <MonthlyReview year={year} />
+        <MonthlyReview year={year} skin={skin} />
       </section>
     </div>
   );

@@ -45,6 +45,33 @@ export interface SkinTheme {
   /** "已计划"状态色 */
   plannedBg: string;
   plannedText: string;
+  /** 页面背景 */
+  bodyBg: string;
+  /** 头部遮罩色 */
+  headerOverlay: string;
+  /** 今天格子环色 */
+  todayRing: string;
+  /** 格子边框色 */
+  cellBorder: string;
+  /** 已过格子遮罩 */
+  pastBg: string;
+  /** 已过周末遮罩 */
+  pastWeekendBg: string;
+  /** 已过文字色 */
+  pastText: string;
+  /** 已过次要文字色 */
+  pastSubtext: string;
+  /** 勾选色 */
+  checkColor: string;
+  /** 叉选色 */
+  crossColor: string;
+  /** 蓝点指示色 */
+  blueDot: string;
+  /** Tab激活色 */
+  tabActive: string;
+  /** 侧边栏头部渐变 from→to */
+  sidebarFrom: string;
+  sidebarTo: string;
   /** 暗色模式相关 */
   isDark: boolean;
 }
@@ -83,6 +110,20 @@ export const SKINS: SkinTheme[] = [
     planBtnText: '#059669',
     plannedBg: '#d1fae5',
     plannedText: '#047857',
+    bodyBg: '#f0fdf4',
+    headerOverlay: '#faf9f7',
+    todayRing: '#059669',
+    cellBorder: 'rgba(148,163,184,0.18)',
+    pastBg: 'rgba(240,242,245,0.5)',
+    pastWeekendBg: 'rgba(228,230,236,0.55)',
+    pastText: '#bfbfbf',
+    pastSubtext: '#d0d0d0',
+    checkColor: '#10b981',
+    crossColor: '#ef4444',
+    blueDot: '#059669',
+    tabActive: '#059669',
+    sidebarFrom: '#065f46',
+    sidebarTo: '#059669',
     isDark: false,
   },
   {
@@ -118,6 +159,20 @@ export const SKINS: SkinTheme[] = [
     planBtnText: '#2563eb',
     plannedBg: '#bfdbfe',
     plannedText: '#1d4ed8',
+    bodyBg: '#eff6ff',
+    headerOverlay: '#f8fafc',
+    todayRing: '#2563eb',
+    cellBorder: 'rgba(148,163,184,0.18)',
+    pastBg: 'rgba(240,242,245,0.5)',
+    pastWeekendBg: 'rgba(228,230,236,0.55)',
+    pastText: '#bfbfbf',
+    pastSubtext: '#d0d0d0',
+    checkColor: '#3b82f6',
+    crossColor: '#ef4444',
+    blueDot: '#2563eb',
+    tabActive: '#2563eb',
+    sidebarFrom: '#1e3a5f',
+    sidebarTo: '#2563eb',
     isDark: false,
   },
   {
@@ -153,6 +208,20 @@ export const SKINS: SkinTheme[] = [
     planBtnText: '#ea580c',
     plannedBg: '#fed7aa',
     plannedText: '#c2410c',
+    bodyBg: '#fff7ed',
+    headerOverlay: '#fffbf5',
+    todayRing: '#ea580c',
+    cellBorder: 'rgba(148,163,184,0.18)',
+    pastBg: 'rgba(240,242,245,0.5)',
+    pastWeekendBg: 'rgba(228,230,236,0.55)',
+    pastText: '#bfbfbf',
+    pastSubtext: '#d0d0d0',
+    checkColor: '#f97316',
+    crossColor: '#ef4444',
+    blueDot: '#ea580c',
+    tabActive: '#ea580c',
+    sidebarFrom: '#7c2d12',
+    sidebarTo: '#ea580c',
     isDark: false,
   },
   {
@@ -188,6 +257,20 @@ export const SKINS: SkinTheme[] = [
     planBtnText: '#7c3aed',
     plannedBg: '#ddd6fe',
     plannedText: '#6d28d9',
+    bodyBg: '#f5f3ff',
+    headerOverlay: '#faf8ff',
+    todayRing: '#7c3aed',
+    cellBorder: 'rgba(148,163,184,0.18)',
+    pastBg: 'rgba(240,242,245,0.5)',
+    pastWeekendBg: 'rgba(228,230,236,0.55)',
+    pastText: '#bfbfbf',
+    pastSubtext: '#d0d0d0',
+    checkColor: '#8b5cf6',
+    crossColor: '#ef4444',
+    blueDot: '#7c3aed',
+    tabActive: '#7c3aed',
+    sidebarFrom: '#4c1d95',
+    sidebarTo: '#7c3aed',
     isDark: false,
   },
   {
@@ -223,6 +306,20 @@ export const SKINS: SkinTheme[] = [
     planBtnText: '#db2777',
     plannedBg: '#fbcfe8',
     plannedText: '#be185d',
+    bodyBg: '#fdf2f8',
+    headerOverlay: '#fffbfd',
+    todayRing: '#db2777',
+    cellBorder: 'rgba(148,163,184,0.18)',
+    pastBg: 'rgba(240,242,245,0.5)',
+    pastWeekendBg: 'rgba(228,230,236,0.55)',
+    pastText: '#bfbfbf',
+    pastSubtext: '#d0d0d0',
+    checkColor: '#ec4899',
+    crossColor: '#ef4444',
+    blueDot: '#db2777',
+    tabActive: '#db2777',
+    sidebarFrom: '#831843',
+    sidebarTo: '#db2777',
     isDark: false,
   },
   {
@@ -258,6 +355,20 @@ export const SKINS: SkinTheme[] = [
     planBtnText: '#60a5fa',
     plannedBg: '#1e3a5f',
     plannedText: '#60a5fa',
+    bodyBg: '#0f172a',
+    headerOverlay: '#1e293b',
+    todayRing: '#60a5fa',
+    cellBorder: 'rgba(100,116,139,0.25)',
+    pastBg: 'rgba(30,41,59,0.6)',
+    pastWeekendBg: 'rgba(30,41,59,0.7)',
+    pastText: '#64748b',
+    pastSubtext: '#475569',
+    checkColor: '#34d399',
+    crossColor: '#f87171',
+    blueDot: '#60a5fa',
+    tabActive: '#60a5fa',
+    sidebarFrom: '#0f172a',
+    sidebarTo: '#1e293b',
     isDark: true,
   },
   {
@@ -293,6 +404,20 @@ export const SKINS: SkinTheme[] = [
     planBtnText: '#16a34a',
     plannedBg: '#bbf7d0',
     plannedText: '#15803d',
+    bodyBg: '#f0fdf4',
+    headerOverlay: '#f5faf5',
+    todayRing: '#15803d',
+    cellBorder: 'rgba(148,163,184,0.18)',
+    pastBg: 'rgba(240,242,245,0.5)',
+    pastWeekendBg: 'rgba(228,230,236,0.55)',
+    pastText: '#bfbfbf',
+    pastSubtext: '#d0d0d0',
+    checkColor: '#16a34a',
+    crossColor: '#ef4444',
+    blueDot: '#15803d',
+    tabActive: '#15803d',
+    sidebarFrom: '#14532d',
+    sidebarTo: '#15803d',
     isDark: false,
   },
   {
@@ -328,6 +453,20 @@ export const SKINS: SkinTheme[] = [
     planBtnText: '#8b5cf6',
     plannedBg: '#e9d5ff',
     plannedText: '#7c3aed',
+    bodyBg: '#faf5ff',
+    headerOverlay: '#fdfbff',
+    todayRing: '#9333ea',
+    cellBorder: 'rgba(148,163,184,0.18)',
+    pastBg: 'rgba(240,242,245,0.5)',
+    pastWeekendBg: 'rgba(228,230,236,0.55)',
+    pastText: '#bfbfbf',
+    pastSubtext: '#d0d0d0',
+    checkColor: '#a855f7',
+    crossColor: '#ef4444',
+    blueDot: '#9333ea',
+    tabActive: '#9333ea',
+    sidebarFrom: '#581c87',
+    sidebarTo: '#9333ea',
     isDark: false,
   },
 ];

@@ -6,9 +6,12 @@ import {
   getDaysInMonth,
   isWeekend,
 } from '@/lib/calendar-utils';
+import { SKINS, DEFAULT_SKIN } from '@/lib/skins';
+import type { SkinTheme } from '@/lib/skins';
 
 interface MonthlyReviewProps {
   year: number;
+  skin?: SkinTheme;
 }
 
 type DayOverride = 'checked' | 'crossed';
@@ -36,7 +39,8 @@ interface MonthStats {
   heatMap: ('checked' | 'crossed' | 'empty' | 'future')[];
 }
 
-export default function MonthlyReview({ year }: MonthlyReviewProps) {
+export default function MonthlyReview({ year, skin: skinProp }: MonthlyReviewProps) {
+  const skin = skinProp ?? SKINS.find(s => s.key === DEFAULT_SKIN) ?? SKINS[0];
   const [mounted, setMounted] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const monthGridRef = useRef<HTMLDivElement>(null);
@@ -230,28 +234,38 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50/80 via-white to-stone-50/80 px-8 py-6">
+    <div className="min-h-screen px-8 py-6"
+      style={{ background: `linear-gradient(135deg, ${skin.bodyBg}cc, ${skin.cardBg}, ${skin.bodyBg}aa)` }}>
       {/* Title */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tight">{year} 年度复盘</h2>
+          <h2 className="text-3xl font-black tracking-tight"
+            style={{ color: skin.textPrimary }}>{year} 年度复盘</h2>
           <p className="text-gray-400 mt-1 text-sm">下拉回到日历 · 数据实时同步</p>
         </div>
         <div className="flex gap-3">
-          <div className="text-center px-5 py-3 rounded-2xl bg-white/80 shadow-sm border border-gray-100/60 backdrop-blur-sm">
-            <div className="text-2xl font-black text-emerald-600">{yearAvg.satisfactionRate}%</div>
+          <div className="text-center px-5 py-3 rounded-2xl shadow-sm backdrop-blur-sm"
+            style={{ backgroundColor: skin.cardBg + "cc", borderColor: skin.divider }}>
+            <div className="text-2xl font-black"
+            style={{ color: skin.checkColor }}>{yearAvg.satisfactionRate}%</div>
             <div className="text-xs text-gray-400 mt-0.5">年满意度</div>
           </div>
-          <div className="text-center px-5 py-3 rounded-2xl bg-white/80 shadow-sm border border-gray-100/60 backdrop-blur-sm">
-            <div className="text-2xl font-black text-blue-600">{yearAvg.scheduleRate}%</div>
+          <div className="text-center px-5 py-3 rounded-2xl shadow-sm backdrop-blur-sm"
+            style={{ backgroundColor: skin.cardBg + "cc", borderColor: skin.divider }}>
+            <div className="text-2xl font-black"
+            style={{ color: skin.blueDot }}>{yearAvg.scheduleRate}%</div>
             <div className="text-xs text-gray-400 mt-0.5">日程密度</div>
           </div>
-          <div className="text-center px-5 py-3 rounded-2xl bg-white/80 shadow-sm border border-gray-100/60 backdrop-blur-sm">
-            <div className="text-2xl font-black text-amber-600">{yearAvg.todoRate}%</div>
+          <div className="text-center px-5 py-3 rounded-2xl shadow-sm backdrop-blur-sm"
+            style={{ backgroundColor: skin.cardBg + "cc", borderColor: skin.divider }}>
+            <div className="text-2xl font-black"
+            style={{ color: skin.swatch }}>{yearAvg.todoRate}%</div>
             <div className="text-xs text-gray-400 mt-0.5">待办完成</div>
           </div>
-          <div className="text-center px-5 py-3 rounded-2xl bg-white/80 shadow-sm border border-gray-100/60 backdrop-blur-sm">
-            <div className="text-2xl font-black text-purple-600">{yearAvg.memoRate}%</div>
+          <div className="text-center px-5 py-3 rounded-2xl shadow-sm backdrop-blur-sm"
+            style={{ backgroundColor: skin.cardBg + "cc", borderColor: skin.divider }}>
+            <div className="text-2xl font-black"
+            style={{ color: skin.tabActive }}>{yearAvg.memoRate}%</div>
             <div className="text-xs text-gray-400 mt-0.5">备忘活跃</div>
           </div>
         </div>
@@ -265,19 +279,18 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
             <div
               key={m.month}
               onClick={() => handleMonthClick(m.month)}
-              className={`rounded-2xl p-4 cursor-pointer transition-all duration-200 border-2 ${
-                isSelected
-                  ? 'bg-white shadow-lg border-indigo-300 scale-[1.02]'
-                  : 'bg-white/80 shadow-sm border-transparent hover:shadow-md hover:border-gray-200'
-              }`}
+              className="rounded-2xl p-4 cursor-pointer transition-all duration-200 border-2"
+              style={{
+                backgroundColor: isSelected ? skin.cardBg : skin.cardBg + 'cc',
+                borderColor: isSelected ? skin.swatch : 'transparent',
+                boxShadow: isSelected ? `0 10px 25px ${skin.swatch}20` : '0 1px 3px rgba(0,0,0,0.05)',
+                transform: isSelected ? 'scale(1.02)' : 'none',
+              }}
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-lg font-bold text-gray-800">{m.month}月</span>
-                <span className={`text-xl font-black ${
-                  m.satisfactionRate >= 80 ? 'text-emerald-600' :
-                  m.satisfactionRate >= 60 ? 'text-amber-600' :
-                  m.satisfactionRate > 0 ? 'text-rose-500' : 'text-gray-300'
-                }`}>
+                <span className="text-lg font-bold" style={{ color: skin.textPrimary }}>{m.month}月</span>
+                <span className="text-xl font-black"
+                  style={{ color: m.satisfactionRate >= 80 ? skin.checkColor : m.satisfactionRate >= 60 ? skin.swatch : m.satisfactionRate > 0 ? skin.crossColor : skin.textMuted }}>
                   {m.satisfactionRate > 0 ? `${m.satisfactionRate}%` : '-'}
                 </span>
               </div>
@@ -287,12 +300,8 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
                 {m.heatMap.map((h, i) => (
                   <div
                     key={i}
-                    className={`w-[10px] h-[10px] rounded-[2px] ${
-                      h === 'checked' ? 'bg-emerald-400' :
-                      h === 'crossed' ? 'bg-rose-300' :
-                      h === 'future' ? 'bg-gray-100' :
-                      'bg-gray-200'
-                    }`}
+                    className="w-[10px] h-[10px] rounded-[2px]"
+                    style={{ backgroundColor: h === 'checked' ? skin.checkColor + '99' : h === 'crossed' ? skin.crossColor + '80' : h === 'future' ? skin.divider : skin.textMuted + '40' }}
                   />
                 ))}
               </div>
@@ -305,13 +314,14 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
               </div>
 
               {/* Progress bar */}
-              <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="mt-2 h-1.5 rounded-full overflow-hidden"
+                style={{ backgroundColor: skin.divider }}>
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${m.satisfactionRate}%`,
-                    background: m.satisfactionRate >= 80 ? '#10b981' :
-                      m.satisfactionRate >= 60 ? '#f59e0b' : '#ef4444',
+                    background: m.satisfactionRate >= 80 ? skin.checkColor :
+                      m.satisfactionRate >= 60 ? skin.swatch : skin.crossColor,
                   }}
                 />
               </div>
@@ -321,8 +331,9 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
       </div>
 
       {/* Year Satisfaction Trend - Line Chart */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">年度满意度趋势</h3>
+      <div className="rounded-2xl shadow-sm border p-6 mb-6"
+        style={{ backgroundColor: skin.cardBg, borderColor: skin.divider }}>
+        <h3 className="text-lg font-bold mb-4" style={{ color: skin.textPrimary }}>年度满意度趋势</h3>
         <div className="flex items-end gap-2 h-40">
           {monthStats.map((m, i) => {
             const height = m.satisfactionRate > 0 ? Math.max(m.satisfactionRate, 8) : 0;
@@ -333,9 +344,8 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
             return (
               <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
                 {trend && (
-                  <span className={`text-xs font-bold ${
-                    trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-rose-400' : 'text-gray-400'
-                  }`}>
+                  <span className="text-xs font-bold"
+                    style={{ color: trend === 'up' ? skin.checkColor : trend === 'down' ? skin.crossColor : skin.textMuted }}>
                     {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
                   </span>
                 )}
@@ -344,14 +354,14 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
                     className="w-full max-w-[40px] rounded-t-lg transition-all duration-500"
                     style={{
                       height: `${height}%`,
-                      background: m.satisfactionRate >= 80 ? 'linear-gradient(180deg, #10b981, #34d399)' :
-                        m.satisfactionRate >= 60 ? 'linear-gradient(180deg, #f59e0b, #fbbf24)' :
-                        m.satisfactionRate > 0 ? 'linear-gradient(180deg, #ef4444, #f87171)' :
-                        '#e5e7eb',
+                      background: m.satisfactionRate >= 80 ? `linear-gradient(180deg, ${skin.checkColor}, ${skin.checkColor}88)` :
+                        m.satisfactionRate >= 60 ? `linear-gradient(180deg, ${skin.swatch}, ${skin.swatch}88)` :
+                        m.satisfactionRate > 0 ? `linear-gradient(180deg, ${skin.crossColor}, ${skin.crossColor}88)` :
+                        skin.divider,
                     }}
                   />
                 </div>
-                <span className="text-xs text-gray-400 mt-1">{m.month}月</span>
+                <span className="text-xs mt-1" style={{ color: skin.textMuted }}>{m.month}月</span>
               </div>
             );
           })}
@@ -360,12 +370,14 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
 
       {/* Selected Month Detail */}
       {selectedStats && (
-        <div ref={detailRef} className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-6 mb-6">
+        <div ref={detailRef} className="rounded-2xl shadow-sm border p-6 mb-6"
+          style={{ backgroundColor: skin.cardBg, borderColor: skin.swatch + "40" }}>
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-800">{selectedStats.month}月详细分析</h3>
+            <h3 className="text-xl font-bold" style={{ color: skin.textPrimary }}>{selectedStats.month}月详细分析</h3>
             <button
               onClick={() => setSelectedMonth(null)}
-              className="text-gray-400 hover:text-gray-600 text-sm"
+              className="text-sm"
+              style={{ color: skin.textMuted }}
             >
               收起 ✕
             </button>
@@ -374,11 +386,11 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
           {/* Core Metrics */}
           <div className="grid grid-cols-5 gap-4 mb-6">
             {[
-              { label: '满意度', value: selectedStats.satisfactionRate, unit: '%', color: '#10b981', icon: '😊' },
-              { label: '打卡率', value: selectedStats.overrideRate, unit: '%', color: '#3b82f6', icon: '📋' },
-              { label: '日程密度', value: selectedStats.scheduleRate, unit: '%', color: '#8b5cf6', icon: '📅' },
-              { label: '待办完成', value: selectedStats.todoRate, unit: '%', color: '#f59e0b', icon: '✅' },
-              { label: '备忘活跃', value: selectedStats.memoRate, unit: '%', color: '#06b6d4', icon: '📝' },
+              { label: '满意度', value: selectedStats.satisfactionRate, unit: '%', color: skin.checkColor, icon: '😊' },
+              { label: '打卡率', value: selectedStats.overrideRate, unit: '%', color: skin.blueDot, icon: '📋' },
+              { label: '日程密度', value: selectedStats.scheduleRate, unit: '%', color: skin.tabActive, icon: '📅' },
+              { label: '待办完成', value: selectedStats.todoRate, unit: '%', color: skin.swatch, icon: '✅' },
+              { label: '备忘活跃', value: selectedStats.memoRate, unit: '%', color: skin.sidebarTo, icon: '📝' },
             ].map((metric) => (
               <div key={metric.label} className="text-center p-4 rounded-2xl" style={{ backgroundColor: metric.color + '08' }}>
                 <div className="text-2xl mb-1">{metric.icon}</div>
@@ -393,26 +405,29 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
 
           {/* Workday vs Weekend */}
           <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="p-4 rounded-2xl bg-blue-50/50">
+            <div className="p-4 rounded-2xl"
+              style={{ backgroundColor: skin.blueDot + "10" }}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-3 h-3 rounded-full bg-blue-500" />
+                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: skin.blueDot }} />
                 <span className="text-sm font-semibold text-gray-700">工作日</span>
                 <span className="text-xs text-gray-400">({selectedStats.weekdayTotal}天)</span>
               </div>
-              <div className="text-2xl font-black text-blue-600">
+              <div className="text-2xl font-black"
+            style={{ color: skin.blueDot }}>
                 {selectedStats.weekdayTotal > 0
                   ? `${Math.round(selectedStats.weekdayChecked / selectedStats.weekdayTotal * 100)}%`
                   : '-'}
               </div>
               <div className="text-xs text-gray-400">满意度 · ✓{selectedStats.weekdayChecked}天</div>
             </div>
-            <div className="p-4 rounded-2xl bg-orange-50/50">
+            <div className="p-4 rounded-2xl"
+              style={{ backgroundColor: skin.swatch + "10" }}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-3 h-3 rounded-full bg-orange-500" />
+                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: skin.swatch }} />
                 <span className="text-sm font-semibold text-gray-700">周末</span>
                 <span className="text-xs text-gray-400">({selectedStats.weekendTotal}天)</span>
               </div>
-              <div className="text-2xl font-black text-orange-600">
+              <div className="text-2xl font-black" style={{ color: skin.swatch }}>
                 {selectedStats.weekendTotal > 0
                   ? `${Math.round(selectedStats.weekendChecked / selectedStats.weekendTotal * 100)}%`
                   : '-'}
@@ -425,21 +440,25 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
           {(selectedStats.solarTerms.length > 0 || selectedStats.festivals.length > 0) && (
             <div className="flex gap-4 mb-6">
               {selectedStats.solarTerms.length > 0 && (
-                <div className="flex-1 p-4 rounded-2xl bg-emerald-50/50">
-                  <div className="text-sm font-semibold text-gray-700 mb-2">🌿 节气</div>
+                <div className="flex-1 p-4 rounded-2xl"
+                  style={{ backgroundColor: skin.checkColor + "10" }}>
+                  <div className="text-sm font-semibold mb-2"
+                  style={{ color: skin.textPrimary }}>🌿 节气</div>
                   <div className="flex flex-wrap gap-2">
                     {selectedStats.solarTerms.map((st, i) => (
-                      <span key={i} className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm">{st}</span>
+                      <span key={i} className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: skin.checkColor + "20", color: skin.checkColor }}>{st}</span>
                     ))}
                   </div>
                 </div>
               )}
               {selectedStats.festivals.length > 0 && (
-                <div className="flex-1 p-4 rounded-2xl bg-red-50/50">
-                  <div className="text-sm font-semibold text-gray-700 mb-2">🎉 节日</div>
+                <div className="flex-1 p-4 rounded-2xl"
+                  style={{ backgroundColor: skin.crossColor + "10" }}>
+                  <div className="text-sm font-semibold mb-2"
+                  style={{ color: skin.textPrimary }}>🎉 节日</div>
                   <div className="flex flex-wrap gap-2">
                     {selectedStats.festivals.map((f, i) => (
-                      <span key={i} className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm">{f}</span>
+                      <span key={i} className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: skin.crossColor + "20", color: skin.crossColor }}>{f}</span>
                     ))}
                   </div>
                 </div>
@@ -448,8 +467,10 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
           )}
 
           {/* Detail Heat Map */}
-          <div className="p-4 rounded-2xl bg-gray-50/80">
-            <div className="text-sm font-semibold text-gray-700 mb-3">日度热力图</div>
+          <div className="p-4 rounded-2xl"
+            style={{ backgroundColor: skin.panelBg + "cc" }}>
+            <div className="text-sm font-semibold mb-3"
+            style={{ color: skin.textPrimary }}>日度热力图</div>
             <div className="flex flex-wrap gap-[3px]">
               {selectedStats.heatMap.map((h, i) => (
                 <div
@@ -466,31 +487,35 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
               ))}
             </div>
             <div className="flex gap-4 mt-3 text-xs text-gray-400">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-400" /> ✓满意</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-rose-300" /> ✗不满意</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-gray-200" /> 未记录</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-gray-100" /> 未来</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: skin.checkColor + "99" }} /> ✓满意</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: skin.crossColor + "80" }} /> ✗不满意</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: skin.textMuted + "40" }} /> 未记录</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: skin.divider }} /> 未来</span>
             </div>
           </div>
 
           {/* Schedule & Memo Summary */}
           <div className="grid grid-cols-2 gap-4 mt-6">
-            <div className="p-4 rounded-2xl bg-indigo-50/50">
-              <div className="text-sm font-semibold text-gray-700 mb-2">📅 日程摘要</div>
+            <div className="p-4 rounded-2xl"
+              style={{ backgroundColor: skin.tabActive + "10" }}>
+              <div className="text-sm font-semibold mb-2"
+                  style={{ color: skin.textPrimary }}>📅 日程摘要</div>
               <div className="text-sm text-gray-500">
-                本月共 <strong className="text-indigo-600">{selectedStats.scheduleDays}</strong> 天有日程安排
+                本月共 <strong >{selectedStats.scheduleDays}</strong> 天有日程安排
               </div>
               <div className="text-sm text-gray-500 mt-1">
-                日程密度 <strong className="text-indigo-600">{selectedStats.scheduleRate}%</strong>
+                日程密度 <strong >{selectedStats.scheduleRate}%</strong>
               </div>
             </div>
-            <div className="p-4 rounded-2xl bg-purple-50/50">
-              <div className="text-sm font-semibold text-gray-700 mb-2">📝 备忘精选</div>
+            <div className="p-4 rounded-2xl"
+              style={{ backgroundColor: skin.sidebarTo + "10" }}>
+              <div className="text-sm font-semibold mb-2"
+                  style={{ color: skin.textPrimary }}>📝 备忘精选</div>
               <div className="text-sm text-gray-500">
-                本月共 <strong className="text-purple-600">{selectedStats.memoDays}</strong> 天有备忘记录
+                本月共 <strong >{selectedStats.memoDays}</strong> 天有备忘记录
               </div>
               <div className="text-sm text-gray-500 mt-1">
-                活跃度 <strong className="text-purple-600">{selectedStats.memoRate}%</strong>
+                活跃度 <strong >{selectedStats.memoRate}%</strong>
               </div>
             </div>
           </div>
