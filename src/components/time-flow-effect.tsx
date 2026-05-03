@@ -8,12 +8,13 @@ interface TimeFlowEffectProps {
 }
 
 /**
- * 时间流逝动效 — 沙漏流沙 + 光晕脉冲
+ * 时间流逝动效 — 沙漏流沙 + 光晕脉冲 + 时间刻度
  *
  * 设计意象:
- *   1. 沙粒: 从上方随机位置缓缓下坠，带有微微左右摆动，像沙漏中的细沙
- *   2. 光晕: 底部随机位置出现微弱光点，缓缓膨胀后消逝，像时间刻度的闪烁
- *   3. 整体氛围: 安静、缓慢、不可逆，象征时间无声流逝
+ *   1. 沙粒: 从上方缓缓下坠，带左右微微摆动，像沙漏中的细沙
+ *   2. 光晕: 随机位置出现柔光点，缓缓膨胀后消逝，像时间刻度闪烁
+ *   3. 刻度线: 垂直的半透明短线段，像时间的刻度标记
+ *   4. 整体氛围: 安静、缓慢、不可逆，象征时间无声流逝
  */
 export function TimeFlowEffect({ color, intensity = 1 }: TimeFlowEffectProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -40,19 +41,6 @@ export function TimeFlowEffect({ color, intensity = 1 }: TimeFlowEffectProps) {
     resize();
     window.addEventListener("resize", resize);
 
-    // Parse base color
-    const parseColor = (c: string) => {
-      if (c && c.startsWith("#") && c.length >= 7) {
-        return {
-          r: parseInt(c.slice(1, 3), 16),
-          g: parseInt(c.slice(3, 5), 16),
-          b: parseInt(c.slice(5, 7), 16),
-        };
-      }
-      return { r: 200, g: 180, b: 160 };
-    };
-
-    const base = parseColor(color || "#c8b496");
     const W = () => canvas.width / dpr;
     const H = () => canvas.height / dpr;
 
@@ -60,37 +48,37 @@ export function TimeFlowEffect({ color, intensity = 1 }: TimeFlowEffectProps) {
     interface Grain {
       x: number;
       y: number;
-      vy: number;        // fall speed
-      vx: number;        // horizontal sway
+      vy: number;
+      vx: number;
       size: number;
       alpha: number;
       maxAlpha: number;
       swayPhase: number;
       swaySpeed: number;
-      colorShift: number; // subtle hue variation
+      warmth: number; // 0=white, 1=warm tint
     }
 
-    const grainCount = Math.round(35 * intensity);
+    const grainCount = Math.round(50 * intensity);
     const grains: Grain[] = [];
 
     const spawnGrain = (fromTop = true): Grain => ({
       x: Math.random() * W(),
-      y: fromTop ? -Math.random() * 20 : Math.random() * H(),
-      vy: 0.12 + Math.random() * 0.22,  // slow fall
-      vx: (Math.random() - 0.5) * 0.1,
-      size: 0.6 + Math.random() * 1.2,
+      y: fromTop ? -Math.random() * 30 : Math.random() * H(),
+      vy: 0.2 + Math.random() * 0.35,
+      vx: (Math.random() - 0.5) * 0.15,
+      size: 1.2 + Math.random() * 2.0,
       alpha: 0,
-      maxAlpha: 0.15 + Math.random() * 0.25,
+      maxAlpha: 0.35 + Math.random() * 0.35,
       swayPhase: Math.random() * Math.PI * 2,
-      swaySpeed: 0.003 + Math.random() * 0.005,
-      colorShift: (Math.random() - 0.5) * 40,
+      swaySpeed: 0.004 + Math.random() * 0.008,
+      warmth: Math.random(),
     });
 
     for (let i = 0; i < grainCount; i++) {
       grains.push(spawnGrain(false));
     }
 
-    // ── Glow pulses (time markers) ───────────────────────
+    // ── Glow pulses ─────────────────────────────────────
     interface Glow {
       x: number;
       y: number;
@@ -101,124 +89,104 @@ export function TimeFlowEffect({ color, intensity = 1 }: TimeFlowEffectProps) {
       growSpeed: number;
       fadeSpeed: number;
       phase: "grow" | "fade";
-      colorShift: number;
     }
 
     const glows: Glow[] = [];
-    const maxGlows = Math.round(5 * intensity);
+    const maxGlows = Math.round(6 * intensity);
     let glowTimer = 0;
 
     const spawnGlow = (): Glow => ({
-      x: 40 + Math.random() * (W() - 80),
-      y: H() * 0.4 + Math.random() * H() * 0.5,
+      x: 60 + Math.random() * (W() - 120),
+      y: 20 + Math.random() * (H() - 40),
       radius: 0,
-      maxRadius: 15 + Math.random() * 30,
+      maxRadius: 25 + Math.random() * 50,
       alpha: 0,
-      maxAlpha: 0.06 + Math.random() * 0.06,
-      growSpeed: 0.15 + Math.random() * 0.2,
-      fadeSpeed: 0.004 + Math.random() * 0.006,
+      maxAlpha: 0.12 + Math.random() * 0.15,
+      growSpeed: 0.2 + Math.random() * 0.3,
+      fadeSpeed: 0.006 + Math.random() * 0.008,
       phase: "grow",
-      colorShift: (Math.random() - 0.5) * 30,
     });
 
-    // ── Time threads (thin flowing lines) ────────────────
-    interface Thread {
-      points: { x: number; y: number }[];
-      speed: number;
-      offset: number;
+    // ── Time ticks (vertical dash marks that fade in/out) ─
+    interface Tick {
+      x: number;
+      y: number;
+      height: number;
       alpha: number;
       maxAlpha: number;
-      amplitude: number;
-      wavelength: number;
-      y0: number; // base y position
+      phase: "in" | "hold" | "out";
+      timer: number;
+      holdTime: number;
     }
 
-    const threadCount = Math.round(3 * intensity);
-    const threads: Thread[] = [];
+    const ticks: Tick[] = [];
+    const maxTicks = Math.round(8 * intensity);
+    let tickTimer = 0;
 
-    for (let i = 0; i < threadCount; i++) {
-      threads.push({
-        points: [],
-        speed: 0.15 + Math.random() * 0.2,
-        offset: Math.random() * 1000,
-        alpha: 0,
-        maxAlpha: 0.04 + Math.random() * 0.05,
-        amplitude: 3 + Math.random() * 6,
-        wavelength: 80 + Math.random() * 120,
-        y0: H() * (0.3 + Math.random() * 0.5),
-      });
-    }
+    const spawnTick = (): Tick => ({
+      x: Math.random() * W(),
+      y: 10 + Math.random() * (H() - 30),
+      height: 4 + Math.random() * 12,
+      alpha: 0,
+      maxAlpha: 0.15 + Math.random() * 0.2,
+      phase: "in",
+      timer: 0,
+      holdTime: 60 + Math.random() * 120,
+    });
 
     // ── Animation loop ───────────────────────────────────
-    const rgba = (r: number, g: number, b: number, a: number) =>
-      `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`;
-
     const draw = () => {
       const w = W();
       const h = H();
       ctx.clearRect(0, 0, w, h);
 
-      // Draw time threads (flowing sine waves)
-      for (const t of threads) {
-        t.offset += t.speed;
-        t.alpha += (t.maxAlpha - t.alpha) * 0.01;
-
-        ctx.beginPath();
-        ctx.strokeStyle = rgba(
-          base.r + 30,
-          base.g + 30,
-          base.b + 30,
-          t.alpha
-        );
-        ctx.lineWidth = 0.5;
-
-        for (let x = 0; x < w; x += 3) {
-          const y =
-            t.y0 +
-            Math.sin((x + t.offset) / t.wavelength) * t.amplitude +
-            Math.sin((x + t.offset * 0.7) / (t.wavelength * 0.5)) * (t.amplitude * 0.3);
-          if (x === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      }
-
       // Draw sand grains
       for (const g of grains) {
-        // Sway
         g.swayPhase += g.swaySpeed;
-        g.x += g.vx + Math.sin(g.swayPhase) * 0.15;
+        g.x += g.vx + Math.sin(g.swayPhase) * 0.2;
         g.y += g.vy;
 
         // Fade in near top, fade out near bottom
         const distToBottom = h - g.y;
-        if (g.y < 10) {
-          g.alpha = Math.min(g.alpha + 0.005, g.maxAlpha);
-        } else if (distToBottom < 30) {
-          g.alpha = Math.max(g.alpha - 0.008, 0);
+        if (g.y < 20) {
+          g.alpha = Math.min(g.alpha + 0.015, g.maxAlpha);
+        } else if (distToBottom < 40) {
+          g.alpha = Math.max(g.alpha - 0.012, 0);
         } else {
-          g.alpha += (g.maxAlpha - g.alpha) * 0.02;
+          g.alpha += (g.maxAlpha - g.alpha) * 0.03;
         }
 
-        // Reset when fallen off
-        if (g.y > h + 5 || g.alpha <= 0) {
+        if (g.y > h + 10 || g.alpha <= 0) {
           Object.assign(g, spawnGrain(true));
         }
 
-        // Draw grain as a tiny soft circle
-        const cr = Math.max(0, Math.min(255, base.r + g.colorShift));
-        const cg = Math.max(0, Math.min(255, base.g + g.colorShift * 0.6));
-        const cb = Math.max(0, Math.min(255, base.b + g.colorShift * 0.3));
+        // Color: white to warm cream
+        const r = 255;
+        const gr = Math.round(255 - g.warmth * 35);
+        const b = Math.round(255 - g.warmth * 70);
 
+        // Draw grain as soft circle with glow
         ctx.beginPath();
         ctx.arc(g.x, g.y, g.size, 0, Math.PI * 2);
-        ctx.fillStyle = rgba(cr, cg, cb, g.alpha);
+        ctx.fillStyle = `rgba(${r},${gr},${b},${g.alpha})`;
         ctx.fill();
+
+        // Soft glow around grain
+        if (g.size > 1.8 && g.alpha > 0.2) {
+          const glowR = g.size * 3;
+          const gradient = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, glowR);
+          gradient.addColorStop(0, `rgba(${r},${gr},${b},${g.alpha * 0.3})`);
+          gradient.addColorStop(1, `rgba(${r},${gr},${b},0)`);
+          ctx.beginPath();
+          ctx.arc(g.x, g.y, glowR, 0, Math.PI * 2);
+          ctx.fillStyle = gradient;
+          ctx.fill();
+        }
       }
 
       // Spawn & draw glow pulses
       glowTimer++;
-      if (glowTimer > 120 && glows.length < maxGlows) {
+      if (glowTimer > 80 && glows.length < maxGlows) {
         glows.push(spawnGlow());
         glowTimer = 0;
       }
@@ -228,7 +196,7 @@ export function TimeFlowEffect({ color, intensity = 1 }: TimeFlowEffectProps) {
 
         if (gl.phase === "grow") {
           gl.radius += gl.growSpeed;
-          gl.alpha += (gl.maxAlpha - gl.alpha) * 0.03;
+          gl.alpha += (gl.maxAlpha - gl.alpha) * 0.04;
           if (gl.radius >= gl.maxRadius) gl.phase = "fade";
         } else {
           gl.alpha -= gl.fadeSpeed;
@@ -239,20 +207,52 @@ export function TimeFlowEffect({ color, intensity = 1 }: TimeFlowEffectProps) {
           continue;
         }
 
-        const gr = Math.max(0, Math.min(255, base.r + gl.colorShift));
-        const gg = Math.max(0, Math.min(255, base.g + gl.colorShift * 0.5));
-        const gb = Math.max(0, Math.min(255, base.b + gl.colorShift * 0.3));
-
         const gradient = ctx.createRadialGradient(
           gl.x, gl.y, 0,
           gl.x, gl.y, gl.radius
         );
-        gradient.addColorStop(0, rgba(gr, gg, gb, gl.alpha));
-        gradient.addColorStop(1, rgba(gr, gg, gb, 0));
+        gradient.addColorStop(0, `rgba(255,255,255,${gl.alpha})`);
+        gradient.addColorStop(0.4, `rgba(255,250,240,${gl.alpha * 0.5})`);
+        gradient.addColorStop(1, `rgba(255,245,230,0)`);
         ctx.beginPath();
         ctx.arc(gl.x, gl.y, gl.radius, 0, Math.PI * 2);
         ctx.fillStyle = gradient;
         ctx.fill();
+      }
+
+      // Spawn & draw time ticks
+      tickTimer++;
+      if (tickTimer > 50 && ticks.length < maxTicks) {
+        ticks.push(spawnTick());
+        tickTimer = 0;
+      }
+
+      for (let i = ticks.length - 1; i >= 0; i--) {
+        const tk = ticks[i];
+        tk.timer++;
+
+        if (tk.phase === "in") {
+          tk.alpha = Math.min(tk.alpha + 0.008, tk.maxAlpha);
+          if (tk.alpha >= tk.maxAlpha) tk.phase = "hold";
+        } else if (tk.phase === "hold") {
+          if (tk.timer > tk.holdTime) tk.phase = "out";
+        } else {
+          tk.alpha -= 0.006;
+        }
+
+        if (tk.alpha <= 0) {
+          ticks.splice(i, 1);
+          continue;
+        }
+
+        // Draw tick as a short vertical line
+        ctx.beginPath();
+        ctx.moveTo(tk.x, tk.y);
+        ctx.lineTo(tk.x, tk.y + tk.height);
+        ctx.strokeStyle = `rgba(255,255,255,${tk.alpha})`;
+        ctx.lineWidth = 1;
+        ctx.lineCap = "round";
+        ctx.stroke();
       }
 
       animRef.current = requestAnimationFrame(draw);

@@ -994,12 +994,12 @@ export default function YearCalendar() {
           onClick={() => setEditingMotto(false)}
         >
           <div
-            className="rounded-2xl shadow-2xl p-6 w-[360px] max-w-[90vw]"
+            className="rounded-2xl shadow-2xl p-8 w-[600px] max-w-[92vw]"
             style={{ backgroundColor: skin.panelBg, border: `1px solid ${skin.divider}` }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <span className="text-base font-semibold" style={{ color: skin.textPrimary }}>编辑标语</span>
+              <span className="text-lg font-semibold" style={{ color: skin.textPrimary }}>编辑标语</span>
               <button
                 onClick={() => setEditingMotto(false)}
                 className="w-7 h-7 rounded-full flex items-center justify-center hover:opacity-70 transition-opacity"
@@ -1026,7 +1026,7 @@ export default function YearCalendar() {
               }}
               maxLength={15}
               autoFocus
-              className="w-full rounded-lg px-3 py-2 text-base outline-none transition-all"
+              className="w-full rounded-lg px-4 py-3 text-lg outline-none transition-all"
               style={{
                 backgroundColor: skin.cardBg,
                 color: skin.textPrimary,
@@ -1068,9 +1068,9 @@ export default function YearCalendar() {
             </div>
 
             {/* Preview */}
-            <div className="rounded-lg p-3 mb-5 text-center" style={{ backgroundColor: skin.cardBg }}>
+            <div className="rounded-lg p-4 mb-5 text-center overflow-hidden" style={{ backgroundColor: skin.cardBg }}>
               <span
-                className="font-light"
+                className="font-light whitespace-nowrap inline-block"
                 style={{
                   color: skin.textMuted,
                   fontSize: `${mottoSize}px`,
