@@ -135,42 +135,54 @@ function hslToHex(h: number, s: number, l: number): string {
 
 /**
  * 根据皮肤主题生成12个月的色彩系统
- * 以皮肤 swatch 为锚点，12个月在色相环上均匀展开
+ * 策略：在皮肤主色相 ±60° 范围内展开12个月，形成同色系渐变
+ * 避免全色环旋转导致与皮肤主题脱节
  */
 export function generateMonthColors(skin: SkinTheme): MonthColor[] {
   const [baseH, baseS, baseL] = hexToHsl(skin.swatch);
   const isDark = skin.isDark;
   const months: MonthColor[] = [];
 
-  // 12个月色相分布：从 baseH 起步，每隔 30° 分布一个月，形成完整色环
-  // 这样每个月有独特但和谐的颜色
-  const hueStep = 30;
-  const startHue = baseH;
+  // 在主色相前后各扩展60°，形成120°色相区间
+  // 春→夏→秋→冬色彩节奏：先暖后冷再回暖
+  const hues = [
+    baseH - 50,  // 1月：偏冷/深
+    baseH - 35,  // 2月
+    baseH - 15,  // 3月：接近主色
+    baseH,       // 4月：主色
+    baseH + 15,  // 5月
+    baseH + 30,  // 6月：偏暖
+    baseH + 45,  // 7月：最暖
+    baseH + 35,  // 8月
+    baseH + 15,  // 9月
+    baseH - 5,   // 10月
+    baseH - 25,  // 11月
+    baseH - 45,  // 12月：回到冷色
+  ];
 
   for (let i = 0; i < 12; i++) {
-    const hue = (startHue + i * hueStep) % 360;
-
-    // 饱和度：基于皮肤主色饱和度，略有变化
-    const sat = Math.max(35, Math.min(85, baseS + (i % 2 === 0 ? 5 : -5)));
+    const hue = ((hues[i] % 360) + 360) % 360;
+    // 季节感：夏天(6-8月)饱和度最高，冬天(12-2月)略低
+    const seasonMod = Math.sin((i / 12) * Math.PI * 2 - Math.PI / 2);
+    const sat = Math.max(30, Math.min(80, baseS + seasonMod * 12));
 
     if (isDark) {
-      // 暗色模式
       months.push({
-        bg: `hsla(${hue}, ${sat}%, 25%, 0.25)`,
-        accent: `hsl(${hue}, ${Math.min(sat + 20, 90)}%, 65%)`,
-        text: `hsl(${hue}, ${Math.min(sat + 30, 95)}%, 75%)`,
-        border: `hsla(${hue}, ${sat}%, 35%, 0.3)`,
-        hoverBg: `hsla(${hue}, ${sat}%, 30%, 0.15)`,
+        bg: `hsla(${hue}, ${sat}%, 22%, 0.3)`,
+        accent: `hsl(${hue}, ${Math.min(sat + 25, 90)}%, 60%)`,
+        text: `hsl(${hue}, ${Math.min(sat + 35, 95)}%, 72%)`,
+        border: `hsla(${hue}, ${sat}%, 30%, 0.25)`,
+        hoverBg: `hsla(${hue}, ${sat}%, 28%, 0.15)`,
       });
     } else {
-      // 亮色模式
-      const bgLight = Math.min(97, 94 + (i % 3));
+      // 亮度微妙变化：夏天稍亮，冬天稍暗
+      const bgLight = Math.min(97, 93 + seasonMod * 2 + (i % 2));
       months.push({
-        bg: `hsl(${hue}, ${Math.max(sat - 30, 15)}%, ${bgLight}%)`,
-        accent: `hsl(${hue}, ${Math.min(sat + 10, 85)}%, ${Math.min(baseL + 5, 55)}%)`,
-        text: hslToHex(hue, Math.min(sat + 20, 90), Math.max(baseL - 20, 25)),
-        border: `hsla(${hue}, ${sat}%, ${Math.min(baseL + 10, 60)}%, 0.15)`,
-        hoverBg: `hsla(${hue}, ${sat}%, ${bgLight - 5}%, 0.5)`,
+        bg: `hsl(${hue}, ${Math.max(sat - 25, 12)}%, ${bgLight}%)`,
+        accent: `hsl(${hue}, ${Math.min(sat + 15, 85)}%, ${Math.min(baseL + 8, 55)}%)`,
+        text: hslToHex(hue, Math.min(sat + 20, 90), Math.max(baseL - 18, 28)),
+        border: `hsla(${hue}, ${sat}%, ${Math.min(baseL + 10, 60)}%, 0.12)`,
+        hoverBg: `hsla(${hue}, ${sat}%, ${bgLight - 4}%, 0.5)`,
       });
     }
   }

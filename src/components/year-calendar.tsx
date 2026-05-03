@@ -318,7 +318,7 @@ export default function YearCalendar() {
       {/* Header */}
       <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ background: skin.headerBgStyle }} />
-        <div className="absolute inset-0 backdrop-blur-[2px]" style={{ backgroundColor: skin.headerOverlay + "80" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.15) 100%)" }} />
         <div className="relative px-8 py-1.5 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 rounded-2xl px-4 py-2">
             <button
