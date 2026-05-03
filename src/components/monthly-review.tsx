@@ -6,7 +6,7 @@ import {
   getDaysInMonth,
   isWeekend,
 } from '@/lib/calendar-utils';
-import { SKINS, DEFAULT_SKIN } from '@/lib/skins';
+import { NO_SKIN } from '@/lib/skins';
 import type { SkinTheme } from '@/lib/skins';
 
 interface MonthlyReviewProps {
@@ -40,7 +40,7 @@ interface MonthStats {
 }
 
 export default function MonthlyReview({ year, skin: skinProp }: MonthlyReviewProps) {
-  const skin = skinProp ?? SKINS.find(s => s.key === DEFAULT_SKIN) ?? SKINS[0];
+  const skin = skinProp ?? NO_SKIN;
   const [mounted, setMounted] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const monthGridRef = useRef<HTMLDivElement>(null);

@@ -11,7 +11,7 @@ import { getLunarInfo, getYearAnimal, getGanZhiYear } from '@/lib/lunar';
 import DayView from '@/components/day-view';
 import MonthlyReview from '@/components/monthly-review';
 import LifeCalendar from '@/components/life-calendar';
-import { SKINS, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
+import { SKINS, NO_SKIN, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
 import {
   precomputeYearData,
@@ -99,7 +99,7 @@ export default function YearCalendar() {
   }, [mounted]);
 
   const blocks = useMemo(() => getTwelveWeekBlocks(year), [year]);
-  const skin = useMemo(() => SKINS.find(s => s.key === skinKey) ?? SKINS[0], [skinKey]);
+  const skin = useMemo(() => skinKey ? (SKINS.find(s => s.key === skinKey) ?? NO_SKIN) : NO_SKIN, [skinKey]);
   const skinMonthColors = useMemo(() => generateMonthColors(skin), [skin]);
 
   const yearData = useMemo(
@@ -332,7 +332,11 @@ export default function YearCalendar() {
       style={{ backgroundColor: skin.bodyBg }}>
       {/* Header */}
       <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+        {skin.headerBgImage ? (
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+        ) : (
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }} />
+        )}
         <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
         <ParticleEffect color={skin.swatch} count={50} />
@@ -469,6 +473,33 @@ export default function YearCalendar() {
                 <button onClick={() => setShowSkinPicker(false)} className="w-6 h-6 rounded-full flex items-center justify-center transition-colors cursor-pointer text-sm" style={{ color: skin.textMuted, backgroundColor: skin.divider + '60' }}>&times;</button>
               </div>
               <div className="grid grid-cols-4 gap-3 p-4">
+                {/* Default / No Skin option */}
+                {(() => {
+                  const isActive = skinKey === '';
+                  return (
+                    <button
+                      onClick={() => { setSkinKey(''); localStorage.removeItem('life-calendar-skin'); setShowSkinPicker(false); }}
+                      className="relative rounded-xl overflow-hidden transition-all cursor-pointer group"
+                      style={{
+                        border: isActive ? `2px solid ${NO_SKIN.swatch}` : `1px solid rgba(0,0,0,0.08)`,
+                        boxShadow: isActive ? `0 4px 16px ${NO_SKIN.swatch}30` : 'none',
+                      }}
+                      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = NO_SKIN.swatch + '50'; } }}
+                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; } }}
+                    >
+                      <div className="h-20 relative" style={{ background: `linear-gradient(135deg, ${NO_SKIN.headerFrom} 0%, ${NO_SKIN.headerTo} 100%)` }}>
+                        {isActive && (
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: NO_SKIN.swatch }}>
+                            ✓
+                          </div>
+                        )}
+                      </div>
+                      <div className="px-2 py-1.5 text-center" style={{ backgroundColor: NO_SKIN.panelBg }}>
+                        <span className="text-xs font-semibold" style={{ color: NO_SKIN.textPrimary }}>{NO_SKIN.label}</span>
+                      </div>
+                    </button>
+                  );
+                })()}
                 {SKINS.map(s => {
                   const isActive = skinKey === s.key;
                   return (
@@ -841,7 +872,7 @@ export default function YearCalendar() {
               onMouseDown={(e) => handlePanelResize(setReviewWidth, e)}
             />
             {/* 头部 - 背景图+渐变 */}
-            <div className="px-6 pt-6 pb-5 relative overflow-hidden" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+            <div className="px-6 pt-6 pb-5 relative overflow-hidden" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
               <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }} />
               <div className="relative z-10 flex items-center justify-between">
                 <div>

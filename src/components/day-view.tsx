@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getLunarInfo } from '@/lib/lunar';
-import { SKINS, DEFAULT_SKIN } from '@/lib/skins';
+import { NO_SKIN } from '@/lib/skins';
 import type { SkinTheme } from '@/lib/skins';
 
 interface DayViewProps {
@@ -124,7 +124,7 @@ function computeEventLayout(events: TimeEvent[]): Map<string, EventLayout> {
 type TabType = 'schedule' | 'memo';
 
 export default function DayView({ year, month, day, onClose, embedded, skin: skinProp }: DayViewProps) {
-  const skin = skinProp ?? SKINS.find(s => s.key === DEFAULT_SKIN) ?? SKINS[0];
+  const skin = skinProp ?? NO_SKIN;
   const [mounted, setMounted] = useState(false);
   const [events, setEvents] = useState<TimeEvent[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);

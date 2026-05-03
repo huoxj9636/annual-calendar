@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { SKINS, DEFAULT_SKIN } from '@/lib/skins';
+import { SKINS, NO_SKIN, DEFAULT_SKIN } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
 
 interface LifeCalendarProps {
@@ -310,7 +310,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
 
   // Use shared skin key if provided, else internal
   const activeSkinKey = skinKey ?? innerSkin;
-  const skin = SKINS.find(s => s.key === activeSkinKey) ?? SKINS[0];
+  const skin = activeSkinKey ? (SKINS.find(s => s.key === activeSkinKey) ?? NO_SKIN) : NO_SKIN;
 
 
 
@@ -435,7 +435,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       />
 
       {/* Header - same width/padding as day-view sidebar */}
-      <div className="flex-shrink-0 px-5 pt-5 pb-4 relative overflow-hidden" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+      <div className="flex-shrink-0 px-5 pt-5 pb-4 relative overflow-hidden" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}cc, ${skin.sidebarTo}bb)` }} />
         <ParticleEffect color={skin.swatch} count={30} />
         <div className="relative z-10">
