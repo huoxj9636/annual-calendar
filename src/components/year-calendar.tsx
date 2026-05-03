@@ -472,7 +472,7 @@ export default function YearCalendar() {
       {/* Skin Picker Dropdown - fixed to avoid overflow-hidden clipping */}
       {showSkinPicker && (
         <div className="fixed inset-0 z-[100] animate-fade-in" onClick={() => setShowSkinPicker(false)}>
-          <div className="mx-auto max-w-3xl px-6 pt-2 pb-4" onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)' }}>
+          <div className="mx-auto px-6 pt-2 pb-4" onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 80, left: '50%', transform: 'translateX(-50%)', maxWidth: 720 }}>
             <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: skin.panelBg + 'f5', backdropFilter: 'blur(24px)', border: `1px solid ${skin.divider}` }}>
               <div className="px-4 pt-3 pb-2 flex items-center justify-between" style={{ borderBottom: `1px solid ${skin.divider}` }}>
                 <h3 className="text-sm font-semibold tracking-wide" style={{ color: skin.textSecondary }}>选择皮肤</h3>
