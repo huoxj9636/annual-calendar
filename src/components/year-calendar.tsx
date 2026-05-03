@@ -474,7 +474,7 @@ export default function YearCalendar() {
                   return (
                     <button
                       key={s.key}
-                      onClick={() => { setSkinKey(s.key); setShowSkinPicker(false); }}
+                      onClick={() => { setSkinKey(s.key); localStorage.setItem('life-calendar-skin', s.key); setShowSkinPicker(false); }}
                       className="relative rounded-xl overflow-hidden transition-all cursor-pointer group"
                       style={{
                         border: isActive ? `2px solid ${s.swatch}` : `1px solid ${s.isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)'}`,
