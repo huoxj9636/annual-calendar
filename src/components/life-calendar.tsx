@@ -453,7 +453,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       />
 
       {/* Header - same width/padding as day-view sidebar */}
-      <div className="flex-shrink-0 px-5 pt-4 pb-4 relative overflow-hidden" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
+      <div className="flex-shrink-0 px-5 pb-4 relative overflow-hidden" style={{ paddingTop: '3.8rem', ...(skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }) }}>
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}cc, ${skin.sidebarTo}bb)` }} />
         <ParticleEffect color={skin.swatch} count={30} />
         <div className="relative z-10">
