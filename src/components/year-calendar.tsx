@@ -11,13 +11,12 @@ import { getLunarInfo, getYearAnimal, getGanZhiYear } from '@/lib/lunar';
 import DayView from '@/components/day-view';
 import MonthlyReview from '@/components/monthly-review';
 import LifeCalendar from '@/components/life-calendar';
-import { SKINS, DEFAULT_SKIN } from '@/lib/skins';
+import { SKINS, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
   isDatePast,
   isToday,
-  MONTH_COLORS,
   MONTH_NAMES,
   type CellData,
 } from '@/lib/calendar-utils';
@@ -96,6 +95,7 @@ export default function YearCalendar() {
 
   const blocks = useMemo(() => getTwelveWeekBlocks(year), [year]);
   const skin = useMemo(() => SKINS.find(s => s.key === skinKey) ?? SKINS[0], [skinKey]);
+  const skinMonthColors = useMemo(() => generateMonthColors(skin), [skin]);
 
   const yearData = useMemo(
     () => precomputeYearData(year, blocks, getLunarInfo),
@@ -500,7 +500,7 @@ export default function YearCalendar() {
 
           {/* Month rows */}
           {yearData.map((monthRow, monthIdx) => {
-            const monthColor = MONTH_COLORS[monthIdx];
+            const monthColor = skinMonthColors[monthIdx];
             return (
               <div
                 key={monthIdx}
@@ -533,8 +533,7 @@ export default function YearCalendar() {
                       <div
                         key={cell.day}
                         data-day={cell.day}
-                        className="bg-gray-50/30"
-                        style={{ height: cellHeight }}
+                        style={{ height: cellHeight, backgroundColor: skin.divider + "40" }}
                       />
                     );
                   }
@@ -610,45 +609,32 @@ export default function YearCalendar() {
                         title="切换满意/不满意"
                       >
                         <span
-                          className={`text-[15px] font-bold leading-none ${
-                            isPast
-                              ? ''
-                              : cell.isWeekend ? '' : 'text-gray-800'
-                          }`}
-                          style={
-                            isPast
-                              ? { color: skin.pastText }
+                          className="text-[15px] font-bold leading-none"
+                          style={{
+                            color: isPast
+                              ? skin.pastText
                               : cell.isWeekend
-                                ? { color: monthColor.text }
-                                : undefined
-                          }
+                                ? monthColor.text
+                                : skin.textPrimary
+                          }}
                         >
                           {cell.day}
                         </span>
                         <span
-                          className={`text-[9px] leading-tight mt-0.5 whitespace-nowrap ${
-                            isPast
-                              ? ''
+                          className="text-[9px] leading-tight mt-0.5 whitespace-nowrap font-medium"
+                          style={{
+                            color: isPast
+                              ? skin.pastSubtext
                               : cell.isSolarTerm
-                                ? 'text-orange-600 font-medium'
+                                ? skin.swatch
                                 : cell.isFestival
-                                  ? 'text-red-500 font-medium'
+                                  ? skin.crossColor
                                   : cell.isLunarFirstDay
-                                    ? 'text-purple-600 font-medium'
+                                    ? skin.tabActive
                                     : cell.isWeekend
-                                      ? ''
-                                      : 'text-gray-400'
-                          }`}
-                          style={
-                            isPast
-                              ? { color: skin.pastSubtext }
-                              : cell.isWeekend &&
-                                !cell.isSolarTerm &&
-                                !cell.isFestival &&
-                                !cell.isLunarFirstDay
-                                  ? { color: monthColor.accent }
-                                  : undefined
-                          }
+                                      ? monthColor.accent
+                                      : skin.textMuted
+                          }}
                         >
                           {cell.lunarDisplay}
                         </span>
@@ -706,7 +692,7 @@ export default function YearCalendar() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className="text-white text-2xl font-bold">{notePopup.day}日</span>
-                <span className="text-gray-700 text-xs">{year}年{notePopup.month}月</span>
+                <span className="text-xs" style={{ color: skin.textSecondary }}>{year}年{notePopup.month}月</span>
               </div>
               <button
                 className="w-6 h-6 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white/70 hover:text-white transition-colors"
@@ -726,14 +712,16 @@ export default function YearCalendar() {
           <div className="bg-white px-5 pb-4 pt-3 flex-1 flex flex-col min-h-0 overflow-auto">
             {notes[`${year}-${notePopup.month}-${notePopup.day}`] && !noteDraft ? (
               <div className="mb-3">
-                <div className="text-[15px] text-gray-400 font-medium mb-1.5 tracking-wide">已记录</div>
-                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                <div className="text-[15px] font-medium mb-1.5 tracking-wide"
+                style={{ color: skin.textMuted }}>已记录</div>
+                <div className="text-sm leading-relaxed whitespace-pre-wrap"
+                style={{ color: skin.textPrimary }}>
                   {notes[`${year}-${notePopup.month}-${notePopup.day}`]}
                 </div>
               </div>
             ) : null}
             <textarea
-              className="w-full flex-1 min-h-[80px] text-sm border-0 border-b border-gray-100 p-0 pb-3 resize-none focus:outline-none focus:border-indigo-300 leading-relaxed text-gray-800 placeholder:text-gray-300"
+              className="w-full flex-1 min-h-[80px] text-sm border-0 border-b border-gray-100 p-0 pb-3 resize-none focus:outline-none  leading-relaxed text-gray-800 placeholder:text-gray-300"
               placeholder="记录今日事项与行程..."
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
@@ -746,7 +734,8 @@ export default function YearCalendar() {
               }}
             />
             <div className="flex items-center justify-between mt-3">
-              <span className="text-[15px] text-gray-300">Enter 保存 · Shift+Enter 换行</span>
+              <span className="text-[15px]"
+              style={{ color: skin.textMuted }}>Enter 保存 · Shift+Enter 换行</span>
               <button
                 className="px-5 py-1.5 rounded-full text-xs font-semibold text-white transition-all hover:shadow-md active:scale-95"
                 style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}, ${skin.sidebarTo})` }}

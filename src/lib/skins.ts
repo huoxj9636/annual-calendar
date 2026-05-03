@@ -76,6 +76,106 @@ export interface SkinTheme {
   isDark: boolean;
 }
 
+
+
+/** 月份色彩 (动态生成) */
+export interface MonthColor {
+  /** 周末/节假日背景 (极淡) */
+  bg: string;
+  /** 周末文字强调色 (饱和) */
+  accent: string;
+  /** 月份标签/重要文字色 (深) */
+  text: string;
+  /** 周末格子边框色 */
+  border: string;
+  /** 格子 hover 状态背景 */
+  hoverBg: string;
+}
+
+/** hex → HSL */
+function hexToHsl(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let hue = 0, sat = 0;
+  const light = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    sat = light > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) hue = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) hue = ((b - r) / d + 2) / 6;
+    else hue = ((r - g) / d + 4) / 6;
+  }
+  return [hue * 360, sat * 100, light * 100];
+}
+
+/** HSL → hex */
+function hslToHex(h: number, s: number, l: number): string {
+  h = ((h % 360) + 360) % 360;
+  s = Math.max(0, Math.min(100, s));
+  l = Math.max(0, Math.min(100, l));
+  const sN = s / 100, lN = l / 100;
+  const c = (1 - Math.abs(2 * lN - 1)) * sN;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = lN - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else { r = c; b = x; }
+  const toHex = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+/**
+ * 根据皮肤主题生成12个月的色彩系统
+ * 以皮肤 swatch 为锚点，12个月在色相环上均匀展开
+ */
+export function generateMonthColors(skin: SkinTheme): MonthColor[] {
+  const [baseH, baseS, baseL] = hexToHsl(skin.swatch);
+  const isDark = skin.isDark;
+  const months: MonthColor[] = [];
+
+  // 12个月色相分布：从 baseH 起步，每隔 30° 分布一个月，形成完整色环
+  // 这样每个月有独特但和谐的颜色
+  const hueStep = 30;
+  const startHue = baseH;
+
+  for (let i = 0; i < 12; i++) {
+    const hue = (startHue + i * hueStep) % 360;
+
+    // 饱和度：基于皮肤主色饱和度，略有变化
+    const sat = Math.max(35, Math.min(85, baseS + (i % 2 === 0 ? 5 : -5)));
+
+    if (isDark) {
+      // 暗色模式
+      months.push({
+        bg: `hsla(${hue}, ${sat}%, 25%, 0.25)`,
+        accent: `hsl(${hue}, ${Math.min(sat + 20, 90)}%, 65%)`,
+        text: `hsl(${hue}, ${Math.min(sat + 30, 95)}%, 75%)`,
+        border: `hsla(${hue}, ${sat}%, 35%, 0.3)`,
+        hoverBg: `hsla(${hue}, ${sat}%, 30%, 0.15)`,
+      });
+    } else {
+      // 亮色模式
+      const bgLight = Math.min(97, 94 + (i % 3));
+      months.push({
+        bg: `hsl(${hue}, ${Math.max(sat - 30, 15)}%, ${bgLight}%)`,
+        accent: `hsl(${hue}, ${Math.min(sat + 10, 85)}%, ${Math.min(baseL + 5, 55)}%)`,
+        text: hslToHex(hue, Math.min(sat + 20, 90), Math.max(baseL - 20, 25)),
+        border: `hsla(${hue}, ${sat}%, ${Math.min(baseL + 10, 60)}%, 0.15)`,
+        hoverBg: `hsla(${hue}, ${sat}%, ${bgLight - 5}%, 0.5)`,
+      });
+    }
+  }
+
+  return months;
+}
+
 export const SKINS: SkinTheme[] = [
   {
     key: 'emerald',
