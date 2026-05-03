@@ -104,6 +104,12 @@ export function SunJourneyEffect({ color, intensity = 1 }: SunJourneyProps) {
       const w = W();
       const h = H();
 
+      // Skip frame if canvas not ready
+      if (w < 1 || h < 1) {
+        animRef.current = requestAnimationFrame(draw);
+        return;
+      }
+
       // Advance time
       t += dt / cycleMs;
       if (t > 1) t -= 1;
@@ -142,7 +148,7 @@ export function SunJourneyEffect({ color, intensity = 1 }: SunJourneyProps) {
 
       // ── Sun glow (main) ─────────────────────────────────
       // Large soft radial gradient, blended with "lighter"
-      const sunRadius = (60 + 40 * heightFactor) * intensity;
+      const sunRadius = Math.max(1, (60 + 40 * heightFactor) * intensity);
       const sunAlpha = (0.08 + 0.12 * heightFactor) * intensity;
 
       const sunGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunRadius);
@@ -159,9 +165,10 @@ export function SunJourneyEffect({ color, intensity = 1 }: SunJourneyProps) {
       ctx.fill();
 
       // ── Secondary softer bloom ───────────────────────────
-      const bloomR = sunRadius * 2.2;
+      const bloomR = Math.max(2, sunRadius * 2.2);
+      const bloomInnerR = Math.max(1, sunRadius * 0.5);
       const bloomAlpha = sunAlpha * 0.3;
-      const bloomGrad = ctx.createRadialGradient(sunX, sunY, sunRadius * 0.5, sunX, sunY, bloomR);
+      const bloomGrad = ctx.createRadialGradient(sunX, sunY, bloomInnerR, sunX, sunY, bloomR);
       bloomGrad.addColorStop(0, `rgba(${sunR},${sunG},${sunB},${bloomAlpha})`);
       bloomGrad.addColorStop(0.5, `rgba(${sunR},${Math.round(sunG * 0.7)},${Math.round(sunB * 0.5)},${bloomAlpha * 0.3})`);
       bloomGrad.addColorStop(1, `rgba(${sunR},${Math.round(sunG * 0.5)},${Math.round(sunB * 0.3)},0)`);
