@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { SKINS, DEFAULT_SKIN, type SkinTheme } from '@/lib/skins';
+import { SKINS, DEFAULT_SKIN } from '@/lib/skins';
 
 interface LifeCalendarProps {
   birthYear: number;
@@ -9,7 +9,6 @@ interface LifeCalendarProps {
   onClose: () => void;
   /** 当前选中的皮肤 key，与父组件共享 */
   skinKey?: string;
-  onSkinChange?: (key: string) => void;
 }
 
 interface ActionItem {
@@ -302,57 +301,17 @@ const STAGES: Stage[] = [
   },
 ];
 
-/* ── Skin Picker Card ── */
-function SkinCard({ skin, isSelected, onClick }: { skin: SkinTheme; isSelected: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="relative rounded-xl p-3 text-left transition-all duration-200 border-2 hover:scale-[1.02] active:scale-[0.98]"
-      style={{
-        background: skin.cardBg,
-        borderColor: isSelected ? skin.swatch : skin.divider,
-        boxShadow: isSelected ? `0 0 0 1px ${skin.swatch}, 0 4px 12px ${skin.swatch}30` : 'none',
-      }}
-    >
-      {/* Swatch + check */}
-      <div className="flex items-center gap-2.5 mb-2">
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: skin.swatch }}>
-          {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-        </div>
-        <div className="min-w-0">
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-semibold text-sm" style={{ color: skin.textPrimary }}>{skin.label}</span>
-            <span className="text-[10px]" style={{ color: skin.textMuted }}>{skin.labelEn}</span>
-          </div>
-          <p className="text-[10px] truncate" style={{ color: skin.textMuted }}>{skin.slogan}</p>
-        </div>
-      </div>
-      {/* Preview strip */}
-      <div className="h-8 rounded-lg overflow-hidden" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }} />
-    </button>
-  );
-}
 
-/* ── Main Component ── */
-export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey, onSkinChange }: LifeCalendarProps) {
+export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey }: LifeCalendarProps) {
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [stageData, setStageData] = useState<Record<string, Record<string, Record<string, ActionItem>>>>({});
-  const [showSkinPicker, setShowSkinPicker] = useState(false);
   const [innerSkin, setInnerSkin] = useState<string>(DEFAULT_SKIN);
 
   // Use shared skin key if provided, else internal
   const activeSkinKey = skinKey ?? innerSkin;
   const skin = SKINS.find(s => s.key === activeSkinKey) ?? SKINS[0];
 
-  const handleSkinChange = (key: string) => {
-    if (onSkinChange) {
-      onSkinChange(key);
-    } else {
-      setInnerSkin(key);
-      try { localStorage.setItem('life-calendar-skin', key); } catch { /* ignore */ }
-    }
-  };
+
 
   const currentYear = new Date().getFullYear();
   const currentAge = currentYear - birthYear;
@@ -474,57 +433,40 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
         }}
       />
 
-      {/* Header */}
-      <div className="flex-shrink-0 px-6 py-5 text-white relative overflow-hidden"
-        style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }}>
-          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }} />
-        {/* Decorative circles */}
-        <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-white/5" />
-        <div className="absolute -right-2 -bottom-8 w-20 h-20 rounded-full bg-white/5" />
-
-        <div className="relative z-10 backdrop-blur-[2px] rounded-xl p-1 -m-1">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl font-semibold tracking-wide">人生旅途</h2>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setShowSkinPicker(!showSkinPicker)}
-                className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors text-sm"
-                title="选择皮肤">
-                <span className="w-4 h-4 rounded-full inline-block border-2 border-white/60" style={{ background: skin.swatch }} />
-              </button>
-              <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors text-sm">✕</button>
+      {/* Header - matching year-calendar header style */}
+      <div className="flex-shrink-0 relative overflow-hidden"
+        style={{ minHeight: '80px' }}>
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+        <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
+        <div className="relative px-8 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-3 px-5 py-2.5">
+            <h2 className="text-2xl font-bold tracking-wide" style={{ color: skin.textPrimary, textShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>人生旅途</h2>
+          </div>
+          <div className="flex items-center gap-2 px-5 py-2.5">
+            <div className="flex items-center gap-3 text-sm" style={{ color: skin.textSecondary, textShadow: "0 1px 2px rgba(0,0,0,0.1)" }}>
+              <span>出生年份</span>
+              <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}
+                className="w-20 px-2 py-1 rounded text-center border focus:outline-none"
+                style={{ backgroundColor: "rgba(255,255,255,0.18)", color: skin.textPrimary, borderColor: "rgba(255,255,255,0.15)" }} />
+              <span style={{ color: skin.textMuted }}>|</span>
+              <span>当前 {currentAge} 岁</span>
             </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors text-sm"
+              style={{ backgroundColor: "rgba(255,255,255,0.18)", color: skin.textPrimary }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.28)"; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.18)"; }}
+            >✕</button>
           </div>
-          <div className="flex items-center gap-3 text-sm text-white/90">
-            <span>出生年份</span>
-            <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}
-              className="w-20 px-2 py-1 rounded bg-white/20 text-white text-center border border-white/20 focus:outline-none focus:border-white/40" />
-            <span className="text-white/60">|</span>
-            <span>当前 {currentAge} 岁</span>
-          </div>
+        </div>
           {/* Progress bar */}
-          <div className="mt-3 flex items-center gap-2">
-            <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full rounded-full bg-white/40 transition-all" style={{ width: `${Math.min((currentAge / 80) * 100, 100)}%` }} />
+          <div className="px-8 py-1 flex items-center gap-2 relative">
+            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.15)" }}>
+              <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((currentAge / 80) * 100, 100)}%`, backgroundColor: skin.swatch + "80" }} />
             </div>
-            <span className="text-xs text-white/70">{currentAge}/80</span>
+            <span className="text-xs" style={{ color: skin.textSecondary, textShadow: "0 1px 2px rgba(0,0,0,0.1)" }}>{currentAge}/80</span>
           </div>
-        </div>
       </div>
-
-      {/* Skin Picker Panel */}
-      {showSkinPicker && (
-        <div className="flex-shrink-0 border-b px-4 py-4 animate-fade-in" style={{ background: skin.cardBg, borderColor: skin.divider }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold" style={{ color: skin.textPrimary }}>选择皮肤</h3>
-            <button onClick={() => setShowSkinPicker(false)} className="text-xs" style={{ color: skin.textMuted }}>收起</button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {SKINS.map(s => (
-              <SkinCard key={s.key} skin={s} isSelected={s.key === activeSkinKey} onClick={() => handleSkinChange(s.key)} />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Stages List */}
       <div className="flex-1 overflow-y-auto py-4 px-4 space-y-3 sidebar-scroll">

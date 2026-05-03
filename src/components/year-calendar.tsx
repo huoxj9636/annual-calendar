@@ -322,7 +322,7 @@ export default function YearCalendar() {
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
 
         <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3 rounded-2xl px-5 py-2.5 backdrop-blur-sm" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
+          <div className="flex items-center gap-3 px-5 py-2.5">
             <button
               onClick={() => setYear((y) => y - 1)}
               className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold"
@@ -346,7 +346,8 @@ export default function YearCalendar() {
                   </span>
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
-                    className="px-2.5 py-0.5 text-sm rounded-md bg-white/60 text-[#4a4458] hover:bg-white/80 border border-[#e8e4df] transition-colors leading-tight"
+                    className="px-3 py-1 text-xs font-medium rounded-full transition-all leading-tight cursor-pointer hover:opacity-80"
+                    style={{ color: skin.textPrimary, backgroundColor: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.15)" }}
                   >
                     今年
                   </button>
@@ -366,8 +367,8 @@ export default function YearCalendar() {
                   </div>
                 </div>
                 {mounted && clockStr && (
-                  <div className="text-2xl font-mono tracking-wider tabular-nums leading-tight mt-0.5 opacity-25"
-                    style={{ color: skin.swatch }}>
+                  <div className="text-xl font-mono tracking-wider tabular-nums leading-tight mt-1"
+                    style={{ color: skin.textPrimary, opacity: 0.6 }}>
                     {clockStr}
                   </div>
                 )}
@@ -914,7 +915,6 @@ export default function YearCalendar() {
           setBirthYear={setBirthYear}
           onClose={() => setShowLifeCalendar(false)}
           skinKey={skinKey}
-          onSkinChange={setSkinKey}
         />
       )}
       </div>
