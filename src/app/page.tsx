@@ -1,8 +1,9 @@
+import type { Metadata } from 'next';
 import YearCalendar from '@/components/year-calendar';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: '年度计划日历',
-  description: '年度计划日历 - 12周工作法区块划分、农历节气显示、每日满意度勾选',
+  description: '年度计划日历 - 12周工作法 + 农历 + 节气',
 };
 
 export default function Home() {

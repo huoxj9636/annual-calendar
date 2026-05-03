@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { SKINS, DEFAULT_SKIN } from '@/lib/skins';
-
+import ParticleEffect from '@/components/particle-effect';
 
 interface LifeCalendarProps {
   birthYear: number;
@@ -437,7 +437,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       {/* Header - same width/padding as day-view sidebar */}
       <div className="flex-shrink-0 px-5 pt-5 pb-4 relative overflow-hidden" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }}>
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}cc, ${skin.sidebarTo}bb)` }} />
-
+        <ParticleEffect color={skin.swatch} count={30} />
         <div className="relative z-10">
           <div className="flex items-start justify-between">
             <div>

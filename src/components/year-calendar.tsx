@@ -12,7 +12,7 @@ import DayView from '@/components/day-view';
 import MonthlyReview from '@/components/monthly-review';
 import LifeCalendar from '@/components/life-calendar';
 import { SKINS, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
-
+import ParticleEffect from '@/components/particle-effect';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -63,7 +63,6 @@ export default function YearCalendar() {
   const [motto, setMotto] = useState('永远不要放弃');
   const [editingMotto, setEditingMotto] = useState(false);
   const [mottoDraft, setMottoDraft] = useState('');
-  const [mottoSize, setMottoSize] = useState(20);
 
   // Resize handler for side panels
   const handlePanelResize = useCallback((setter: React.Dispatch<React.SetStateAction<number>>, e: React.MouseEvent) => {
@@ -143,11 +142,9 @@ export default function YearCalendar() {
       const savedSkin = localStorage.getItem('life-calendar-skin');
       if (savedSkin && SKINS.find(s => s.key === savedSkin)) setSkinKey(savedSkin);
 
-      // Load motto & size
+      // Load motto
       const savedMotto = localStorage.getItem('calendar-motto');
       if (savedMotto) setMotto(savedMotto);
-      const savedSize = localStorage.getItem('calendar-motto-size');
-      if (savedSize) setMottoSize(parseInt(savedSize, 10));
     } catch {
       setOverrides({});
       setNotes({});
@@ -334,59 +331,52 @@ export default function YearCalendar() {
       <div className="h-screen print:bg-white print:h-auto flex flex-col overflow-hidden relative"
       style={{ backgroundColor: skin.bodyBg }}>
       {/* Header */}
-      <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden" style={mounted ? { backgroundColor: skin.bodyBg } : undefined}>
-        {mounted && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
-        {mounted && <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />}
-        {mounted && <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />}
+      <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+        <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
+        <ParticleEffect color={skin.swatch} count={50} />
 
-
-        <div className="relative z-10 px-8 py-2 flex items-center justify-between flex-wrap gap-2">
+        <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 px-5 py-2.5">
             <button
               onClick={() => setYear((y) => y - 1)}
               className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold"
-              style={mounted ? { color: skin.textMuted } : undefined}
-              onMouseEnter={mounted ? (e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }) : undefined}
-              onMouseLeave={mounted ? (e => { e.currentTarget.style.color = skin.textMuted; e.currentTarget.style.backgroundColor = 'transparent'; }) : undefined}
+              style={{ color: skin.textMuted }}
+              onMouseEnter={e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }}
+              onMouseLeave={e => { e.currentTarget.style.color = skin.textMuted; e.currentTarget.style.backgroundColor = 'transparent'; }}
               aria-label="上一年"
             >
               ‹
             </button>
             <div className="flex items-center">
               <h1 className="text-7xl font-black tracking-tighter leading-none"
-              style={mounted ? { color: skin.textPrimary, textShadow: `0 1px 2px ${skin.swatch}15` } : undefined}>
+              style={{ color: skin.textPrimary, textShadow: `0 1px 2px ${skin.swatch}15` }}>
                 {year}
               </h1>
               <div className="flex flex-col ml-4">
                 <div className="flex items-center gap-2 leading-tight">
                   <span className="text-lg font-medium"
-                    style={mounted ? { color: skin.textSecondary } : undefined}>
+                    style={{ color: skin.textSecondary }}>
                     {ganZhi}（{animal}）
                   </span>
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
                     className="px-3 py-1 text-xs font-medium rounded-full transition-all leading-tight cursor-pointer hover:opacity-80"
-                    style={mounted ? { color: skin.textPrimary, backgroundColor: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.15)" } : undefined}
+                    style={{ color: skin.textPrimary, backgroundColor: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.15)" }}
                   >
                     今年
                   </button>
                   {/* Skin picker toggle */}
                   <button
                     onClick={() => setShowSkinPicker(v => !v)}
-                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-90"
-                    style={mounted ? {
+                    className="inline-flex items-center justify-center rounded-full cursor-pointer transition-all hover:opacity-80 active:scale-95"
+                    style={{
+                      width: '20px',
+                      height: '20px',
                       backgroundColor: skin.swatch,
-                      border: '2px solid rgba(255,255,255,0.5)',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-                    } : undefined}
-                    onMouseEnter={mounted ? (e => {
-                      e.currentTarget.style.transform = 'scale(1.15)';
-                      e.currentTarget.style.boxShadow = `0 2px 12px ${skin.swatch}60`;
-                    }) : undefined}
-                    onMouseLeave={mounted ? (e => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.2)';
-                    }) : undefined}
+                      boxShadow: `0 0 0 1.5px rgba(255,255,255,0.5)`,
+                    }}
                     title="切换皮肤"
                   />
                 </div>
@@ -412,14 +402,54 @@ export default function YearCalendar() {
 
           {/* 居中标语 */}
           <div className="absolute inset-x-0 flex justify-center">
-            <span
-              className="font-light select-none cursor-pointer hover:opacity-70 transition-opacity"
-              style={mounted ? { color: skin.textMuted, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.6em', fontSize: `${mottoSize}px` } : undefined}
-              onClick={() => { setMottoDraft(motto); setEditingMotto(true); }}
-              title="点击修改标语"
-            >
-              {mounted ? motto : ''}
-            </span>
+            {editingMotto ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={mottoDraft}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 15) setMottoDraft(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && mottoDraft.trim()) {
+                      setMotto(mottoDraft.trim());
+                      localStorage.setItem('calendar-motto', mottoDraft.trim());
+                      setEditingMotto(false);
+                    } else if (e.key === 'Escape') {
+                      setEditingMotto(false);
+                    }
+                  }}
+                  maxLength={15}
+                  autoFocus
+                  className="text-lg font-light tracking-[0.4em] bg-white/20 backdrop-blur-sm border-b border-white/40 text-white outline-none px-2 py-0.5 text-center"
+                  style={{ width: `${Math.max(mottoDraft.length, 4)}em`, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' }}
+                  placeholder="输入标语..."
+                />
+                <button
+                  onClick={() => {
+                    if (mottoDraft.trim()) {
+                      setMotto(mottoDraft.trim());
+                      localStorage.setItem('calendar-motto', mottoDraft.trim());
+                      setEditingMotto(false);
+                    }
+                  }}
+                  className="text-xs bg-white/20 hover:bg-white/30 text-white rounded px-2 py-1"
+                >确认</button>
+                <button
+                  onClick={() => setEditingMotto(false)}
+                  className="text-xs bg-white/10 hover:bg-white/20 text-white/70 rounded px-2 py-1"
+                >取消</button>
+              </div>
+            ) : (
+              <span
+                className="text-2xl font-light tracking-[0.5em] select-none cursor-pointer hover:opacity-70 transition-opacity"
+                style={{ color: skin.textMuted, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.6em' }}
+                onClick={() => { setMottoDraft(motto); setEditingMotto(true); }}
+                title="点击修改标语"
+              >
+                {motto}
+              </span>
+            )}
           </div>
 
           {/* Legend & Stats */}
@@ -469,10 +499,10 @@ export default function YearCalendar() {
         </div>
       </header>
 
-      {/* Skin Picker Dropdown - fixed to avoid overflow-hidden clipping */}
+      {/* Skin Picker Dropdown - outside header to avoid overflow-hidden clipping */}
       {showSkinPicker && (
-        <div className="fixed inset-0 z-[100] animate-fade-in" onClick={() => setShowSkinPicker(false)}>
-          <div className="mx-auto px-6 pt-2 pb-4" onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 80, left: '50%', transform: 'translateX(-50%)', maxWidth: 720 }}>
+        <div className="absolute top-0 left-0 right-0 z-50 animate-fade-in" onClick={() => setShowSkinPicker(false)}>
+          <div className="mx-auto max-w-3xl px-6 pt-2 pb-4" onClick={e => e.stopPropagation()}>
             <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: skin.panelBg + 'f5', backdropFilter: 'blur(24px)', border: `1px solid ${skin.divider}` }}>
               <div className="px-4 pt-3 pb-2 flex items-center justify-between" style={{ borderBottom: `1px solid ${skin.divider}` }}>
                 <h3 className="text-sm font-semibold tracking-wide" style={{ color: skin.textSecondary }}>选择皮肤</h3>
@@ -991,130 +1021,6 @@ export default function YearCalendar() {
             <path d="M18 15l-6-6-6 6"/>
           </svg>
         </button>
-      )}
-
-      {/* Motto Edit Modal */}
-      {mounted && editingMotto && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-[100]"
-          style={{ backgroundColor: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}
-          onClick={() => setEditingMotto(false)}
-        >
-          <div
-            className="rounded-2xl shadow-2xl p-8 w-[600px] max-w-[92vw] flex flex-col"
-            style={{ backgroundColor: skin.panelBg, border: `1px solid ${skin.divider}`, height: '380px' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-lg font-semibold" style={{ color: skin.textPrimary }}>编辑标语</span>
-              <button
-                onClick={() => setEditingMotto(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center hover:opacity-70 transition-opacity"
-                style={{ backgroundColor: skin.cardBg, color: skin.textMuted }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <input
-              type="text"
-              value={mottoDraft}
-              onChange={(e) => {
-                if (e.target.value.length <= 15) setMottoDraft(e.target.value);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && mottoDraft.trim()) {
-                  setMotto(mottoDraft.trim());
-                  localStorage.setItem('calendar-motto', mottoDraft.trim());
-                  setEditingMotto(false);
-                } else if (e.key === 'Escape') {
-                  setEditingMotto(false);
-                }
-              }}
-              maxLength={15}
-              autoFocus
-              className="w-full rounded-lg px-4 py-3 text-lg outline-none transition-all"
-              style={{
-                backgroundColor: skin.cardBg,
-                color: skin.textPrimary,
-                border: `1.5px solid ${skin.divider}`,
-                fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
-              }}
-              placeholder="输入标语（最多15字）"
-            />
-            <div className="flex justify-end mt-1 mb-4">
-              <span className="text-xs" style={{ color: skin.textMuted }}>{mottoDraft.length}/15</span>
-            </div>
-
-            {/* Font size slider */}
-            <div className="mb-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm" style={{ color: skin.textSecondary }}>字体大小</span>
-                <span className="text-sm font-mono" style={{ color: skin.textMuted }}>{mottoSize}px</span>
-              </div>
-              <input
-                type="range"
-                min={12}
-                max={40}
-                value={mottoSize}
-                onChange={(e) => {
-                  const newSize = parseInt(e.target.value, 10);
-                  setMottoSize(newSize);
-                  localStorage.setItem('calendar-motto-size', String(newSize));
-                }}
-                className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, ${skin.swatch} 0%, ${skin.swatch} ${((mottoSize - 12) / 28) * 100}%, ${skin.divider} ${((mottoSize - 12) / 28) * 100}%, ${skin.divider} 100%)`,
-                  accentColor: skin.swatch,
-                }}
-              />
-              <div className="flex justify-between mt-1">
-                <span className="text-[10px]" style={{ color: skin.textMuted }}>小</span>
-                <span className="text-[10px]" style={{ color: skin.textMuted }}>大</span>
-              </div>
-            </div>
-
-            {/* Preview */}
-            <div className="rounded-lg mb-5 text-center flex-shrink-0 overflow-hidden" style={{ backgroundColor: skin.cardBg, height: '72px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span
-                className="font-light whitespace-nowrap inline-block leading-tight"
-                style={{
-                  color: skin.textMuted,
-                  fontSize: `${mottoSize}px`,
-                  letterSpacing: '0.5em',
-                  fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
-                }}
-              >
-                {mottoDraft || motto}
-              </span>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setEditingMotto(false)}
-                className="flex-1 py-2 rounded-lg text-sm transition-opacity hover:opacity-80"
-                style={{ backgroundColor: skin.cardBg, color: skin.textSecondary, border: `1px solid ${skin.divider}` }}
-              >
-                取消
-              </button>
-              <button
-                onClick={() => {
-                  if (mottoDraft.trim()) {
-                    setMotto(mottoDraft.trim());
-                    localStorage.setItem('calendar-motto', mottoDraft.trim());
-                  }
-                  localStorage.setItem('calendar-motto-size', String(mottoSize));
-                  setEditingMotto(false);
-                }}
-                className="flex-1 py-2 rounded-lg text-sm text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: skin.swatch }}
-              >
-                确认
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
