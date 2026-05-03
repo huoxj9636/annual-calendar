@@ -334,10 +334,10 @@ export default function YearCalendar() {
       <div className="h-screen print:bg-white print:h-auto flex flex-col overflow-hidden relative"
       style={{ backgroundColor: skin.bodyBg }}>
       {/* Header */}
-      <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-        <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
+      <header className="flex-shrink-0 print:static print:border-b z-20 relative overflow-hidden" style={mounted ? { backgroundColor: skin.bodyBg } : undefined}>
+        {mounted && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
+        {mounted && <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />}
+        {mounted && <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />}
 
 
         <div className="relative z-10 px-8 py-2 flex items-center justify-between flex-wrap gap-2">
@@ -345,28 +345,28 @@ export default function YearCalendar() {
             <button
               onClick={() => setYear((y) => y - 1)}
               className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold"
-              style={{ color: skin.textMuted }}
-              onMouseEnter={e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }}
-              onMouseLeave={e => { e.currentTarget.style.color = skin.textMuted; e.currentTarget.style.backgroundColor = 'transparent'; }}
+              style={mounted ? { color: skin.textMuted } : undefined}
+              onMouseEnter={mounted ? (e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }) : undefined}
+              onMouseLeave={mounted ? (e => { e.currentTarget.style.color = skin.textMuted; e.currentTarget.style.backgroundColor = 'transparent'; }) : undefined}
               aria-label="上一年"
             >
               ‹
             </button>
             <div className="flex items-center">
               <h1 className="text-7xl font-black tracking-tighter leading-none"
-              style={{ color: skin.textPrimary, textShadow: `0 1px 2px ${skin.swatch}15` }}>
+              style={mounted ? { color: skin.textPrimary, textShadow: `0 1px 2px ${skin.swatch}15` } : undefined}>
                 {year}
               </h1>
               <div className="flex flex-col ml-4">
                 <div className="flex items-center gap-2 leading-tight">
                   <span className="text-lg font-medium"
-                    style={{ color: skin.textSecondary }}>
+                    style={mounted ? { color: skin.textSecondary } : undefined}>
                     {ganZhi}（{animal}）
                   </span>
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
                     className="px-3 py-1 text-xs font-medium rounded-full transition-all leading-tight cursor-pointer hover:opacity-80"
-                    style={{ color: skin.textPrimary, backgroundColor: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.15)" }}
+                    style={mounted ? { color: skin.textPrimary, backgroundColor: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.15)" } : undefined}
                   >
                     今年
                   </button>
@@ -374,19 +374,19 @@ export default function YearCalendar() {
                   <button
                     onClick={() => setShowSkinPicker(v => !v)}
                     className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-90"
-                    style={{
+                    style={mounted ? {
                       backgroundColor: skin.swatch,
                       border: '2px solid rgba(255,255,255,0.5)',
                       boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-                    }}
-                    onMouseEnter={e => {
+                    } : undefined}
+                    onMouseEnter={mounted ? (e => {
                       e.currentTarget.style.transform = 'scale(1.15)';
                       e.currentTarget.style.boxShadow = `0 2px 12px ${skin.swatch}60`;
-                    }}
-                    onMouseLeave={e => {
+                    }) : undefined}
+                    onMouseLeave={mounted ? (e => {
                       e.currentTarget.style.transform = 'scale(1)';
                       e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.2)';
-                    }}
+                    }) : undefined}
                     title="切换皮肤"
                   />
                 </div>
@@ -414,11 +414,11 @@ export default function YearCalendar() {
           <div className="absolute inset-x-0 flex justify-center">
             <span
               className="font-light select-none cursor-pointer hover:opacity-70 transition-opacity"
-              style={{ color: skin.textMuted, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.6em', fontSize: `${mottoSize}px` }}
+              style={mounted ? { color: skin.textMuted, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.6em', fontSize: `${mottoSize}px` } : undefined}
               onClick={() => { setMottoDraft(motto); setEditingMotto(true); }}
               title="点击修改标语"
             >
-              {motto}
+              {mounted ? motto : ''}
             </span>
           </div>
 
