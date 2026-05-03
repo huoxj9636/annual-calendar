@@ -355,14 +355,15 @@ export default function YearCalendar() {
                   <div className="relative">
                     <button
                       onClick={() => setShowSkinPicker(v => !v)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95"
+                      className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 shadow-md"
                       style={{
                         background: `conic-gradient(from 0deg, ${skin.swatch}, ${skin.sidebarTo}, ${skin.tabActive}, ${skin.checkColor}, ${skin.swatch})`,
                         boxShadow: `0 2px 8px ${skin.swatch}40`,
+                        border: '2px solid rgba(255,255,255,0.4)',
                       }}
                       title="切换皮肤"
                     >
-                      <span className="block w-3 h-3 rounded-full bg-white/90 shadow-inner" />
+                      <span className="block w-3.5 h-3.5 rounded-full bg-white/90 shadow-inner" />
                     </button>
                   </div>
                 </div>

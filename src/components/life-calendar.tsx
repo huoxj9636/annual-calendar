@@ -434,38 +434,34 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       />
 
       {/* Header - matching year-calendar header style */}
-      <div className="flex-shrink-0 relative overflow-hidden"
-        style={{ minHeight: '80px' }}>
+      <div className="flex-shrink-0 relative overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }} />
         <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
-        <div className="relative px-8 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-3 px-5 py-2.5">
-            <h2 className="text-2xl font-bold tracking-wide" style={{ color: skin.textPrimary, textShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>人生旅途</h2>
-          </div>
-          <div className="flex items-center gap-2 px-5 py-2.5">
-            <div className="flex items-center gap-3 text-sm" style={{ color: skin.textSecondary, textShadow: "0 1px 2px rgba(0,0,0,0.1)" }}>
-              <span>出生年份</span>
-              <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}
-                className="w-20 px-2 py-1 rounded text-center border focus:outline-none"
-                style={{ backgroundColor: "rgba(255,255,255,0.18)", color: skin.textPrimary, borderColor: "rgba(255,255,255,0.15)" }} />
-              <span style={{ color: skin.textMuted }}>|</span>
-              <span>当前 {currentAge} 岁</span>
-            </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors text-sm"
+        <div className="relative px-4 py-2">
+          {/* Top row: title + close */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold tracking-wide" style={{ color: skin.textPrimary, textShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>人生旅途</h2>
+            <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center transition-colors text-xs cursor-pointer"
               style={{ backgroundColor: "rgba(255,255,255,0.18)", color: skin.textPrimary }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.28)"; }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.30)"; }}
               onMouseLeave={e => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.18)"; }}
             >✕</button>
           </div>
-        </div>
-          {/* Progress bar */}
-          <div className="px-8 py-1 flex items-center gap-2 relative">
-            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.15)" }}>
+          {/* Bottom row: birth year + age + progress */}
+          <div className="flex items-center gap-2 mt-1.5 text-xs" style={{ color: skin.textSecondary }}>
+            <span>出生</span>
+            <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}
+              className="w-16 px-1.5 py-0.5 rounded text-center text-xs border focus:outline-none"
+              style={{ backgroundColor: "rgba(255,255,255,0.18)", color: skin.textPrimary, borderColor: "rgba(255,255,255,0.15)" }} />
+            <span style={{ color: skin.textMuted }}>|</span>
+            <span>{currentAge}岁</span>
+            <div className="flex-1 h-1 rounded-full overflow-hidden ml-1" style={{ backgroundColor: "rgba(255,255,255,0.15)" }}>
               <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((currentAge / 80) * 100, 100)}%`, backgroundColor: skin.swatch + "80" }} />
             </div>
-            <span className="text-xs" style={{ color: skin.textSecondary, textShadow: "0 1px 2px rgba(0,0,0,0.1)" }}>{currentAge}/80</span>
+            <span className="text-[10px]" style={{ color: skin.textMuted }}>{currentAge}/80</span>
           </div>
+        </div>
       </div>
 
       {/* Stages List */}
