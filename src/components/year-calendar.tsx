@@ -340,7 +340,7 @@ export default function YearCalendar() {
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
         <SunGlowEffect />
 
-        <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2">
+        <div className="relative z-10 px-8 py-2 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 px-5 py-2.5">
             <button
               onClick={() => setYear((y) => y - 1)}
@@ -373,26 +373,22 @@ export default function YearCalendar() {
                   {/* Skin picker toggle */}
                   <button
                     onClick={() => setShowSkinPicker(v => !v)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full cursor-pointer transition-all hover:brightness-110 active:scale-95 text-xs font-medium"
+                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-90"
                     style={{
-                      backgroundColor: skin.swatch + '25',
-                      color: skin.textPrimary,
-                      border: `1px solid ${skin.swatch}40`,
-                      boxShadow: `0 0 0 0px transparent`,
+                      backgroundColor: skin.swatch,
+                      border: '2px solid rgba(255,255,255,0.5)',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.backgroundColor = skin.swatch + '40';
-                      e.currentTarget.style.boxShadow = `0 2px 8px ${skin.swatch}30`;
+                      e.currentTarget.style.transform = 'scale(1.15)';
+                      e.currentTarget.style.boxShadow = `0 2px 12px ${skin.swatch}60`;
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.backgroundColor = skin.swatch + '25';
-                      e.currentTarget.style.boxShadow = `0 0 0 0px transparent`;
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.2)';
                     }}
                     title="切换皮肤"
-                  >
-                    <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: skin.swatch }} />
-                    皮肤
-                  </button>
+                  />
                 </div>
                 {mounted && clockStr && (
                   <div className="text-xl font-mono tracking-wider tabular-nums leading-tight mt-1"
