@@ -433,31 +433,32 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
         }}
       />
 
-      {/* Header */}
-      <div className="flex-shrink-0 relative overflow-hidden">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }} />
-        <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
-        <div className="relative px-6 py-2">
-          <div className="flex items-center justify-between px-3 py-1.5">
-            <h2 className="text-xl font-bold tracking-wide" style={{ color: skin.textPrimary, textShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>人生旅途</h2>
-            <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center transition-colors text-xs cursor-pointer"
-              style={{ backgroundColor: "rgba(255,255,255,0.18)", color: skin.textPrimary }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.30)"; }}
-              onMouseLeave={e => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.18)"; }}
-            >✕</button>
-          </div>
-          <div className="flex items-center gap-2 px-3 pb-1.5 text-xs" style={{ color: skin.textSecondary }}>
-            <span>出生年份</span>
-            <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}
-              className="w-16 px-1.5 py-0.5 rounded text-center text-xs border focus:outline-none"
-              style={{ backgroundColor: "rgba(255,255,255,0.18)", color: skin.textPrimary, borderColor: "rgba(255,255,255,0.15)" }} />
-            <span style={{ color: skin.textMuted }}>|</span>
-            <span>当前 {currentAge} 岁</span>
-            <div className="flex-1 h-1 rounded-full overflow-hidden ml-1" style={{ backgroundColor: "rgba(255,255,255,0.15)" }}>
-              <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((currentAge / 80) * 100, 100)}%`, backgroundColor: skin.swatch + "80" }} />
+      {/* Header - same width/padding as day-view sidebar */}
+      <div className="flex-shrink-0 px-5 pt-5 pb-4 relative overflow-hidden" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}cc, ${skin.sidebarTo}bb)` }} />
+        <div className="relative z-10">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-bold tracking-wide text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>人生旅途</h2>
+              <div className="flex items-center gap-2 mt-2 text-xs text-white/70">
+                <span>出生年份</span>
+                <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}
+                  className="w-16 px-1.5 py-0.5 rounded text-center text-xs border focus:outline-none bg-white/20 text-white border-white/20" />
+                <span className="text-white/40">|</span>
+                <span>当前 {currentAge} 岁</span>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="flex-1 h-1 rounded-full overflow-hidden bg-white/15">
+                  <div className="h-full rounded-full transition-all bg-white/40" style={{ width: `${Math.min((currentAge / 80) * 100, 100)}%` }} />
+                </div>
+                <span className="text-[10px] text-white/60">{currentAge}/80</span>
+              </div>
             </div>
-            <span className="text-[10px]" style={{ color: skin.textMuted }}>{currentAge}/80</span>
+            <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

@@ -457,11 +457,11 @@ export default function YearCalendar() {
                       onClick={() => { setSkinKey(s.key); setShowSkinPicker(false); }}
                       className="relative rounded-xl overflow-hidden transition-all cursor-pointer group"
                       style={{
-                        border: isActive ? `2px solid ${s.swatch}` : '2px solid transparent',
+                        border: isActive ? `2px solid ${s.swatch}` : `1px solid ${s.isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)'}`,
                         boxShadow: isActive ? `0 4px 16px ${s.swatch}30` : 'none',
                       }}
                       onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = s.swatch + '50'; } }}
-                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = 'transparent'; } }}
+                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = s.isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)'; } }}
                     >
                       {/* Preview image from headerBgImage */}
                       <div className="h-20 bg-cover bg-center relative" style={{ backgroundImage: `url(${s.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
@@ -472,8 +472,8 @@ export default function YearCalendar() {
                           </div>
                         )}
                       </div>
-                      {/* Label */}
-                      <div className="px-2 py-1.5 text-center" style={{ backgroundColor: s.panelBg }}>
+                      {/* Label with subtle top border for dark skins */}
+                      <div className="px-2 py-1.5 text-center" style={{ backgroundColor: s.panelBg, borderTop: s.isDark ? '1px solid rgba(255,255,255,0.1)' : 'none' }}>
                         <span className="text-xs font-semibold" style={{ color: s.textPrimary }}>{s.label}</span>
                       </div>
                     </button>
