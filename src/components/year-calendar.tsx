@@ -401,55 +401,15 @@ export default function YearCalendar() {
           </div>
 
           {/* 居中标语 */}
-          <div className="absolute inset-x-0 flex justify-center">
-            {editingMotto ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={mottoDraft}
-                  onChange={(e) => {
-                    if (e.target.value.length <= 15) setMottoDraft(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && mottoDraft.trim()) {
-                      setMotto(mottoDraft.trim());
-                      localStorage.setItem('calendar-motto', mottoDraft.trim());
-                      setEditingMotto(false);
-                    } else if (e.key === 'Escape') {
-                      setEditingMotto(false);
-                    }
-                  }}
-                  maxLength={15}
-                  autoFocus
-                  className="text-lg font-light tracking-[0.4em] bg-white/20 backdrop-blur-sm border-b border-white/40 text-white outline-none px-2 py-0.5 text-center"
-                  style={{ width: `${Math.max(mottoDraft.length, 4)}em`, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' }}
-                  placeholder="输入标语..."
-                />
-                <button
-                  onClick={() => {
-                    if (mottoDraft.trim()) {
-                      setMotto(mottoDraft.trim());
-                      localStorage.setItem('calendar-motto', mottoDraft.trim());
-                      setEditingMotto(false);
-                    }
-                  }}
-                  className="text-xs bg-white/20 hover:bg-white/30 text-white rounded px-2 py-1"
-                >确认</button>
-                <button
-                  onClick={() => setEditingMotto(false)}
-                  className="text-xs bg-white/10 hover:bg-white/20 text-white/70 rounded px-2 py-1"
-                >取消</button>
-              </div>
-            ) : (
-              <span
-                className="text-2xl font-light tracking-[0.5em] select-none cursor-pointer hover:opacity-70 transition-opacity"
-                style={{ color: skin.textMuted, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.6em' }}
-                onClick={() => { setMottoDraft(motto); setEditingMotto(true); }}
-                title="点击修改标语"
-              >
-                {motto}
-              </span>
-            )}
+          <div className="absolute inset-x-0 flex justify-center pointer-events-none">
+            <span
+              className="pointer-events-auto select-none cursor-pointer hover:opacity-70 transition-opacity"
+              style={{ color: skin.textMuted, fontSize: 40, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.3em', fontWeight: 300 }}
+              onClick={() => { setMottoDraft(motto); setEditingMotto(true); }}
+              title="点击修改标语"
+            >
+              {motto}
+            </span>
           </div>
 
           {/* Legend & Stats */}
@@ -1021,6 +981,77 @@ export default function YearCalendar() {
             <path d="M18 15l-6-6-6 6"/>
           </svg>
         </button>
+      )}
+      {/* Motto Edit Modal */}
+      {editingMotto && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setEditingMotto(false)}
+        >
+          <div
+            className="rounded-2xl shadow-2xl p-6 w-80"
+            style={{ backgroundColor: skin.panelBg, border: `1px solid ${skin.divider}` }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold mb-4" style={{ color: skin.textPrimary }}>
+              修改标语
+            </h3>
+            <input
+              type="text"
+              value={mottoDraft}
+              onChange={(e) => {
+                if (e.target.value.length <= 15) setMottoDraft(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && mottoDraft.trim()) {
+                  setMotto(mottoDraft.trim());
+                  localStorage.setItem('calendar-motto', mottoDraft.trim());
+                  setEditingMotto(false);
+                } else if (e.key === 'Escape') {
+                  setEditingMotto(false);
+                }
+              }}
+              maxLength={15}
+              autoFocus
+              className="w-full text-lg px-3 py-2 rounded-lg border outline-none transition-colors"
+              style={{
+                color: skin.textPrimary,
+                backgroundColor: skin.cardBg,
+                borderColor: skin.divider,
+                fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+              }}
+              placeholder="输入标语..."
+            />
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-xs" style={{ color: skin.textMuted }}>
+                {mottoDraft.length}/15
+              </span>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setEditingMotto(false)}
+                className="px-4 py-1.5 text-sm rounded-lg transition-colors"
+                style={{ color: skin.textSecondary, backgroundColor: skin.cardHover }}
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  if (mottoDraft.trim()) {
+                    setMotto(mottoDraft.trim());
+                    localStorage.setItem('calendar-motto', mottoDraft.trim());
+                    setEditingMotto(false);
+                  }
+                }}
+                className="px-4 py-1.5 text-sm rounded-lg text-white transition-colors"
+                style={{ backgroundColor: skin.swatch }}
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
