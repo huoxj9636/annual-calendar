@@ -860,15 +860,13 @@ export default function YearCalendar() {
             {/* 头部 - 背景图+渐变 */}
             <div className="px-5 pt-10 pb-5 relative overflow-hidden" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
               <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }} />
-              <div className="relative z-10 flex items-center justify-between">
-                <div>
-                  <div className="text-white/60 text-xs font-medium tracking-wider mb-1">MONTHLY REVIEW</div>
-                  <div className="text-white text-xl font-bold">{selectedMonth}月复盘</div>
-                </div>
-                <button onClick={() => setSelectedMonth(null)} className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
+              <div className="relative z-10">
+                <div className="text-white/60 text-xs font-medium tracking-wider mb-1">MONTHLY REVIEW</div>
+                <div className="text-white text-xl font-bold">{selectedMonth}月复盘</div>
               </div>
+              <button onClick={() => setSelectedMonth(null)} className="absolute top-2 right-3 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors z-20">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
             </div>
 
             {/* 复盘内容 - 现代卡片 */}
