@@ -1065,7 +1065,6 @@ export default function YearCalendar() {
           setBirthYear={setBirthYear}
           onClose={() => setShowLifeCalendar(false)}
           skinKey={skinKey}
-          onYearSelect={(y) => { setYear(y); setShowLifeCalendar(false); }}
         />
       )}
       </div>

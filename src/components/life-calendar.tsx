@@ -11,7 +11,7 @@ interface LifeCalendarProps {
   /** 当前选中的皮肤 key，与父组件共享 */
   skinKey?: string;
   /** 点击年份格子时回调，切换年历到对应年份 */
-  onYearSelect?: (year: number) => void;
+
 }
 
 interface ActionItem {
@@ -305,7 +305,7 @@ const STAGES: Stage[] = [
 ];
 
 
-export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey, onYearSelect }: LifeCalendarProps) {
+export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey }: LifeCalendarProps) {
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [stageData, setStageData] = useState<Record<string, Record<string, Record<string, ActionItem>>>>({});
   const [innerSkin, setInnerSkin] = useState<string>(DEFAULT_SKIN);
@@ -608,83 +608,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
             </div>
           );
         })}
-
-        {/* 80 格人生格子 */}
-        <div className="px-4 mt-2">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium" style={{ color: skin.textMuted }}>
-              人生 4000 周 · 80 年
-            </span>
-            <span className="text-xs" style={{ color: skin.textMuted }}>
-              {birthYear > 0 ? `${new Date().getFullYear() - birthYear} / 80` : ''}
-            </span>
-          </div>
-          <div className="grid grid-cols-10 gap-1">
-            {Array.from({ length: 80 }, (_, i) => {
-              const age = i;
-              const year = birthYear + age;
-              const currentYear = new Date().getFullYear();
-              const isPast = birthYear > 0 && year < currentYear;
-              const isCurrent = birthYear > 0 && year === currentYear;
-              const isFuture = birthYear > 0 && year > currentYear;
-              const isBeforeBirth = birthYear <= 0 || year < birthYear;
-
-              let bgColor = skin.cardBg;
-              let borderColor = skin.divider;
-              if (isPast && !isBeforeBirth) {
-                bgColor = skin.swatch + '30';
-                borderColor = skin.swatch + '50';
-              }
-              if (isCurrent) {
-                bgColor = skin.swatch;
-                borderColor = skin.swatch;
-              }
-              if (isFuture && !isBeforeBirth) {
-                bgColor = skin.cardBg;
-                borderColor = skin.divider;
-              }
-              if (isBeforeBirth) {
-                bgColor = 'transparent';
-                borderColor = skin.divider;
-              }
-
-              return (
-                <div
-                  key={i}
-                  className="group relative aspect-square rounded-sm cursor-pointer transition-all duration-150 hover:scale-125 hover:z-10"
-                  style={{
-                    background: bgColor,
-                    border: `1px solid ${borderColor}`,
-                  }}
-                  onClick={() => {
-                    if (birthYear > 0 && onYearSelect) {
-                      onYearSelect(year);
-                    }
-                  }}
-                  title={birthYear > 0 ? `${year}年 (${age}岁)` : `第 ${age + 1} 年`}
-                >
-                  {/* Hover tooltip */}
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20"
-                    style={{ background: skin.textPrimary, color: skin.panelBg }}>
-                    {birthYear > 0 ? `${year} (${age}岁)` : `${age + 1}岁`}
-                  </div>
-                  {/* Current year indicator */}
-                  {isCurrent && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-white text-[6px] font-bold leading-none">
-                        {age}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-[10px]" style={{ color: skin.textMuted }}>出生</span>
-            <span className="text-[10px]" style={{ color: skin.textMuted }}>80岁</span>
-          </div>
-        </div>
 
         {/* Bottom Quote */}
         <div className="mt-4 mb-2 px-4 py-3 rounded-xl text-center"
