@@ -481,12 +481,12 @@ export default function YearCalendar() {
         {/* Left arrow for Life Calendar */}
         <button
           onClick={() => setShowLifeCalendar(true)}
-          className="flex-shrink-0 w-8 flex items-center justify-center transition-all group cursor-pointer z-10"
-          style={{ background: `linear-gradient(to right, ${skin.swatch}15, transparent)` }}
+          className="flex-shrink-0 w-12 flex items-center justify-center transition-all group cursor-pointer z-10"
+          style={{ background: `linear-gradient(to right, ${skin.swatch}18, transparent)` }}
           title="人生旅途"
         >
-          <span className="transition-colors text-2xl" style={{ color: `${skin.swatch}80` }}>
-            <span className="group-hover:opacity-100 opacity-60 transition-opacity">‹</span>
+          <span className="transition-colors text-3xl font-light" style={{ color: `${skin.swatch}90` }}>
+            <span className="group-hover:opacity-100 opacity-50 transition-opacity inline-block group-hover:translate-x-0.5 transform">›</span>
           </span>
         </button>
 
@@ -639,11 +639,11 @@ export default function YearCalendar() {
                           {cell.lunarDisplay}
                         </span>
                       </div>
-                      {/* Centered check/cross watermark overlay */}
+                      {/* Centered check/cross watermark overlay - above past overlay */}
                       {mounted && status !== 'none' && (
                         <span
-                          className="absolute inset-0 flex items-center justify-center text-[22px] font-bold leading-none pointer-events-none"
-                          style={{ color: status === 'crossed' ? skin.crossColor + 'b3' : skin.checkColor + 'b3' }}
+                          className="absolute inset-0 flex items-center justify-center text-[22px] font-bold leading-none pointer-events-none z-20"
+                          style={{ color: status === 'crossed' ? skin.crossColor : skin.checkColor }}
                         >
                           {status === 'crossed' ? '✗' : '✓'}
                         </span>
