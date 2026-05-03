@@ -374,7 +374,8 @@ export default function DayView({ year, month, day, onClose, embedded, skin: ski
   const panelContent = (
     <div className="h-full flex flex-col relative" style={{ backgroundColor: skin.panelBg }}>
       {/* Header with gradient */}
-      <div className="flex-shrink-0 px-5 pt-5 pb-4 relative" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}, ${skin.sidebarTo})` }}>
+      <div className="flex-shrink-0 px-5 pt-5 pb-4 relative overflow-hidden" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}cc, ${skin.sidebarTo}bb)` }} />
         <div className="relative z-10">
           <div className="flex items-start justify-between">
             <div>

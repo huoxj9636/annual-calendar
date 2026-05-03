@@ -477,12 +477,12 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       {/* Header */}
       <div className="flex-shrink-0 px-6 py-5 text-white relative overflow-hidden"
         style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }}>
-          <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }} />
         {/* Decorative circles */}
         <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-white/5" />
         <div className="absolute -right-2 -bottom-8 w-20 h-20 rounded-full bg-white/5" />
 
-        <div className="relative z-10">
+        <div className="relative z-10 backdrop-blur-[2px] rounded-xl p-1 -m-1">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-semibold tracking-wide">人生旅途</h2>
             <div className="flex items-center gap-2">
@@ -494,11 +494,11 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors text-sm">✕</button>
             </div>
           </div>
-          <div className="flex items-center gap-3 text-sm text-white/70">
+          <div className="flex items-center gap-3 text-sm text-white/90">
             <span>出生年份</span>
             <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}
-              className="w-20 px-2 py-1 rounded bg-white/15 text-white text-center border border-white/10 focus:outline-none focus:border-white/30" />
-            <span className="text-white/30">|</span>
+              className="w-20 px-2 py-1 rounded bg-white/20 text-white text-center border border-white/20 focus:outline-none focus:border-white/40" />
+            <span className="text-white/60">|</span>
             <span>当前 {currentAge} 岁</span>
           </div>
           {/* Progress bar */}
@@ -506,7 +506,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
             <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
               <div className="h-full rounded-full bg-white/40 transition-all" style={{ width: `${Math.min((currentAge / 80) * 100, 100)}%` }} />
             </div>
-            <span className="text-xs text-white/40">{currentAge}/80</span>
+            <span className="text-xs text-white/70">{currentAge}/80</span>
           </div>
         </div>
       </div>

@@ -818,13 +818,14 @@ export default function YearCalendar() {
               className="w-1.5 cursor-col-resize hover:bg-blue-400/30 active:bg-blue-400/50 flex-shrink-0 transition-colors z-10 absolute left-0 top-0 bottom-0"
               onMouseDown={(e) => handlePanelResize(setReviewWidth, e)}
             />
-            {/* 头部 - 渐变 */}
-            <div className="px-6 pt-6 pb-5" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }}>
-              <div className="flex items-center justify-between">
+            {/* 头部 - 背景图+渐变 */}
+            <div className="px-6 pt-6 pb-5 relative overflow-hidden" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+              <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }} />
+              <div className="relative z-10 flex items-center justify-between">
                 <div>
-                  <div className="text-gray-500 text-xs font-medium tracking-wider mb-1">MONTHLY REVIEW</div>
+                  <div className="text-white/60 text-xs font-medium tracking-wider mb-1">MONTHLY REVIEW</div>
                   <div className="text-white text-xl font-bold">{selectedMonth}月复盘</div>
-                  <div className="text-gray-400 text-xs mt-0.5">{year}年{selectedMonth}月</div>
+                  <div className="text-white/50 text-xs mt-0.5">{year}年{selectedMonth}月</div>
                 </div>
                 <button onClick={() => setSelectedMonth(null)} className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
