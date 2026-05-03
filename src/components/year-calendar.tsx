@@ -12,7 +12,7 @@ import DayView from '@/components/day-view';
 import MonthlyReview from '@/components/monthly-review';
 import LifeCalendar from '@/components/life-calendar';
 import { SKINS, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
-import { TimeFlowEffect } from '@/components/time-flow-effect';
+import { SunJourneyEffect } from '@/components/sun-journey-effect';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -338,7 +338,7 @@ export default function YearCalendar() {
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
         <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
-        <TimeFlowEffect color={skin.swatch} intensity={1.2} />
+        <SunJourneyEffect color={skin.swatch} intensity={1.2} />
 
         <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 px-5 py-2.5">
@@ -994,8 +994,8 @@ export default function YearCalendar() {
           onClick={() => setEditingMotto(false)}
         >
           <div
-            className="rounded-2xl shadow-2xl p-8 w-[600px] max-w-[92vw]"
-            style={{ backgroundColor: skin.panelBg, border: `1px solid ${skin.divider}` }}
+            className="rounded-2xl shadow-2xl p-8 w-[600px] max-w-[92vw] flex flex-col"
+            style={{ backgroundColor: skin.panelBg, border: `1px solid ${skin.divider}`, height: '380px' }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -1068,9 +1068,9 @@ export default function YearCalendar() {
             </div>
 
             {/* Preview */}
-            <div className="rounded-lg p-4 mb-5 text-center overflow-hidden" style={{ backgroundColor: skin.cardBg }}>
+            <div className="rounded-lg mb-5 text-center flex-shrink-0 overflow-hidden" style={{ backgroundColor: skin.cardBg, height: '72px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span
-                className="font-light whitespace-nowrap inline-block"
+                className="font-light whitespace-nowrap inline-block leading-tight"
                 style={{
                   color: skin.textMuted,
                   fontSize: `${mottoSize}px`,
