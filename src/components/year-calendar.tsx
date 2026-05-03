@@ -71,7 +71,7 @@ export default function YearCalendar() {
   const [showSkinPicker, setShowSkinPicker] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [drawingMode, setDrawingMode] = useState(false);
-  const [drawingHasStrokes, setDrawingHasStrokes] = useState(false);
+  const [, setDrawingHasStrokes] = useState(false);
   const [drawingVisible, setDrawingVisible] = useState(true);
   const [drawingColor, setDrawingColor] = useState('#ef4444');
   const [drawingTool, setDrawingTool] = useState<'pen' | 'eraser'>('pen');
@@ -1065,6 +1065,7 @@ export default function YearCalendar() {
           setBirthYear={setBirthYear}
           onClose={() => setShowLifeCalendar(false)}
           skinKey={skinKey}
+          onYearSelect={(y) => { setYear(y); setShowLifeCalendar(false); }}
         />
       )}
       </div>
