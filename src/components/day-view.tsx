@@ -392,15 +392,15 @@ export default function DayView({ year, month, day, onClose, embedded, skin: ski
               {lunarInfo.isFestival && !lunarInfo.isSolarTerm && <span className="text-red-300 ml-1">{lunarInfo.display}</span>}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="absolute top-2 right-3 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors z-20"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-3 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors z-20"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       {/* Tab Switcher + Voice Button */}
