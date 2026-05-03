@@ -58,6 +58,7 @@ export default function YearCalendar() {
   const [birthYear, setBirthYear] = useState(1990);
   const [skinKey, setSkinKey] = useState<string>(DEFAULT_SKIN);
   const [showSkinPicker, setShowSkinPicker] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   // Resize handler for side panels
   const handlePanelResize = useCallback((setter: React.Dispatch<React.SetStateAction<number>>, e: React.MouseEvent) => {
@@ -206,6 +207,12 @@ export default function YearCalendar() {
     if (!container) return;
 
     const handleScroll = () => {
+      // Track page for back-to-top button
+      const currentScroll = container.scrollTop;
+      const pageH = container.clientHeight;
+      const page = Math.round(currentScroll / pageH);
+      setShowBackToTop(page > 0);
+
       if (isSnapping.current) return;
       if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
       scrollTimeout.current = setTimeout(() => {
@@ -304,7 +311,7 @@ export default function YearCalendar() {
   const animal = getYearAnimal(year);
   const ganZhi = getGanZhiYear(year);
 
-  const colTemplate = `52px repeat(31, minmax(28px, 1fr))`;
+  const colTemplate = `64px repeat(31, minmax(28px, 1fr))`;
 
   // Build SVG wave border paths for quarter blocks
 
@@ -473,8 +480,8 @@ export default function YearCalendar() {
                         )}
                       </div>
                       {/* Label with subtle top border for dark skins */}
-                      <div className="px-2 py-1.5 text-center" style={{ backgroundColor: s.panelBg, borderTop: s.isDark ? '1px solid rgba(255,255,255,0.1)' : 'none' }}>
-                        <span className="text-xs font-semibold" style={{ color: s.textPrimary }}>{s.label}</span>
+                      <div className="px-2 py-1.5 text-center" style={{ backgroundColor: s.isDark ? 'rgba(240,240,245,0.95)' : s.panelBg, borderTop: s.isDark ? '1px solid rgba(255,255,255,0.1)' : 'none' }}>
+                        <span className="text-xs font-semibold" style={{ color: s.isDark ? '#1a1a2e' : s.textPrimary }}>{s.label}</span>
                       </div>
                     </button>
                   );
@@ -491,12 +498,12 @@ export default function YearCalendar() {
         {/* Left arrow for Life Calendar */}
         <button
           onClick={() => setShowLifeCalendar(true)}
-          className="flex-shrink-0 w-12 flex items-center justify-center transition-all group cursor-pointer z-10"
+          className="flex-shrink-0 w-14 flex items-center justify-center transition-all group cursor-pointer z-10"
           style={{ background: `linear-gradient(to right, ${skin.swatch}18, transparent)` }}
           title="人生旅途"
         >
-          <span className="transition-colors text-3xl font-light" style={{ color: `${skin.swatch}90` }}>
-            <span className="group-hover:opacity-100 opacity-50 transition-opacity inline-block group-hover:translate-x-0.5 transform">›</span>
+          <span className="transition-colors text-4xl font-bold tracking-tight group-hover:opacity-100 opacity-40 transition-opacity inline-block group-hover:translate-x-1 transform" style={{ color: `${skin.swatch}bb` }}>
+            »
           </span>
         </button>
 
@@ -505,7 +512,7 @@ export default function YearCalendar() {
           className="flex-1 px-8 pb-2 pt-1 overflow-x-auto min-h-0 flex justify-center"
         >
         <div ref={gridInnerRef} className="h-full relative rounded-lg"
-          style={{ borderTop: `0.5px solid ${skin.cellBorder}`, borderLeft: `0.5px solid ${skin.cellBorder}`, minWidth: '1100px' }}>
+          style={{ borderTop: `0.5px solid ${skin.cellBorder}`, borderLeft: `0.5px solid ${skin.cellBorder}`, minWidth: '1200px' }}>
 
 
           {/* Month rows */}
@@ -924,6 +931,44 @@ export default function YearCalendar() {
       <section className="h-screen overflow-y-auto">
         <MonthlyReview year={year} skin={skin} />
       </section>
+
+      {/* Back to Top floating button */}
+      {mounted && showBackToTop && (
+        <button
+          onClick={() => {
+            const container = scrollContainerRef.current;
+            if (container) {
+              isSnapping.current = true;
+              const startY = container.scrollTop;
+              const duration = 600;
+              const startTime = performance.now();
+              const animate = (now: number) => {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                container.scrollTop = startY * (1 - eased);
+                if (progress < 1) {
+                  requestAnimationFrame(animate);
+                } else {
+                  isSnapping.current = false;
+                  setShowBackToTop(false);
+                }
+              };
+              requestAnimationFrame(animate);
+            }
+          }}
+          className="fixed bottom-8 right-8 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110 cursor-pointer z-50"
+          style={{
+            background: `linear-gradient(135deg, ${skin.swatch}, ${skin.swatch}cc)`,
+            color: 'white',
+            boxShadow: `0 4px 20px ${skin.swatch}40`,
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 15l-6-6-6 6"/>
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

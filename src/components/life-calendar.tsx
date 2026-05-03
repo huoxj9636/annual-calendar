@@ -586,6 +586,14 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
             </div>
           );
         })}
+
+        {/* Bottom Quote */}
+        <div className="mt-4 mb-2 px-4 py-3 rounded-xl text-center"
+          style={{ background: skin.cardBg, border: `1px solid ${skin.divider}` }}>
+          <p className="text-sm italic" style={{ color: skin.textMuted }}>
+            &ldquo;种一棵树最好的时间是十年前，其次是现在。&rdquo;
+          </p>
+        </div>
       </div>
     </div>
   );
