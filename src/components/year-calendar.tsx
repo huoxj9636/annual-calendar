@@ -13,6 +13,7 @@ import MonthlyReview from '@/components/monthly-review';
 import LifeCalendar from '@/components/life-calendar';
 import { SKINS, NO_SKIN, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
+import DrawingOverlay from '@/components/drawing-overlay';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -546,6 +547,10 @@ export default function YearCalendar() {
         <div ref={gridInnerRef} className="h-full relative rounded-lg"
           style={{ borderTop: `0.5px solid ${skin.cellBorder}`, borderLeft: `0.5px solid ${skin.cellBorder}`, minWidth: '1200px' }}>
 
+
+
+          {/* Drawing overlay */}
+          <DrawingOverlay storageKey={`calendar-drawing-${year}`} visible={true} />
 
           {/* Month rows */}
           {yearData.map((monthRow, monthIdx) => {
