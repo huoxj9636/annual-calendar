@@ -1,10 +1,15 @@
-import type { Metadata } from 'next';
-import YearCalendar from '@/components/year-calendar';
+'use client';
 
-export const metadata: Metadata = {
-  title: '年度计划日历',
-  description: '年度计划日历 - 12周工作法 + 农历 + 节气',
-};
+import dynamic from 'next/dynamic';
+
+const YearCalendar = dynamic(() => import('@/components/year-calendar'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-screen bg-[#f8f6f2]">
+      <div className="text-gray-400 text-lg">加载中...</div>
+    </div>
+  ),
+});
 
 export default function Home() {
   return <YearCalendar />;
