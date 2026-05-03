@@ -373,15 +373,26 @@ export default function YearCalendar() {
                   {/* Skin picker toggle */}
                   <button
                     onClick={() => setShowSkinPicker(v => !v)}
-                    className="inline-flex items-center justify-center rounded-full cursor-pointer transition-all hover:opacity-80 active:scale-95"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full cursor-pointer transition-all hover:brightness-110 active:scale-95 text-xs font-medium"
                     style={{
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: skin.swatch,
-                      boxShadow: `0 0 0 1.5px rgba(255,255,255,0.5)`,
+                      backgroundColor: skin.swatch + '25',
+                      color: skin.textPrimary,
+                      border: `1px solid ${skin.swatch}40`,
+                      boxShadow: `0 0 0 0px transparent`,
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.backgroundColor = skin.swatch + '40';
+                      e.currentTarget.style.boxShadow = `0 2px 8px ${skin.swatch}30`;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.backgroundColor = skin.swatch + '25';
+                      e.currentTarget.style.boxShadow = `0 0 0 0px transparent`;
                     }}
                     title="切换皮肤"
-                  />
+                  >
+                    <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: skin.swatch }} />
+                    皮肤
+                  </button>
                 </div>
                 {mounted && clockStr && (
                   <div className="text-xl font-mono tracking-wider tabular-nums leading-tight mt-1"
