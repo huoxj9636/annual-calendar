@@ -72,6 +72,8 @@ export interface SkinTheme {
   /** 侧边栏头部渐变 from→to */
   sidebarFrom: string;
   sidebarTo: string;
+  /** 头部背景样式 (CSS background) */
+  headerBgStyle: string;
   /** 暗色模式相关 */
   isDark: boolean;
 }
@@ -224,6 +226,7 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#059669',
     sidebarFrom: '#065f46',
     sidebarTo: '#059669',
+    headerBgStyle: 'linear-gradient(135deg, #064e3b 0%, #065f46 25%, #047857 50%, #059669 75%, #10b981 100%), radial-gradient(ellipse at 20% 50%, rgba(16,185,129,0.3) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(52,211,153,0.2) 0%, transparent 40%)',
     isDark: false,
   },
   {
@@ -273,6 +276,7 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#2563eb',
     sidebarFrom: '#1e3a5f',
     sidebarTo: '#2563eb',
+    headerBgStyle: 'linear-gradient(135deg, #0c4a6e 0%, #0369a1 25%, #0284c7 50%, #0ea5e9 75%, #38bdf8 100%), radial-gradient(ellipse at 30% 30%, rgba(56,189,248,0.25) 0%, transparent 50%), radial-gradient(ellipse at 70% 70%, rgba(14,165,233,0.2) 0%, transparent 40%)',
     isDark: false,
   },
   {
@@ -322,6 +326,7 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#ea580c',
     sidebarFrom: '#7c2d12',
     sidebarTo: '#ea580c',
+    headerBgStyle: 'linear-gradient(135deg, #7c2d12 0%, #c2410c 25%, #ea580c 50%, #f97316 75%, #fdba74 100%), radial-gradient(ellipse at 60% 20%, rgba(253,186,116,0.3) 0%, transparent 50%), radial-gradient(ellipse at 20% 80%, rgba(249,115,22,0.2) 0%, transparent 40%)',
     isDark: false,
   },
   {
@@ -371,6 +376,7 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#7c3aed',
     sidebarFrom: '#4c1d95',
     sidebarTo: '#7c3aed',
+    headerBgStyle: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 25%, #7c3aed 50%, #8b5cf6 75%, #a78bfa 100%), radial-gradient(ellipse at 40% 30%, rgba(139,92,246,0.3) 0%, transparent 50%), radial-gradient(ellipse at 80% 60%, rgba(167,139,250,0.2) 0%, transparent 40%)',
     isDark: false,
   },
   {
@@ -420,6 +426,7 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#db2777',
     sidebarFrom: '#831843',
     sidebarTo: '#db2777',
+    headerBgStyle: 'linear-gradient(135deg, #831843 0%, #be185d 25%, #db2777 50%, #ec4899 75%, #f9a8d4 100%), radial-gradient(ellipse at 50% 20%, rgba(249,168,212,0.3) 0%, transparent 50%), radial-gradient(ellipse at 30% 70%, rgba(236,72,153,0.2) 0%, transparent 40%)',
     isDark: false,
   },
   {
@@ -469,6 +476,7 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#60a5fa',
     sidebarFrom: '#0f172a',
     sidebarTo: '#1e293b',
+    headerBgStyle: 'linear-gradient(135deg, #020617 0%, #0f172a 25%, #1e293b 50%, #334155 75%, #475569 100%), radial-gradient(ellipse at 40% 50%, rgba(96,165,250,0.08) 0%, transparent 50%), radial-gradient(ellipse at 70% 30%, rgba(148,163,184,0.06) 0%, transparent 40%)',
     isDark: true,
   },
   {
@@ -518,6 +526,7 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#15803d',
     sidebarFrom: '#14532d',
     sidebarTo: '#15803d',
+    headerBgStyle: 'linear-gradient(135deg, #052e16 0%, #14532d 25%, #15803d 50%, #16a34a 75%, #4ade80 100%), radial-gradient(ellipse at 30% 40%, rgba(74,222,128,0.2) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(22,163,74,0.15) 0%, transparent 40%)',
     isDark: false,
   },
   {
@@ -567,6 +576,7 @@ export const SKINS: SkinTheme[] = [
     tabActive: '#9333ea',
     sidebarFrom: '#581c87',
     sidebarTo: '#9333ea',
+    headerBgStyle: 'linear-gradient(135deg, #581c87 0%, #7e22ce 25%, #9333ea 50%, #a855f7 75%, #d8b4fe 100%), radial-gradient(ellipse at 45% 30%, rgba(216,180,254,0.3) 0%, transparent 50%), radial-gradient(ellipse at 75% 70%, rgba(168,85,247,0.2) 0%, transparent 40%)',
     isDark: false,
   },
 ];
