@@ -12,7 +12,7 @@ import DayView from '@/components/day-view';
 import MonthlyReview from '@/components/monthly-review';
 import LifeCalendar from '@/components/life-calendar';
 import { SKINS, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
-import ParticleEffect from '@/components/particle-effect';
+import { TimeFlowEffect } from '@/components/time-flow-effect';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -338,7 +338,7 @@ export default function YearCalendar() {
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
         <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
-        <ParticleEffect color={skin.swatch} count={50} />
+        <TimeFlowEffect color={skin.swatch} intensity={1.2} />
 
         <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 px-5 py-2.5">
