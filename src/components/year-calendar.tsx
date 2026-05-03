@@ -53,8 +53,16 @@ export default function YearCalendar() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isSnapping = useRef(false);
   const scrollTimeout = useRef<ReturnType<typeof setTimeout>>(null);
-  const [dayViewWidth, setDayViewWidth] = useState(480);
-  const [reviewWidth, setReviewWidth] = useState(440);
+  const [dayViewWidth, setDayViewWidth] = useState(() => {
+    if (typeof window === 'undefined') return 480;
+    const saved = localStorage.getItem('calendar-dayview-width');
+    return saved ? Math.min(Math.max(Number(saved), 360), window.innerWidth * 0.92) : 480;
+  });
+  const [reviewWidth, setReviewWidth] = useState(() => {
+    if (typeof window === 'undefined') return 440;
+    const saved = localStorage.getItem('calendar-review-width');
+    return saved ? Math.min(Math.max(Number(saved), 360), window.innerWidth * 0.92) : 440;
+  });
   const [showLifeCalendar, setShowLifeCalendar] = useState(false);
   const [birthYear, setBirthYear] = useState(1990);
   const [skinKey, setSkinKey] = useState<string>(DEFAULT_SKIN);
@@ -65,18 +73,22 @@ export default function YearCalendar() {
   const [mottoDraft, setMottoDraft] = useState('');
 
   // Resize handler for side panels
-  const handlePanelResize = useCallback((setter: React.Dispatch<React.SetStateAction<number>>, e: React.MouseEvent) => {
+  const handlePanelResize = useCallback((setter: React.Dispatch<React.SetStateAction<number>>, storageKey: string, e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
+    let startW = 0;
+    setter(w => { startW = w; return w; }); // capture current width synchronously
     const onMouseMove = (ev: MouseEvent) => {
-      const delta = startX - ev.clientX; // dragging left = increasing width
-      setter(w => Math.min(Math.max(w + delta, 360), window.innerWidth * 0.92));
+      const newW = Math.min(Math.max(startW + (startX - ev.clientX), 360), window.innerWidth * 0.92);
+      setter(newW);
     };
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      // Save to localStorage
+      setter(w => { localStorage.setItem(storageKey, String(w)); return w; });
     };
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
@@ -820,7 +832,7 @@ export default function YearCalendar() {
             {/* Left resize handle */}
             <div
               className="w-1.5 cursor-col-resize hover:bg-blue-400/30 active:bg-blue-400/50 flex-shrink-0 transition-colors z-10"
-              onMouseDown={(e) => handlePanelResize(setDayViewWidth, e)}
+              onMouseDown={(e) => handlePanelResize(setDayViewWidth, 'calendar-dayview-width', e)}
             />
             <div className="flex-1 overflow-hidden">
               <DayView
@@ -845,7 +857,7 @@ export default function YearCalendar() {
             {/* Left resize handle */}
             <div
               className="w-1.5 cursor-col-resize hover:bg-blue-400/30 active:bg-blue-400/50 flex-shrink-0 transition-colors z-10 absolute left-0 top-0 bottom-0"
-              onMouseDown={(e) => handlePanelResize(setReviewWidth, e)}
+              onMouseDown={(e) => handlePanelResize(setReviewWidth, 'calendar-review-width', e)}
             />
             {/* 头部 - 背景图+渐变 */}
             <div className="px-6 pt-6 pb-5 relative overflow-hidden" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>

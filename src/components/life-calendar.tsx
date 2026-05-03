@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { SKINS, NO_SKIN, DEFAULT_SKIN } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
 
@@ -317,6 +317,18 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const currentYear = new Date().getFullYear();
   const currentAge = currentYear - birthYear;
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('calendar-lifecal-width');
+    if (containerRef.current && saved) {
+      const w = Math.min(Math.max(Number(saved), 360), window.innerWidth * 0.92);
+      containerRef.current.style.width = w + 'px';
+    } else if (containerRef.current) {
+      containerRef.current.style.width = '480px';
+    }
+  }, []);
+
   // Load saved progress + skin
   useEffect(() => {
     // Load skin if not managed externally
@@ -414,7 +426,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   };
 
   return (
-    <div className="fixed top-0 left-0 z-50 h-full w-[480px] animate-slide-in-left shadow-2xl flex flex-col transition-colors duration-500"
+    <div ref={containerRef} className="fixed top-0 left-0 z-50 h-full animate-slide-in-left shadow-2xl flex flex-col transition-colors duration-500"
       style={{ background: skin.panelBg }}>
 
       {/* Resize handle */}
@@ -427,7 +439,13 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
             const newW = Math.min(Math.max(startW + (ev.clientX - startX), 360), window.innerWidth * 0.92);
             panel.style.width = newW + 'px';
           };
-          const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); document.body.style.cursor = ''; document.body.style.userSelect = ''; };
+          const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            localStorage.setItem('calendar-lifecal-width', String(panel.offsetWidth));
+          };
           document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
           document.addEventListener('mousemove', onMove);
           document.addEventListener('mouseup', onUp);
