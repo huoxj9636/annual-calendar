@@ -377,31 +377,29 @@ export default function DayView({ year, month, day, onClose, embedded, skin: ski
       <div className="flex-shrink-0 px-5 pt-5 pb-4 relative overflow-hidden" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" }}>
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}cc, ${skin.sidebarTo}bb)` }} />
         <div className="relative z-10">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-3xl font-bold text-white">{day}号</span>
-                <span className="text-sm text-white/70 font-medium">{weekDay}</span>
-                {isToday && (
-                  <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-medium backdrop-blur-sm">今天</span>
-                )}
-              </div>
-              <div className="text-xs text-white/50">{year}年{month}月</div>
-              <div className="text-xs text-white/50 mt-0.5">
-                农历{lunarInfo.lunarMonth}月{lunarInfo.lunarDay}
-                {lunarInfo.isSolarTerm && <span className="text-amber-300 ml-1">{lunarInfo.display}</span>}
-                {lunarInfo.isFestival && !lunarInfo.isSolarTerm && <span className="text-red-300 ml-1">{lunarInfo.display}</span>}
-              </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-3xl font-bold text-white">{day}号</span>
+              <span className="text-sm text-white/70 font-medium">{weekDay}</span>
+              {isToday && (
+                <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-medium backdrop-blur-sm">今天</span>
+              )}
             </div>
-            <button
-              onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="text-xs text-white/50">{year}年{month}月</div>
+            <div className="text-xs text-white/50 mt-0.5">
+              农历{lunarInfo.lunarMonth}月{lunarInfo.lunarDay}
+              {lunarInfo.isSolarTerm && <span className="text-amber-300 ml-1">{lunarInfo.display}</span>}
+              {lunarInfo.isFestival && !lunarInfo.isSolarTerm && <span className="text-red-300 ml-1">{lunarInfo.display}</span>}
+            </div>
           </div>
+          <button
+            onClick={onClose}
+            className="absolute top-2 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/50 hover:text-white transition-colors z-20"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
 
