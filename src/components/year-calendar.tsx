@@ -354,15 +354,15 @@ export default function YearCalendar() {
                   {/* Skin picker toggle */}
                   <button
                     onClick={() => setShowSkinPicker(v => !v)}
-                    className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 relative group"
+                    className="inline-flex items-center justify-center rounded-full cursor-pointer transition-all hover:opacity-80 active:scale-95"
                     style={{
-                      background: `conic-gradient(from 0deg, #34d399, #059669, #f59e0b, #ef4444, #8b5cf6, #ec4899, #34d399)`,
-                      boxShadow: `0 0 0 2px rgba(255,255,255,0.6), 0 2px 12px rgba(0,0,0,0.15)`,
+                      width: '20px',
+                      height: '20px',
+                      backgroundColor: skin.swatch,
+                      boxShadow: `0 0 0 1.5px rgba(255,255,255,0.5)`,
                     }}
                     title="切换皮肤"
-                  >
-                    <span className="block w-4 h-4 rounded-full bg-white shadow-sm" />
-                  </button>
+                  />
                 </div>
                 {mounted && clockStr && (
                   <div className="text-xl font-mono tracking-wider tabular-nums leading-tight mt-1"
@@ -442,38 +442,40 @@ export default function YearCalendar() {
       {/* Skin Picker Dropdown - outside header to avoid overflow-hidden clipping */}
       {showSkinPicker && (
         <div className="absolute top-0 left-0 right-0 z-50 animate-fade-in" onClick={() => setShowSkinPicker(false)}>
-          <div className="mx-auto max-w-2xl px-8 pt-3 pb-5" onClick={e => e.stopPropagation()}>
+          <div className="mx-auto max-w-3xl px-6 pt-2 pb-4" onClick={e => e.stopPropagation()}>
             <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: skin.panelBg + 'f5', backdropFilter: 'blur(24px)', border: `1px solid ${skin.divider}` }}>
-              <div className="px-5 pt-4 pb-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${skin.divider}` }}>
+              <div className="px-4 pt-3 pb-2 flex items-center justify-between" style={{ borderBottom: `1px solid ${skin.divider}` }}>
                 <h3 className="text-sm font-semibold tracking-wide" style={{ color: skin.textSecondary }}>选择皮肤</h3>
                 <button onClick={() => setShowSkinPicker(false)} className="w-6 h-6 rounded-full flex items-center justify-center transition-colors cursor-pointer text-sm" style={{ color: skin.textMuted, backgroundColor: skin.divider + '60' }}>&times;</button>
               </div>
-              <div className="grid grid-cols-4 gap-2.5 p-5">
+              <div className="grid grid-cols-4 gap-3 p-4">
                 {SKINS.map(s => {
                   const isActive = skinKey === s.key;
                   return (
                     <button
                       key={s.key}
                       onClick={() => { setSkinKey(s.key); setShowSkinPicker(false); }}
-                      className="relative rounded-xl p-3 text-left transition-all cursor-pointer overflow-hidden group"
+                      className="relative rounded-xl overflow-hidden transition-all cursor-pointer group"
                       style={{
-                        background: isActive ? s.swatch + '10' : 'transparent',
-                        border: isActive ? `2px solid ${s.swatch}60` : '2px solid transparent',
-                        boxShadow: isActive ? `0 4px 16px ${s.swatch}20` : 'none',
+                        border: isActive ? `2px solid ${s.swatch}` : '2px solid transparent',
+                        boxShadow: isActive ? `0 4px 16px ${s.swatch}30` : 'none',
                       }}
-                      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = s.swatch + '08'; e.currentTarget.style.borderColor = s.swatch + '30'; } }}
-                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; } }}
+                      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = s.swatch + '50'; } }}
+                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = 'transparent'; } }}
                     >
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="w-6 h-6 rounded-lg shadow-sm flex-shrink-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${s.swatch}, ${s.sidebarTo})` }}>
-                          {isActive && <span className="text-white text-[10px] font-bold">✓</span>}
-                        </span>
-                        <div className="min-w-0">
-                          <span className="font-semibold text-[13px] block leading-tight truncate" style={{ color: s.textPrimary }}>{s.label}</span>
-                        </div>
+                      {/* Preview image from headerBgImage */}
+                      <div className="h-20 bg-cover bg-center relative" style={{ backgroundImage: `url(${s.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                        <div className="absolute inset-0" style={{ background: s.headerBgOverlay }} />
+                        {isActive && (
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: s.swatch }}>
+                            ✓
+                          </div>
+                        )}
                       </div>
-                      <p className="text-[11px] leading-snug mb-2 truncate" style={{ color: s.textMuted }}>{s.slogan}</p>
-                      <div className="h-5 rounded-md overflow-hidden" style={{ background: `linear-gradient(135deg, ${s.swatch}40, ${s.sidebarTo}60, ${s.tabActive}40)` }} />
+                      {/* Label */}
+                      <div className="px-2 py-1.5 text-center" style={{ backgroundColor: s.panelBg }}>
+                        <span className="text-xs font-semibold" style={{ color: s.textPrimary }}>{s.label}</span>
+                      </div>
                     </button>
                   );
                 })}
