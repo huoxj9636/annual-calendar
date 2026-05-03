@@ -483,7 +483,6 @@ export default function YearCalendar() {
                         </button>
                       </>
                     )}
-                    {drawingHasStrokes && (
                       <button
                         onClick={() => { const next = !drawingVisible; setDrawingVisible(next); if (drawingRef.current) drawingRef.current.setOverlayVisible(next); }}
                         className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80"
@@ -506,7 +505,6 @@ export default function YearCalendar() {
                           </svg>
                         )}
                       </button>
-                    )}
                   </div>
                 </div>
                 {mounted && clockStr && (
