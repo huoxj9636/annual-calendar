@@ -36,6 +36,7 @@ interface DrawingOverlayProps {
 const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
   function DrawingOverlay({ storageKey, visible }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const strokesRef = useRef<Stroke[]>([]);
     const [strokes, setStrokes] = useState<Stroke[]>([]);
     const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
     const [isDrawing, setIsDrawing] = useState(false);
@@ -44,6 +45,12 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
     const penWidth = 3;
     const [drawingEnabled, setDrawingEnabled] = useState(false);
     const [overlayVisible, setOverlayVisible] = useState(true);
+    const [canvasReady, setCanvasReady] = useState(false);
+
+    // Keep ref in sync
+    useEffect(() => {
+      strokesRef.current = strokes;
+    }, [strokes]);
 
     const handleUndo = useCallback(() => {
       setStrokes(prev => {
@@ -78,31 +85,14 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
       try {
         const saved = localStorage.getItem(storageKey);
         if (saved) {
-          setStrokes(JSON.parse(saved) as Stroke[]);
+          const parsed = JSON.parse(saved) as Stroke[];
+          setStrokes(parsed);
         }
       } catch { /* ignore */ }
     }, [storageKey]);
 
-    // Resize canvas to match parent
-    useEffect(() => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const parent = canvas.parentElement;
-      if (!parent) return;
-
-      const resize = () => {
-        const rect = parent.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-      };
-      resize();
-      const observer = new ResizeObserver(resize);
-      observer.observe(parent);
-      return () => observer.disconnect();
-    }, []);
-
-    // Redraw all strokes
-    const redraw = useCallback(() => {
+    // Redraw function
+    const redraw = useCallback((current: Stroke | null = null) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
@@ -110,7 +100,7 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
+      const allStrokes = current ? [...strokesRef.current, current] : strokesRef.current;
 
       for (const stroke of allStrokes) {
         if (stroke.points.length < 2) continue;
@@ -136,11 +126,37 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
       }
 
       ctx.globalCompositeOperation = 'source-over';
-    }, [strokes, currentStroke]);
+    }, []);
 
+    // Resize canvas and redraw
     useEffect(() => {
-      redraw();
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const parent = canvas.parentElement;
+      if (!parent) return;
+
+      const resize = () => {
+        const rect = parent.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          canvas.width = rect.width;
+          canvas.height = rect.height;
+          setCanvasReady(true);
+          // Redraw after resize since setting canvas.width clears content
+          redraw();
+        }
+      };
+      resize();
+      const observer = new ResizeObserver(resize);
+      observer.observe(parent);
+      return () => observer.disconnect();
     }, [redraw]);
+
+    // Redraw when strokes change
+    useEffect(() => {
+      if (canvasReady) {
+        redraw(currentStroke);
+      }
+    }, [strokes, currentStroke, canvasReady, redraw]);
 
     const getPos = (e: React.MouseEvent): Point => {
       const canvas = canvasRef.current;
