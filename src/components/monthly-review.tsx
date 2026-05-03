@@ -41,18 +41,23 @@ export default function MonthlyReview({ year }: MonthlyReviewProps) {
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const monthGridRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
+  const isInitialAutoSelect = useRef(true);
 
   useEffect(() => {
     setMounted(true);
-    // Auto-select current month after mount
+    // Auto-select current month after mount (without scrolling)
     const currentMonth = new Date().getMonth() + 1;
     if (year === new Date().getFullYear()) {
       setSelectedMonth(currentMonth);
     }
+    // Mark initial auto-select as done after a tick
+    const timer = setTimeout(() => { isInitialAutoSelect.current = false; }, 300);
+    return () => clearTimeout(timer);
   }, [year]);
 
-  // Scroll to detail when a month is selected
+  // Scroll to detail only when user manually clicks a month
   useEffect(() => {
+    if (isInitialAutoSelect.current) return;
     if (selectedMonth !== null && detailRef.current) {
       setTimeout(() => {
         detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
