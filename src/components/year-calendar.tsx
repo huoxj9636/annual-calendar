@@ -471,7 +471,7 @@ export default function YearCalendar() {
               <div className="px-4 pt-3 pb-2 flex items-center justify-between" style={{ borderBottom: `1px solid ${skin.divider}` }}>
                 <div className="flex items-center gap-3">
                   <h3 className="text-sm font-semibold tracking-wide" style={{ color: skin.textSecondary }}>选择皮肤</h3>
-                  <button onClick={() => { setSkinKey(''); localStorage.removeItem('life-calendar-skin'); setShowSkinPicker(false); }} className="text-xs px-2 py-0.5 rounded transition-colors cursor-pointer" style={{ color: skin.textMuted, backgroundColor: skin.divider + '40' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = skin.divider + '80'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = skin.divider + '40'; }}>默认</button>
+                  <button onClick={() => { setSkinKey(''); localStorage.removeItem('life-calendar-skin'); setShowSkinPicker(false); }} className="text-xs px-2 py-0.5 rounded transition-colors cursor-pointer" style={{ color: skin.textMuted, backgroundColor: skin.divider + '40' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = skin.divider + '80'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = skin.divider + '40'; }}>默认{skinKey === '' && <span className="ml-1" style={{ color: skin.checkColor }}>✓</span>}</button>
                 </div>
                 <button onClick={() => setShowSkinPicker(false)} className="w-6 h-6 rounded-full flex items-center justify-center transition-colors cursor-pointer text-sm" style={{ color: skin.textMuted, backgroundColor: skin.divider + '60' }}>&times;</button>
               </div>
