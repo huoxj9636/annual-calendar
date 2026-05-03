@@ -12,6 +12,7 @@ import DayView from '@/components/day-view';
 import MonthlyReview from '@/components/monthly-review';
 import LifeCalendar from '@/components/life-calendar';
 import { SKINS, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
+import ParticleEffect from '@/components/particle-effect';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -59,6 +60,9 @@ export default function YearCalendar() {
   const [skinKey, setSkinKey] = useState<string>(DEFAULT_SKIN);
   const [showSkinPicker, setShowSkinPicker] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [motto, setMotto] = useState('永远不要放弃');
+  const [editingMotto, setEditingMotto] = useState(false);
+  const [mottoDraft, setMottoDraft] = useState('');
 
   // Resize handler for side panels
   const handlePanelResize = useCallback((setter: React.Dispatch<React.SetStateAction<number>>, e: React.MouseEvent) => {
@@ -137,6 +141,10 @@ export default function YearCalendar() {
       // Load skin preference
       const savedSkin = localStorage.getItem('life-calendar-skin');
       if (savedSkin && SKINS.find(s => s.key === savedSkin)) setSkinKey(savedSkin);
+
+      // Load motto
+      const savedMotto = localStorage.getItem('calendar-motto');
+      if (savedMotto) setMotto(savedMotto);
     } catch {
       setOverrides({});
       setNotes({});
@@ -327,6 +335,7 @@ export default function YearCalendar() {
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
         <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
+        <ParticleEffect color={skin.swatch} count={50} />
 
         <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 px-5 py-2.5">
@@ -392,11 +401,55 @@ export default function YearCalendar() {
           </div>
 
           {/* 居中标语 */}
-          <div className="absolute inset-x-0 flex justify-center pointer-events-none">
-            <span className="text-2xl font-light tracking-[0.5em] select-none"
-            style={{ color: skin.textMuted, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.6em' }}>
-              永远不要放弃
-            </span>
+          <div className="absolute inset-x-0 flex justify-center">
+            {editingMotto ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={mottoDraft}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 15) setMottoDraft(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && mottoDraft.trim()) {
+                      setMotto(mottoDraft.trim());
+                      localStorage.setItem('calendar-motto', mottoDraft.trim());
+                      setEditingMotto(false);
+                    } else if (e.key === 'Escape') {
+                      setEditingMotto(false);
+                    }
+                  }}
+                  maxLength={15}
+                  autoFocus
+                  className="text-lg font-light tracking-[0.4em] bg-white/20 backdrop-blur-sm border-b border-white/40 text-white outline-none px-2 py-0.5 text-center"
+                  style={{ width: `${Math.max(mottoDraft.length, 4)}em`, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif' }}
+                  placeholder="输入标语..."
+                />
+                <button
+                  onClick={() => {
+                    if (mottoDraft.trim()) {
+                      setMotto(mottoDraft.trim());
+                      localStorage.setItem('calendar-motto', mottoDraft.trim());
+                      setEditingMotto(false);
+                    }
+                  }}
+                  className="text-xs bg-white/20 hover:bg-white/30 text-white rounded px-2 py-1"
+                >确认</button>
+                <button
+                  onClick={() => setEditingMotto(false)}
+                  className="text-xs bg-white/10 hover:bg-white/20 text-white/70 rounded px-2 py-1"
+                >取消</button>
+              </div>
+            ) : (
+              <span
+                className="text-2xl font-light tracking-[0.5em] select-none cursor-pointer hover:opacity-70 transition-opacity"
+                style={{ color: skin.textMuted, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.6em' }}
+                onClick={() => { setMottoDraft(motto); setEditingMotto(true); }}
+                title="点击修改标语"
+              >
+                {motto}
+              </span>
+            )}
           </div>
 
           {/* Legend & Stats */}
