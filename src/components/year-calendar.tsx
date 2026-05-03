@@ -13,7 +13,7 @@ import MonthlyReview from '@/components/monthly-review';
 import LifeCalendar from '@/components/life-calendar';
 import { SKINS, NO_SKIN, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
-import DrawingOverlay from '@/components/drawing-overlay';
+import DrawingOverlay, { DrawingOverlayHandle } from '@/components/drawing-overlay';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -52,6 +52,7 @@ export default function YearCalendar() {
   const gridInnerRef = useRef<HTMLDivElement>(null);
   const [cellHeight, setCellHeight] = useState(66);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const drawingRef = useRef<DrawingOverlayHandle>(null);
   const isSnapping = useRef(false);
   const scrollTimeout = useRef<ReturnType<typeof setTimeout>>(null);
   const [dayViewWidth, setDayViewWidth] = useState(() => {
@@ -69,6 +70,11 @@ export default function YearCalendar() {
   const [skinKey, setSkinKey] = useState<string>(DEFAULT_SKIN);
   const [showSkinPicker, setShowSkinPicker] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [drawingMode, setDrawingMode] = useState(false);
+  const [drawingHasStrokes, setDrawingHasStrokes] = useState(false);
+  const [drawingVisible, setDrawingVisible] = useState(true);
+  const [drawingColor, setDrawingColor] = useState('#ef4444');
+  const [drawingTool, setDrawingTool] = useState<'pen' | 'eraser'>('pen');
   const [motto, setMotto] = useState('永远不要放弃');
   const [editingMotto, setEditingMotto] = useState(false);
   const [mottoDraft, setMottoDraft] = useState('');
@@ -158,6 +164,15 @@ export default function YearCalendar() {
       // Load motto
       const savedMotto = localStorage.getItem('calendar-motto');
       if (savedMotto) setMotto(savedMotto);
+
+      // Check if drawing has strokes
+      const savedDrawing = localStorage.getItem(`calendar-drawing-${year}`);
+      if (savedDrawing) {
+        try {
+          const data = JSON.parse(savedDrawing);
+          setDrawingHasStrokes(data.strokes && data.strokes.length > 0);
+        } catch { /* ignore */ }
+      }
     } catch {
       setOverrides({});
       setNotes({});
@@ -396,6 +411,103 @@ export default function YearCalendar() {
                     }}
                     title="切换皮肤"
                   />
+                  {/* Drawing tool buttons */}
+                  <div className="flex items-center gap-0.5 ml-1">
+                    <button
+                      onClick={() => {
+                        const next = !drawingMode;
+                        setDrawingMode(next);
+                        if (drawingRef.current) drawingRef.current.setDrawingEnabled(next);
+                      }}
+                      className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80 active:scale-95"
+                      style={{
+                        backgroundColor: drawingMode ? skin.swatch : 'rgba(255,255,255,0.18)',
+                        color: drawingMode ? 'white' : skin.textSecondary,
+                        border: '1px solid rgba(255,255,255,0.15)',
+                      }}
+                      title={drawingMode ? '退出画笔' : '开启画笔'}
+                    >
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+                      </svg>
+                    </button>
+                    {drawingMode && (
+                      <>
+                        {['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899'].map(c => (
+                          <button
+                            key={c}
+                            onClick={() => { setDrawingColor(c); setDrawingTool('pen'); if (drawingRef.current) { drawingRef.current.setPenColor(c); drawingRef.current.setTool('pen'); } }}
+                            className="w-4 h-4 rounded-full border transition-transform hover:scale-125 cursor-pointer"
+                            style={{
+                              backgroundColor: c,
+                              borderColor: drawingColor === c && drawingTool === 'pen' ? 'white' : 'transparent',
+                              borderWidth: '1.5px',
+                            }}
+                          />
+                        ))}
+                        <button
+                          onClick={() => { const next = drawingTool === 'eraser' ? 'pen' : 'eraser'; setDrawingTool(next); if (drawingRef.current) drawingRef.current.setTool(next); }}
+                          className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80"
+                          style={{
+                            backgroundColor: drawingTool === 'eraser' ? skin.swatch : 'rgba(255,255,255,0.18)',
+                            color: drawingTool === 'eraser' ? 'white' : skin.textSecondary,
+                            border: '1px solid rgba(255,255,255,0.15)',
+                          }}
+                          title="橡皮擦"
+                        >
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8L14.8 1.4c.8-.8 2-.8 2.8 0l5 5c.8.8.8 2 0 2.8L11 20" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => drawingRef.current?.handleUndo()}
+                          className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: skin.textSecondary, border: '1px solid rgba(255,255,255,0.15)' }}
+                          title="撤销"
+                        >
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                            <path d="M3 10h10a5 5 0 015 5v0a5 5 0 01-5 5H8" />
+                            <path d="M7 6l-4 4 4 4" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => drawingRef.current?.handleClear()}
+                          className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: skin.textSecondary, border: '1px solid rgba(255,255,255,0.15)' }}
+                          title="清除全部"
+                        >
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                            <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                    {drawingHasStrokes && (
+                      <button
+                        onClick={() => { const next = !drawingVisible; setDrawingVisible(next); if (drawingRef.current) drawingRef.current.setOverlayVisible(next); }}
+                        className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80"
+                        style={{
+                          backgroundColor: drawingVisible ? 'rgba(255,255,255,0.18)' : `${skin.swatch}30`,
+                          color: drawingVisible ? skin.textSecondary : skin.swatch,
+                          border: '1px solid rgba(255,255,255,0.15)',
+                        }}
+                        title={drawingVisible ? '隐藏画迹' : '显示画迹'}
+                      >
+                        {drawingVisible ? (
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+                            <line x1="1" y1="1" x2="23" y2="23" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {mounted && clockStr && (
                   <div className="text-xl font-mono tracking-wider tabular-nums leading-tight mt-1"
@@ -550,7 +662,7 @@ export default function YearCalendar() {
 
 
           {/* Drawing overlay */}
-          <DrawingOverlay storageKey={`calendar-drawing-${year}`} visible={true} />
+          <DrawingOverlay ref={drawingRef} storageKey={`calendar-drawing-${year}`} visible={true} />
 
           {/* Month rows */}
           {yearData.map((monthRow, monthIdx) => {
