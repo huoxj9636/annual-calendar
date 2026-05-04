@@ -740,6 +740,8 @@ export default function YearCalendar() {
               style={{ color: insightOpen ? skin.swatch : `${skin.swatch}90` }}>洞察</span>
           </button>
 
+          <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}20` }} />
+
           {/* Track button */}
           <button
             onClick={(e) => {
