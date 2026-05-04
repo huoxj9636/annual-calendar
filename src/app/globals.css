@@ -179,6 +179,15 @@ body {
 .animate-slide-in-left { animation: slideInLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
 .animate-fade-in { animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 
+/* Arrow pulse animation for bookmark button */
+@keyframes arrowPulse {
+  0%, 100% { opacity: 1; transform: translateX(0); }
+  50% { opacity: 0.3; transform: translateX(3px); }
+}
+.arrow-pulse {
+  animation: arrowPulse 1.2s ease-in-out infinite;
+}
+
 /* Hide scrollbar for snap scroll container */
 .snap-y::-webkit-scrollbar { display: none; }
 .snap-y { -ms-overflow-style: none; scrollbar-width: none; }
