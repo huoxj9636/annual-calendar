@@ -103,8 +103,8 @@ export default function InsightPanel({ year, month, day, skin, onClose }: Insigh
   const s = skin;
 
   return (
-    <div className="absolute top-0 right-0 bottom-0 z-40 flex flex-col overflow-hidden"
-      style={{ backgroundColor: s.panelBg, left: '90px' }}>
+    <div className="absolute top-0 bottom-0 z-40 flex flex-col overflow-hidden"
+      style={{ backgroundColor: s.panelBg, left: '61px', right: '-4px' }}>
       {/* Header */}
       <div className="px-5 pt-4 pb-3 relative overflow-hidden flex-shrink-0"
         style={s.headerBgImage
