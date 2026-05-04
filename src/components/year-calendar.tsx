@@ -663,21 +663,19 @@ export default function YearCalendar() {
               setTimelineOpen(opening);
             }}
             onMouseDown={(e) => e.preventDefault()}
-            className="group w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
+            className="group w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
             style={{
-              backgroundColor: timelineOpen ? `${skin.swatch}25` : 'transparent',
-              color: timelineOpen ? skin.swatch : skin.textMuted,
-              boxShadow: timelineOpen ? `0 0 12px ${skin.swatch}30` : 'none',
+              backgroundColor: `${skin.swatch}20`,
+              color: timelineOpen ? skin.swatch : skin.swatch,
+              boxShadow: timelineOpen ? `0 0 0 2px ${skin.swatch}40, 0 0 16px ${skin.swatch}25` : `0 0 0 1px ${skin.swatch}15`,
             }}
             title="日程"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2.5" />
               <line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="3" y1="10" x2="21" y2="10" />
-              <rect x="7" y="13" width="3" height="3" rx="0.5" fill="currentColor" opacity="0.3" />
-              <rect x="14" y="13" width="3" height="3" rx="0.5" fill="currentColor" opacity="0.3" />
             </svg>
           </button>
         </div>
@@ -914,9 +912,9 @@ export default function YearCalendar() {
           />
         )}
 
-        {/* 月度复盘 - 全屏覆盖层 */}
+        {/* 月度复盘 - 覆盖层 */}
         {selectedMonth !== null && mounted && (
-          <div className="absolute inset-0 z-40 flex flex-col overflow-hidden"
+          <div className="absolute top-0 right-0 bottom-0 left-28 z-40 flex flex-col overflow-hidden"
             style={{ backgroundColor: skin.panelBg }}
           >
             {/* 头部 - 背景图+渐变 */}
