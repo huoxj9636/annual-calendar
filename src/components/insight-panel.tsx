@@ -74,9 +74,9 @@ export default function InsightPanel({ year, month, day, skin, onClose }: Omit<I
   const [panelLeft, setPanelLeft] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('panel-left-insight');
-      return saved ? parseInt(saved, 10) : 64;
+      return saved ? parseInt(saved, 10) : 0;
     }
-    return 64;
+    return 0;
   });
 
   // Auto-scroll to bottom as content streams in

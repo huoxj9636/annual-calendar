@@ -60,9 +60,9 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   const [panelLeft, setPanelLeft] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('panel-left-timeline');
-      return saved ? parseInt(saved, 10) : 64;
+      return saved ? parseInt(saved, 10) : 0;
     }
-    return 64;
+    return 0;
   });
 
   // Chat state

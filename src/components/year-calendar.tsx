@@ -50,9 +50,9 @@ export default function YearCalendar() {
   const [reviewLeft, setReviewLeft] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('panel-left-review');
-      return saved ? parseInt(saved, 10) : 95;
+      return saved ? parseInt(saved, 10) : 0;
     }
-    return 95;
+    return 0;
   });
   const [clockStr, setClockStr] = useState('');
   const popupRef = useRef<HTMLDivElement>(null);

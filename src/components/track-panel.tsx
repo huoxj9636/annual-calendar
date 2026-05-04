@@ -51,9 +51,9 @@ export default function TrackPanel({ year, skin, onClose }: Omit<TrackPanelProps
   const [panelLeft, setPanelLeft] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('panel-left-track');
-      return saved ? parseInt(saved, 10) : 64;
+      return saved ? parseInt(saved, 10) : 0;
     }
-    return 64;
+    return 0;
   });
   const analysisRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
