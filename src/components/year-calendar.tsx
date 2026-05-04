@@ -56,6 +56,7 @@ export default function YearCalendar() {
   const drawingRef = useRef<DrawingOverlayHandle>(null);
   const isSnapping = useRef(false);
   const scrollTimeout = useRef<ReturnType<typeof setTimeout>>(null);
+  const timelineOpenRef = useRef(false);
   const [dayViewWidth, setDayViewWidth] = useState(() => {
     if (typeof window === 'undefined') return 480;
     const saved = localStorage.getItem('calendar-dayview-width');
@@ -253,7 +254,7 @@ export default function YearCalendar() {
       setShowBackToTop(page > 0);
 
       // Skip snap when timeline panel is open
-      if (timelineOpen) return;
+      if (timelineOpenRef.current) return;
       if (isSnapping.current) return;
       if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
       scrollTimeout.current = setTimeout(() => {
@@ -289,6 +290,21 @@ export default function YearCalendar() {
       container.removeEventListener('scroll', handleScroll);
       if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
     };
+  }, [timelineOpen]);
+
+  // Lock scroll position when timeline is open (belt-and-suspenders)
+  useEffect(() => {
+    if (timelineOpen && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const savedScroll = container.scrollTop;
+      const lockScroll = () => {
+        if (timelineOpenRef.current && container.scrollTop !== savedScroll) {
+          container.scrollTop = savedScroll;
+        }
+      };
+      container.addEventListener('scroll', lockScroll, { passive: true });
+      return () => container.removeEventListener('scroll', lockScroll);
+    }
   }, [timelineOpen]);
 
   const getDayStatus = useCallback(
@@ -658,14 +674,29 @@ export default function YearCalendar() {
         {/* Calendar / Task toggle sidebar */}
         <div className="flex-shrink-0 w-10 flex flex-col items-center pt-2 gap-2 z-10">
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               const opening = !timelineOpen;
-              if (opening && scrollContainerRef.current) {
-                // Save scroll position before opening
-                scrollContainerRef.current.scrollTop = 0;
+              if (opening) {
+                isSnapping.current = false;
+                if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+                if (scrollContainerRef.current) {
+                  const container = scrollContainerRef.current;
+                  const currentScroll = container.scrollTop;
+                  // Lock scroll immediately via DOM
+                  container.style.overflowY = 'hidden';
+                  container.style.scrollBehavior = 'auto';
+                  // Snap to nearest page boundary first (without animation)
+                  const pageH = container.clientHeight;
+                  const targetPage = Math.round(currentScroll / pageH) * pageH;
+                  container.scrollTop = targetPage;
+                }
               }
+              timelineOpenRef.current = opening;
               setTimelineOpen(opening);
             }}
+            onMouseDown={(e) => e.preventDefault()}
             className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
             style={{ backgroundColor: timelineOpen ? `${skin.swatch}30` : 'transparent', color: timelineOpen ? skin.swatch : skin.textMuted }}
             title="日程"
@@ -692,7 +723,13 @@ export default function YearCalendar() {
               year={year}
               month={mounted ? new Date().getMonth() + 1 : 1}
               day={mounted ? new Date().getDate() : 1}
-              onClose={() => setTimelineOpen(false)}
+              onClose={() => {
+                timelineOpenRef.current = false;
+                setTimelineOpen(false);
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.style.overflowY = 'scroll';
+                }
+              }}
               skin={skin}
             />
           )}
