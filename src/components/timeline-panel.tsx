@@ -142,8 +142,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     const target = e.target as HTMLElement;
     if (target.closest('[data-event-block]')) return;
     const rect = timelineRef.current.getBoundingClientRect();
-    const scrollTop = timelineScrollRef.current?.scrollTop ?? 0;
-    const y = e.clientY - rect.top + scrollTop;
+    const y = e.clientY - rect.top;
     const totalMinutes = Math.floor((y / HOUR_HEIGHT) * 60);
     const snappedMinutes = Math.floor(totalMinutes / 15) * 15;
     const startMin = Math.max(0, Math.min(snappedMinutes, 23 * 60 + 45));
@@ -152,10 +151,11 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     setAddEndTime(minutesToTime(endMin));
     setAddTitle('');
     setAddDescription('');
+    const scrollTop = timelineScrollRef.current?.scrollTop ?? 0;
     const viewH = timelineScrollRef.current?.clientHeight ?? 600;
     const maxTop = scrollTop + viewH - 380;
     const minTop = scrollTop + 20;
-    setAddModalTop(Math.max(minTop, Math.min(y - 40, maxTop)));
+    setAddModalTop(Math.max(minTop, Math.min(y + scrollTop - 40, maxTop)));
     setShowAddModal(true);
     setShowEditModal(false);
   }, []);
@@ -164,12 +164,12 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   const handleTimelineMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!timelineRef.current) return;
     const rect = timelineRef.current.getBoundingClientRect();
+    const y = e.clientY - rect.top;
     const scrollTop = timelineScrollRef.current?.scrollTop ?? 0;
-    const y = e.clientY - rect.top + scrollTop;
     const totalMinutes = Math.floor((y / HOUR_HEIGHT) * 60);
     const clamped = Math.max(0, Math.min(totalMinutes, 24 * 60 - 1));
     setMouseTime(minutesToTime(clamped));
-    setMouseY(y);
+    setMouseY(y + scrollTop);
   }, []);
 
   const handleTimelineMouseLeave = useCallback(() => { setMouseTime(null); }, []);
