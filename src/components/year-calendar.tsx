@@ -1074,7 +1074,7 @@ export default function YearCalendar() {
                   document.body.style.cursor = 'col-resize';
                   const onMove = (ev: MouseEvent) => {
                     ev.preventDefault();
-                    const newLeft = Math.max(0, Math.min(startLeft + (startX - ev.clientX), 500));
+                    const newLeft = Math.max(0, Math.min(startLeft + (ev.clientX - startX), 500));
                     finalLeft = newLeft;
                     setReviewLeft(newLeft);
                   };

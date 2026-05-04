@@ -9,7 +9,6 @@ interface InsightPanelProps {
   day: number;
   skin: SkinTheme;
   onClose: () => void;
-  initialLeft?: number;
 }
 
 interface InsightGoal {
@@ -65,7 +64,7 @@ const INSIGHT_GOALS: InsightGoal[] = [
   },
 ];
 
-export default function InsightPanel({ year, month, day, skin, onClose, initialLeft = 64 }: InsightPanelProps) {
+export default function InsightPanel({ year, month, day, skin, onClose }: Omit<InsightPanelProps, 'initialLeft'>) {
   const [selectedGoal, setSelectedGoal] = useState<string>('');
   const [insight, setInsight] = useState('');
   const [loading, setLoading] = useState(false);
@@ -75,9 +74,9 @@ export default function InsightPanel({ year, month, day, skin, onClose, initialL
   const [panelLeft, setPanelLeft] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('panel-left-insight');
-      return saved ? parseInt(saved, 10) : initialLeft;
+      return saved ? parseInt(saved, 10) : 64;
     }
-    return initialLeft;
+    return 64;
   });
 
   // Auto-scroll to bottom as content streams in
@@ -199,7 +198,7 @@ export default function InsightPanel({ year, month, day, skin, onClose, initialL
           document.body.style.cursor = 'col-resize';
           const onMove = (ev: MouseEvent) => {
             ev.preventDefault();
-            const newLeft = Math.max(0, Math.min(startLeft + (startX - ev.clientX), 500));
+            const newLeft = Math.max(0, Math.min(startLeft + (ev.clientX - startX), 500));
             finalLeft = newLeft;
             setPanelLeft(newLeft);
           };

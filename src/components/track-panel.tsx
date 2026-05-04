@@ -7,7 +7,6 @@ interface TrackPanelProps {
   year: number;
   skin: SkinTheme;
   onClose: () => void;
-  initialLeft?: number;
 }
 
 interface PlannedEvent {
@@ -39,7 +38,7 @@ function minutesToTime(m: number): string {
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 }
 
-export default function TrackPanel({ year, skin, onClose, initialLeft = 64 }: TrackPanelProps) {
+export default function TrackPanel({ year, skin, onClose }: Omit<TrackPanelProps, 'initialLeft'>) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [actualTimes, setActualTimes] = useState<Record<string, ActualTime>>({});
@@ -49,7 +48,13 @@ export default function TrackPanel({ year, skin, onClose, initialLeft = 64 }: Tr
   const [error, setError] = useState('');
   const [plannedEvents, setPlannedEvents] = useState<PlannedEvent[]>([]);
   const abortRef = useRef<AbortController | null>(null);
-  const [panelLeft, setPanelLeft] = useState(initialLeft);
+  const [panelLeft, setPanelLeft] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('panel-left-track');
+      return saved ? parseInt(saved, 10) : 64;
+    }
+    return 64;
+  });
   const analysisRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -251,7 +256,7 @@ export default function TrackPanel({ year, skin, onClose, initialLeft = 64 }: Tr
           document.body.style.cursor = 'col-resize';
           const onMove = (ev: MouseEvent) => {
             ev.preventDefault();
-            const newLeft = Math.max(0, Math.min(startLeft + (startX - ev.clientX), 500));
+            const newLeft = Math.max(0, Math.min(startLeft + (ev.clientX - startX), 500));
             finalLeft = newLeft;
             setPanelLeft(newLeft);
           };

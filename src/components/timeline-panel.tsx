@@ -36,7 +36,6 @@ interface TimelinePanelProps {
     sidebarTo: string;
   };
   onClose: () => void;
-  initialLeft?: number;
 }
 
 const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => i);
@@ -48,7 +47,7 @@ const EVENT_COLORS = [
   { key: 'other', label: '其他', color: '#6b7280' },
 ];
 
-export default function TimelinePanel({ year, month, day, skin, onClose, initialLeft = 64 }: TimelinePanelProps) {
+export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<TimelinePanelProps, 'initialLeft'>) {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [mounted, setMounted] = useState(false);
   const [addingSlot, setAddingSlot] = useState<number | null>(null);
@@ -61,9 +60,9 @@ export default function TimelinePanel({ year, month, day, skin, onClose, initial
   const [panelLeft, setPanelLeft] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('panel-left-timeline');
-      return saved ? parseInt(saved, 10) : initialLeft;
+      return saved ? parseInt(saved, 10) : 64;
     }
-    return initialLeft;
+    return 64;
   });
 
   // Chat state
@@ -233,7 +232,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose, initial
           document.body.style.cursor = 'col-resize';
           const onMove = (ev: MouseEvent) => {
             ev.preventDefault();
-            const newLeft = Math.max(0, Math.min(startLeft + (startX - ev.clientX), 500));
+            const newLeft = Math.max(0, Math.min(startLeft + (ev.clientX - startX), 500));
             finalLeft = newLeft;
             setPanelLeft(newLeft);
           };
