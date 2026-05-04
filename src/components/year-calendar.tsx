@@ -1038,7 +1038,7 @@ export default function YearCalendar() {
           {/* 月度复盘 - 覆盖层，左侧从月份名列右侧开始 */}
           {selectedMonth !== null && mounted && (
             <div className="absolute top-0 right-0 bottom-0 z-40 flex flex-col overflow-hidden"
-              style={{ backgroundColor: skin.panelBg, left: '81px' }}
+              style={{ backgroundColor: skin.panelBg, left: '85px' }}
             >
             {/* 头部 - 背景图+渐变 */}
             <div className="px-6 pt-5 pb-5 relative overflow-hidden flex-shrink-0" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
