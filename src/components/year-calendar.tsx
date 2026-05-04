@@ -75,7 +75,7 @@ export default function YearCalendar() {
   const [, setDrawingHasStrokes] = useState(false);
   const [drawingVisible, setDrawingVisible] = useState(true);
   const [timelineOpen, setTimelineOpen] = useState(false);
-  const [timelineMode, setTimelineMode] = useState<'calendar' | 'schedule' | 'tasks'>('calendar');
+
   const [drawingColor, setDrawingColor] = useState('#ef4444');
   const [drawingTool, setDrawingTool] = useState<'pen' | 'eraser'>('pen');
   const [motto, setMotto] = useState('永远不要放弃');
@@ -656,20 +656,12 @@ export default function YearCalendar() {
         {/* Calendar / Task toggle sidebar */}
         <div className="flex-shrink-0 w-10 flex flex-col items-center pt-2 gap-2 z-10">
           <button
-            onClick={() => { setTimelineOpen(true); setTimelineMode('schedule'); }}
+            onClick={() => setTimelineOpen(v => !v)}
             className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
-            style={{ backgroundColor: timelineOpen && timelineMode === 'schedule' ? `${skin.swatch}30` : 'transparent', color: timelineOpen && timelineMode === 'schedule' ? skin.swatch : skin.textMuted }}
+            style={{ backgroundColor: timelineOpen ? `${skin.swatch}30` : 'transparent', color: timelineOpen ? skin.swatch : skin.textMuted }}
             title="日程"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          </button>
-          <button
-            onClick={() => { setTimelineOpen(true); setTimelineMode('tasks'); }}
-            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
-            style={{ backgroundColor: timelineOpen && timelineMode === 'tasks' ? `${skin.swatch}30` : 'transparent', color: timelineOpen && timelineMode === 'tasks' ? skin.swatch : skin.textMuted }}
-            title="任务"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           </button>
         </div>
 
@@ -691,11 +683,8 @@ export default function YearCalendar() {
               year={year}
               month={mounted ? new Date().getMonth() + 1 : 1}
               day={mounted ? new Date().getDate() : 1}
-              mode={timelineMode === 'schedule' ? 'calendar' : timelineMode}
               onClose={() => setTimelineOpen(false)}
-              onModeChange={setTimelineMode}
               skin={skin}
-              onDayClick={(y: number, m: number, d: number) => { setDayViewDate({ year: y, month: m, day: d }); setTimelineOpen(false); }}
             />
           )}
 
