@@ -429,6 +429,83 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     return map;
   })();
 
+  // 拖拽调整事件时间/宽度
+  const [dragState, setDragState] = useState<{
+    eventId: string;
+    type: 'top' | 'bottom' | 'left' | 'right' | 'move';
+    startY: number;
+    startX: number;
+    origStartMin: number;
+    origEndMin: number;
+    group: TimelineEvent[];
+    indexInGroup: number;
+  } | null>(null);
+
+  const dragRef = useRef(dragState);
+  dragRef.current = dragState;
+
+  const handleResizeStart = useCallback((
+    e: React.MouseEvent,
+    ev: TimelineEvent,
+    type: 'top' | 'bottom' | 'left' | 'right' | 'move',
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const layoutInfo = eventLayoutMap.get(ev.id);
+    if (!layoutInfo) return;
+    const startMin = timeToMinutes(ev.time);
+    const endMin = ev.endTime ? timeToMinutes(ev.endTime) : startMin + 60;
+    const newState = {
+      eventId: ev.id,
+      type,
+      startY: e.clientY,
+      startX: e.clientX,
+      origStartMin: startMin,
+      origEndMin: endMin,
+      group: layoutInfo.group,
+      indexInGroup: layoutInfo.index,
+    };
+    setDragState(newState);
+    dragRef.current = newState;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = type === 'top' || type === 'bottom' ? 'ns-resize' : type === 'move' ? 'grabbing' : 'ew-resize';
+  }, [eventLayoutMap]);
+
+  useEffect(() => {
+    if (!dragState) return;
+    const onMove = (e: MouseEvent) => {
+      e.preventDefault();
+      const ds = dragRef.current;
+      if (!ds) return;
+      const dy = e.clientY - ds.startY;
+      const minDelta = Math.round((dy / HOUR_HEIGHT) * 60 / 15) * 15; // 15分钟对齐
+
+      if (ds.type === 'top') {
+        const newStart = Math.max(0, Math.min(ds.origStartMin + minDelta, ds.origEndMin - 15));
+        setEvents(prev => prev.map(ev => ev.id === ds.eventId ? { ...ev, time: minutesToTime(newStart) } : ev));
+      } else if (ds.type === 'bottom') {
+        const newEnd = Math.max(ds.origStartMin + 15, Math.min(ds.origEndMin + minDelta, 24 * 60));
+        setEvents(prev => prev.map(ev => ev.id === ds.eventId ? { ...ev, endTime: minutesToTime(newEnd) } : ev));
+      } else if (ds.type === 'move') {
+        const newStart = Math.max(0, Math.min(ds.origStartMin + minDelta, 24 * 60 - (ds.origEndMin - ds.origStartMin)));
+        const duration = ds.origEndMin - ds.origStartMin;
+        setEvents(prev => prev.map(ev => ev.id === ds.eventId ? { ...ev, time: minutesToTime(newStart), endTime: minutesToTime(newStart + duration) } : ev));
+      }
+    };
+    const onUp = () => {
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      setDragState(null);
+      dragRef.current = null;
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, [dragState]);
+
   return (
     <div
       className="absolute top-0 bottom-0 z-40 flex flex-col overflow-hidden"
@@ -517,51 +594,88 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
               </div>
             )}
 
-            {/* 事件块 - 支持重叠并列 */}
+            {/* 事件块 - 支持重叠并列 + 拖拽边角调整 */}
             {events.map(ev => {
               const layoutInfo = eventLayoutMap.get(ev.id);
               if (!layoutInfo) return null;
               const { top, height, left, width, right } = getEventLayout(ev, layoutInfo.group, layoutInfo.index);
               const isSingle = layoutInfo.group.length <= 1;
               const evColor = ev.color || s.swatch;
+              const isDragging = dragState?.eventId === ev.id;
               return (
                 <div
                   key={ev.id}
                   data-event-block
-                  className="absolute rounded-md px-2 py-1 cursor-pointer hover:brightness-95 transition-all z-10 group/ev"
+                  className="absolute rounded-md px-2 py-1 cursor-pointer hover:brightness-95 transition-shadow z-10 group/ev"
                   style={{
                     top, height,
                     left: isSingle ? (TIME_LABEL_WIDTH + 4) : left,
                     right: isSingle ? 4 : undefined,
                     width: isSingle ? undefined : width,
                     backgroundColor: `${evColor}22`,
-                    borderLeft: `3px solid ${evColor}`,
                     border: `1px solid ${evColor}44`,
                     borderLeftWidth: 3,
+                    borderLeftColor: evColor,
                     overflow: 'hidden',
+                    boxShadow: isDragging ? `0 0 0 2px ${evColor}60` : undefined,
                   }}
                   onClick={(e) => handleEventClick(ev, e)}
                   onContextMenu={(e) => handleEventContextMenu(ev, e)}
                 >
-                  <div className="flex items-center gap-1">
-                    <button
+                  {/* 上边拖拽手柄 - 调整开始时间 */}
+                  <div
+                    className="absolute top-0 left-0 right-0 h-2 cursor-n-resize z-20"
+                    onMouseDown={(e) => handleResizeStart(e, ev, 'top')}
+                    style={{ borderTopLeftRadius: 6, borderTopRightRadius: 6 }}
+                  >
+                    <div className="mx-auto mt-0.5 w-6 h-[3px] rounded-full opacity-0 group-hover/ev:opacity-60 transition-opacity" style={{ backgroundColor: evColor }} />
+                  </div>
+                  {/* 下边拖拽手柄 - 调整结束时间 */}
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize z-20"
+                    onMouseDown={(e) => handleResizeStart(e, ev, 'bottom')}
+                    style={{ borderBottomLeftRadius: 6, borderBottomRightRadius: 6 }}
+                  >
+                    <div className="mx-auto mt-auto mb-0.5 w-6 h-[3px] rounded-full opacity-0 group-hover/ev:opacity-60 transition-opacity" style={{ backgroundColor: evColor }} />
+                  </div>
+                  {/* 左边拖拽手柄 */}
+                  {!isSingle && (
+                    <div
+                      className="absolute top-0 bottom-0 left-0 w-1.5 cursor-w-resize z-20"
+                      onMouseDown={(e) => handleResizeStart(e, ev, 'left')}
+                    />
+                  )}
+                  {/* 右边拖拽手柄 */}
+                  {!isSingle && (
+                    <div
+                      className="absolute top-0 bottom-0 right-0 w-1.5 cursor-e-resize z-20"
+                      onMouseDown={(e) => handleResizeStart(e, ev, 'right')}
+                    />
+                  )}
+                  {/* 中间拖拽 - 移动整个事件 */}
+                  <div
+                    className="absolute top-2 bottom-2 left-2 right-2 cursor-grab z-15"
+                    onMouseDown={(e) => handleResizeStart(e, ev, 'move')}
+                  />
+                  <div className="flex items-center gap-1 relative z-10 pointer-events-none">
+                    <div
+                      className="w-3.5 h-3.5 flex-shrink-0 rounded-sm border flex items-center justify-center text-[8px] pointer-events-auto"
                       onClick={(e) => { e.stopPropagation(); handleToggleDone(ev.id); }}
-                      className="w-3.5 h-3.5 flex-shrink-0 rounded-sm border flex items-center justify-center text-[8px]"
                       style={{ borderColor: ev.done ? s.checkColor : s.textMuted, backgroundColor: ev.done ? s.checkColor : 'transparent', color: '#fff' }}
                     >
                       {ev.done ? '✓' : ''}
-                    </button>
+                    </div>
                     <span className={`text-[11px] truncate font-medium ${ev.done ? 'line-through' : ''}`} style={{ color: ev.done ? s.textMuted : s.textPrimary }}>
                       {ev.title}
                     </span>
                   </div>
-                  <div className="text-[9px] mt-0.5" style={{ color: s.textMuted }}>
+                  <div className="text-[9px] mt-0.5 relative z-10 pointer-events-none" style={{ color: s.textMuted }}>
                     {ev.time}{ev.endTime ? ` - ${ev.endTime}` : ''}
                   </div>
                   {/* 右上角删除按钮 - hover时显示 */}
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteEvent(ev.id); }}
-                    className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover/ev:opacity-100 transition-opacity text-[9px] leading-none"
+                    className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover/ev:opacity-100 transition-opacity text-[9px] leading-none z-20"
                     style={{ backgroundColor: `${evColor}30`, color: evColor }}
                     title="删除"
                   >
