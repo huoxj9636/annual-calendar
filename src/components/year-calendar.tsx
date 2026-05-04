@@ -645,7 +645,7 @@ export default function YearCalendar() {
         </button>
 
         {/* Calendar / Task toggle sidebar */}
-        <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10" style={{ gap: '6px' }}>
+        <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10" style={{ gap: '12px' }}>
           {/* Calendar / Schedule button */}
           <button
             onClick={(e) => {
