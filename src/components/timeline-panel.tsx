@@ -579,9 +579,12 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
               title="定位到当前时间"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
-                <line x1="8" y1="4.5" x2="8" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                <line x1="8" y1="8" x2="10.5" y2="9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="8" cy="8" r="2.5" fill="currentColor" />
+                <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.3" />
+                <line x1="8" y1="1" x2="8" y2="4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                <line x1="8" y1="12" x2="8" y2="15" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                <line x1="1" y1="8" x2="4" y2="8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                <line x1="12" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
               </svg>
             </button>
           )}
