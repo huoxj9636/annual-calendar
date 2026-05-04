@@ -691,8 +691,8 @@ export default function YearCalendar() {
                 <line x1="3" y1="10" x2="21" y2="10" />
               </svg>
             </span>
-            <span className="text-[9px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: timelineOpen ? skin.swatch : '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>日程</span>
+            <span className="text-[10px] leading-none font-bold tracking-wide transition-colors"
+              style={{ color: timelineOpen ? skin.swatch : '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)', WebkitTextStroke: '0.3px rgba(0,0,0,0.5)' }}>日程</span>
           </button>
 
           <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
@@ -736,8 +736,8 @@ export default function YearCalendar() {
                 <circle cx="12" cy="12" r="3" />
               </svg>
             </span>
-            <span className="text-[9px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: insightOpen ? skin.swatch : '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>洞察</span>
+            <span className="text-[10px] leading-none font-bold tracking-wide transition-colors"
+              style={{ color: insightOpen ? skin.swatch : '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)', WebkitTextStroke: '0.3px rgba(0,0,0,0.5)' }}>洞察</span>
           </button>
 
           <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
@@ -780,8 +780,8 @@ export default function YearCalendar() {
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
               </svg>
             </span>
-            <span className="text-[9px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: trackOpen ? skin.swatch : '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>轨迹</span>
+            <span className="text-[10px] leading-none font-bold tracking-wide transition-colors"
+              style={{ color: trackOpen ? skin.swatch : '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)', WebkitTextStroke: '0.3px rgba(0,0,0,0.5)' }}>轨迹</span>
           </button>
         </div>
 
