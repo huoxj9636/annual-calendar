@@ -139,22 +139,16 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
     <div className="absolute top-0 bottom-0 z-40 flex flex-col overflow-hidden"
       style={{ backgroundColor: s.panelBg, left: '64px', right: '-6px' }}>
       {/* Header */}
-      <div className="px-5 pt-4 pb-3 relative overflow-hidden flex-shrink-0"
-        style={s.headerBgImage
-          ? { backgroundImage: `url(${s.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-          : { background: `linear-gradient(135deg, ${s.headerFrom} 0%, ${s.headerTo} 100%)` }}>
-        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${s.sidebarFrom}55, ${s.sidebarTo}44)` }} />
-        <div className="relative z-10 flex items-center justify-between">
+      <div className="px-5 pt-4 pb-3 border-b flex-shrink-0 flex items-center justify-between" style={{ borderColor: s.divider }}>
           <div>
-            <div className="text-white/60 text-xs font-medium tracking-wider mb-0.5">LIFE TRACK</div>
-            <div className="text-white text-2xl font-bold">轨迹分析</div>
+            <div className="text-xs font-medium tracking-wider mb-0.5" style={{ color: s.swatch }}>LIFE TRACK</div>
+            <div className="text-2xl font-bold" style={{ color: s.textPrimary }}>轨迹分析</div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors z-20 cursor-pointer">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer" style={{ backgroundColor: s.cardHover }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={s.textMuted} strokeWidth="2" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
-        </div>
       </div>
 
       {/* Time range selector */}
