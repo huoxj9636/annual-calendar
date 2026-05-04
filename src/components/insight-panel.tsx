@@ -179,43 +179,47 @@ export default function InsightPanel({ year, month, day, skin, onClose }: Insigh
     <div className="absolute top-0 bottom-0 z-40 flex overflow-hidden"
       style={{ backgroundColor: s.panelBg, left: '64px', right: '-6px' }}>
       {/* Left sidebar - Goal selection */}
-      <div className="w-56 flex-shrink-0 flex flex-col border-r"
+      <div className="w-72 flex-shrink-0 flex flex-col border-r"
         style={{ borderColor: s.divider, backgroundColor: `${s.sidebarFrom}10` }}>
 
-        {/* Header */}
-        <div className="px-4 pt-4 pb-3 border-b" style={{ borderColor: s.divider }}>
-          <div className="text-xs font-medium tracking-wider mb-0.5" style={{ color: s.swatch }}>DAILY INSIGHT</div>
+        {/* Header - 日期在上，英文在下 */}
+        <div className="px-5 pt-4 pb-3 border-b" style={{ borderColor: s.divider }}>
           <div className="text-lg font-bold" style={{ color: s.textPrimary }}>{month}月{day}日</div>
+          <div className="text-xs font-medium tracking-wider mt-0.5" style={{ color: s.swatch }}>DAILY INSIGHT</div>
         </div>
 
-        {/* Goal list */}
-        <div className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
-          <div className="px-2 py-1.5 text-xs font-medium tracking-wider" style={{ color: s.textMuted }}>
+        {/* Goal list - 每个卡片始终有边框 */}
+        <div className="flex-1 overflow-y-auto py-3 px-3 space-y-2">
+          <div className="px-2 py-1 text-xs font-medium tracking-wider" style={{ color: s.textMuted }}>
             选择洞察维度
           </div>
-          {INSIGHT_GOALS.map(goal => (
-            <button
-              key={goal.id}
-              onClick={() => fetchInsight(goal.id)}
-              className="w-full text-left px-3 py-2.5 rounded-lg transition-all cursor-pointer group"
-              style={{
-                backgroundColor: selectedGoal === goal.id ? `${s.swatch}20` : 'transparent',
-                borderLeft: selectedGoal === goal.id ? `3px solid ${s.swatch}` : '3px solid transparent',
-              }}
-            >
-              <div className="flex items-start gap-2.5">
-                <span className="text-lg leading-none mt-0.5">{goal.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium" style={{ color: selectedGoal === goal.id ? s.swatch : s.textPrimary }}>
-                    {goal.name}
-                  </div>
-                  <div className="text-xs mt-0.5 leading-snug" style={{ color: s.textMuted }}>
-                    {goal.desc}
+          {INSIGHT_GOALS.map(goal => {
+            const isSelected = selectedGoal === goal.id;
+            return (
+              <button
+                key={goal.id}
+                onClick={() => fetchInsight(goal.id)}
+                className="w-full text-left px-3 py-2.5 rounded-lg transition-all cursor-pointer group"
+                style={{
+                  backgroundColor: isSelected ? `${s.swatch}18` : s.cardBg,
+                  border: `1.5px solid ${isSelected ? s.swatch : s.divider}`,
+                  boxShadow: isSelected ? `0 0 0 1px ${s.swatch}30` : 'none',
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl leading-none flex-shrink-0">{goal.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold" style={{ color: isSelected ? s.swatch : s.textPrimary }}>
+                      {goal.name}
+                    </div>
+                    <div className="text-xs mt-0.5 whitespace-nowrap truncate" style={{ color: s.textMuted }}>
+                      {goal.desc}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
 
