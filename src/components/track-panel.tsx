@@ -237,11 +237,11 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
     <div className="absolute top-0 bottom-0 z-40 flex flex-col overflow-hidden"
       style={{ backgroundColor: s.panelBg, left: '64px', right: '-6px' }}>
 
-      {/* Header */}
+      {/* Header - 中文在上，英文在下 */}
       <div className="px-5 pt-4 pb-3 border-b flex-shrink-0 flex items-center justify-between" style={{ borderColor: s.divider }}>
         <div>
-          <div className="text-xs font-medium tracking-wider mb-0.5" style={{ color: s.swatch }}>LIFE TRACK</div>
-          <div className="text-2xl font-bold" style={{ color: s.textPrimary }}>轨迹对照</div>
+          <div className="text-lg font-bold" style={{ color: s.textPrimary }}>{selectedMonth}月{selectedDay}日</div>
+          <div className="text-xs font-medium tracking-wider mt-0.5" style={{ color: s.swatch }}>LIFE TRACK</div>
         </div>
         <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer" style={{ backgroundColor: s.cardHover }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={s.textMuted} strokeWidth="2" strokeLinecap="round">
@@ -250,12 +250,12 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
         </button>
       </div>
 
-      {/* Date selector */}
-      <div className="px-5 py-3 flex items-center gap-2 border-b flex-shrink-0" style={{ borderColor: s.divider }}>
+      {/* Date selector - compact, in header */}
+      <div className="px-5 py-2 flex items-center gap-2 border-b flex-shrink-0" style={{ borderColor: s.divider }}>
         <select
           value={selectedMonth}
           onChange={e => { setSelectedMonth(Number(e.target.value)); setSelectedDay(1); }}
-          className="px-2 py-1 rounded-lg text-sm border outline-none cursor-pointer"
+          className="px-1.5 py-0.5 rounded text-[11px] border outline-none cursor-pointer"
           style={{ backgroundColor: s.cardBg, color: s.textPrimary, borderColor: s.divider }}
         >
           {MONTHS.map((label, i) => (
@@ -265,15 +265,15 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
         <select
           value={selectedDay}
           onChange={e => setSelectedDay(Number(e.target.value))}
-          className="px-2 py-1 rounded-lg text-sm border outline-none cursor-pointer"
+          className="px-1.5 py-0.5 rounded text-[11px] border outline-none cursor-pointer"
           style={{ backgroundColor: s.cardBg, color: s.textPrimary, borderColor: s.divider }}
         >
           {Array.from({ length: daysInMonth }, (_, i) => (
             <option key={i + 1} value={i + 1}>{i + 1}日</option>
           ))}
         </select>
-        <span className="text-sm ml-1" style={{ color: s.textSecondary }}>
-          {year}年{selectedMonth}月{selectedDay}日
+        <span className="text-[11px]" style={{ color: s.textMuted }}>
+          计划 vs 实际时间对照
         </span>
       </div>
 
@@ -284,9 +284,9 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={s.swatch} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity={0.3}>
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
-            <div style={{ color: s.textMuted }} className="text-sm text-center">
+            <div style={{ color: s.textMuted }} className="text-xs text-center">
               当天暂无日程<br />
-              <span className="text-xs">请先在日程中添加任务，再回来对照轨迹</span>
+              <span className="text-[10px]">请先在日程中添加任务，再回来对照轨迹</span>
             </div>
           </div>
         ) : (
@@ -294,11 +294,11 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
 
             {/* Gantt Chart - Planned vs Actual */}
             <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: `${s.swatch}60` }} />
-                <span className="text-xs" style={{ color: s.textMuted }}>计划时间</span>
-                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: s.swatch }} />
-                <span className="text-xs" style={{ color: s.textMuted }}>实际时间</span>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: `${s.swatch}60` }} />
+                <span className="text-[10px]" style={{ color: s.textMuted }}>计划</span>
+                <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: s.swatch }} />
+                <span className="text-[10px]" style={{ color: s.textMuted }}>实际</span>
               </div>
 
               {/* Timeline header */}
@@ -325,15 +325,15 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
                   return (
                     <div key={event.id}>
                       {/* Gantt row */}
-                      <div className="flex items-center gap-2 h-8">
-                        <div className="w-[72px] flex-shrink-0 text-xs truncate text-right pr-1" style={{ color: s.textSecondary }}>
+                      <div className="flex items-center gap-2 h-7">
+                        <div className="w-[60px] flex-shrink-0 text-[10px] truncate text-right pr-1" style={{ color: s.textSecondary }}>
                           {event.title}
                         </div>
                         <div className="flex-1 relative h-full rounded" style={{ backgroundColor: `${s.divider}30` }}>
                           {/* Planned bar */}
                           {event.time && event.endTime && (
                             <div
-                              className="absolute top-0.5 h-[10px] rounded-sm"
+                              className="absolute top-0.5 h-[8px] rounded-sm"
                               style={{
                                 ...getBarPosition(event.time, event.endTime),
                                 backgroundColor: `${s.swatch}40`,
@@ -344,7 +344,7 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
                           {/* Actual bar */}
                           {actual?.actualStart && actual?.actualEnd && (
                             <div
-                              className="absolute bottom-0.5 h-[10px] rounded-sm"
+                              className="absolute bottom-0.5 h-[8px] rounded-sm"
                               style={{
                                 ...getBarPosition(actual.actualStart, actual.actualEnd),
                                 backgroundColor: s.swatch,
@@ -357,7 +357,7 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
 
                       {/* Delay indicator */}
                       {(delay !== null || durDiff !== null) && (
-                        <div className="flex items-center gap-2 ml-[80px] text-[11px]" style={{ color: s.textMuted }}>
+                        <div className="flex items-center gap-2 ml-[68px] text-[10px]" style={{ color: s.textMuted }}>
                           {delay !== null && (
                             <span style={{ color: delay > 0 ? '#ef4444' : delay < 0 ? '#22c55e' : s.textMuted }}>
                               {delay > 0 ? `延迟${delay}min` : delay < 0 ? `提前${Math.abs(delay)}min` : '准时'}
@@ -372,16 +372,16 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
                       )}
 
                       {/* Actual time input row */}
-                      <div className="flex items-center gap-2 ml-[80px] mt-1 mb-1">
+                      <div className="flex items-center gap-2 ml-[68px] mt-0.5 mb-0.5">
                         <button
                           onClick={() => setEditingEventId(isEditing ? null : event.id)}
-                          className="text-[11px] px-2 py-0.5 rounded transition-colors cursor-pointer"
+                          className="text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
                           style={{ backgroundColor: s.cardHover, color: s.textSecondary }}
                         >
                           {isEditing ? '收起' : '记录实际'}
                         </button>
                         {actual?.actualStart && (
-                          <span className="text-[11px]" style={{ color: s.swatch }}>
+                          <span className="text-[10px]" style={{ color: s.swatch }}>
                             实际 {actual.actualStart}{actual.actualEnd ? ` - ${actual.actualEnd}` : ''}
                           </span>
                         )}
@@ -389,24 +389,24 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
 
                       {/* Expanded editing */}
                       {isEditing && (
-                        <div className="ml-[80px] p-3 rounded-lg mb-2 flex items-center gap-3" style={{ backgroundColor: s.cardBg }}>
+                        <div className="ml-[68px] p-2 rounded-lg mb-1.5 flex items-center gap-2" style={{ backgroundColor: s.cardBg }}>
                           <div className="flex items-center gap-1">
-                            <span className="text-xs" style={{ color: s.textMuted }}>开始</span>
+                            <span className="text-[10px]" style={{ color: s.textMuted }}>开始</span>
                             <input
                               type="time"
                               value={actual?.actualStart || ''}
                               onChange={e => updateActualTime(event.id, 'actualStart', e.target.value)}
-                              className="px-1.5 py-0.5 rounded text-xs border outline-none"
+                              className="px-1 py-0.5 rounded text-[10px] border outline-none"
                               style={{ backgroundColor: s.panelBg, color: s.textPrimary, borderColor: s.divider }}
                             />
                           </div>
                           <div className="flex items-center gap-1">
-                            <span className="text-xs" style={{ color: s.textMuted }}>结束</span>
+                            <span className="text-[10px]" style={{ color: s.textMuted }}>结束</span>
                             <input
                               type="time"
                               value={actual?.actualEnd || ''}
                               onChange={e => updateActualTime(event.id, 'actualEnd', e.target.value)}
-                              className="px-1.5 py-0.5 rounded text-xs border outline-none"
+                              className="px-1 py-0.5 rounded text-[10px] border outline-none"
                               style={{ backgroundColor: s.panelBg, color: s.textPrimary, borderColor: s.divider }}
                             />
                           </div>
@@ -417,7 +417,7 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
                                 delete updated[event.id];
                                 saveActualTimes(updated);
                               }}
-                              className="text-[11px] px-2 py-0.5 rounded cursor-pointer"
+                              className="text-[10px] px-1.5 py-0.5 rounded cursor-pointer"
                               style={{ color: '#ef4444' }}
                             >
                               清除
@@ -432,7 +432,7 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
             </div>
 
             {/* Summary stats */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               {(() => {
                 const withActual = plannedEvents.filter(e => actualTimes[e.id]?.actualStart);
                 const delays = plannedEvents.map(e => getDelay(e)).filter((d): d is number => d !== null);
@@ -442,19 +442,19 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
 
                 return (
                   <>
-                    <div className="rounded-lg p-3 text-center" style={{ backgroundColor: s.cardBg }}>
-                      <div className="text-xl font-bold" style={{ color: s.swatch }}>{withActual.length}/{plannedEvents.length}</div>
-                      <div className="text-[11px] mt-0.5" style={{ color: s.textMuted }}>已记录</div>
+                    <div className="rounded-lg p-2 text-center" style={{ backgroundColor: s.cardBg }}>
+                      <div className="text-base font-bold" style={{ color: s.swatch }}>{withActual.length}/{plannedEvents.length}</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: s.textMuted }}>已记录</div>
                     </div>
-                    <div className="rounded-lg p-3 text-center" style={{ backgroundColor: s.cardBg }}>
-                      <div className="text-xl font-bold" style={{ color: avgDelay > 0 ? '#ef4444' : '#22c55e' }}>
+                    <div className="rounded-lg p-2 text-center" style={{ backgroundColor: s.cardBg }}>
+                      <div className="text-base font-bold" style={{ color: avgDelay > 0 ? '#ef4444' : '#22c55e' }}>
                         {delays.length > 0 ? `${avgDelay > 0 ? '+' : ''}${avgDelay}min` : '--'}
                       </div>
-                      <div className="text-[11px] mt-0.5" style={{ color: s.textMuted }}>平均偏差</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: s.textMuted }}>平均偏差</div>
                     </div>
-                    <div className="rounded-lg p-3 text-center" style={{ backgroundColor: s.cardBg }}>
-                      <div className="text-xl font-bold" style={{ color: s.swatch }}>{completionRate}%</div>
-                      <div className="text-[11px] mt-0.5" style={{ color: s.textMuted }}>完成率</div>
+                    <div className="rounded-lg p-2 text-center" style={{ backgroundColor: s.cardBg }}>
+                      <div className="text-base font-bold" style={{ color: s.swatch }}>{completionRate}%</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: s.textMuted }}>完成率</div>
                     </div>
                   </>
                 );
@@ -465,7 +465,7 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
             <button
               onClick={fetchAnalysis}
               disabled={loading || plannedEvents.length === 0}
-              className="w-full py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-80 cursor-pointer disabled:opacity-50"
+              className="w-full py-2 rounded-lg text-[12px] font-medium text-white transition-all hover:opacity-80 cursor-pointer disabled:opacity-50"
               style={{ backgroundColor: s.swatch }}
             >
               {loading ? 'AI 分析中...' : 'AI 分析轨迹对照'}
