@@ -36,13 +36,34 @@ interface Stage {
   categories: Category[];
 }
 
+// 长期计划
+interface Milestone {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+interface LongTermPlan {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  category: string;
+  startYear: number;
+  targetYear: number;
+  milestones: Milestone[];
+  source: string; // template key or 'custom'
+  createdAt: number;
+}
+
 interface LifeTemplate {
   key: string;
   name: string;
   icon: string;
   description: string;
   tags: string[];
-  stages: Record<string, string[]>;
+  category: string;
+  milestones: Milestone[];
 }
 
 const STAGES: Stage[] = [
@@ -310,83 +331,134 @@ const STAGES: Stage[] = [
   },
 ];
 
-// 人生模板数据
-const LIFE_TEMPLATES: LifeTemplate[] = [
+// 长期计划模板
+const PLAN_TEMPLATES: LifeTemplate[] = [
   {
     key: 'career-first', name: '事业优先型', icon: '💼',
     description: '以职业发展为核心，追求专业成就和财务自由',
     tags: ['职场', '晋升', '财富'],
-    stages: {
-      'young-adult': ['确定职业方向并深耕', '考取行业核心证书', '3年内晋升一次', '建立个人品牌', '存下第一桶金'],
-      'thirties': ['成为团队负责人', '拓展行业人脉', '发展副业收入', '建立被动收入渠道', '积累3年应急金'],
-      'forties': ['成为行业意见领袖', '培养核心团队', '评估创业/投资机会', '规划退休金', '建立家族信托'],
-      'fifties': ['传承行业经验', '评估事业第二曲线', '逐步放权', '规划退休生活', '完成事业代表作'],
-    }
+    category: 'career',
+    milestones: [
+      { id: 'cf1', text: '确定职业方向并深耕3年', done: false },
+      { id: 'cf2', text: '考取行业核心证书', done: false },
+      { id: 'cf3', text: '3年内晋升一次', done: false },
+      { id: 'cf4', text: '建立个人品牌和行业影响力', done: false },
+      { id: 'cf5', text: '存下第一桶金(10万+)', done: false },
+      { id: 'cf6', text: '成为团队负责人或技术专家', done: false },
+      { id: 'cf7', text: '发展副业或被动收入', done: false },
+      { id: 'cf8', text: '实现财务自由里程碑', done: false },
+    ]
   },
   {
     key: 'family-first', name: '家庭幸福型', icon: '🏠',
     description: '以家庭为重心，追求亲密关系和生活品质',
     tags: ['家庭', '陪伴', '温情'],
-    stages: {
-      'young-adult': ['学会经营亲密关系', '找到人生伴侣', '建立家庭仪式感', '学会有效沟通', '平衡工作与生活'],
-      'thirties': ['每周家庭活动日', '培养亲子关系', '建立家庭传统', '创造高质量陪伴时间', '经营夫妻关系'],
-      'forties': ['成为孩子的引路人', '照顾年迈父母', '建立家族文化', '规划子女教育', '维系家庭和谐'],
-      'fifties': ['享受天伦之乐', '传承家风家训', '培养共同爱好', '规划家庭旅行', '建立代际连接'],
-    }
+    category: 'family',
+    milestones: [
+      { id: 'ff1', text: '学会经营亲密关系', done: false },
+      { id: 'ff2', text: '找到人生伴侣', done: false },
+      { id: 'ff3', text: '建立家庭仪式感', done: false },
+      { id: 'ff4', text: '每周高质量家庭时间', done: false },
+      { id: 'ff5', text: '培养亲子深度关系', done: false },
+      { id: 'ff6', text: '建立家庭年度传统', done: false },
+      { id: 'ff7', text: '规划子女教育路径', done: false },
+      { id: 'ff8', text: '创建家族文化和价值观', done: false },
+    ]
   },
   {
     key: 'freedom-first', name: '自由探索型', icon: '🌍',
     description: '追求体验和自由，不被传统路径束缚',
     tags: ['自由', '探索', '体验'],
-    stages: {
-      'young-adult': ['独自长途旅行', '学习2门外语', '尝试3种不同工作', '建立数字游民技能', '积累12个月生活费'],
-      'thirties': ['每年去一个新国家', '发展远程工作能力', '建立多元收入', '保持极简生活', '记录旅行故事'],
-      'forties': ['实现地理自由', '发展深度兴趣', '建立全球视野', '尝试间隔年', '分享探索经验'],
-      'fifties': ['慢旅行生活', '写旅行文学', '建立国际社群', '探索新兴文化', '保持好奇心'],
-    }
+    category: 'lifestyle',
+    milestones: [
+      { id: 'fr1', text: '完成一次长途独自旅行', done: false },
+      { id: 'fr2', text: '学习2门外语', done: false },
+      { id: 'fr3', text: '尝试3种不同工作', done: false },
+      { id: 'fr4', text: '建立远程工作能力', done: false },
+      { id: 'fr5', text: '积累12个月生活储备金', done: false },
+      { id: 'fr6', text: '实现地理自由/数字游民', done: false },
+      { id: 'fr7', text: '每年探索一个新国家', done: false },
+      { id: 'fr8', text: '记录并分享探索故事', done: false },
+    ]
   },
   {
     key: 'balanced', name: '平衡发展型', icon: '⚖️',
-    description: '事业、家庭、个人成长均衡发展，追求全面的人生',
+    description: '事业、家庭、个人成长均衡发展',
     tags: ['平衡', '全面', '稳健'],
-    stages: {
-      'young-adult': ['建立职业基础', '培养一段认真的关系', '开始健身习惯', '每月读2本书', '建立理财意识'],
-      'thirties': ['职业稳步晋升', '经营家庭关系', '保持运动习惯', '发展深度爱好', '财务稳健增长'],
-      'forties': ['事业有所建树', '家庭关系和谐', '身心健康良好', '社交圈优质', '精神世界丰富'],
-      'fifties': ['事业稳步收尾', '享受家庭温情', '保持活力健康', '回馈社会', '内心从容平和'],
-    }
+    category: 'growth',
+    milestones: [
+      { id: 'bd1', text: '建立职业基础', done: false },
+      { id: 'bd2', text: '培养一段认真的关系', done: false },
+      { id: 'bd3', text: '开始规律健身', done: false },
+      { id: 'bd4', text: '每月读2本书', done: false },
+      { id: 'bd5', text: '职业稳步晋升', done: false },
+      { id: 'bd6', text: '经营家庭和谐关系', done: false },
+      { id: 'bd7', text: '发展深度爱好', done: false },
+      { id: 'bd8', text: '财务稳健增长', done: false },
+    ]
   },
   {
     key: 'health-first', name: '健康为本型', icon: '🧘',
-    description: '以身心健康为根基，一切从健康出发规划人生',
+    description: '以身心健康为根基，一切从健康出发',
     tags: ['健康', '养生', '长寿'],
-    stages: {
-      'young-adult': ['建立规律运动习惯', '学会冥想放松', '定期体检', '戒掉熬夜', '学习营养学基础'],
-      'thirties': ['每周运动4次', '学会压力管理', '建立健康饮食体系', '关注心理健康', '培养一项户外运动'],
-      'forties': ['全面体检每年1次', '调整运动方式', '关注慢性病预防', '建立睡眠仪式', '练习正念冥想'],
-      'fifties': ['每日晨练习惯', '心脑血管专项检查', '调整饮食结构', '保持社交活跃', '享受慢生活'],
-    }
+    category: 'health',
+    milestones: [
+      { id: 'hf1', text: '建立规律运动习惯(每周4次)', done: false },
+      { id: 'hf2', text: '学会冥想和压力管理', done: false },
+      { id: 'hf3', text: '戒掉熬夜，保证7h+睡眠', done: false },
+      { id: 'hf4', text: '建立健康饮食体系', done: false },
+      { id: 'hf5', text: '每年全面体检', done: false },
+      { id: 'hf6', text: '培养一项户外运动', done: false },
+      { id: 'hf7', text: '关注心理健康和情绪管理', done: false },
+      { id: 'hf8', text: '建立终身健康管理体系', done: false },
+    ]
   },
   {
     key: 'creator', name: '创造者型', icon: '🎨',
     description: '以创造和表达为核心，追求留下作品和影响力',
     tags: ['创造', '艺术', '影响力'],
-    stages: {
-      'young-adult': ['找到创作方向', '完成第一个作品', '建立创作习惯', '学习一门手艺', '加入创作者社群'],
-      'thirties': ['形成个人风格', '产出系列作品', '建立受众群体', '跨界尝试', '开始教授他人'],
-      'forties': ['创作代表作', '建立创作体系', '举办展览/出版', '培养年轻创作者', '扩大影响力'],
-      'fifties': ['总结创作哲学', '传承创作经验', '持续产出', '探索新媒介', '留下创作遗产'],
-    }
+    category: 'creative',
+    milestones: [
+      { id: 'cr1', text: '找到创作方向', done: false },
+      { id: 'cr2', text: '完成第一个作品', done: false },
+      { id: 'cr3', text: '建立每日创作习惯', done: false },
+      { id: 'cr4', text: '形成个人风格', done: false },
+      { id: 'cr5', text: '产出系列作品', done: false },
+      { id: 'cr6', text: '建立受众群体', done: false },
+      { id: 'cr7', text: '创作代表作', done: false },
+      { id: 'cr8', text: '扩大影响力', done: false },
+    ]
   },
 ];
 
+const PLAN_ICONS = ['🎯', '💡', '🏔️', '🚀', '📚', '💪', '🎨', '💰', '🌍', '🏠', '❤️', '🔬', '🎵', '✨'];
+const PLAN_CATEGORIES = [
+  { key: 'career', label: '职业', color: '#3b82f6' },
+  { key: 'family', label: '家庭', color: '#f59e0b' },
+  { key: 'health', label: '健康', color: '#22c55e' },
+  { key: 'finance', label: '财务', color: '#8b5cf6' },
+  { key: 'growth', label: '成长', color: '#06b6d4' },
+  { key: 'lifestyle', label: '生活', color: '#ec4899' },
+  { key: 'creative', label: '创造', color: '#f97316' },
+];
 
 export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey }: LifeCalendarProps) {
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [stageData, setStageData] = useState<Record<string, Record<string, Record<string, ActionItem>>>>({});
   const [innerSkin, setInnerSkin] = useState<string>(DEFAULT_SKIN);
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const [appliedTemplates, setAppliedTemplates] = useState<Record<string, boolean>>({});
+
+  // 长期计划
+  const [plans, setPlans] = useState<LongTermPlan[]>([]);
+  const [activeTab, setActiveTab] = useState<'plans' | 'templates'>('plans');
+  const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
+  const [showCreatePlan, setShowCreatePlan] = useState(false);
+  const [newPlanName, setNewPlanName] = useState('');
+  const [newPlanIcon, setNewPlanIcon] = useState('🎯');
+  const [newPlanDesc, setNewPlanDesc] = useState('');
+  const [newPlanCategory, setNewPlanCategory] = useState('career');
+  const [newPlanTargetYear, setNewPlanTargetYear] = useState(new Date().getFullYear() + 3);
+  const [newMilestones, setNewMilestones] = useState('');
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
   const activeSkinKey = skinKey ?? innerSkin;
   const skin = activeSkinKey ? (SKINS.find(s => s.key === activeSkinKey) ?? NO_SKIN) : NO_SKIN;
@@ -425,10 +497,10 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       initData();
     }
 
-    // Load applied templates
+    // 加载长期计划
     try {
-      const saved = localStorage.getItem('life-calendar-templates');
-      if (saved) setAppliedTemplates(JSON.parse(saved));
+      const savedPlans = localStorage.getItem('life-calendar-plans');
+      if (savedPlans) setPlans(JSON.parse(savedPlans));
     } catch { /* ignore */ }
 
     const current = STAGES.find(s => currentAge >= s.start && currentAge <= s.end);
@@ -449,6 +521,11 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
 
   const saveData = useCallback((data: Record<string, Record<string, Record<string, ActionItem>>>) => {
     try { localStorage.setItem('life-calendar-progress', JSON.stringify(data)); } catch { /* ignore */ }
+  }, []);
+
+  const savePlans = useCallback((p: LongTermPlan[]) => {
+    setPlans(p);
+    try { localStorage.setItem('life-calendar-plans', JSON.stringify(p)); } catch { /* ignore */ }
   }, []);
 
   const toggleAction = (stageKey: string, catKey: string, actionId: string) => {
@@ -474,42 +551,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     });
   };
 
-  const applyTemplate = (template: LifeTemplate) => {
-    const isApplied = appliedTemplates[template.key];
-    const newApplied = { ...appliedTemplates, [template.key]: !isApplied };
-    setAppliedTemplates(newApplied);
-    try { localStorage.setItem('life-calendar-templates', JSON.stringify(newApplied)); } catch { /* ignore */ }
-
-    if (!isApplied) {
-      // Add template items to corresponding stages
-      setStageData(prev => {
-        const next = { ...prev };
-        Object.entries(template.stages).forEach(([stageKey, items]) => {
-          if (!next[stageKey]) return;
-          next[stageKey] = { ...next[stageKey] };
-          // Ensure 'template' category exists
-          if (!next[stageKey]['template']) {
-            next[stageKey]['template'] = {};
-          }
-          next[stageKey]['template'] = { ...next[stageKey]['template'] };
-          items.forEach((text, idx) => {
-            const id = `tpl-${template.key}-${stageKey}-${idx}`;
-            if (!next[stageKey]['template'][id]) {
-              next[stageKey]['template'][id] = {
-                id,
-                text: `[${template.name}] ${text}`,
-                done: false,
-                addedToCalendar: false,
-              };
-            }
-          });
-        });
-        saveData(next);
-        return next;
-      });
-    }
-  };
-
   const getStageProgress = (stage: Stage) => {
     const stageD = stageData[stage.key];
     if (!stageD) return 0;
@@ -517,7 +558,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     stage.categories.forEach(cat => {
       cat.actions.forEach(action => { total++; if (stageD[cat.key]?.[action.id]?.done) done++; });
     });
-    // Also count template items
     if (stageD['template']) {
       Object.values(stageD['template']).forEach(a => { total++; if (a.done) done++; });
     }
@@ -530,11 +570,98 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     return 'future';
   };
 
+  // 长期计划操作
+  const getPlanProgress = (plan: LongTermPlan) => {
+    if (plan.milestones.length === 0) return 0;
+    return Math.round((plan.milestones.filter(m => m.done).length / plan.milestones.length) * 100);
+  };
+
+  const toggleMilestone = (planId: string, milestoneId: string) => {
+    const updated = plans.map(p => {
+      if (p.id !== planId) return p;
+      return { ...p, milestones: p.milestones.map(m => m.id === milestoneId ? { ...m, done: !m.done } : m) };
+    });
+    savePlans(updated);
+  };
+
+  const createPlanFromTemplate = (template: LifeTemplate) => {
+    const plan: LongTermPlan = {
+      id: `plan-${Date.now()}`,
+      name: template.name,
+      icon: template.icon,
+      description: template.description,
+      category: template.category,
+      startYear: currentYear,
+      targetYear: currentYear + 5,
+      milestones: template.milestones.map(m => ({ ...m, id: `m-${Date.now()}-${m.id}` })),
+      source: template.key,
+      createdAt: Date.now(),
+    };
+    savePlans([...plans, plan]);
+    setExpandedPlan(plan.id);
+    setActiveTab('plans');
+  };
+
+  const createCustomPlan = () => {
+    if (!newPlanName.trim()) return;
+    const milestones = newMilestones.split('\n').filter(s => s.trim()).map((text, idx) => ({
+      id: `m-${Date.now()}-${idx}`,
+      text: text.trim(),
+      done: false,
+    }));
+    const plan: LongTermPlan = {
+      id: `plan-${Date.now()}`,
+      name: newPlanName.trim(),
+      icon: newPlanIcon,
+      description: newPlanDesc.trim(),
+      category: newPlanCategory,
+      startYear: currentYear,
+      targetYear: newPlanTargetYear,
+      milestones,
+      source: 'custom',
+      createdAt: Date.now(),
+    };
+    savePlans([...plans, plan]);
+    setShowCreatePlan(false);
+    setExpandedPlan(plan.id);
+    setNewPlanName('');
+    setNewPlanDesc('');
+    setNewMilestones('');
+    setNewPlanTargetYear(currentYear + 3);
+  };
+
+  const deletePlan = (planId: string) => {
+    savePlans(plans.filter(p => p.id !== planId));
+    if (expandedPlan === planId) setExpandedPlan(null);
+  };
+
+  const addMilestoneToPlan = (planId: string, text: string) => {
+    if (!text.trim()) return;
+    const updated = plans.map(p => {
+      if (p.id !== planId) return p;
+      return { ...p, milestones: [...p.milestones, { id: `m-${Date.now()}`, text: text.trim(), done: false }] };
+    });
+    savePlans(updated);
+  };
+
+  const removeMilestone = (planId: string, milestoneId: string) => {
+    const updated = plans.map(p => {
+      if (p.id !== planId) return p;
+      return { ...p, milestones: p.milestones.filter(m => m.id !== milestoneId) };
+    });
+    savePlans(updated);
+  };
+
+  // 统计
+  const totalMilestones = plans.reduce((s, p) => s + p.milestones.length, 0);
+  const doneMilestones = plans.reduce((s, p) => s + p.milestones.filter(m => m.done).length, 0);
+  const overallProgress = totalMilestones > 0 ? Math.round((doneMilestones / totalMilestones) * 100) : 0;
+
   return (
     <div className="fixed top-0 left-0 right-0 z-50 h-full animate-slide-in-left shadow-2xl flex transition-colors duration-500"
       style={{ background: skin.panelBg }}>
 
-      {/* Left Panel: Age Stages (fixed width ~480px) */}
+      {/* Left Panel: Age Stages */}
       <div className="w-[480px] flex-shrink-0 flex flex-col h-full border-r"
         style={{ borderColor: skin.divider }}>
 
@@ -586,7 +713,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                   border: `1px solid ${isExpanded ? sc.border : skin.divider}`,
                   boxShadow: isExpanded ? `0 4px 20px ${sc.border}40` : 'none',
                 }}>
-                {/* Stage Header */}
                 <button onClick={() => setExpandedStage(isExpanded ? null : stage.key)}
                   className="w-full px-4 py-3 flex items-center gap-3 text-left transition-colors"
                   style={{ background: isExpanded ? sc.bg : (status === 'current' ? sc.bg : skin.cardBg) }}>
@@ -600,9 +726,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                       <span className="text-xs" style={{ color: skin.textMuted }}>{stage.range}</span>
                       {status === 'current' && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-medium" style={{ background: sc.accent }}>当前</span>
-                      )}
-                      {status === 'past' && progress === 100 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: skin.plannedBg, color: skin.plannedText }}>完成</span>
                       )}
                     </div>
                     {!isExpanded && <p className="text-xs mt-0.5 truncate" style={{ color: skin.textMuted }}>{stage.slogan}</p>}
@@ -618,7 +741,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                   </div>
                 </button>
 
-                {/* Expanded Content */}
                 {isExpanded && (
                   <div className="animate-fade-in" style={{ background: sc.bg }}>
                     <div className="px-4 py-2 border-b" style={{ borderColor: sc.border + '60' }}>
@@ -667,8 +789,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                                         background: isAdded ? skin.plannedBg : skin.planBtnBg,
                                         color: isAdded ? skin.plannedText : skin.textMuted,
                                         border: isAdded ? 'none' : `1px solid ${skin.divider}`,
-                                      }}
-                                      title={isAdded ? '已加入计划' : '加入我的年历'}>
+                                      }}>
                                       {isAdded ? '✓ 已计划' : '+ 计划'}
                                     </button>
                                   </div>
@@ -678,46 +799,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                           </div>
                         );
                       })}
-
-                      {/* Template items for this stage */}
-                      {stageD?.['template'] && Object.keys(stageD['template']).length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm">📋</span>
-                            <span className="text-sm font-medium" style={{ color: skin.textPrimary }}>模板建议</span>
-                          </div>
-                          <div className="space-y-1">
-                            {Object.values(stageD['template']).map(action => (
-                              <div key={action.id}
-                                className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg transition-colors group"
-                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = skin.isDark ? sc.color + '15' : 'rgba(255,255,255,0.6)'; }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                                <button onClick={() => toggleAction(stage.key, 'template', action.id)}
-                                  className="w-[18px] h-[18px] rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all"
-                                  style={{
-                                    borderColor: action.done ? skin.checkboxDone : (skin.isDark ? '#64748b' : '#c8c4be'),
-                                    background: action.done ? skin.checkboxDone : 'transparent',
-                                  }}>
-                                  {action.done && <span className="text-white text-[9px] font-bold">✓</span>}
-                                </button>
-                                <span className={`text-[13px] leading-5 flex-1 ${action.done ? 'line-through' : ''}`}
-                                  style={{ color: action.done ? skin.textMuted : skin.textPrimary }}>
-                                  {action.text}
-                                </span>
-                                <button onClick={() => addToCalendar(stage.key, 'template', action.id)}
-                                  className={`flex-shrink-0 text-[10px] px-2 py-1 rounded-full transition-all opacity-0 group-hover:opacity-100 ${action.addedToCalendar ? 'opacity-100' : ''}`}
-                                  style={{
-                                    background: action.addedToCalendar ? skin.plannedBg : skin.planBtnBg,
-                                    color: action.addedToCalendar ? skin.plannedText : skin.textMuted,
-                                    border: action.addedToCalendar ? 'none' : `1px solid ${skin.divider}`,
-                                  }}>
-                                  {action.addedToCalendar ? '✓ 已计划' : '+ 计划'}
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -725,7 +806,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
             );
           })}
 
-          {/* Bottom Quote */}
           <div className="mt-4 mb-2 px-4 py-3 rounded-xl text-center"
             style={{ background: skin.cardBg, border: `1px solid ${skin.divider}` }}>
             <p className="text-sm italic" style={{ color: skin.textMuted }}>
@@ -735,120 +815,395 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
         </div>
       </div>
 
-      {/* Right Panel: Life Templates */}
+      {/* Right Panel: 长期计划 */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Right Header */}
-        <div className="flex-shrink-0 px-8 py-5 border-b" style={{ borderColor: skin.divider }}>
-          <h3 className="text-lg font-bold" style={{ color: skin.textPrimary }}>人生模板</h3>
-          <p className="text-sm mt-1" style={{ color: skin.textMuted }}>选择适合你的人生路径模板，系统会为对应年龄段添加行动建议</p>
+        {/* Right Header with Tabs */}
+        <div className="flex-shrink-0 border-b" style={{ borderColor: skin.divider }}>
+          <div className="px-6 pt-4 pb-0">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-lg font-bold" style={{ color: skin.textPrimary }}>长期计划</h3>
+                <p className="text-xs mt-0.5" style={{ color: skin.textMuted }}>跨越年度的人生规划，追踪长期目标完成度</p>
+              </div>
+              {plans.length > 0 && (
+                <div className="text-right">
+                  <div className="text-2xl font-bold" style={{ color: skin.swatch }}>{overallProgress}%</div>
+                  <div className="text-[10px]" style={{ color: skin.textMuted }}>{doneMilestones}/{totalMilestones} 里程碑</div>
+                </div>
+              )}
+            </div>
+            {/* Tabs */}
+            <div className="flex gap-0">
+              <button
+                onClick={() => setActiveTab('plans')}
+                className="px-4 py-2 text-sm font-medium transition-colors relative"
+                style={{ color: activeTab === 'plans' ? skin.swatch : skin.textMuted }}
+              >
+                我的计划
+                {plans.length > 0 && (
+                  <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: skin.swatch + '20', color: skin.swatch }}>{plans.length}</span>
+                )}
+                {activeTab === 'plans' && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: skin.swatch }} />}
+              </button>
+              <button
+                onClick={() => setActiveTab('templates')}
+                className="px-4 py-2 text-sm font-medium transition-colors relative"
+                style={{ color: activeTab === 'templates' ? skin.swatch : skin.textMuted }}
+              >
+                人生模板
+                {activeTab === 'templates' && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: skin.swatch }} />}
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Templates Grid */}
-        <div className="flex-1 overflow-y-auto p-6 sidebar-scroll">
-          <div className="grid grid-cols-2 gap-5">
-            {LIFE_TEMPLATES.map(tpl => {
-              const isApplied = appliedTemplates[tpl.key];
-              const isHovered = selectedTemplate === tpl.key;
-              const stageCount = Object.keys(tpl.stages).length;
+        {/* Tab Content */}
+        <div className="flex-1 overflow-y-auto sidebar-scroll">
+          {activeTab === 'plans' && (
+            <div className="p-6">
+              {/* 创建计划按钮 */}
+              <button
+                onClick={() => { setShowCreatePlan(true); setEditingPlanId(null); setNewPlanName(''); setNewPlanDesc(''); setNewPlanIcon('🎯'); setNewPlanCategory('career'); setNewPlanTargetYear(currentYear + 3); setNewMilestones(''); }}
+                className="w-full py-3 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 text-sm font-medium transition-all hover:opacity-80 mb-5"
+                style={{ borderColor: skin.divider, color: skin.textMuted, background: skin.cardBg }}
+              >
+                <span className="text-lg">+</span> 创建长期计划
+              </button>
 
-              return (
-                <div key={tpl.key}
-                  className="rounded-xl p-5 transition-all duration-200 cursor-pointer group"
-                  style={{
-                    background: skin.cardBg,
-                    border: `2px solid ${isApplied ? skin.swatch : isHovered ? skin.swatch + '60' : skin.divider}`,
-                    boxShadow: isApplied ? `0 4px 20px ${skin.swatch}30` : 'none',
-                  }}
-                  onMouseEnter={() => setSelectedTemplate(tpl.key)}
-                  onMouseLeave={() => setSelectedTemplate(null)}
-                  onClick={() => applyTemplate(tpl)}>
-                  {/* Template Header */}
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
-                      style={{ background: isApplied ? skin.swatch + '30' : skin.swatch + '15' }}>
-                      {tpl.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-base" style={{ color: skin.textPrimary }}>{tpl.name}</span>
-                        {isApplied && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full text-white font-medium" style={{ background: skin.swatch }}>已应用</span>
+              {/* 计划列表 */}
+              {plans.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-3">🗺️</div>
+                  <p className="text-sm font-medium" style={{ color: skin.textPrimary }}>还没有长期计划</p>
+                  <p className="text-xs mt-1 mb-4" style={{ color: skin.textMuted }}>创建自定义计划或从模板开始</p>
+                  <button
+                    onClick={() => setActiveTab('templates')}
+                    className="text-xs px-4 py-2 rounded-full text-white font-medium"
+                    style={{ background: skin.swatch }}
+                  >
+                    浏览人生模板
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {plans.map(plan => {
+                    const progress = getPlanProgress(plan);
+                    const isExpanded = expandedPlan === plan.id;
+                    const catInfo = PLAN_CATEGORIES.find(c => c.key === plan.category);
+                    const doneCount = plan.milestones.filter(m => m.done).length;
+
+                    return (
+                      <div key={plan.id}
+                        className="rounded-xl overflow-hidden transition-all duration-200"
+                        style={{
+                          background: skin.cardBg,
+                          border: `1.5px solid ${isExpanded ? skin.swatch : skin.divider}`,
+                          boxShadow: isExpanded ? `0 4px 20px ${skin.swatch}20` : 'none',
+                        }}
+                      >
+                        {/* Plan Header */}
+                        <div
+                          className="px-4 py-3 cursor-pointer flex items-center gap-3"
+                          onClick={() => setExpandedPlan(isExpanded ? null : plan.id)}
+                        >
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
+                            style={{ background: (catInfo?.color || skin.swatch) + '20' }}>
+                            {plan.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm truncate" style={{ color: skin.textPrimary }}>{plan.name}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: (catInfo?.color || skin.swatch) + '15', color: catInfo?.color || skin.swatch }}>
+                                {catInfo?.label || '其他'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: skin.divider }}>
+                                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: skin.swatch }} />
+                              </div>
+                              <span className="text-xs font-medium flex-shrink-0" style={{ color: progress > 0 ? skin.swatch : skin.textMuted }}>{progress}%</span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-1 text-[10px]" style={{ color: skin.textMuted }}>
+                              <span>{plan.startYear}-{plan.targetYear}</span>
+                              <span>{doneCount}/{plan.milestones.length} 里程碑</span>
+                            </div>
+                          </div>
+                          <span className="text-xs flex-shrink-0" style={{ color: skin.textMuted }}>{isExpanded ? '▲' : '▼'}</span>
+                        </div>
+
+                        {/* Expanded Milestones */}
+                        {isExpanded && (
+                          <div className="animate-fade-in px-4 pb-4">
+                            {plan.description && (
+                              <p className="text-xs mb-3 px-1" style={{ color: skin.textMuted }}>{plan.description}</p>
+                            )}
+                            <div className="space-y-1.5">
+                              {plan.milestones.map(milestone => (
+                                <div key={milestone.id}
+                                  className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors group"
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = skin.swatch + '08'; }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                >
+                                  <button
+                                    onClick={() => toggleMilestone(plan.id, milestone.id)}
+                                    className="w-[18px] h-[18px] rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
+                                    style={{
+                                      borderColor: milestone.done ? skin.swatch : (skin.isDark ? '#64748b' : '#c8c4be'),
+                                      background: milestone.done ? skin.swatch : 'transparent',
+                                    }}
+                                  >
+                                    {milestone.done && <span className="text-white text-[9px] font-bold">✓</span>}
+                                  </button>
+                                  <span className={`text-[13px] leading-5 flex-1 ${milestone.done ? 'line-through' : ''}`}
+                                    style={{ color: milestone.done ? skin.textMuted : skin.textPrimary }}>
+                                    {milestone.text}
+                                  </span>
+                                  <button
+                                    onClick={() => removeMilestone(plan.id, milestone.id)}
+                                    className="flex-shrink-0 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style={{ color: skin.textMuted }}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* 添加里程碑 */}
+                            <AddMilestoneInput onAdd={(text) => addMilestoneToPlan(plan.id, text)} skin={skin} />
+
+                            {/* 删除计划 */}
+                            <div className="mt-3 pt-3 flex justify-end" style={{ borderTop: `1px solid ${skin.divider}` }}>
+                              <button
+                                onClick={() => deletePlan(plan.id)}
+                                className="text-xs px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
+                                style={{ color: '#ef4444', background: '#fef2f2' }}
+                              >
+                                删除计划
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <p className="text-xs mt-1 leading-4" style={{ color: skin.textMuted }}>{tpl.description}</p>
-                    </div>
-                  </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {tpl.tags.map(tag => (
-                      <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full"
-                        style={{ background: skin.swatch + '15', color: skin.swatch }}>
-                        {tag}
-                      </span>
+          {activeTab === 'templates' && (
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-4">
+                {PLAN_TEMPLATES.map(tpl => {
+                  const catInfo = PLAN_CATEGORIES.find(c => c.key === tpl.category);
+                  const alreadyCreated = plans.some(p => p.source === tpl.key);
+
+                  return (
+                    <div key={tpl.key}
+                      className="rounded-xl p-4 transition-all duration-200"
+                      style={{
+                        background: skin.cardBg,
+                        border: `1.5px solid ${alreadyCreated ? skin.swatch : skin.divider}`,
+                        boxShadow: alreadyCreated ? `0 4px 20px ${skin.swatch}20` : 'none',
+                      }}
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
+                          style={{ background: (catInfo?.color || skin.swatch) + '20' }}>
+                          {tpl.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm" style={{ color: skin.textPrimary }}>{tpl.name}</span>
+                            {alreadyCreated && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full text-white" style={{ background: skin.swatch }}>已创建</span>
+                            )}
+                          </div>
+                          <p className="text-[11px] mt-0.5 leading-4" style={{ color: skin.textMuted }}>{tpl.description}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {tpl.tags.map(tag => (
+                          <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full"
+                            style={{ background: (catInfo?.color || skin.swatch) + '15', color: catInfo?.color || skin.swatch }}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="space-y-1 mb-3">
+                        {tpl.milestones.slice(0, 4).map(m => (
+                          <p key={m.id} className="text-[11px] pl-3 leading-4" style={{ color: skin.textMuted }}>
+                            · {m.text}
+                          </p>
+                        ))}
+                        {tpl.milestones.length > 4 && (
+                          <p className="text-[10px] pl-3" style={{ color: skin.textMuted, opacity: 0.6 }}>
+                            +{tpl.milestones.length - 4} 项更多里程碑
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => createPlanFromTemplate(tpl)}
+                        disabled={alreadyCreated}
+                        className="w-full py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
+                        style={{
+                          background: alreadyCreated ? skin.divider : skin.swatch,
+                          color: alreadyCreated ? skin.textMuted : '#fff',
+                        }}
+                      >
+                        {alreadyCreated ? '已创建计划' : '使用此模板'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 创建计划弹框 */}
+        {showCreatePlan && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)' }}>
+            <div className="w-[440px] rounded-xl shadow-2xl overflow-hidden" style={{ background: skin.panelBg, border: `1px solid ${skin.divider}` }}>
+              <div className="h-1.5 w-full" style={{ background: skin.swatch }} />
+              <div className="px-5 pt-4 pb-2 relative">
+                <button onClick={() => setShowCreatePlan(false)}
+                  className="absolute top-3 right-4 w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                  style={{ background: skin.cardHover, color: skin.textMuted }}>
+                  ✕
+                </button>
+                <h4 className="text-sm font-bold mb-4" style={{ color: skin.textPrimary }}>创建长期计划</h4>
+
+                {/* 图标选择 */}
+                <div className="mb-3">
+                  <label className="text-[10px] font-medium block mb-1.5" style={{ color: skin.textMuted }}>图标</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PLAN_ICONS.map(icon => (
+                      <button key={icon}
+                        onClick={() => setNewPlanIcon(icon)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
+                        style={{
+                          background: newPlanIcon === icon ? skin.swatch + '20' : skin.cardBg,
+                          border: `1.5px solid ${newPlanIcon === icon ? skin.swatch : skin.divider}`,
+                        }}>
+                        {icon}
+                      </button>
                     ))}
                   </div>
+                </div>
 
-                  {/* Stage Preview */}
-                  <div className="space-y-2">
-                    {Object.entries(tpl.stages).map(([stageKey, items]) => {
-                      const stage = STAGES.find(s => s.key === stageKey);
-                      if (!stage) return null;
-                      const stageStatus = getStageStatus(stage);
-                      return (
-                        <div key={stageKey} className="rounded-lg px-3 py-2"
-                          style={{ background: skin.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs">{stage.emoji}</span>
-                            <span className="text-xs font-medium" style={{ color: skin.textPrimary }}>{stage.label}</span>
-                            <span className="text-[10px]" style={{ color: skin.textMuted }}>{stage.range}</span>
-                            {stageStatus === 'current' && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full text-white" style={{ background: skin.swatch, fontSize: '9px' }}>当前</span>
-                            )}
-                          </div>
-                          <div className="space-y-0.5">
-                            {items.slice(0, 3).map((item, i) => (
-                              <p key={i} className="text-[11px] leading-4 pl-5" style={{ color: skin.textMuted }}>
-                                {i < 2 ? '·' : '...'} {item}
-                              </p>
-                            ))}
-                            {items.length > 3 && (
-                              <p className="text-[10px] pl-5" style={{ color: skin.textMuted, opacity: 0.6 }}>
-                                +{items.length - 2} 项更多建议
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                {/* 名称 */}
+                <input
+                  value={newPlanName}
+                  onChange={e => setNewPlanName(e.target.value.slice(0, 50))}
+                  placeholder="计划名称"
+                  className="w-full text-sm font-medium outline-none bg-transparent border-b pb-1.5 mb-3 placeholder:opacity-35"
+                  style={{ color: skin.textPrimary, borderColor: skin.divider }}
+                  autoFocus
+                />
 
-                  {/* Apply Button */}
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-[10px]" style={{ color: skin.textMuted }}>覆盖 {stageCount} 个年龄段</span>
-                    <button className="text-xs px-4 py-1.5 rounded-full font-medium transition-all"
-                      style={{
-                        background: isApplied ? skin.swatch : 'transparent',
-                        color: isApplied ? '#ffffff' : skin.swatch,
-                        border: `1.5px solid ${skin.swatch}`,
-                      }}>
-                      {isApplied ? '取消应用' : '应用模板'}
-                    </button>
+                {/* 描述 */}
+                <input
+                  value={newPlanDesc}
+                  onChange={e => setNewPlanDesc(e.target.value.slice(0, 100))}
+                  placeholder="简要描述(可选)"
+                  className="w-full text-xs outline-none bg-transparent border-b pb-1.5 mb-3 placeholder:opacity-35"
+                  style={{ color: skin.textSecondary, borderColor: skin.divider }}
+                />
+
+                {/* 分类 */}
+                <div className="mb-3">
+                  <label className="text-[10px] font-medium block mb-1.5" style={{ color: skin.textMuted }}>分类</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PLAN_CATEGORIES.map(cat => (
+                      <button key={cat.key}
+                        onClick={() => setNewPlanCategory(cat.key)}
+                        className="text-[11px] px-2.5 py-1 rounded-full transition-all"
+                        style={{
+                          background: newPlanCategory === cat.key ? cat.color + '20' : skin.cardBg,
+                          color: newPlanCategory === cat.key ? cat.color : skin.textMuted,
+                          border: `1px solid ${newPlanCategory === cat.key ? cat.color : skin.divider}`,
+                        }}>
+                        {cat.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              );
-            })}
-          </div>
 
-          {/* Bottom tip */}
-          <div className="mt-6 mb-4 px-5 py-4 rounded-xl text-center"
-            style={{ background: skin.cardBg, border: `1px solid ${skin.divider}` }}>
-            <p className="text-sm" style={{ color: skin.textMuted }}>
-              应用模板后，建议会自动添加到左侧对应年龄段的「模板建议」分类中
-            </p>
+                {/* 目标年份 */}
+                <div className="mb-3">
+                  <label className="text-[10px] font-medium block mb-1.5" style={{ color: skin.textMuted }}>目标完成年份</label>
+                  <input type="number" value={newPlanTargetYear}
+                    onChange={e => setNewPlanTargetYear(Number(e.target.value))}
+                    className="w-24 text-sm px-2 py-1 rounded-md border outline-none"
+                    style={{ borderColor: skin.divider, color: skin.textPrimary, backgroundColor: skin.cardBg }}
+                  />
+                </div>
+
+                {/* 里程碑 */}
+                <div className="mb-2">
+                  <label className="text-[10px] font-medium block mb-1.5" style={{ color: skin.textMuted }}>里程碑 (每行一个)</label>
+                  <textarea
+                    value={newMilestones}
+                    onChange={e => setNewMilestones(e.target.value.slice(0, 500))}
+                    placeholder={"完成第一个里程碑\n达成关键目标\n实现最终成果"}
+                    rows={5}
+                    className="w-full text-xs outline-none border rounded-md px-2.5 py-2 resize-none placeholder:opacity-35"
+                    style={{ color: skin.textSecondary, borderColor: skin.divider, backgroundColor: skin.cardBg }}
+                  />
+                </div>
+              </div>
+
+              <div className="px-5 py-3" style={{ borderTop: `1px solid ${skin.divider}` }}>
+                <button
+                  onClick={createCustomPlan}
+                  disabled={!newPlanName.trim()}
+                  className="w-full py-2 rounded-lg text-white text-xs font-medium disabled:opacity-40 transition-opacity"
+                  style={{ backgroundColor: skin.swatch }}
+                >
+                  创建计划
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+// 添加里程碑输入组件
+function AddMilestoneInput({ onAdd, skin }: { onAdd: (text: string) => void; skin: typeof NO_SKIN }) {
+  const [text, setText] = useState('');
+
+  const handleSubmit = () => {
+    if (!text.trim()) return;
+    onAdd(text.trim());
+    setText('');
+  };
+
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <input
+        value={text}
+        onChange={e => setText(e.target.value.slice(0, 100))}
+        onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+        placeholder="添加里程碑..."
+        className="flex-1 text-xs px-2.5 py-1.5 border rounded-lg outline-none"
+        style={{ borderColor: skin.divider, color: skin.textPrimary, backgroundColor: skin.cardBg }}
+      />
+      <button
+        onClick={handleSubmit}
+        disabled={!text.trim()}
+        className="text-xs px-3 py-1.5 rounded-lg text-white disabled:opacity-40"
+        style={{ backgroundColor: skin.swatch }}
+      >
+        添加
+      </button>
     </div>
   );
 }

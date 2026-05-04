@@ -638,27 +638,28 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
             style={{ top: addModalTop, left: TIME_LABEL_WIDTH + 20 }}
           >
             <div
-              className="w-[340px] rounded-xl shadow-2xl overflow-hidden"
+              className="w-[380px] rounded-xl shadow-2xl"
               style={{
                 backgroundColor: s.cardBg,
                 border: `1px solid ${s.divider}`,
                 boxShadow: `0 12px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)`,
               }}
             >
-              {/* 顶部彩色条 + 右上角关闭按钮 */}
-              <div className="h-1 w-full relative" style={{ backgroundColor: s.swatch }}>
+              {/* 顶部彩色条 */}
+              <div className="h-1.5 w-full rounded-t-xl" style={{ backgroundColor: s.swatch }} />
+
+              <div className="px-5 pt-3 pb-2 relative">
+                {/* 右上角关闭按钮 */}
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-opacity hover:opacity-70"
-                  style={{ backgroundColor: s.swatch, color: '#fff' }}
+                  className="absolute top-2 right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs transition-all hover:scale-110"
+                  style={{ backgroundColor: s.cardHover, color: s.textMuted }}
                 >
                   ✕
                 </button>
-              </div>
 
-              <div className="px-4 pt-3 pb-2">
                 {/* 添加日程标题 */}
-                <div className="text-xs font-semibold mb-2.5" style={{ color: s.textMuted }}>添加日程</div>
+                <div className="text-xs font-semibold mb-3" style={{ color: s.textMuted }}>添加日程</div>
 
                 {/* 标题输入 - 简约下划线 */}
                 <input
@@ -671,8 +672,8 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                   style={{ color: s.textPrimary, borderColor: s.divider }}
                 />
 
-                {/* 时间选择 */}
-                <div className="flex items-center gap-2 mb-3">
+                {/* 时间选择 - 简洁行：HH:MM 至 HH:MM */}
+                <div className="flex items-center gap-1.5 mb-3">
                   <select
                     value={addStartTime.split(':')[0]}
                     onChange={e => {
@@ -701,7 +702,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                   >
                     {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
                   </select>
-                  <span className="text-xs mx-0.5" style={{ color: s.textMuted }}>至</span>
+                  <span className="text-xs mx-1.5 font-medium" style={{ color: s.textMuted }}>至</span>
                   <select
                     value={addEndTime.split(':')[0]}
                     onChange={e => {
@@ -725,9 +726,6 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                   >
                     {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
                   </select>
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap" style={{ color: '#fff', backgroundColor: s.swatch }}>
-                    {(() => { const d = timeToMinutes(addEndTime) - timeToMinutes(addStartTime); return d > 0 ? `${d}min` : '15min'; })()}
-                  </span>
                 </div>
 
                 {/* 详细描述 - 大文本框 */}
@@ -742,7 +740,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
               </div>
 
               {/* 底部横条添加按钮 */}
-              <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
+              <div className="px-5 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
                 <button
                   onClick={handleAddEvent}
                   disabled={!addTitle.trim()}
@@ -763,27 +761,28 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
             style={{ top: editModalTop, left: TIME_LABEL_WIDTH + 20 }}
           >
             <div
-              className="w-[340px] rounded-xl shadow-2xl overflow-hidden"
+              className="w-[380px] rounded-xl shadow-2xl"
               style={{
                 backgroundColor: s.cardBg,
                 border: `1px solid ${s.divider}`,
                 boxShadow: `0 12px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)`,
               }}
             >
-              {/* 顶部彩色条 + 右上角关闭按钮 */}
-              <div className="h-1 w-full relative" style={{ backgroundColor: s.swatch }}>
+              {/* 顶部彩色条 */}
+              <div className="h-1.5 w-full rounded-t-xl" style={{ backgroundColor: s.swatch }} />
+
+              <div className="px-5 pt-3 pb-2 relative">
+                {/* 右上角关闭按钮 */}
                 <button
                   onClick={() => { setShowEditModal(false); setEditEvent(null); }}
-                  className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-opacity hover:opacity-70"
-                  style={{ backgroundColor: s.swatch, color: '#fff' }}
+                  className="absolute top-2 right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs transition-all hover:scale-110"
+                  style={{ backgroundColor: s.cardHover, color: s.textMuted }}
                 >
                   ✕
                 </button>
-              </div>
 
-              <div className="px-4 pt-3 pb-2">
                 {/* 编辑日程标题 */}
-                <div className="text-xs font-semibold mb-2.5" style={{ color: s.textMuted }}>编辑日程</div>
+                <div className="text-xs font-semibold mb-3" style={{ color: s.textMuted }}>编辑日程</div>
 
                 {/* 标题输入 */}
                 <input
@@ -796,8 +795,8 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                   style={{ color: s.textPrimary, borderColor: s.divider }}
                 />
 
-                {/* 时间选择 */}
-                <div className="flex items-center gap-2 mb-3">
+                {/* 时间选择 - 简洁行：HH:MM 至 HH:MM */}
+                <div className="flex items-center gap-1.5 mb-3">
                   <select
                     value={editStartTime.split(':')[0]}
                     onChange={e => {
@@ -822,7 +821,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                   >
                     {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
                   </select>
-                  <span className="text-xs mx-0.5" style={{ color: s.textMuted }}>至</span>
+                  <span className="text-xs mx-1.5 font-medium" style={{ color: s.textMuted }}>至</span>
                   <select
                     value={editEndTime.split(':')[0]}
                     onChange={e => {
@@ -846,9 +845,6 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                   >
                     {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
                   </select>
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap" style={{ color: '#fff', backgroundColor: s.swatch }}>
-                    {(() => { const d = timeToMinutes(editEndTime) - timeToMinutes(editStartTime); return d > 0 ? `${d}min` : '—'; })()}
-                  </span>
                 </div>
 
                 {/* 详细描述 - 大文本框 */}
@@ -863,7 +859,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
               </div>
 
               {/* 底部横条保存按钮 */}
-              <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
+              <div className="px-5 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
                 <button
                   onClick={handleEditEvent}
                   disabled={!editTitle.trim()}
