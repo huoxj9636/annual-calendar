@@ -209,8 +209,8 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Timel
 
   return (
     <div
-      className="absolute top-0 right-0 bottom-0 left-28 z-40 flex flex-col overflow-hidden"
-      style={{ backgroundColor: s.panelBg }}
+      className="absolute top-0 right-0 bottom-0 z-40 flex flex-col overflow-hidden"
+      style={{ backgroundColor: s.panelBg, left: '79px' }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b" style={{ borderColor: s.divider }}>

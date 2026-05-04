@@ -14,6 +14,8 @@ import { SKINS, NO_SKIN, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
 import DrawingOverlay, { DrawingOverlayHandle } from '@/components/drawing-overlay';
 import TimelinePanel from '@/components/timeline-panel';
+import InsightPanel from '@/components/insight-panel';
+import TrackPanel from '@/components/track-panel';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -72,6 +74,10 @@ export default function YearCalendar() {
   const [mottoDraft, setMottoDraft] = useState('');
   const [timelineMonth, setTimelineMonth] = useState(() => new Date().getMonth() + 1);
   const [timelineDay, setTimelineDay] = useState(() => new Date().getDate());
+  const [insightOpen, setInsightOpen] = useState(false);
+  const [insightMonth, setInsightMonth] = useState(() => new Date().getMonth() + 1);
+  const [insightDay, setInsightDay] = useState(() => new Date().getDate());
+  const [trackOpen, setTrackOpen] = useState(false);
 
   // Real-time clock with centiseconds (2-digit)
   useEffect(() => {
@@ -219,8 +225,8 @@ export default function YearCalendar() {
       const page = Math.round(currentScroll / pageH);
       setShowBackToTop(page > 0);
 
-      // Skip snap when timeline panel is open
-      if (timelineOpenRef.current) return;
+      // Skip snap when any overlay panel is open
+      if (timelineOpenRef.current || insightOpen || trackOpen) return;
       if (isSnapping.current) return;
       if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
       scrollTimeout.current = setTimeout(() => {
@@ -260,18 +266,19 @@ export default function YearCalendar() {
 
   // Lock scroll position when timeline is open (belt-and-suspenders)
   useEffect(() => {
-    if (timelineOpen && scrollContainerRef.current) {
+    const anyPanelOpen = timelineOpen || insightOpen || trackOpen;
+    if (anyPanelOpen && scrollContainerRef.current) {
       const container = scrollContainerRef.current;
       const savedScroll = container.scrollTop;
       const lockScroll = () => {
-        if (timelineOpenRef.current && container.scrollTop !== savedScroll) {
+        if ((timelineOpenRef.current || insightOpen || trackOpen) && container.scrollTop !== savedScroll) {
           container.scrollTop = savedScroll;
         }
       };
       container.addEventListener('scroll', lockScroll, { passive: true });
       return () => container.removeEventListener('scroll', lockScroll);
     }
-  }, [timelineOpen]);
+  }, [timelineOpen, insightOpen, trackOpen]);
 
   const getDayStatus = useCallback(
     (month: number, day: number): 'checked' | 'crossed' | 'auto' | 'none' => {
@@ -341,7 +348,7 @@ export default function YearCalendar() {
 
 
   return (
-    <div ref={scrollContainerRef} className="h-screen overflow-y-scroll" style={{ scrollbarWidth: 'none', overflowY: timelineOpen ? 'hidden' : 'scroll' }}>
+    <div ref={scrollContainerRef} className="h-screen overflow-y-scroll" style={{ scrollbarWidth: 'none', overflowY: (timelineOpen || insightOpen || trackOpen) ? 'hidden' : 'scroll' }}>
       {/* Page 1: Calendar */}
       <div className="h-screen print:bg-white print:h-auto flex flex-col overflow-hidden relative"
       style={{ backgroundColor: skin.bodyBg }}>
@@ -645,8 +652,10 @@ export default function YearCalendar() {
               e.stopPropagation();
               const opening = !timelineOpen;
               if (opening) {
-                // Close monthly review if open
+                // Close monthly review and other panels
                 setSelectedMonth(null);
+                setInsightOpen(false);
+                setTrackOpen(false);
                 isSnapping.current = false;
                 if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
                 if (scrollContainerRef.current) {
@@ -661,6 +670,9 @@ export default function YearCalendar() {
               }
               timelineOpenRef.current = opening;
               setTimelineOpen(opening);
+              if (!opening && scrollContainerRef.current) {
+                scrollContainerRef.current.style.overflowY = 'scroll';
+              }
             }}
             onMouseDown={(e) => e.preventDefault()}
             className="group w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
@@ -676,6 +688,85 @@ export default function YearCalendar() {
               <line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </button>
+
+          {/* Daily Insight button */}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const opening = !insightOpen;
+              if (opening) {
+                // Close other panels
+                setSelectedMonth(null);
+                timelineOpenRef.current = false;
+                setTimelineOpen(false);
+                setTrackOpen(false);
+                if (scrollContainerRef.current) {
+                  const container = scrollContainerRef.current;
+                  container.style.overflowY = 'hidden';
+                  container.style.scrollBehavior = 'auto';
+                  const currentScroll = container.scrollTop;
+                  const pageH = container.clientHeight;
+                  container.scrollTop = Math.round(currentScroll / pageH) * pageH;
+                }
+              } else {
+                if (scrollContainerRef.current) scrollContainerRef.current.style.overflowY = 'scroll';
+              }
+              setInsightOpen(opening);
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+            className="group w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
+            style={{
+              backgroundColor: `${skin.swatch}20`,
+              color: skin.swatch,
+              boxShadow: insightOpen ? `0 0 0 2px ${skin.swatch}40, 0 0 16px ${skin.swatch}25` : `0 0 0 1px ${skin.swatch}15`,
+            }}
+            title="每日洞察"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+
+          {/* Track button */}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const opening = !trackOpen;
+              if (opening) {
+                // Close other panels
+                setSelectedMonth(null);
+                timelineOpenRef.current = false;
+                setTimelineOpen(false);
+                setInsightOpen(false);
+                if (scrollContainerRef.current) {
+                  const container = scrollContainerRef.current;
+                  container.style.overflowY = 'hidden';
+                  container.style.scrollBehavior = 'auto';
+                  const currentScroll = container.scrollTop;
+                  const pageH = container.clientHeight;
+                  container.scrollTop = Math.round(currentScroll / pageH) * pageH;
+                }
+              } else {
+                if (scrollContainerRef.current) scrollContainerRef.current.style.overflowY = 'scroll';
+              }
+              setTrackOpen(opening);
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+            className="group w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
+            style={{
+              backgroundColor: `${skin.swatch}20`,
+              color: skin.swatch,
+              boxShadow: trackOpen ? `0 0 0 2px ${skin.swatch}40, 0 0 16px ${skin.swatch}25` : `0 0 0 1px ${skin.swatch}15`,
+            }}
+            title="轨迹"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
           </button>
         </div>
@@ -715,10 +806,14 @@ export default function YearCalendar() {
                     backgroundColor: `${monthColor.bg}60`,
                   }}
                   onClick={() => {
-                    // Close timeline if open
+                    // Close other panels if open
                     if (timelineOpen) {
                       timelineOpenRef.current = false;
                       setTimelineOpen(false);
+                    }
+                    setInsightOpen(false);
+                    setTrackOpen(false);
+                    if (timelineOpen || insightOpen || trackOpen) {
                       if (scrollContainerRef.current) {
                         scrollContainerRef.current.style.overflowY = 'scroll';
                       }
@@ -857,8 +952,10 @@ export default function YearCalendar() {
                         className="cursor-pointer  transition-all duration-200 rounded-b-sm"
                         style={{ height: '67%' }}
                         onClick={() => {
-                          // Close monthly review if open
+                          // Close other panels
                           setSelectedMonth(null);
+                          setInsightOpen(false);
+                          setTrackOpen(false);
                           setTimelineMonth(cell.month);
                           setTimelineDay(cell.day);
                           if (!timelineOpen) {
@@ -891,32 +988,58 @@ export default function YearCalendar() {
             );
           })}
 
+          {/* Timeline panel overlay - left starts after month name column */}
+          {timelineOpen && (
+            <TimelinePanel
+              year={year}
+              month={timelineMonth}
+              day={timelineDay}
+              onClose={() => {
+                timelineOpenRef.current = false;
+                setTimelineOpen(false);
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.style.overflowY = 'scroll';
+                }
+              }}
+              skin={skin}
+            />
+          )}
 
-        </div>
-        </div>
+          {/* Daily Insight overlay */}
+          {insightOpen && (
+            <InsightPanel
+              year={year}
+              month={insightMonth}
+              day={insightDay}
+              skin={skin}
+              onClose={() => {
+                setInsightOpen(false);
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.style.overflowY = 'scroll';
+                }
+              }}
+            />
+          )}
 
-        {/* Timeline panel overlay - covers entire grid area */}
-        {timelineOpen && (
-          <TimelinePanel
-            year={year}
-            month={timelineMonth}
-            day={timelineDay}
-            onClose={() => {
-              timelineOpenRef.current = false;
-              setTimelineOpen(false);
-              if (scrollContainerRef.current) {
-                scrollContainerRef.current.style.overflowY = 'scroll';
-              }
-            }}
-            skin={skin}
-          />
-        )}
+          {/* Track overlay */}
+          {trackOpen && (
+            <TrackPanel
+              year={year}
+              skin={skin}
+              onClose={() => {
+                setTrackOpen(false);
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.style.overflowY = 'scroll';
+                }
+              }}
+            />
+          )}
 
-        {/* 月度复盘 - 覆盖层 */}
-        {selectedMonth !== null && mounted && (
-          <div className="absolute top-0 right-0 bottom-0 left-28 z-40 flex flex-col overflow-hidden"
-            style={{ backgroundColor: skin.panelBg }}
-          >
+          {/* 月度复盘 - 覆盖层，左侧从月份名列右侧开始 */}
+          {selectedMonth !== null && mounted && (
+            <div className="absolute top-0 right-0 bottom-0 z-40 flex flex-col overflow-hidden"
+              style={{ backgroundColor: skin.panelBg, left: '79px' }}
+            >
             {/* 头部 - 背景图+渐变 */}
             <div className="px-6 pt-5 pb-5 relative overflow-hidden flex-shrink-0" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
               <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }} />
@@ -1003,7 +1126,8 @@ export default function YearCalendar() {
             </div>
           </div>
         )}
-        </div>{/* end flex-1 grid container */}
+        </div>{/* end gridInnerRef */}
+        </div>{/* end gridContainerRef */}
 
       {/* Note Popup - TickTick inspired */}
       {notePopup && mounted && (
@@ -1118,7 +1242,8 @@ export default function YearCalendar() {
           skinKey={skinKey}
         />
       )}
-      </div>
+      </div>{/* end flex-1 container */}
+      </div>{/* end page1 container */}
 
       {/* Page 2: Monthly Review */}
       <section className="h-screen overflow-y-auto">
