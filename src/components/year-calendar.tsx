@@ -645,14 +645,14 @@ export default function YearCalendar() {
         </button>
 
         {/* Calendar / Task toggle sidebar */}
-        <div className="flex-shrink-0 w-14 flex flex-col items-center pt-3 gap-3 z-10">
+        <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10" style={{ gap: '6px' }}>
+          {/* Calendar / Schedule button */}
           <button
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               const opening = !timelineOpen;
               if (opening) {
-                // Close monthly review and other panels
                 setSelectedMonth(null);
                 setInsightOpen(false);
                 setTrackOpen(false);
@@ -675,21 +675,27 @@ export default function YearCalendar() {
               }
             }}
             onMouseDown={(e) => e.preventDefault()}
-            className="group w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
-            style={{
-              backgroundColor: `${skin.swatch}20`,
-              color: timelineOpen ? skin.swatch : skin.swatch,
-              boxShadow: timelineOpen ? `0 0 0 2px ${skin.swatch}40, 0 0 16px ${skin.swatch}25` : `0 0 0 1px ${skin.swatch}15`,
-            }}
+            className="group flex flex-col items-center gap-1 cursor-pointer"
             title="日程"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2.5" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
+            <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
+              style={{
+                backgroundColor: `${skin.swatch}20`,
+                color: skin.swatch,
+                boxShadow: timelineOpen ? `0 0 0 2px ${skin.swatch}40, 0 0 16px ${skin.swatch}25` : `0 0 0 1px ${skin.swatch}15`,
+              }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2.5" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            </span>
+            <span className="text-[9px] leading-none font-medium transition-colors"
+              style={{ color: timelineOpen ? skin.swatch : `${skin.swatch}90` }}>日程</span>
           </button>
+
+          <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}20` }} />
 
           {/* Daily Insight button */}
           <button
@@ -698,7 +704,6 @@ export default function YearCalendar() {
               e.stopPropagation();
               const opening = !insightOpen;
               if (opening) {
-                // Close other panels
                 setSelectedMonth(null);
                 timelineOpenRef.current = false;
                 setTimelineOpen(false);
@@ -717,18 +722,22 @@ export default function YearCalendar() {
               setInsightOpen(opening);
             }}
             onMouseDown={(e) => e.preventDefault()}
-            className="group w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
-            style={{
-              backgroundColor: `${skin.swatch}20`,
-              color: skin.swatch,
-              boxShadow: insightOpen ? `0 0 0 2px ${skin.swatch}40, 0 0 16px ${skin.swatch}25` : `0 0 0 1px ${skin.swatch}15`,
-            }}
-            title="每日洞察"
+            className="group flex flex-col items-center gap-1 cursor-pointer"
+            title="洞察"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
+            <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
+              style={{
+                backgroundColor: `${skin.swatch}20`,
+                color: skin.swatch,
+                boxShadow: insightOpen ? `0 0 0 2px ${skin.swatch}40, 0 0 16px ${skin.swatch}25` : `0 0 0 1px ${skin.swatch}15`,
+              }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </span>
+            <span className="text-[9px] leading-none font-medium transition-colors"
+              style={{ color: insightOpen ? skin.swatch : `${skin.swatch}90` }}>洞察</span>
           </button>
 
           {/* Track button */}
@@ -738,7 +747,6 @@ export default function YearCalendar() {
               e.stopPropagation();
               const opening = !trackOpen;
               if (opening) {
-                // Close other panels
                 setSelectedMonth(null);
                 timelineOpenRef.current = false;
                 setTimelineOpen(false);
@@ -757,17 +765,21 @@ export default function YearCalendar() {
               setTrackOpen(opening);
             }}
             onMouseDown={(e) => e.preventDefault()}
-            className="group w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
-            style={{
-              backgroundColor: `${skin.swatch}20`,
-              color: skin.swatch,
-              boxShadow: trackOpen ? `0 0 0 2px ${skin.swatch}40, 0 0 16px ${skin.swatch}25` : `0 0 0 1px ${skin.swatch}15`,
-            }}
+            className="group flex flex-col items-center gap-1 cursor-pointer"
             title="轨迹"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-            </svg>
+            <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
+              style={{
+                backgroundColor: `${skin.swatch}20`,
+                color: skin.swatch,
+                boxShadow: trackOpen ? `0 0 0 2px ${skin.swatch}40, 0 0 16px ${skin.swatch}25` : `0 0 0 1px ${skin.swatch}15`,
+              }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+            </span>
+            <span className="text-[9px] leading-none font-medium transition-colors"
+              style={{ color: trackOpen ? skin.swatch : `${skin.swatch}90` }}>轨迹</span>
           </button>
         </div>
 
