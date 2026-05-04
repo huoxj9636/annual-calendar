@@ -131,7 +131,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     const y = e.clientY - rect.top;
     const totalMinutes = Math.floor((y / HOUR_HEIGHT) * 60);
     const startMin = Math.max(0, Math.min(totalMinutes, 23 * 60 + 30));
-    const endMin = Math.min(startMin + 60, 24 * 60);
+    const endMin = Math.min(startMin + 15, 24 * 60);
     setAddStartTime(minutesToTime(startMin));
     setAddEndTime(minutesToTime(endMin));
     setAddTitle('');
@@ -288,12 +288,13 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   };
 
   // 弹框组件
-  const ModalCard = ({ children, top }: { children: React.ReactNode; top?: number }) => (
+  const ModalCard = ({ children, top, accentColor }: { children: React.ReactNode; top?: number; accentColor?: string }) => (
     <div
       className="absolute z-50 left-1/2 -translate-x-1/2"
       style={{ top: top ?? 60, animation: 'fadeIn 0.15s ease-out' }}
     >
-      <div className="rounded-xl shadow-2xl w-[300px] overflow-hidden backdrop-blur-sm" style={{ backgroundColor: `${s.cardBg}f5`, border: `1px solid ${s.divider}`, boxShadow: `0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)` }}>
+      <div className="rounded-xl shadow-2xl w-[340px] overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(16px)', border: `1px solid ${accentColor || s.swatch}25`, boxShadow: `0 24px 48px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.08)` }}>
+        {accentColor && <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}60)` }} />}
         {children}
       </div>
     </div>
@@ -518,31 +519,39 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
 
         {/* 添加日程弹框 - 滴答清单风格 */}
         {showAddModal && (
-          <ModalCard top={addModalTop}>
-            {/* 顶部色条 */}
-            <div className="h-1 w-full" style={{ backgroundColor: addColor }} />
+          <ModalCard top={addModalTop} accentColor={addColor}>
             <div className="px-5 pt-4 pb-3">
-              {/* 标题输入 - 大字居中 */}
-              <input
-                autoFocus value={addTitle} onChange={e => setAddTitle(e.target.value.slice(0, 50))}
-                onKeyDown={e => { if (e.key === 'Enter') handleAddEvent(); if (e.key === 'Escape') setShowAddModal(false); }}
-                placeholder="添加日程..."
-                className="w-full text-base font-medium px-0 py-1 border-0 border-b outline-none bg-transparent mb-4"
-                style={{ borderColor: s.divider, color: s.textPrimary, borderBottomWidth: '1.5px' }}
-              />
+              {/* 标题输入 */}
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: addColor }} />
+                <input
+                  autoFocus value={addTitle} onChange={e => setAddTitle(e.target.value.slice(0, 50))}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddEvent(); if (e.key === 'Escape') setShowAddModal(false); }}
+                  placeholder="添加日程..."
+                  className="w-full text-sm font-medium outline-none bg-transparent placeholder:opacity-40"
+                  style={{ color: s.textPrimary }}
+                />
+              </div>
               {/* 时间选择 */}
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-end gap-2 mb-4">
                 <TimePicker value={addStartTime} onChange={setAddStartTime} label="开始" />
-                <span className="text-xs mt-4" style={{ color: s.textMuted }}>→</span>
+                <div className="flex flex-col items-center gap-0.5 pb-1.5">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2v8" stroke={s.textMuted} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <span className="text-[9px] font-medium" style={{ color: s.swatch }}>
+                    {(() => { const [sh,sm] = addStartTime.split(':').map(Number); const [eh,em] = addEndTime.split(':').map(Number); const d = (eh*60+em)-(sh*60+sm); return d>0?`${d}min`:'15min'; })()}
+                  </span>
+                </div>
                 <TimePicker value={addEndTime} onChange={setAddEndTime} label="结束" />
               </div>
               {/* 颜色选择 - 圆点 */}
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] mr-0.5" style={{ color: s.textMuted }}>标签</span>
                 {EVENT_COLORS.map(c => (
                   <button
                     key={c.key} onClick={() => setAddColor(c.color)}
-                    className="w-5 h-5 rounded-full transition-all"
+                    className="w-4.5 h-4.5 rounded-full transition-all"
                     style={{
+                      width: 18, height: 18,
                       backgroundColor: c.color,
                       boxShadow: addColor === c.color ? `0 0 0 2px ${s.cardBg}, 0 0 0 3.5px ${c.color}` : 'none',
                       transform: addColor === c.color ? 'scale(1.15)' : 'scale(1)',
@@ -553,11 +562,11 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
               </div>
             </div>
             {/* 底部按钮 */}
-            <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: `1px solid ${s.divider}` }}>
-              <button onClick={() => setShowAddModal(false)} className="text-xs px-3 py-1.5 rounded-md transition-colors" style={{ color: s.textMuted }}>
+            <div className="flex items-center justify-end gap-2 px-5 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
+              <button onClick={() => setShowAddModal(false)} className="text-[11px] px-4 py-1.5 rounded-lg transition-colors" style={{ color: s.textMuted }}>
                 取消
               </button>
-              <button onClick={handleAddEvent} disabled={!addTitle.trim()} className="text-xs px-5 py-1.5 rounded-lg text-white disabled:opacity-40 font-medium transition-all" style={{ backgroundColor: s.swatch }}>
+              <button onClick={handleAddEvent} disabled={!addTitle.trim()} className="text-[11px] px-5 py-1.5 rounded-lg text-white disabled:opacity-40 font-medium transition-all" style={{ backgroundColor: s.swatch }}>
                 添加日程
               </button>
             </div>
@@ -566,31 +575,39 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
 
         {/* 编辑日程弹框 - 滴答清单风格 */}
         {showEditModal && editEvent && (
-          <ModalCard top={editModalTop}>
-            {/* 顶部色条 */}
-            <div className="h-1 w-full" style={{ backgroundColor: editColor }} />
+          <ModalCard top={editModalTop} accentColor={editColor}>
             <div className="px-5 pt-4 pb-3">
               {/* 标题输入 */}
-              <input
-                autoFocus value={editTitle} onChange={e => setEditTitle(e.target.value.slice(0, 50))}
-                onKeyDown={e => { if (e.key === 'Enter') handleEditEvent(); if (e.key === 'Escape') { setShowEditModal(false); setEditEvent(null); } }}
-                placeholder="编辑日程..."
-                className="w-full text-base font-medium px-0 py-1 border-0 border-b outline-none bg-transparent mb-4"
-                style={{ borderColor: s.divider, color: s.textPrimary, borderBottomWidth: '1.5px' }}
-              />
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: editColor }} />
+                <input
+                  autoFocus value={editTitle} onChange={e => setEditTitle(e.target.value.slice(0, 50))}
+                  onKeyDown={e => { if (e.key === 'Enter') handleEditEvent(); if (e.key === 'Escape') { setShowEditModal(false); setEditEvent(null); } }}
+                  placeholder="编辑日程..."
+                  className="w-full text-sm font-medium outline-none bg-transparent placeholder:opacity-40"
+                  style={{ color: s.textPrimary }}
+                />
+              </div>
               {/* 时间选择 */}
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-end gap-2 mb-4">
                 <TimePicker value={editStartTime} onChange={setEditStartTime} label="开始" />
-                <span className="text-xs mt-4" style={{ color: s.textMuted }}>→</span>
+                <div className="flex flex-col items-center gap-0.5 pb-1.5">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2v8" stroke={s.textMuted} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <span className="text-[9px] font-medium" style={{ color: s.swatch }}>
+                    {(() => { const [sh,sm] = editStartTime.split(':').map(Number); const [eh,em] = editEndTime.split(':').map(Number); const d = (eh*60+em)-(sh*60+sm); return d>0?`${d}min`:'—'; })()}
+                  </span>
+                </div>
                 <TimePicker value={editEndTime} onChange={setEditEndTime} label="结束" />
               </div>
               {/* 颜色选择 - 圆点 */}
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] mr-0.5" style={{ color: s.textMuted }}>标签</span>
                 {EVENT_COLORS.map(c => (
                   <button
                     key={c.key} onClick={() => setEditColor(c.color)}
-                    className="w-5 h-5 rounded-full transition-all"
+                    className="rounded-full transition-all"
                     style={{
+                      width: 18, height: 18,
                       backgroundColor: c.color,
                       boxShadow: editColor === c.color ? `0 0 0 2px ${s.cardBg}, 0 0 0 3.5px ${c.color}` : 'none',
                       transform: editColor === c.color ? 'scale(1.15)' : 'scale(1)',
@@ -601,15 +618,15 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
               </div>
             </div>
             {/* 底部按钮 */}
-            <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: `1px solid ${s.divider}` }}>
-              <button onClick={() => handleDeleteEvent(editEvent.id)} className="text-xs px-3 py-1.5 rounded-md transition-colors" style={{ color: '#ef4444' }}>
+            <div className="flex items-center justify-between px-5 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
+              <button onClick={() => handleDeleteEvent(editEvent.id)} className="text-[11px] px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1" style={{ color: '#ef4444', backgroundColor: '#fef2f2' }}>
                 删除
               </button>
               <div className="flex gap-2">
-                <button onClick={() => { setShowEditModal(false); setEditEvent(null); }} className="text-xs px-3 py-1.5 rounded-md transition-colors" style={{ color: s.textMuted }}>
+                <button onClick={() => { setShowEditModal(false); setEditEvent(null); }} className="text-[11px] px-4 py-1.5 rounded-lg transition-colors" style={{ color: s.textMuted }}>
                   取消
                 </button>
-                <button onClick={handleEditEvent} disabled={!editTitle.trim()} className="text-xs px-5 py-1.5 rounded-lg text-white disabled:opacity-40 font-medium transition-all" style={{ backgroundColor: s.swatch }}>
+                <button onClick={handleEditEvent} disabled={!editTitle.trim()} className="text-[11px] px-5 py-1.5 rounded-lg text-white disabled:opacity-40 font-medium transition-all" style={{ backgroundColor: s.swatch }}>
                   保存
                 </button>
               </div>
