@@ -252,6 +252,8 @@ export default function YearCalendar() {
       const page = Math.round(currentScroll / pageH);
       setShowBackToTop(page > 0);
 
+      // Skip snap when timeline panel is open
+      if (timelineOpen) return;
       if (isSnapping.current) return;
       if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
       scrollTimeout.current = setTimeout(() => {
@@ -287,7 +289,7 @@ export default function YearCalendar() {
       container.removeEventListener('scroll', handleScroll);
       if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
     };
-  }, []);
+  }, [timelineOpen]);
 
   const getDayStatus = useCallback(
     (month: number, day: number): 'checked' | 'crossed' | 'auto' | 'none' => {
@@ -656,7 +658,14 @@ export default function YearCalendar() {
         {/* Calendar / Task toggle sidebar */}
         <div className="flex-shrink-0 w-10 flex flex-col items-center pt-2 gap-2 z-10">
           <button
-            onClick={() => setTimelineOpen(v => !v)}
+            onClick={() => {
+              const opening = !timelineOpen;
+              if (opening && scrollContainerRef.current) {
+                // Save scroll position before opening
+                scrollContainerRef.current.scrollTop = 0;
+              }
+              setTimelineOpen(opening);
+            }}
             className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
             style={{ backgroundColor: timelineOpen ? `${skin.swatch}30` : 'transparent', color: timelineOpen ? skin.swatch : skin.textMuted }}
             title="日程"
