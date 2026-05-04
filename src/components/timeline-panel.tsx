@@ -36,6 +36,7 @@ interface TimelinePanelProps {
     sidebarTo: string;
   };
   onClose: () => void;
+  initialLeft?: number;
 }
 
 const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => i);
@@ -47,7 +48,7 @@ const EVENT_COLORS = [
   { key: 'other', label: '其他', color: '#6b7280' },
 ];
 
-export default function TimelinePanel({ year, month, day, skin, onClose }: TimelinePanelProps) {
+export default function TimelinePanel({ year, month, day, skin, onClose, initialLeft = 64 }: TimelinePanelProps) {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [mounted, setMounted] = useState(false);
   const [addingSlot, setAddingSlot] = useState<number | null>(null);
@@ -57,6 +58,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Timel
   const [navYear, setNavYear] = useState(year);
   const [navMonth, setNavMonth] = useState(month);
   const [navDay, setNavDay] = useState(day);
+  const [panelLeft, setPanelLeft] = useState(initialLeft);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -210,8 +212,29 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Timel
   return (
     <div
       className="absolute top-0 bottom-0 z-40 flex flex-col overflow-hidden"
-      style={{ backgroundColor: s.panelBg, left: '64px', right: '-6px' }}
+      style={{ backgroundColor: s.panelBg, left: `${panelLeft}px`, right: '-6px' }}
     >
+      {/* 左侧拖拽手柄 */}
+      <div
+        className="absolute top-0 bottom-0 left-0 w-1.5 cursor-col-resize z-50 hover:bg-black/10 active:bg-black/20 transition-colors group"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          const startX = e.clientX;
+          const startLeft = panelLeft;
+          const onMove = (ev: MouseEvent) => {
+            const delta = startX - ev.clientX;
+            setPanelLeft(Math.max(0, Math.min(startLeft + delta, 400)));
+          };
+          const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        }}
+      >
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-black/20 group-hover:bg-black/40 transition-colors" />
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b" style={{ borderColor: s.divider }}>
         <div className="flex items-center gap-2">

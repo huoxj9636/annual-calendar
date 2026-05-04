@@ -47,6 +47,7 @@ export default function YearCalendar() {
   const [popupSize, setPopupSize] = useState({ w: 400, h: 320 });
   const [noteDraft, setNoteDraft] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [reviewLeft, setReviewLeft] = useState(95);
   const [clockStr, setClockStr] = useState('');
   const popupRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -1052,8 +1053,29 @@ export default function YearCalendar() {
           {/* 月度复盘 - 覆盖层，左侧从月份名列右侧开始 */}
           {selectedMonth !== null && mounted && (
             <div className="absolute top-0 right-0 bottom-0 z-40 flex flex-col overflow-hidden"
-              style={{ backgroundColor: skin.panelBg, left: '95px' }}
+              style={{ backgroundColor: skin.panelBg, left: `${reviewLeft}px` }}
             >
+              {/* 左侧拖拽手柄 */}
+              <div
+                className="absolute top-0 bottom-0 left-0 w-1.5 cursor-col-resize z-50 hover:bg-black/10 active:bg-black/20 transition-colors group"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const startX = e.clientX;
+                  const startLeft = reviewLeft;
+                  const onMove = (ev: MouseEvent) => {
+                    const delta = startX - ev.clientX;
+                    setReviewLeft(Math.max(0, Math.min(startLeft + delta, 400)));
+                  };
+                  const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                  };
+                  document.addEventListener('mousemove', onMove);
+                  document.addEventListener('mouseup', onUp);
+                }}
+              >
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-black/20 group-hover:bg-black/40 transition-colors" />
+              </div>
             {/* 头部 - 背景图+渐变 */}
             <div className="px-6 pt-5 pb-5 relative overflow-hidden flex-shrink-0" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
               <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}55, ${skin.sidebarTo}44)` }} />

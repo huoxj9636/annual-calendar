@@ -7,6 +7,7 @@ interface TrackPanelProps {
   year: number;
   skin: SkinTheme;
   onClose: () => void;
+  initialLeft?: number;
 }
 
 interface PlannedEvent {
@@ -38,7 +39,7 @@ function minutesToTime(m: number): string {
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 }
 
-export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
+export default function TrackPanel({ year, skin, onClose, initialLeft = 64 }: TrackPanelProps) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [actualTimes, setActualTimes] = useState<Record<string, ActualTime>>({});
@@ -48,6 +49,7 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
   const [error, setError] = useState('');
   const [plannedEvents, setPlannedEvents] = useState<PlannedEvent[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const [panelLeft, setPanelLeft] = useState(initialLeft);
   const analysisRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -235,12 +237,33 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
 
   return (
     <div className="absolute top-0 bottom-0 z-40 flex flex-col overflow-hidden"
-      style={{ backgroundColor: s.panelBg, left: '64px', right: '-6px' }}>
+      style={{ backgroundColor: s.panelBg, left: `${panelLeft}px`, right: '-6px' }}>
+      {/* 左侧拖拽手柄 */}
+      <div
+        className="absolute top-0 bottom-0 left-0 w-1.5 cursor-col-resize z-50 hover:bg-black/10 active:bg-black/20 transition-colors group"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          const startX = e.clientX;
+          const startLeft = panelLeft;
+          const onMove = (ev: MouseEvent) => {
+            const delta = startX - ev.clientX;
+            setPanelLeft(Math.max(0, Math.min(startLeft + delta, 400)));
+          };
+          const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        }}
+      >
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-black/20 group-hover:bg-black/40 transition-colors" />
+      </div>
 
       {/* Header - 中文在上，英文在下 */}
       <div className="px-5 pt-4 pb-3 border-b flex-shrink-0 flex items-center justify-between" style={{ borderColor: s.divider }}>
         <div>
-          <div className="text-lg font-bold" style={{ color: s.textPrimary }}>{selectedMonth}月{selectedDay}日</div>
+          <div className="text-lg font-bold" style={{ color: s.textPrimary }}>对照轨迹</div>
           <div className="text-xs font-medium tracking-wider mt-0.5" style={{ color: s.swatch }}>LIFE TRACK</div>
         </div>
         <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer" style={{ backgroundColor: s.cardHover }}>

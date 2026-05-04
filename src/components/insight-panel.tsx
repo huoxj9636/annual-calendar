@@ -9,6 +9,7 @@ interface InsightPanelProps {
   day: number;
   skin: SkinTheme;
   onClose: () => void;
+  initialLeft?: number;
 }
 
 interface InsightGoal {
@@ -64,13 +65,14 @@ const INSIGHT_GOALS: InsightGoal[] = [
   },
 ];
 
-export default function InsightPanel({ year, month, day, skin, onClose }: InsightPanelProps) {
+export default function InsightPanel({ year, month, day, skin, onClose, initialLeft = 64 }: InsightPanelProps) {
   const [selectedGoal, setSelectedGoal] = useState<string>('');
   const [insight, setInsight] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const insightRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [panelLeft, setPanelLeft] = useState(initialLeft);
 
   // Auto-scroll to bottom as content streams in
   useEffect(() => {
@@ -177,7 +179,28 @@ export default function InsightPanel({ year, month, day, skin, onClose }: Insigh
 
   return (
     <div className="absolute top-0 bottom-0 z-40 flex overflow-hidden"
-      style={{ backgroundColor: s.panelBg, left: '64px', right: '-6px' }}>
+      style={{ backgroundColor: s.panelBg, left: `${panelLeft}px`, right: '-6px' }}>
+      {/* 左侧拖拽手柄 */}
+      <div
+        className="absolute top-0 bottom-0 left-0 w-1.5 cursor-col-resize z-50 hover:bg-black/10 active:bg-black/20 transition-colors group"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          const startX = e.clientX;
+          const startLeft = panelLeft;
+          const onMove = (ev: MouseEvent) => {
+            const delta = startX - ev.clientX;
+            setPanelLeft(Math.max(0, Math.min(startLeft + delta, 400)));
+          };
+          const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        }}
+      >
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-black/20 group-hover:bg-black/40 transition-colors" />
+      </div>
       {/* Left sidebar - Goal selection */}
       <div className="w-72 flex-shrink-0 flex flex-col border-r"
         style={{ borderColor: s.divider, backgroundColor: `${s.sidebarFrom}10` }}>
