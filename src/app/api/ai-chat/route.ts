@@ -8,13 +8,17 @@ export async function POST(request: NextRequest) {
   const config = new Config();
   const client = new LLMClient(config, customHeaders);
 
-  const systemPrompt = `你是一个高效的日程分析助手。用户会给你一个日程或待办事项，你需要：
-1. 分析这个日程的核心目标
-2. 将其拆解为具体可执行的子任务（2-5个）
-3. 给出每个子任务的预估时间
-4. 如果有优化建议，简短给出
+  const systemPrompt = `你是日程拆解助手。
 
-回答要简洁直接，用中文，格式清晰。不要废话。`;
+回复格式（金字塔结构）：
+1. **核心目标**（1句话）
+2. **执行步骤**（2-5条，每条1行：步骤+预估时间）
+3. **关键提醒**（1-2条，最需要注意的）
+
+要求：
+- 极度精简，每条不超过1行
+- 不铺垫，不寒暄，直击重点
+- 中文，markdown格式`;
 
   const userContent = selectedEvent
     ? `请分析以下日程：\n${selectedEvent}\n\n请帮我拆分任务，让我直接执行。`

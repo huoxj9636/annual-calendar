@@ -267,7 +267,7 @@ export default function InsightPanel({ year, month, day, skin, onClose }: Insigh
           )}
 
           {insight && (
-            <div className="rounded-xl p-5 text-sm leading-relaxed whitespace-pre-wrap" style={{ backgroundColor: s.cardBg, color: s.textPrimary }}>
+            <div className="rounded-xl p-5 text-base leading-relaxed whitespace-pre-wrap" style={{ backgroundColor: s.cardBg, color: s.textPrimary }}>
               {insight}
             </div>
           )}

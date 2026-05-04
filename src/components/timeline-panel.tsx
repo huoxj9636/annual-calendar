@@ -381,7 +381,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Timel
             {chatMessages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className="max-w-[85%] text-xs px-3 py-2 rounded-lg whitespace-pre-wrap"
+                  className="max-w-[85%] text-sm px-3 py-2 rounded-lg whitespace-pre-wrap"
                   style={{
                     backgroundColor: msg.role === 'user' ? s.swatch : s.cardHover,
                     color: msg.role === 'user' ? '#fff' : s.textPrimary,
