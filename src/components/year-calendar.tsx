@@ -635,27 +635,26 @@ export default function YearCalendar() {
         {/* Bookmark button for Life Calendar */}
         <button
           onClick={() => setShowLifeCalendar(true)}
-          className="flex-shrink-0 w-14 flex flex-col items-center justify-end cursor-pointer z-10 group pb-1"
+          className="flex-shrink-0 w-14 flex items-end justify-center cursor-pointer z-10 group pb-1"
           title="人生旅途"
         >
           <div
             className="relative transition-all group-hover:brightness-110"
             style={{
-              width: '28px',
-              minHeight: '64px',
+              width: '56px',
+              height: '28px',
               backgroundColor: skin.swatch,
-              borderRadius: '4px 4px 0 0',
-              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 85%, 0 100%)',
+              clipPath: 'polygon(0 0, 100% 0, 90% 100%, 50% 75%, 10% 100%)',
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '8px 0 14px 0',
               gap: '4px',
+              transform: 'rotate(-90deg)',
+              transformOrigin: 'center center',
             }}
           >
             {/* Book icon */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
               <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
             </svg>
@@ -663,9 +662,7 @@ export default function YearCalendar() {
               color: 'white',
               fontSize: '9px',
               fontWeight: 'bold',
-              writingMode: 'vertical-rl',
-              textOrientation: 'upright',
-              letterSpacing: '2px',
+              letterSpacing: '1px',
               textShadow: '0 0 4px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.8)',
             }}>
               人生旅途
