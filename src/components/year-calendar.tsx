@@ -812,7 +812,7 @@ export default function YearCalendar() {
               >
                 {/* Month label */}
                 <div
-                  className="flex items-center justify-center text-[17px] font-extrabold sticky left-0 z-10 rounded-xl mx-0.5 cursor-pointer hover:scale-110 transition-all duration-300 shadow-sm hover:shadow-lg backdrop-blur-md"
+                  className="flex items-center justify-center text-[17px] font-extrabold sticky left-0 z-10 rounded-xl mx-0.5 mr-[5px] cursor-pointer hover:scale-110 transition-all duration-300 shadow-sm hover:shadow-lg backdrop-blur-md"
                   style={{
                     height: cellHeight,
                     color: monthColor.text,
@@ -1052,7 +1052,7 @@ export default function YearCalendar() {
           {/* 月度复盘 - 覆盖层，左侧从月份名列右侧开始 */}
           {selectedMonth !== null && mounted && (
             <div className="absolute top-0 right-0 bottom-0 z-40 flex flex-col overflow-hidden"
-              style={{ backgroundColor: skin.panelBg, left: '90px' }}
+              style={{ backgroundColor: skin.panelBg, left: '95px' }}
             >
             {/* 头部 - 背景图+渐变 */}
             <div className="px-6 pt-5 pb-5 relative overflow-hidden flex-shrink-0" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
