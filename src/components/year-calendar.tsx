@@ -632,18 +632,6 @@ export default function YearCalendar() {
 
       {/* Calendar Grid - fills remaining viewport */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
-        {/* Left arrow for Life Calendar */}
-        <button
-          onClick={() => setShowLifeCalendar(true)}
-          className="flex-shrink-0 w-14 flex items-center justify-center transition-all group cursor-pointer z-10"
-          style={{ background: `linear-gradient(to right, ${skin.swatch}18, transparent)` }}
-          title="人生旅途"
-        >
-          <span className="transition-colors text-4xl font-bold tracking-tight group-hover:opacity-100 opacity-40 transition-opacity inline-block group-hover:translate-x-1 transform" style={{ color: `${skin.swatch}bb` }}>
-            »
-          </span>
-        </button>
-
         {/* Calendar / Task toggle sidebar */}
         <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10" style={{ gap: '12px' }}>
           {/* Calendar / Schedule button */}
@@ -1140,6 +1128,29 @@ export default function YearCalendar() {
             </div>
           </div>
         )}
+
+        {/* Life Journey button - bottom left of grid */}
+        <button
+          onClick={() => setShowLifeCalendar(true)}
+          className="absolute bottom-4 left-2 z-30 flex items-center justify-center transition-all group cursor-pointer"
+          title="人生旅途"
+        >
+          <div className="flex flex-col items-center" style={{ gap: '2px' }}>
+            <div className="w-11 h-11 rounded-full flex items-center justify-center transition-all group-hover:scale-110 shadow-lg"
+              style={{ backgroundColor: skin.swatch, boxShadow: `0 2px 12px ${skin.swatch}50` }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10" />
+                <path d="M12 2c3 3 5 7 5 10s-2 7-5 10" />
+                <path d="M2 12h20" />
+                <path d="M12 2v20" />
+              </svg>
+            </div>
+            <span className="text-xs font-bold whitespace-nowrap" style={{ color: 'white', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)', WebkitTextStroke: '0.3px rgba(0,0,0,0.5)', fontSize: '11px' }}>
+              旅途
+            </span>
+          </div>
+        </button>
+
         </div>{/* end gridInnerRef */}
         </div>{/* end gridContainerRef */}
 

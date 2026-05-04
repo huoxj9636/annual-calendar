@@ -322,13 +322,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('calendar-lifecal-width');
-    if (containerRef.current && saved) {
-      const w = Math.min(Math.max(Number(saved), 360), window.innerWidth * 0.92);
-      containerRef.current.style.width = w + 'px';
-    } else if (containerRef.current) {
-      containerRef.current.style.width = '480px';
-    }
+    // Full width - no need to set width
   }, []);
 
   // Load saved progress + skin
@@ -428,31 +422,8 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   };
 
   return (
-    <div ref={containerRef} className="fixed top-0 left-0 z-50 h-full animate-slide-in-left shadow-2xl flex flex-col transition-colors duration-500"
+    <div ref={containerRef} className="fixed top-0 left-0 z-50 h-full w-full animate-slide-in-left shadow-2xl flex flex-col transition-colors duration-500"
       style={{ background: skin.panelBg }}>
-
-      {/* Resize handle */}
-      <div className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-white/20 z-50 transition-colors"
-        onMouseDown={(e) => {
-          const startX = e.clientX;
-          const panel = (e.target as HTMLElement).parentElement!;
-          const startW = panel.offsetWidth;
-          const onMove = (ev: MouseEvent) => {
-            const newW = Math.min(Math.max(startW + (ev.clientX - startX), 360), window.innerWidth * 0.92);
-            panel.style.width = newW + 'px';
-          };
-          const onUp = () => {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-            localStorage.setItem('calendar-lifecal-width', String(panel.offsetWidth));
-          };
-          document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
-          document.addEventListener('mousemove', onMove);
-          document.addEventListener('mouseup', onUp);
-        }}
-      />
 
       {/* Header - same width/padding as day-view sidebar */}
       <div className="flex-shrink-0 px-5 pb-4 relative overflow-hidden" style={{ paddingTop: '0.95rem', ...(skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }) }}>
