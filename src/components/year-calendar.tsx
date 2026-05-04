@@ -632,28 +632,17 @@ export default function YearCalendar() {
 
       {/* Calendar Grid - fills remaining viewport */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
-        {/* Life Calendar arrow button */}
-        <div className="flex-shrink-0 w-14 flex items-center justify-center z-10">
-          <button
-            onClick={() => setShowLifeCalendar(true)}
-            className="cursor-pointer group"
-            title="人生旅途"
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
-              style={{
-                backgroundColor: skin.swatch,
-                boxShadow: `0 0 12px ${skin.swatch}80, 0 0 24px ${skin.swatch}40, 0 0 36px ${skin.swatch}20`,
-                animation: 'glowPulse 2s ease-in-out infinite',
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </div>
-          </button>
-        </div>
+        {/* Left arrow for Life Calendar */}
+        <button
+          onClick={() => setShowLifeCalendar(true)}
+          className="flex-shrink-0 w-14 flex items-center justify-center transition-all group cursor-pointer z-10"
+          style={{ background: `linear-gradient(to right, ${skin.swatch}18, transparent)` }}
+          title="人生旅途"
+        >
+          <span className="transition-colors text-4xl font-bold tracking-tight group-hover:opacity-100 opacity-40 transition-opacity inline-block group-hover:translate-x-1 transform" style={{ color: `${skin.swatch}bb` }}>
+            »
+          </span>
+        </button>
 
         {/* Calendar / Task toggle sidebar */}
         <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10" style={{ gap: '12px' }}>
