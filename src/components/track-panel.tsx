@@ -137,7 +137,7 @@ export default function TrackPanel({ year, skin, onClose }: TrackPanelProps) {
 
   return (
     <div className="absolute top-0 right-0 bottom-0 z-40 flex flex-col overflow-hidden"
-      style={{ backgroundColor: s.panelBg, left: '77px' }}>
+      style={{ backgroundColor: s.panelBg, left: '81px' }}>
       {/* Header */}
       <div className="px-5 pt-4 pb-3 relative overflow-hidden flex-shrink-0"
         style={s.headerBgImage
