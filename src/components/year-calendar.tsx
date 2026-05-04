@@ -8,7 +8,6 @@ import {
   useRef,
 } from 'react';
 import { getLunarInfo, getYearAnimal, getGanZhiYear } from '@/lib/lunar';
-import DayView from '@/components/day-view';
 import MonthlyReview from '@/components/monthly-review';
 import LifeCalendar from '@/components/life-calendar';
 import { SKINS, NO_SKIN, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
@@ -46,7 +45,6 @@ export default function YearCalendar() {
   const [popupSize, setPopupSize] = useState({ w: 400, h: 320 });
   const [noteDraft, setNoteDraft] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-  const [dayViewDate, setDayViewDate] = useState<{ year: number; month: number; day: number } | null>(null);
   const [clockStr, setClockStr] = useState('');
   const popupRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -57,16 +55,6 @@ export default function YearCalendar() {
   const isSnapping = useRef(false);
   const scrollTimeout = useRef<ReturnType<typeof setTimeout>>(null);
   const timelineOpenRef = useRef(false);
-  const [dayViewWidth, setDayViewWidth] = useState(() => {
-    if (typeof window === 'undefined') return 480;
-    const saved = localStorage.getItem('calendar-dayview-width');
-    return saved ? Math.min(Math.max(Number(saved), 360), window.innerWidth * 0.92) : 480;
-  });
-  const [reviewWidth, setReviewWidth] = useState(() => {
-    if (typeof window === 'undefined') return 440;
-    const saved = localStorage.getItem('calendar-review-width');
-    return saved ? Math.min(Math.max(Number(saved), 360), window.innerWidth * 0.92) : 440;
-  });
   const [showLifeCalendar, setShowLifeCalendar] = useState(false);
   const [birthYear, setBirthYear] = useState(1990);
   const [skinKey, setSkinKey] = useState<string>(DEFAULT_SKIN);
@@ -82,30 +70,8 @@ export default function YearCalendar() {
   const [motto, setMotto] = useState('永远不要放弃');
   const [editingMotto, setEditingMotto] = useState(false);
   const [mottoDraft, setMottoDraft] = useState('');
-
-  // Resize handler for side panels
-  const handlePanelResize = useCallback((setter: React.Dispatch<React.SetStateAction<number>>, storageKey: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    let startW = 0;
-    setter(w => { startW = w; return w; }); // capture current width synchronously
-    const onMouseMove = (ev: MouseEvent) => {
-      const newW = Math.min(Math.max(startW + (startX - ev.clientX), 360), window.innerWidth * 0.92);
-      setter(newW);
-    };
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      // Save to localStorage
-      setter(w => { localStorage.setItem(storageKey, String(w)); return w; });
-    };
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }, []);
+  const [timelineMonth, setTimelineMonth] = useState(() => new Date().getMonth() + 1);
+  const [timelineDay, setTimelineDay] = useState(() => new Date().getDate());
 
   // Real-time clock with centiseconds (2-digit)
   useEffect(() => {
@@ -658,7 +624,7 @@ export default function YearCalendar() {
 
 
       {/* Calendar Grid - fills remaining viewport */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden relative">
         {/* Left arrow for Life Calendar */}
         <button
           onClick={() => setShowLifeCalendar(true)}
@@ -672,22 +638,22 @@ export default function YearCalendar() {
         </button>
 
         {/* Calendar / Task toggle sidebar */}
-        <div className="flex-shrink-0 w-10 flex flex-col items-center pt-2 gap-2 z-10">
+        <div className="flex-shrink-0 w-14 flex flex-col items-center pt-3 gap-3 z-10">
           <button
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               const opening = !timelineOpen;
               if (opening) {
+                // Close monthly review if open
+                setSelectedMonth(null);
                 isSnapping.current = false;
                 if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
                 if (scrollContainerRef.current) {
                   const container = scrollContainerRef.current;
                   const currentScroll = container.scrollTop;
-                  // Lock scroll immediately via DOM
                   container.style.overflowY = 'hidden';
                   container.style.scrollBehavior = 'auto';
-                  // Snap to nearest page boundary first (without animation)
                   const pageH = container.clientHeight;
                   const targetPage = Math.round(currentScroll / pageH) * pageH;
                   container.scrollTop = targetPage;
@@ -697,11 +663,22 @@ export default function YearCalendar() {
               setTimelineOpen(opening);
             }}
             onMouseDown={(e) => e.preventDefault()}
-            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
-            style={{ backgroundColor: timelineOpen ? `${skin.swatch}30` : 'transparent', color: timelineOpen ? skin.swatch : skin.textMuted }}
+            className="group w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
+            style={{
+              backgroundColor: timelineOpen ? `${skin.swatch}25` : 'transparent',
+              color: timelineOpen ? skin.swatch : skin.textMuted,
+              boxShadow: timelineOpen ? `0 0 12px ${skin.swatch}30` : 'none',
+            }}
             title="日程"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2.5" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+              <rect x="7" y="13" width="3" height="3" rx="0.5" fill="currentColor" opacity="0.3" />
+              <rect x="14" y="13" width="3" height="3" rx="0.5" fill="currentColor" opacity="0.3" />
+            </svg>
           </button>
         </div>
 
@@ -716,23 +693,6 @@ export default function YearCalendar() {
 
           {/* Drawing overlay */}
           <DrawingOverlay ref={drawingRef} storageKey={`calendar-drawing-${year}`} visible={true} />
-
-          {/* Timeline panel overlay */}
-          {timelineOpen && (
-            <TimelinePanel
-              year={year}
-              month={mounted ? new Date().getMonth() + 1 : 1}
-              day={mounted ? new Date().getDate() : 1}
-              onClose={() => {
-                timelineOpenRef.current = false;
-                setTimelineOpen(false);
-                if (scrollContainerRef.current) {
-                  scrollContainerRef.current.style.overflowY = 'scroll';
-                }
-              }}
-              skin={skin}
-            />
-          )}
 
           {/* Month rows */}
           {yearData.map((monthRow, monthIdx) => {
@@ -756,7 +716,17 @@ export default function YearCalendar() {
                     border: `1px solid ${monthColor.text}20`,
                     backgroundColor: `${monthColor.bg}60`,
                   }}
-                  onClick={() => setSelectedMonth(monthIdx + 1)}
+                  onClick={() => {
+                    // Close timeline if open
+                    if (timelineOpen) {
+                      timelineOpenRef.current = false;
+                      setTimelineOpen(false);
+                      if (scrollContainerRef.current) {
+                        scrollContainerRef.current.style.overflowY = 'scroll';
+                      }
+                    }
+                    setSelectedMonth(monthIdx + 1);
+                  }}
                   title={`点击查看${monthIdx + 1}月详细视图`}
                 >
                   {MONTH_NAMES[monthIdx]}
@@ -884,11 +854,31 @@ export default function YearCalendar() {
                           {status === 'crossed' ? '✗' : '✓'}
                         </span>
                       )}
-                      {/* Bottom zone (2/3): click to open day view */}
+                      {/* Bottom zone (2/3): click to open timeline panel */}
                       <div
                         className="cursor-pointer  transition-all duration-200 rounded-b-sm"
                         style={{ height: '67%' }}
-                        onClick={() => setDayViewDate({ year, month: cell.month, day: cell.day })}
+                        onClick={() => {
+                          // Close monthly review if open
+                          setSelectedMonth(null);
+                          setTimelineMonth(cell.month);
+                          setTimelineDay(cell.day);
+                          if (!timelineOpen) {
+                            isSnapping.current = false;
+                            if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+                            if (scrollContainerRef.current) {
+                              const container = scrollContainerRef.current;
+                              const currentScroll = container.scrollTop;
+                              container.style.overflowY = 'hidden';
+                              container.style.scrollBehavior = 'auto';
+                              const pageH = container.clientHeight;
+                              const targetPage = Math.round(currentScroll / pageH) * pageH;
+                              container.scrollTop = targetPage;
+                            }
+                            timelineOpenRef.current = true;
+                            setTimelineOpen(true);
+                          }
+                        }}
                       />
                       {/* Blue dot indicator at top-right of entire cell */}
                       {hasAnyNote && (
@@ -906,7 +896,116 @@ export default function YearCalendar() {
 
         </div>
         </div>
-        </div>{/* end gridContainerRef + flex container */}
+
+        {/* Timeline panel overlay - covers entire grid area */}
+        {timelineOpen && (
+          <TimelinePanel
+            year={year}
+            month={timelineMonth}
+            day={timelineDay}
+            onClose={() => {
+              timelineOpenRef.current = false;
+              setTimelineOpen(false);
+              if (scrollContainerRef.current) {
+                scrollContainerRef.current.style.overflowY = 'scroll';
+              }
+            }}
+            skin={skin}
+          />
+        )}
+
+        {/* 月度复盘 - 全屏覆盖层 */}
+        {selectedMonth !== null && mounted && (
+          <div className="absolute inset-0 z-40 flex flex-col overflow-hidden"
+            style={{ backgroundColor: skin.panelBg }}
+          >
+            {/* 头部 - 背景图+渐变 */}
+            <div className="px-6 pt-5 pb-5 relative overflow-hidden flex-shrink-0" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
+              <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }} />
+              <div className="relative z-10 flex items-center justify-between">
+                <div>
+                  <div className="text-white/60 text-xs font-medium tracking-wider mb-1">MONTHLY REVIEW</div>
+                  <div className="text-white text-3xl font-bold">{selectedMonth}月复盘</div>
+                </div>
+                <button onClick={() => setSelectedMonth(null)} className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors z-20">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* 复盘内容 - 现代卡片 */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              {/* 迷你统计条 */}
+              {(() => {
+                const daysInMonth = new Date(year, selectedMonth, 0).getDate();
+                const today = new Date();
+                const isCurrentYear = year === today.getFullYear();
+                const isCurrentMonth = isCurrentYear && selectedMonth === today.getMonth() + 1;
+                const effectiveDays = isCurrentMonth ? today.getDate() : daysInMonth;
+                const storageKey = `calendar-overrides-${year}`;
+                let overrides: Record<string, string> = {};
+                try { overrides = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { /* empty */ }
+                let satisfied = 0;
+                let crossed = 0;
+                for (let d = 1; d <= effectiveDays; d++) {
+                  const key = `${year}-${selectedMonth}-${d}`;
+                  const status = overrides[key];
+                  if (status === 'crossed') crossed++;
+                  else satisfied++;
+                }
+                const rate = effectiveDays > 0 ? Math.round((satisfied / effectiveDays) * 100) : 0;
+                return (
+                  <div className="rounded-xl p-3 space-y-2" style={{ background: skin.cardBg }}>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <span style={{ color: skin.checkColor }} className="text-sm">✓</span>
+                        <span style={{ color: skin.textSecondary }} className="text-xs font-medium">{satisfied}天满意</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span style={{ color: skin.crossColor }} className="text-sm">✗</span>
+                        <span style={{ color: skin.textSecondary }} className="text-xs font-medium">{crossed}天不满意</span>
+                      </div>
+                      <div className="flex-1" />
+                      <span style={{ color: skin.textMuted }} className="text-xs">{effectiveDays}天</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: skin.divider }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${rate}%`, background: skin.swatch }} />
+                      </div>
+                      <span style={{ color: skin.textPrimary }} className="text-xs font-semibold">{rate}%</span>
+                    </div>
+                  </div>
+                );
+              })()}
+              {([
+                { key: 'goals', label: '本月目标', icon: '🎯', color: '#8b5cf6', placeholder: '这个月想要达成什么？' },
+                { key: 'done', label: '完成情况', icon: '✅', color: '#22c55e', placeholder: '实际完成了哪些？' },
+                { key: 'reflect', label: '反思改进', icon: '💡', color: '#f59e0b', placeholder: '有什么可以改进？' },
+                { key: 'plan', label: '下月计划', icon: '🚀', color: '#3b82f6', placeholder: '下个月有什么计划？' },
+              ] as const).map((section) => {
+                const storageKey = `month-review-${section.key}-${year}-${selectedMonth}`;
+                const savedValue = (() => { try { return localStorage.getItem(storageKey) || ''; } catch { return ''; } })();
+                return (
+                  <div key={section.key} className="group">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ backgroundColor: section.color + '15', color: section.color }}>
+                        {section.icon}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-700">{section.label}</span>
+                    </div>
+                    <textarea
+                      className="w-full bg-gray-50/60 rounded-2xl px-5 py-4 text-sm text-gray-700 resize-none focus:outline-none focus:bg-gray-50 transition-all placeholder:text-gray-300 leading-relaxed min-h-[160px]"
+                      placeholder={section.placeholder}
+                      defaultValue={savedValue}
+                      onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => { try { localStorage.setItem(storageKey, e.target.value); } catch { /* empty */ } }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        </div>{/* end flex-1 grid container */}
 
       {/* Note Popup - TickTick inspired */}
       {notePopup && mounted && (
@@ -1008,124 +1107,6 @@ export default function YearCalendar() {
             <svg width="10" height="10" viewBox="0 0 10 10" className="text-white/40">
               <path d="M9 1L1 9M9 4L4 9M9 7L7 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
-          </div>
-        </div>
-      )}
-      {dayViewDate && (
-        <div className="fixed top-0 right-0 bottom-0 z-40 flex">
-          <div className="relative h-full backdrop-blur-xl shadow-2xl border-l animate-slide-in-panel overflow-hidden flex"
-          style={{ width: dayViewWidth, maxWidth: '92vw', background: skin.panelBg + 'f2', borderColor: skin.divider }}>
-            {/* Left resize handle */}
-            <div
-              className="w-1.5 cursor-col-resize hover:bg-blue-400/30 active:bg-blue-400/50 flex-shrink-0 transition-colors z-10"
-              onMouseDown={(e) => handlePanelResize(setDayViewWidth, 'calendar-dayview-width', e)}
-            />
-            <div className="flex-1 overflow-hidden">
-              <DayView
-                year={dayViewDate.year}
-                month={dayViewDate.month}
-                day={dayViewDate.day}
-                onClose={() => setDayViewDate(null)}
-                embedded
-                skin={skin}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 月度复盘侧边栏 - TickTick风格 */}
-      {selectedMonth !== null && mounted && (
-        <div className="fixed top-0 right-0 bottom-0 z-40 flex">
-          <div className="relative h-full backdrop-blur-xl shadow-2xl border-l flex flex-col animate-slide-in"
-          style={{ width: reviewWidth, maxWidth: '92vw', background: skin.panelBg + 'f2', borderColor: skin.divider }}>
-            {/* Left resize handle */}
-            <div
-              className="w-1.5 cursor-col-resize hover:bg-blue-400/30 active:bg-blue-400/50 flex-shrink-0 transition-colors z-10 absolute left-0 top-0 bottom-0"
-              onMouseDown={(e) => handlePanelResize(setReviewWidth, 'calendar-review-width', e)}
-            />
-            {/* 头部 - 背景图+渐变 */}
-            <div className="px-5 pt-10 pb-5 relative overflow-hidden" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
-              <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }} />
-              <div className="relative z-10">
-                <div className="text-white/60 text-xs font-medium tracking-wider mb-1">MONTHLY REVIEW</div>
-                <div className="text-white text-3xl font-bold">{selectedMonth}月复盘</div>
-              </div>
-              <button onClick={() => setSelectedMonth(null)} className="absolute top-2 right-3 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors z-20">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            </div>
-
-            {/* 复盘内容 - 现代卡片 */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-              {/* 迷你统计条 */}
-              {(() => {
-                const daysInMonth = new Date(year, selectedMonth, 0).getDate();
-                const today = new Date();
-                const isCurrentYear = year === today.getFullYear();
-                const isCurrentMonth = isCurrentYear && selectedMonth === today.getMonth() + 1;
-                const effectiveDays = isCurrentMonth ? today.getDate() : daysInMonth;
-                const storageKey = `calendar-overrides-${year}`;
-                let overrides: Record<string, string> = {};
-                try { overrides = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { /* empty */ }
-                let satisfied = 0;
-                let crossed = 0;
-                for (let d = 1; d <= effectiveDays; d++) {
-                  const key = `${year}-${selectedMonth}-${d}`;
-                  const status = overrides[key];
-                  if (status === 'crossed') crossed++;
-                  else satisfied++;
-                }
-                const rate = effectiveDays > 0 ? Math.round((satisfied / effectiveDays) * 100) : 0;
-                return (
-                  <div className="rounded-xl p-3 space-y-2" style={{ background: skin.cardBg }}>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1.5">
-                        <span style={{ color: skin.checkColor }} className="text-sm">✓</span>
-                        <span style={{ color: skin.textSecondary }} className="text-xs font-medium">{satisfied}天满意</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span style={{ color: skin.crossColor }} className="text-sm">✗</span>
-                        <span style={{ color: skin.textSecondary }} className="text-xs font-medium">{crossed}天不满意</span>
-                      </div>
-                      <div className="flex-1" />
-                      <span style={{ color: skin.textMuted }} className="text-xs">{effectiveDays}天</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: skin.divider }}>
-                        <div className="h-full rounded-full transition-all" style={{ width: `${rate}%`, background: skin.swatch }} />
-                      </div>
-                      <span style={{ color: skin.textPrimary }} className="text-xs font-semibold">{rate}%</span>
-                    </div>
-                  </div>
-                );
-              })()}
-              {([
-                { key: 'goals', label: '本月目标', icon: '🎯', color: '#8b5cf6', placeholder: '这个月想要达成什么？' },
-                { key: 'done', label: '完成情况', icon: '✅', color: '#22c55e', placeholder: '实际完成了哪些？' },
-                { key: 'reflect', label: '反思改进', icon: '💡', color: '#f59e0b', placeholder: '有什么可以改进？' },
-                { key: 'plan', label: '下月计划', icon: '🚀', color: '#3b82f6', placeholder: '下个月有什么计划？' },
-              ] as const).map((section) => {
-                const storageKey = `month-review-${section.key}-${year}-${selectedMonth}`;
-                const savedValue = (() => { try { return localStorage.getItem(storageKey) || ''; } catch { return ''; } })();
-                return (
-                  <div key={section.key} className="group">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ backgroundColor: section.color + '15', color: section.color }}>
-                        {section.icon}
-                      </span>
-                      <span className="text-sm font-semibold text-gray-700">{section.label}</span>
-                    </div>
-                    <textarea
-                      className="w-full bg-gray-50/60 rounded-2xl px-5 py-4 text-sm text-gray-700 resize-none focus:outline-none focus:bg-gray-50 transition-all placeholder:text-gray-300 leading-relaxed min-h-[160px]"
-                      placeholder={section.placeholder}
-                      defaultValue={savedValue}
-                      onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => { try { localStorage.setItem(storageKey, e.target.value); } catch { /* empty */ } }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </div>
       )}
