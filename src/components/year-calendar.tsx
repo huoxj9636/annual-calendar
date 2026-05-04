@@ -633,40 +633,45 @@ export default function YearCalendar() {
       {/* Calendar Grid - fills remaining viewport */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
         {/* Bookmark button for Life Calendar */}
-        <button
-          onClick={() => setShowLifeCalendar(true)}
-          className="flex-shrink-0 w-14 flex items-center justify-center cursor-pointer z-10 group"
-          title="人生旅途"
-        >
-          <div
-            className="relative group-hover:brightness-110"
-            style={{
-              width: '52px',
-              height: '24px',
-              backgroundColor: skin.swatch,
-              clipPath: 'polygon(0 0, 80% 0, 100% 50%, 80% 100%, 0 100%, 12% 50%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '2px',
-            }}
+        <div className="flex-shrink-0 w-14 flex items-end justify-center pb-4 z-10" style={{ paddingTop: 'calc(10/12 * 100%)' }}>
+          <button
+            onClick={() => setShowLifeCalendar(true)}
+            className="cursor-pointer group relative"
+            title="人生旅途"
+            onMouseDown={(e) => e.preventDefault()}
           >
-            <span style={{
-              color: 'white',
-              fontSize: '10px',
-              fontWeight: 'bold',
-              letterSpacing: '1px',
-              textShadow: '0 0 4px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.8)',
-            }}>
-              人生旅途
-            </span>
-            {/* Pulsing right arrow */}
-            <svg className="arrow-pulse" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-              style={{ filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.8))' }}>
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </div>
-        </button>
+            <div
+              className="relative group-hover:brightness-110 transition-all"
+              style={{
+                width: '100px',
+                height: '28px',
+                backgroundColor: skin.swatch,
+                clipPath: 'polygon(0 0, 82% 0, 100% 50%, 82% 100%, 0 100%, 12% 50%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '3px',
+                transform: 'rotate(-90deg)',
+              }}
+            >
+              <span style={{
+                color: 'white',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                letterSpacing: '1px',
+                whiteSpace: 'nowrap',
+                textShadow: '0 0 4px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.8)',
+              }}>
+                人生旅途
+              </span>
+              {/* Bouncing right arrow */}
+              <svg className="arrow-bounce" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                style={{ filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.8))' }}>
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </div>
+          </button>
+        </div>
 
         {/* Calendar / Task toggle sidebar */}
         <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10" style={{ gap: '12px' }}>
