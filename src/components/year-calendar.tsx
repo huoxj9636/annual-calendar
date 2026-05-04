@@ -1056,7 +1056,7 @@ export default function YearCalendar() {
             >
             {/* 头部 - 背景图+渐变 */}
             <div className="px-6 pt-5 pb-5 relative overflow-hidden flex-shrink-0" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>
-              <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}dd, ${skin.sidebarTo}cc)` }} />
+              <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}55, ${skin.sidebarTo}44)` }} />
               <div className="relative z-10 flex items-center justify-between">
                 <div>
                   <div className="text-white/60 text-xs font-medium tracking-wider mb-1">MONTHLY REVIEW</div>

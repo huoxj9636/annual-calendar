@@ -187,7 +187,7 @@ export default function InsightPanel({ year, month, day, skin, onClose }: Insigh
           style={s.headerBgImage
             ? { backgroundImage: `url(${s.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
             : { background: `linear-gradient(135deg, ${s.headerFrom} 0%, ${s.headerTo} 100%)` }}>
-          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${s.sidebarFrom}dd, ${s.sidebarTo}cc)` }} />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${s.sidebarFrom}55, ${s.sidebarTo}44)` }} />
           <div className="relative z-10">
             <div className="text-white/60 text-xs font-medium tracking-wider mb-0.5">DAILY INSIGHT</div>
             <div className="text-white text-lg font-bold">{month}月{day}日</div>
