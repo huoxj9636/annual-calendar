@@ -96,6 +96,15 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   useEffect(() => { setNavYear(year); setNavMonth(month); setNavDay(day); }, [year, month, day]);
   useEffect(() => { setMounted(true); }, []);
 
+  // 打开面板时自动滚动到当前时间附近
+  useEffect(() => {
+    if (!mounted || !timelineScrollRef.current) return;
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const y = (nowMin / 60) * HOUR_HEIGHT;
+    timelineScrollRef.current.scrollTo({ top: Math.max(0, y - 180), behavior: 'auto' });
+  }, [mounted]);
+
   useEffect(() => {
     if (!mounted) return;
     try {
@@ -354,9 +363,14 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     crossColor: '#ef4444', tabActive: '#3b82f6', sidebarFrom: '#3b82f6', sidebarTo: '#1d4ed8',
   };
 
-  const now = new Date();
-  const isToday = mounted && navYear === now.getFullYear() && navMonth === now.getMonth() + 1 && navDay === now.getDate();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  useEffect(() => {
+    setCurrentTime(new Date());
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+  const isToday = mounted && currentTime !== null && navYear === currentTime.getFullYear() && navMonth === currentTime.getMonth() + 1 && navDay === currentTime.getDate();
+  const nowMinutes = currentTime ? currentTime.getHours() * 60 + currentTime.getMinutes() : 0;
   const nowY = (nowMinutes / 60) * HOUR_HEIGHT;
 
   // 计算事件重叠分组
@@ -485,7 +499,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                 <div className="absolute left-0 right-0 h-[2px]" style={{ backgroundColor: '#ef4444' }} />
                 <div className="absolute -left-1 -top-[3px] w-2 h-2 rounded-full" style={{ backgroundColor: '#ef4444' }} />
                 <span className="absolute left-2 -top-4 text-[10px] font-medium px-1 rounded" style={{ color: '#ef4444', backgroundColor: '#fef2f2' }}>
-                  {pad(now.getHours())}:{pad(now.getMinutes())}
+                  {currentTime ? `${pad(currentTime.getHours())}:${pad(currentTime.getMinutes())}` : ''}
                 </span>
               </div>
             )}
