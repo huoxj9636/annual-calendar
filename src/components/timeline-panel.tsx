@@ -39,14 +39,6 @@ interface TimelinePanelProps {
   onClose: () => void;
 }
 
-const EVENT_COLORS = [
-  { key: 'work', label: '工作', color: '#3b82f6' },
-  { key: 'health', label: '健康', color: '#f59e0b' },
-  { key: 'life', label: '生活', color: '#10b981' },
-  { key: 'study', label: '学习', color: '#8b5cf6' },
-  { key: 'other', label: '其他', color: '#6b7280' },
-];
-
 const HOUR_HEIGHT = 80;
 const START_HOUR = 0;
 const END_HOUR = 24;
@@ -74,7 +66,6 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   const [addEndTime, setAddEndTime] = useState('09:15');
   const [addTitle, setAddTitle] = useState('');
   const [addDescription, setAddDescription] = useState('');
-  const [addColor, setAddColor] = useState('#3b82f6');
 
   // 鼠标时间指示器
   const [mouseTime, setMouseTime] = useState<string | null>(null);
@@ -90,7 +81,6 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   const [editStartTime, setEditStartTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
   const [editDescription, setEditDescription] = useState('');
-  const [editColor, setEditColor] = useState('');
 
   // 右键菜单
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; event: TimelineEvent } | null>(null);
@@ -140,7 +130,6 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   // 时间轴点击 → 弹框
   const handleTimelineClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!timelineRef.current) return;
-    // 忽略来自事件块的点击
     const target = e.target as HTMLElement;
     if (target.closest('[data-event-block]')) return;
     const rect = timelineRef.current.getBoundingClientRect();
@@ -152,10 +141,8 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     setAddEndTime(minutesToTime(endMin));
     setAddTitle('');
     setAddDescription('');
-    setAddColor('#3b82f6');
-    // 计算弹框位置：确保不超出可视区域
     const scrollContainer = timelineScrollRef.current;
-    const maxTop = scrollContainer ? scrollContainer.scrollTop + scrollContainer.clientHeight - 320 : 800;
+    const maxTop = scrollContainer ? scrollContainer.scrollTop + scrollContainer.clientHeight - 360 : 800;
     const minTop = scrollContainer ? scrollContainer.scrollTop + 20 : 20;
     setAddModalTop(Math.max(minTop, Math.min(y - 40, maxTop)));
     setShowAddModal(true);
@@ -175,21 +162,22 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
 
   const handleTimelineMouseLeave = useCallback(() => { setMouseTime(null); }, []);
 
-  // 添加事件
+  // 添加事件 - 颜色自动使用皮肤主题色
   const handleAddEvent = useCallback(() => {
     if (!addTitle.trim()) return;
+    const s2 = skin || { swatch: '#3b82f6' };
     const ev: TimelineEvent = {
       id: `ev-${Date.now()}`,
       time: addStartTime,
       endTime: addEndTime,
       title: addTitle.trim(),
       description: addDescription.trim(),
-      color: addColor,
+      color: s2.swatch,
       done: false,
     };
     setEvents(prev => [...prev, ev].sort((a, b) => a.time.localeCompare(b.time)));
     setShowAddModal(false);
-  }, [addTitle, addStartTime, addEndTime, addDescription, addColor]);
+  }, [addTitle, addStartTime, addEndTime, addDescription, skin]);
 
   // 切换完成
   const handleToggleDone = useCallback((id: string) => {
@@ -206,12 +194,13 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   // 编辑事件
   const handleEditEvent = useCallback(() => {
     if (!editEvent || !editTitle.trim()) return;
+    const s2 = skin || { swatch: '#3b82f6' };
     setEvents(prev => prev.map(e => e.id === editEvent.id ? {
-      ...e, title: editTitle.trim(), time: editStartTime, endTime: editEndTime, description: editDescription.trim(), color: editColor,
+      ...e, title: editTitle.trim(), time: editStartTime, endTime: editEndTime, description: editDescription.trim(), color: s2.swatch,
     } : e));
     setShowEditModal(false);
     setEditEvent(null);
-  }, [editEvent, editTitle, editStartTime, editEndTime, editDescription, editColor]);
+  }, [editEvent, editTitle, editStartTime, editEndTime, editDescription, skin]);
 
   // 点击事件 → 编辑弹框
   const handleEventClick = useCallback((ev: TimelineEvent, e: React.MouseEvent) => {
@@ -222,11 +211,10 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     setEditStartTime(ev.time);
     setEditEndTime(ev.endTime || minutesToTime(timeToMinutes(ev.time) + 15));
     setEditDescription(ev.description || '');
-    setEditColor(ev.color || '#3b82f6');
     const topMin = timeToMinutes(ev.time);
     const yPos = (topMin / 60) * HOUR_HEIGHT;
     const scrollContainer = timelineScrollRef.current;
-    const maxTop = scrollContainer ? scrollContainer.scrollTop + scrollContainer.clientHeight - 320 : 800;
+    const maxTop = scrollContainer ? scrollContainer.scrollTop + scrollContainer.clientHeight - 340 : 800;
     const minTop = scrollContainer ? scrollContainer.scrollTop + 20 : 20;
     setEditModalTop(Math.max(minTop, Math.min(yPos - 20, maxTop)));
     setShowEditModal(true);
@@ -477,13 +465,10 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
               const y = (hour - START_HOUR) * HOUR_HEIGHT;
               return (
                 <div key={hour}>
-                  {/* 小时线 */}
                   <div className="absolute left-0 right-0" style={{ top: y, height: 1, backgroundColor: s.divider }} />
-                  {/* 半小时虚线 */}
                   {hour < END_HOUR && (
                     <div className="absolute left-0 right-0" style={{ top: y + HOUR_HEIGHT / 2, height: 1, backgroundColor: s.divider, opacity: 0.4, borderStyle: 'dashed' }} />
                   )}
-                  {/* 小时标签 */}
                   {hour < END_HOUR && (
                     <div className="absolute flex items-start justify-end pr-2" style={{ top: y, left: 0, width: TIME_LABEL_WIDTH, height: 20 }}>
                       <span className="text-[11px] font-medium" style={{ color: s.textMuted }}>{pad(hour)}:00</span>
@@ -520,20 +505,22 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
               if (!layoutInfo) return null;
               const { top, height, left, width, right } = getEventLayout(ev, layoutInfo.group, layoutInfo.index);
               const isSingle = layoutInfo.group.length <= 1;
+              const evColor = ev.color || s.swatch;
               return (
                 <div
                   key={ev.id}
                   data-event-block
-                  className="absolute rounded-md px-2 py-1 cursor-pointer hover:brightness-95 transition-all z-10 overflow-hidden"
+                  className="absolute rounded-md px-2 py-1 cursor-pointer hover:brightness-95 transition-all z-10 group/ev"
                   style={{
                     top, height,
                     left: isSingle ? (TIME_LABEL_WIDTH + 4) : left,
                     right: isSingle ? 4 : undefined,
                     width: isSingle ? undefined : width,
-                    backgroundColor: `${ev.color || s.swatch}22`,
-                    borderLeft: `3px solid ${ev.color || s.swatch}`,
-                    border: `1px solid ${ev.color || s.swatch}44`,
+                    backgroundColor: `${evColor}22`,
+                    borderLeft: `3px solid ${evColor}`,
+                    border: `1px solid ${evColor}44`,
                     borderLeftWidth: 3,
+                    overflow: 'hidden',
                   }}
                   onClick={(e) => handleEventClick(ev, e)}
                   onContextMenu={(e) => handleEventContextMenu(ev, e)}
@@ -553,16 +540,25 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                   <div className="text-[9px] mt-0.5" style={{ color: s.textMuted }}>
                     {ev.time}{ev.endTime ? ` - ${ev.endTime}` : ''}
                   </div>
+                  {/* 右上角删除按钮 - hover时显示 */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteEvent(ev.id); }}
+                    className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover/ev:opacity-100 transition-opacity text-[9px] leading-none"
+                    style={{ backgroundColor: `${evColor}30`, color: evColor }}
+                    title="删除"
+                  >
+                    ✕
+                  </button>
                 </div>
               );
             })}
           </div>
 
-          {/* 定位到当前时间按钮 */}
+          {/* 定位到当前时间按钮 - sticky固定在滚动容器右下角 */}
           {isToday && (
             <button
               onClick={scrollToNow}
-              className="absolute bottom-3 right-3 z-30 w-9 h-9 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110"
+              className="sticky bottom-3 float-right mr-3 z-30 w-9 h-9 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110"
               style={{ backgroundColor: s.swatch, color: '#fff', boxShadow: `0 2px 8px ${s.swatch}40` }}
               title="定位到当前时间"
             >
@@ -635,7 +631,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
           </div>
         </div>
 
-        {/* 添加日程弹框 - 简约风格 */}
+        {/* 添加日程弹框 - 简约风格，颜色自动跟随皮肤 */}
         {showAddModal && (
           <div
             className="absolute z-50"
@@ -649,8 +645,8 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                 boxShadow: `0 12px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)`,
               }}
             >
-              {/* 顶部彩色条 */}
-              <div className="h-1 w-full" style={{ backgroundColor: addColor }} />
+              {/* 顶部彩色条 - 跟随皮肤色 */}
+              <div className="h-1 w-full" style={{ backgroundColor: s.swatch }} />
 
               <div className="px-4 pt-3 pb-2">
                 {/* 添加日程标题 */}
@@ -726,33 +722,15 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                   </span>
                 </div>
 
-                {/* 详细描述 */}
+                {/* 详细描述 - 加大高度 */}
                 <textarea
                   value={addDescription}
-                  onChange={e => setAddDescription(e.target.value.slice(0, 200))}
+                  onChange={e => setAddDescription(e.target.value.slice(0, 500))}
                   placeholder="添加详细描述..."
-                  rows={3}
-                  className="w-full text-xs outline-none bg-transparent border rounded-md px-2.5 py-2 mb-3 resize-none placeholder:opacity-35"
+                  rows={5}
+                  className="w-full text-xs outline-none bg-transparent border rounded-md px-2.5 py-2 mb-2 resize-none placeholder:opacity-35"
                   style={{ color: s.textSecondary, borderColor: s.divider, backgroundColor: s.panelBg }}
                 />
-
-                {/* 颜色选择 */}
-                <div className="flex items-center gap-2 mb-1">
-                  {EVENT_COLORS.map(c => (
-                    <button
-                      key={c.key}
-                      onClick={() => setAddColor(c.color)}
-                      className="rounded-full transition-all"
-                      style={{
-                        width: 18, height: 18,
-                        backgroundColor: c.color,
-                        boxShadow: addColor === c.color ? `0 0 0 2px ${s.cardBg}, 0 0 0 3.5px ${c.color}` : 'none',
-                        transform: addColor === c.color ? 'scale(1.15)' : 'scale(1)',
-                      }}
-                      title={c.label}
-                    />
-                  ))}
-                </div>
               </div>
 
               {/* 底部按钮 */}
@@ -768,7 +746,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
           </div>
         )}
 
-        {/* 编辑日程弹框 - 简约风格 */}
+        {/* 编辑日程弹框 - 简约风格，无删除按钮 */}
         {showEditModal && editEvent && (
           <div
             className="absolute z-50"
@@ -782,8 +760,8 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                 boxShadow: `0 12px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)`,
               }}
             >
-              {/* 顶部彩色条 */}
-              <div className="h-1 w-full" style={{ backgroundColor: editColor }} />
+              {/* 顶部彩色条 - 跟随皮肤色 */}
+              <div className="h-1 w-full" style={{ backgroundColor: s.swatch }} />
 
               <div className="px-4 pt-3 pb-2">
                 {/* 编辑日程标题 */}
@@ -855,48 +833,25 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                   </span>
                 </div>
 
-                {/* 详细描述 */}
+                {/* 详细描述 - 加大高度 */}
                 <textarea
                   value={editDescription}
-                  onChange={e => setEditDescription(e.target.value.slice(0, 200))}
+                  onChange={e => setEditDescription(e.target.value.slice(0, 500))}
                   placeholder="添加详细描述..."
-                  rows={3}
-                  className="w-full text-xs outline-none bg-transparent border rounded-md px-2.5 py-2 mb-3 resize-none placeholder:opacity-35"
+                  rows={5}
+                  className="w-full text-xs outline-none bg-transparent border rounded-md px-2.5 py-2 mb-2 resize-none placeholder:opacity-35"
                   style={{ color: s.textSecondary, borderColor: s.divider, backgroundColor: s.panelBg }}
                 />
-
-                {/* 颜色选择 */}
-                <div className="flex items-center gap-2 mb-1">
-                  {EVENT_COLORS.map(c => (
-                    <button
-                      key={c.key}
-                      onClick={() => setEditColor(c.color)}
-                      className="rounded-full transition-all"
-                      style={{
-                        width: 18, height: 18,
-                        backgroundColor: c.color,
-                        boxShadow: editColor === c.color ? `0 0 0 2px ${s.cardBg}, 0 0 0 3.5px ${c.color}` : 'none',
-                        transform: editColor === c.color ? 'scale(1.15)' : 'scale(1)',
-                      }}
-                      title={c.label}
-                    />
-                  ))}
-                </div>
               </div>
 
-              {/* 底部按钮 */}
-              <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
-                <button onClick={() => handleDeleteEvent(editEvent.id)} className="text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1" style={{ color: '#ef4444', backgroundColor: '#fef2f2' }}>
-                  删除
+              {/* 底部按钮 - 无删除按钮 */}
+              <div className="flex items-center justify-end gap-2 px-4 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
+                <button onClick={() => { setShowEditModal(false); setEditEvent(null); }} className="text-[11px] px-3 py-1.5 rounded-lg" style={{ color: s.textMuted }}>
+                  取消
                 </button>
-                <div className="flex gap-2">
-                  <button onClick={() => { setShowEditModal(false); setEditEvent(null); }} className="text-[11px] px-3 py-1.5 rounded-lg" style={{ color: s.textMuted }}>
-                    取消
-                  </button>
-                  <button onClick={handleEditEvent} disabled={!editTitle.trim()} className="text-[11px] px-5 py-1.5 rounded-lg text-white disabled:opacity-40 font-medium" style={{ backgroundColor: s.swatch }}>
-                    保存
-                  </button>
-                </div>
+                <button onClick={handleEditEvent} disabled={!editTitle.trim()} className="text-[11px] px-5 py-1.5 rounded-lg text-white disabled:opacity-40 font-medium" style={{ backgroundColor: s.swatch }}>
+                  保存
+                </button>
               </div>
             </div>
           </div>
