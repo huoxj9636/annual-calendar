@@ -68,6 +68,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
 
   // 弹框状态
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addModalTop, setAddModalTop] = useState(0);
   const [addStartTime, setAddStartTime] = useState('09:00');
   const [addEndTime, setAddEndTime] = useState('10:00');
   const [addTitle, setAddTitle] = useState('');
@@ -80,6 +81,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
 
   // 编辑弹框
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editModalTop, setEditModalTop] = useState(0);
   const [editEvent, setEditEvent] = useState<TimelineEvent | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editStartTime, setEditStartTime] = useState('');
@@ -134,6 +136,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     setAddEndTime(minutesToTime(endMin));
     setAddTitle('');
     setAddColor('#3b82f6');
+    setAddModalTop(Math.max(20, Math.min(y - 40, (timelineRef.current.scrollHeight || 600) - 260)));
     setShowAddModal(true);
   }, []);
 
@@ -196,6 +199,9 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     setEditStartTime(ev.time);
     setEditEndTime(ev.endTime || minutesToTime(timeToMinutes(ev.time) + 60));
     setEditColor(ev.color || '#3b82f6');
+    const topMin = timeToMinutes(ev.time);
+    const yPos = (topMin / 60) * HOUR_HEIGHT;
+    setEditModalTop(Math.max(20, Math.min(yPos - 20, 800)));
     setShowEditModal(true);
   }, []);
 
@@ -282,9 +288,12 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   };
 
   // 弹框组件
-  const ModalOverlay = ({ children }: { children: React.ReactNode }) => (
-    <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
-      <div className="rounded-xl shadow-2xl w-80 overflow-hidden" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+  const ModalCard = ({ children, top }: { children: React.ReactNode; top?: number }) => (
+    <div
+      className="absolute z-50 left-1/2 -translate-x-1/2"
+      style={{ top: top ?? 60, animation: 'fadeIn 0.15s ease-out' }}
+    >
+      <div className="rounded-xl shadow-2xl w-[300px] overflow-hidden backdrop-blur-sm" style={{ backgroundColor: `${s.cardBg}f5`, border: `1px solid ${s.divider}`, boxShadow: `0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)` }}>
         {children}
       </div>
     </div>
@@ -507,116 +516,105 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
           </div>
         </div>
 
-        {/* 添加日程弹框 */}
+        {/* 添加日程弹框 - 滴答清单风格 */}
         {showAddModal && (
-          <ModalOverlay>
-            <div className="px-4 pt-4 pb-3" style={{ borderBottom: `1px solid ${s.divider}` }}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold" style={{ color: s.textPrimary }}>添加日程</span>
-                <button onClick={() => setShowAddModal(false)} className="w-6 h-6 flex items-center justify-center rounded-full text-xs hover:opacity-80" style={{ backgroundColor: s.cardHover }}>✕</button>
-              </div>
+          <ModalCard top={addModalTop}>
+            {/* 顶部色条 */}
+            <div className="h-1 w-full" style={{ backgroundColor: addColor }} />
+            <div className="px-5 pt-4 pb-3">
+              {/* 标题输入 - 大字居中 */}
+              <input
+                autoFocus value={addTitle} onChange={e => setAddTitle(e.target.value.slice(0, 50))}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddEvent(); if (e.key === 'Escape') setShowAddModal(false); }}
+                placeholder="添加日程..."
+                className="w-full text-base font-medium px-0 py-1 border-0 border-b outline-none bg-transparent mb-4"
+                style={{ borderColor: s.divider, color: s.textPrimary, borderBottomWidth: '1.5px' }}
+              />
               {/* 时间选择 */}
-              <div className="flex gap-3 mb-3">
-                <TimePicker value={addStartTime} onChange={setAddStartTime} label="开始时间" />
-                <TimePicker value={addEndTime} onChange={setAddEndTime} label="结束时间" />
+              <div className="flex items-center gap-2 mb-4">
+                <TimePicker value={addStartTime} onChange={setAddStartTime} label="开始" />
+                <span className="text-xs mt-4" style={{ color: s.textMuted }}>→</span>
+                <TimePicker value={addEndTime} onChange={setAddEndTime} label="结束" />
               </div>
-              {/* 标题输入 */}
-              <div className="mb-3">
-                <label className="text-[10px] mb-1 block" style={{ color: s.textMuted }}>日程内容</label>
-                <input
-                  autoFocus value={addTitle} onChange={e => setAddTitle(e.target.value.slice(0, 50))}
-                  onKeyDown={e => { if (e.key === 'Enter') handleAddEvent(); if (e.key === 'Escape') setShowAddModal(false); }}
-                  placeholder="输入日程内容..."
-                  className="w-full text-sm px-3 py-2 border rounded-lg outline-none"
-                  style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
-                />
-              </div>
-              {/* 颜色选择 */}
-              <div>
-                <label className="text-[10px] mb-1.5 block" style={{ color: s.textMuted }}>分类</label>
-                <div className="flex gap-2">
-                  {EVENT_COLORS.map(c => (
-                    <button
-                      key={c.key} onClick={() => setAddColor(c.color)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] border transition-all"
-                      style={{
-                        borderColor: addColor === c.color ? c.color : s.divider,
-                        backgroundColor: addColor === c.color ? `${c.color}18` : 'transparent',
-                        color: addColor === c.color ? c.color : s.textMuted,
-                      }}
-                    >
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
+              {/* 颜色选择 - 圆点 */}
+              <div className="flex items-center gap-3 mb-4">
+                {EVENT_COLORS.map(c => (
+                  <button
+                    key={c.key} onClick={() => setAddColor(c.color)}
+                    className="w-5 h-5 rounded-full transition-all"
+                    style={{
+                      backgroundColor: c.color,
+                      boxShadow: addColor === c.color ? `0 0 0 2px ${s.cardBg}, 0 0 0 3.5px ${c.color}` : 'none',
+                      transform: addColor === c.color ? 'scale(1.15)' : 'scale(1)',
+                    }}
+                    title={c.label}
+                  />
+                ))}
               </div>
             </div>
-            <div className="flex gap-2 px-4 py-3">
-              <button onClick={() => setShowAddModal(false)} className="flex-1 py-2 rounded-lg text-sm border" style={{ borderColor: s.divider, color: s.textSecondary }}>
+            {/* 底部按钮 */}
+            <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: `1px solid ${s.divider}` }}>
+              <button onClick={() => setShowAddModal(false)} className="text-xs px-3 py-1.5 rounded-md transition-colors" style={{ color: s.textMuted }}>
                 取消
               </button>
-              <button onClick={handleAddEvent} disabled={!addTitle.trim()} className="flex-1 py-2 rounded-lg text-sm text-white disabled:opacity-40" style={{ backgroundColor: s.swatch }}>
-                添加
+              <button onClick={handleAddEvent} disabled={!addTitle.trim()} className="text-xs px-5 py-1.5 rounded-lg text-white disabled:opacity-40 font-medium transition-all" style={{ backgroundColor: s.swatch }}>
+                添加日程
               </button>
             </div>
-          </ModalOverlay>
+          </ModalCard>
         )}
 
-        {/* 编辑日程弹框 */}
+        {/* 编辑日程弹框 - 滴答清单风格 */}
         {showEditModal && editEvent && (
-          <ModalOverlay>
-            <div className="px-4 pt-4 pb-3" style={{ borderBottom: `1px solid ${s.divider}` }}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold" style={{ color: s.textPrimary }}>编辑日程</span>
-                <button onClick={() => { setShowEditModal(false); setEditEvent(null); }} className="w-6 h-6 flex items-center justify-center rounded-full text-xs hover:opacity-80" style={{ backgroundColor: s.cardHover }}>✕</button>
+          <ModalCard top={editModalTop}>
+            {/* 顶部色条 */}
+            <div className="h-1 w-full" style={{ backgroundColor: editColor }} />
+            <div className="px-5 pt-4 pb-3">
+              {/* 标题输入 */}
+              <input
+                autoFocus value={editTitle} onChange={e => setEditTitle(e.target.value.slice(0, 50))}
+                onKeyDown={e => { if (e.key === 'Enter') handleEditEvent(); if (e.key === 'Escape') { setShowEditModal(false); setEditEvent(null); } }}
+                placeholder="编辑日程..."
+                className="w-full text-base font-medium px-0 py-1 border-0 border-b outline-none bg-transparent mb-4"
+                style={{ borderColor: s.divider, color: s.textPrimary, borderBottomWidth: '1.5px' }}
+              />
+              {/* 时间选择 */}
+              <div className="flex items-center gap-2 mb-4">
+                <TimePicker value={editStartTime} onChange={setEditStartTime} label="开始" />
+                <span className="text-xs mt-4" style={{ color: s.textMuted }}>→</span>
+                <TimePicker value={editEndTime} onChange={setEditEndTime} label="结束" />
               </div>
-              <div className="flex gap-3 mb-3">
-                <TimePicker value={editStartTime} onChange={setEditStartTime} label="开始时间" />
-                <TimePicker value={editEndTime} onChange={setEditEndTime} label="结束时间" />
-              </div>
-              <div className="mb-3">
-                <label className="text-[10px] mb-1 block" style={{ color: s.textMuted }}>日程内容</label>
-                <input
-                  autoFocus value={editTitle} onChange={e => setEditTitle(e.target.value.slice(0, 50))}
-                  onKeyDown={e => { if (e.key === 'Enter') handleEditEvent(); if (e.key === 'Escape') { setShowEditModal(false); setEditEvent(null); } }}
-                  className="w-full text-sm px-3 py-2 border rounded-lg outline-none"
-                  style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
-                />
-              </div>
-              <div>
-                <label className="text-[10px] mb-1.5 block" style={{ color: s.textMuted }}>分类</label>
-                <div className="flex gap-2">
-                  {EVENT_COLORS.map(c => (
-                    <button
-                      key={c.key} onClick={() => setEditColor(c.color)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] border transition-all"
-                      style={{
-                        borderColor: editColor === c.color ? c.color : s.divider,
-                        backgroundColor: editColor === c.color ? `${c.color}18` : 'transparent',
-                        color: editColor === c.color ? c.color : s.textMuted,
-                      }}
-                    >
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
+              {/* 颜色选择 - 圆点 */}
+              <div className="flex items-center gap-3 mb-4">
+                {EVENT_COLORS.map(c => (
+                  <button
+                    key={c.key} onClick={() => setEditColor(c.color)}
+                    className="w-5 h-5 rounded-full transition-all"
+                    style={{
+                      backgroundColor: c.color,
+                      boxShadow: editColor === c.color ? `0 0 0 2px ${s.cardBg}, 0 0 0 3.5px ${c.color}` : 'none',
+                      transform: editColor === c.color ? 'scale(1.15)' : 'scale(1)',
+                    }}
+                    title={c.label}
+                  />
+                ))}
               </div>
             </div>
-            <div className="flex gap-2 px-4 py-3">
-              <button onClick={() => handleDeleteEvent(editEvent.id)} className="py-2 px-3 rounded-lg text-sm border" style={{ borderColor: '#fca5a5', color: '#ef4444' }}>
+            {/* 底部按钮 */}
+            <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: `1px solid ${s.divider}` }}>
+              <button onClick={() => handleDeleteEvent(editEvent.id)} className="text-xs px-3 py-1.5 rounded-md transition-colors" style={{ color: '#ef4444' }}>
                 删除
               </button>
-              <div className="flex-1" />
-              <button onClick={() => { setShowEditModal(false); setEditEvent(null); }} className="py-2 px-4 rounded-lg text-sm border" style={{ borderColor: s.divider, color: s.textSecondary }}>
-                取消
-              </button>
-              <button onClick={handleEditEvent} disabled={!editTitle.trim()} className="py-2 px-4 rounded-lg text-sm text-white disabled:opacity-40" style={{ backgroundColor: s.swatch }}>
-                保存
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => { setShowEditModal(false); setEditEvent(null); }} className="text-xs px-3 py-1.5 rounded-md transition-colors" style={{ color: s.textMuted }}>
+                  取消
+                </button>
+                <button onClick={handleEditEvent} disabled={!editTitle.trim()} className="text-xs px-5 py-1.5 rounded-lg text-white disabled:opacity-40 font-medium transition-all" style={{ backgroundColor: s.swatch }}>
+                  保存
+                </button>
+              </div>
             </div>
-          </ModalOverlay>
+          </ModalCard>
         )}
       </div>
     </div>
