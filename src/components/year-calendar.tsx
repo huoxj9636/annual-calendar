@@ -47,7 +47,13 @@ export default function YearCalendar() {
   const [popupSize, setPopupSize] = useState({ w: 400, h: 320 });
   const [noteDraft, setNoteDraft] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-  const [reviewLeft, setReviewLeft] = useState(95);
+  const [reviewLeft, setReviewLeft] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('panel-left-review');
+      return saved ? parseInt(saved, 10) : 95;
+    }
+    return 95;
+  });
   const [clockStr, setClockStr] = useState('');
   const popupRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -1057,16 +1063,25 @@ export default function YearCalendar() {
             >
               {/* 左侧拖拽手柄 */}
               <div
-                className="absolute top-0 bottom-0 left-0 w-1.5 cursor-col-resize z-50 hover:bg-black/10 active:bg-black/20 transition-colors group"
+                className="absolute top-0 bottom-0 left-0 w-2 cursor-col-resize z-50 hover:bg-black/10 transition-colors group"
                 onMouseDown={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   const startX = e.clientX;
                   const startLeft = reviewLeft;
+                  let finalLeft = startLeft;
+                  document.body.style.userSelect = 'none';
+                  document.body.style.cursor = 'col-resize';
                   const onMove = (ev: MouseEvent) => {
-                    const delta = startX - ev.clientX;
-                    setReviewLeft(Math.max(0, Math.min(startLeft + delta, 400)));
+                    ev.preventDefault();
+                    const newLeft = Math.max(0, Math.min(startLeft + (startX - ev.clientX), 500));
+                    finalLeft = newLeft;
+                    setReviewLeft(newLeft);
                   };
                   const onUp = () => {
+                    document.body.style.userSelect = '';
+                    document.body.style.cursor = '';
+                    localStorage.setItem('panel-left-review', String(finalLeft));
                     document.removeEventListener('mousemove', onMove);
                     document.removeEventListener('mouseup', onUp);
                   };
@@ -1074,7 +1089,7 @@ export default function YearCalendar() {
                   document.addEventListener('mouseup', onUp);
                 }}
               >
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-black/20 group-hover:bg-black/40 transition-colors" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-10 rounded-full bg-black/15 group-hover:bg-black/40 transition-colors" />
               </div>
             {/* 头部 - 背景图+渐变 */}
             <div className="px-6 pt-5 pb-5 relative overflow-hidden flex-shrink-0" style={skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }}>

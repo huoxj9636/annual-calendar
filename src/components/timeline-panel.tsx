@@ -58,7 +58,13 @@ export default function TimelinePanel({ year, month, day, skin, onClose, initial
   const [navYear, setNavYear] = useState(year);
   const [navMonth, setNavMonth] = useState(month);
   const [navDay, setNavDay] = useState(day);
-  const [panelLeft, setPanelLeft] = useState(initialLeft);
+  const [panelLeft, setPanelLeft] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('panel-left-timeline');
+      return saved ? parseInt(saved, 10) : initialLeft;
+    }
+    return initialLeft;
+  });
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -216,16 +222,25 @@ export default function TimelinePanel({ year, month, day, skin, onClose, initial
     >
       {/* 左侧拖拽手柄 */}
       <div
-        className="absolute top-0 bottom-0 left-0 w-1.5 cursor-col-resize z-50 hover:bg-black/10 active:bg-black/20 transition-colors group"
+        className="absolute top-0 bottom-0 left-0 w-2 cursor-col-resize z-50 hover:bg-black/10 transition-colors group"
         onMouseDown={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           const startX = e.clientX;
           const startLeft = panelLeft;
+          let finalLeft = startLeft;
+          document.body.style.userSelect = 'none';
+          document.body.style.cursor = 'col-resize';
           const onMove = (ev: MouseEvent) => {
-            const delta = startX - ev.clientX;
-            setPanelLeft(Math.max(0, Math.min(startLeft + delta, 400)));
+            ev.preventDefault();
+            const newLeft = Math.max(0, Math.min(startLeft + (startX - ev.clientX), 500));
+            finalLeft = newLeft;
+            setPanelLeft(newLeft);
           };
           const onUp = () => {
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+            localStorage.setItem('panel-left-timeline', String(finalLeft));
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
           };
@@ -233,7 +248,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose, initial
           document.addEventListener('mouseup', onUp);
         }}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-black/20 group-hover:bg-black/40 transition-colors" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-10 rounded-full bg-black/15 group-hover:bg-black/40 transition-colors" />
       </div>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b" style={{ borderColor: s.divider }}>
