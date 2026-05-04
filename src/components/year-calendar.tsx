@@ -680,9 +680,9 @@ export default function YearCalendar() {
           >
             <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
               style={{
-                backgroundColor: timelineOpen ? skin.swatch : `${skin.swatch}35`,
-                color: '#ffffff',
-                boxShadow: timelineOpen ? `0 0 0 3px ${skin.swatch}60, 0 0 20px ${skin.swatch}40` : `0 0 0 2px ${skin.swatch}50, 0 2px 8px rgba(0,0,0,0.15)`,
+                backgroundColor: timelineOpen ? skin.swatch : 'rgba(0,0,0,0.55)',
+                color: timelineOpen ? '#ffffff' : skin.swatch,
+                boxShadow: timelineOpen ? `0 0 0 3px ${skin.swatch}60, 0 0 20px ${skin.swatch}40` : `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)`,
               }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2.5" />
@@ -692,7 +692,7 @@ export default function YearCalendar() {
               </svg>
             </span>
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: timelineOpen ? skin.swatch : '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)', WebkitTextStroke: '0.3px rgba(0,0,0,0.5)' }}>日程</span>
+              style={{ color: timelineOpen ? '#ffffff' : skin.swatch, textShadow: timelineOpen ? `0 0 6px ${skin.swatch}60` : '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)', WebkitTextStroke: timelineOpen ? 'none' : '0.3px rgba(0,0,0,0.5)' }}>日程</span>
           </button>
 
           <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
@@ -727,9 +727,9 @@ export default function YearCalendar() {
           >
             <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
               style={{
-                backgroundColor: insightOpen ? skin.swatch : `${skin.swatch}35`,
-                color: '#ffffff',
-                boxShadow: insightOpen ? `0 0 0 3px ${skin.swatch}60, 0 0 20px ${skin.swatch}40` : `0 0 0 2px ${skin.swatch}50, 0 2px 8px rgba(0,0,0,0.15)`,
+                backgroundColor: insightOpen ? skin.swatch : 'rgba(0,0,0,0.55)',
+                color: insightOpen ? '#ffffff' : skin.swatch,
+                boxShadow: insightOpen ? `0 0 0 3px ${skin.swatch}60, 0 0 20px ${skin.swatch}40` : `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)`,
               }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
@@ -737,7 +737,7 @@ export default function YearCalendar() {
               </svg>
             </span>
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: insightOpen ? skin.swatch : '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)', WebkitTextStroke: '0.3px rgba(0,0,0,0.5)' }}>洞察</span>
+              style={{ color: insightOpen ? '#ffffff' : skin.swatch, textShadow: insightOpen ? `0 0 6px ${skin.swatch}60` : '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)', WebkitTextStroke: insightOpen ? 'none' : '0.3px rgba(0,0,0,0.5)' }}>洞察</span>
           </button>
 
           <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
@@ -772,16 +772,16 @@ export default function YearCalendar() {
           >
             <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
               style={{
-                backgroundColor: trackOpen ? skin.swatch : `${skin.swatch}35`,
-                color: '#ffffff',
-                boxShadow: trackOpen ? `0 0 0 3px ${skin.swatch}60, 0 0 20px ${skin.swatch}40` : `0 0 0 2px ${skin.swatch}50, 0 2px 8px rgba(0,0,0,0.15)`,
+                backgroundColor: trackOpen ? skin.swatch : 'rgba(0,0,0,0.55)',
+                color: trackOpen ? '#ffffff' : skin.swatch,
+                boxShadow: trackOpen ? `0 0 0 3px ${skin.swatch}60, 0 0 20px ${skin.swatch}40` : `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)`,
               }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
               </svg>
             </span>
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: trackOpen ? skin.swatch : '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)', WebkitTextStroke: '0.3px rgba(0,0,0,0.5)' }}>轨迹</span>
+              style={{ color: trackOpen ? '#ffffff' : skin.swatch, textShadow: trackOpen ? `0 0 6px ${skin.swatch}60` : '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)', WebkitTextStroke: trackOpen ? 'none' : '0.3px rgba(0,0,0,0.5)' }}>轨迹</span>
           </button>
         </div>
 
