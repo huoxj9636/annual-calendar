@@ -632,41 +632,23 @@ export default function YearCalendar() {
 
       {/* Calendar Grid - fills remaining viewport */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
-        {/* Bookmark button for Life Calendar */}
-        <div className="flex-shrink-0 w-14 flex items-end justify-center pb-4 z-10" style={{ paddingTop: 'calc(10/12 * 100%)' }}>
+        {/* Life Calendar arrow button */}
+        <div className="flex-shrink-0 w-14 flex items-center justify-center z-10">
           <button
             onClick={() => setShowLifeCalendar(true)}
-            className="cursor-pointer group relative"
+            className="cursor-pointer group"
             title="人生旅途"
             onMouseDown={(e) => e.preventDefault()}
           >
             <div
-              className="relative group-hover:brightness-110 transition-all"
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
               style={{
-                width: '100px',
-                height: '28px',
                 backgroundColor: skin.swatch,
-                clipPath: 'polygon(0 0, 82% 0, 100% 50%, 82% 100%, 0 100%, 12% 50%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '3px',
-                transform: 'rotate(-90deg)',
+                boxShadow: `0 0 12px ${skin.swatch}80, 0 0 24px ${skin.swatch}40, 0 0 36px ${skin.swatch}20`,
+                animation: 'glowPulse 2s ease-in-out infinite',
               }}
             >
-              <span style={{
-                color: 'white',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                letterSpacing: '1px',
-                whiteSpace: 'nowrap',
-                textShadow: '0 0 4px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.8)',
-              }}>
-                人生旅途
-              </span>
-              {/* Bouncing right arrow */}
-              <svg className="arrow-bounce" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-                style={{ filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.8))' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </div>

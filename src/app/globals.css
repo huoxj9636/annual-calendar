@@ -189,6 +189,12 @@ body {
   animation: arrowBounce 1.5s ease-in-out infinite;
 }
 
+/* Glow pulse animation for life calendar button */
+@keyframes glowPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+
 /* Hide scrollbar for snap scroll container */
 .snap-y::-webkit-scrollbar { display: none; }
 .snap-y { -ms-overflow-style: none; scrollbar-width: none; }
