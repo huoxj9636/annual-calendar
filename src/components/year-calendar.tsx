@@ -357,7 +357,7 @@ export default function YearCalendar() {
 
 
   return (
-    <div ref={scrollContainerRef} className="h-screen overflow-y-scroll" style={{ scrollbarWidth: 'none' }}>
+    <div ref={scrollContainerRef} className="h-screen overflow-y-scroll" style={{ scrollbarWidth: 'none', overflowY: timelineOpen ? 'hidden' : 'scroll' }}>
       {/* Page 1: Calendar */}
       <div className="h-screen print:bg-white print:h-auto flex flex-col overflow-hidden relative"
       style={{ backgroundColor: skin.bodyBg }}>
