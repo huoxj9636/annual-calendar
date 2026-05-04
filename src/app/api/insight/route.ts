@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 
 export async function POST(request: NextRequest) {
-  const { year, month, day, events, todos, overrides } = await request.json();
+  const { year, month, day, events, todos, overrides, focus, goalName } = await request.json();
   const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
 
   const config = new Config();
@@ -30,16 +30,19 @@ export async function POST(request: NextRequest) {
     ? `当日满意度状态：${overrides === 'checked' ? '✓ 满意' : overrides === 'crossed' ? '✗ 不满意' : '未标记'}`
     : '';
 
-  const systemPrompt = `你是一个专注拖延分析和执行力提升的洞察助手。基于用户当天的时间数据，你需要：
+  const systemPrompt = `你是一个专注个人成长和时间管理的洞察助手。基于用户当天的时间数据，你需要进行深度分析。
 
-1. **时间分析**：评估时间的利用效率，找出时间黑洞
+当前分析维度：${goalName || '综合分析'}
+
+分析要求：
+${focus || `1. **时间分析**：评估时间的利用效率，找出时间黑洞
 2. **拖延诊断**：识别拖延模式和根本原因（回避困难、完美主义、精力低谷等）
 3. **执行力评分**：给当日执行力打分（1-10），并说明理由
-4. **行动建议**：给出2-3条具体、可执行的建议，帮助提升明天的执行力
+4. **行动建议**：给出2-3条具体、可执行的建议，帮助提升明天的执行力`}
 
-语气要中肯、直击要害，不回避问题但也不过度批评。用中文回答，格式清晰。`;
+语气要中肯、直击要害，不回避问题但也不过度批评。用中文回答，格式清晰，使用markdown标题和列表让内容层次分明。`;
 
-  const userContent = `请分析 ${year}年${month}月${day}日 的时间使用情况：
+  const userContent = `请从「${goalName || '综合'}」维度分析 ${year}年${month}月${day}日 的时间使用情况：
 
 ${satisfactionInfo}
 
@@ -49,7 +52,7 @@ ${completedItems.length > 0 ? completedItems.map((item, i) => `${i + 1}. ${item}
 未完成的待办：
 ${incompleteItems.length > 0 ? incompleteItems.map((item, i) => `${i + 1}. ${item}`).join('\n') : '（全部完成或无待办）'}
 
-请给出深度洞察，重点分析拖延和执行力层面。`;
+请给出深度洞察。`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
