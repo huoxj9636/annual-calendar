@@ -638,15 +638,23 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
             style={{ top: addModalTop, left: TIME_LABEL_WIDTH + 20 }}
           >
             <div
-              className="w-[280px] rounded-xl shadow-2xl overflow-hidden"
+              className="w-[340px] rounded-xl shadow-2xl overflow-hidden"
               style={{
                 backgroundColor: s.cardBg,
                 border: `1px solid ${s.divider}`,
                 boxShadow: `0 12px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)`,
               }}
             >
-              {/* 顶部彩色条 - 跟随皮肤色 */}
-              <div className="h-1 w-full" style={{ backgroundColor: s.swatch }} />
+              {/* 顶部彩色条 + 右上角关闭按钮 */}
+              <div className="h-1 w-full relative" style={{ backgroundColor: s.swatch }}>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-opacity hover:opacity-70"
+                  style={{ backgroundColor: s.swatch, color: '#fff' }}
+                >
+                  ✕
+                </button>
+              </div>
 
               <div className="px-4 pt-3 pb-2">
                 {/* 添加日程标题 */}
@@ -722,23 +730,25 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                   </span>
                 </div>
 
-                {/* 详细描述 - 加大高度 */}
+                {/* 详细描述 - 大文本框 */}
                 <textarea
                   value={addDescription}
                   onChange={e => setAddDescription(e.target.value.slice(0, 500))}
                   placeholder="添加详细描述..."
-                  rows={5}
+                  rows={10}
                   className="w-full text-xs outline-none bg-transparent border rounded-md px-2.5 py-2 mb-2 resize-none placeholder:opacity-35"
                   style={{ color: s.textSecondary, borderColor: s.divider, backgroundColor: s.panelBg }}
                 />
               </div>
 
-              {/* 底部按钮 */}
-              <div className="flex items-center justify-end gap-2 px-4 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
-                <button onClick={() => setShowAddModal(false)} className="text-[11px] px-3 py-1.5 rounded-lg" style={{ color: s.textMuted }}>
-                  取消
-                </button>
-                <button onClick={handleAddEvent} disabled={!addTitle.trim()} className="text-[11px] px-5 py-1.5 rounded-lg text-white disabled:opacity-40 font-medium" style={{ backgroundColor: s.swatch }}>
+              {/* 底部横条添加按钮 */}
+              <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
+                <button
+                  onClick={handleAddEvent}
+                  disabled={!addTitle.trim()}
+                  className="w-full py-2 rounded-lg text-white text-xs font-medium disabled:opacity-40 transition-opacity"
+                  style={{ backgroundColor: s.swatch }}
+                >
                   添加
                 </button>
               </div>
@@ -746,22 +756,30 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
           </div>
         )}
 
-        {/* 编辑日程弹框 - 简约风格，无删除按钮 */}
+        {/* 编辑日程弹框 - 简约风格 */}
         {showEditModal && editEvent && (
           <div
             className="absolute z-50"
             style={{ top: editModalTop, left: TIME_LABEL_WIDTH + 20 }}
           >
             <div
-              className="w-[280px] rounded-xl shadow-2xl overflow-hidden"
+              className="w-[340px] rounded-xl shadow-2xl overflow-hidden"
               style={{
                 backgroundColor: s.cardBg,
                 border: `1px solid ${s.divider}`,
                 boxShadow: `0 12px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)`,
               }}
             >
-              {/* 顶部彩色条 - 跟随皮肤色 */}
-              <div className="h-1 w-full" style={{ backgroundColor: s.swatch }} />
+              {/* 顶部彩色条 + 右上角关闭按钮 */}
+              <div className="h-1 w-full relative" style={{ backgroundColor: s.swatch }}>
+                <button
+                  onClick={() => { setShowEditModal(false); setEditEvent(null); }}
+                  className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-opacity hover:opacity-70"
+                  style={{ backgroundColor: s.swatch, color: '#fff' }}
+                >
+                  ✕
+                </button>
+              </div>
 
               <div className="px-4 pt-3 pb-2">
                 {/* 编辑日程标题 */}
@@ -833,23 +851,25 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
                   </span>
                 </div>
 
-                {/* 详细描述 - 加大高度 */}
+                {/* 详细描述 - 大文本框 */}
                 <textarea
                   value={editDescription}
                   onChange={e => setEditDescription(e.target.value.slice(0, 500))}
                   placeholder="添加详细描述..."
-                  rows={5}
+                  rows={10}
                   className="w-full text-xs outline-none bg-transparent border rounded-md px-2.5 py-2 mb-2 resize-none placeholder:opacity-35"
                   style={{ color: s.textSecondary, borderColor: s.divider, backgroundColor: s.panelBg }}
                 />
               </div>
 
-              {/* 底部按钮 - 无删除按钮 */}
-              <div className="flex items-center justify-end gap-2 px-4 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
-                <button onClick={() => { setShowEditModal(false); setEditEvent(null); }} className="text-[11px] px-3 py-1.5 rounded-lg" style={{ color: s.textMuted }}>
-                  取消
-                </button>
-                <button onClick={handleEditEvent} disabled={!editTitle.trim()} className="text-[11px] px-5 py-1.5 rounded-lg text-white disabled:opacity-40 font-medium" style={{ backgroundColor: s.swatch }}>
+              {/* 底部横条保存按钮 */}
+              <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
+                <button
+                  onClick={handleEditEvent}
+                  disabled={!editTitle.trim()}
+                  className="w-full py-2 rounded-lg text-white text-xs font-medium disabled:opacity-40 transition-opacity"
+                  style={{ backgroundColor: s.swatch }}
+                >
                   保存
                 </button>
               </div>
