@@ -695,7 +695,7 @@ export default function YearCalendar() {
               onClose={() => setTimelineOpen(false)}
               onModeChange={setTimelineMode}
               skin={skin}
-              onDayClick={(m: number, d: number) => { setDayViewDate({ year, month: m, day: d }); setTimelineOpen(false); }}
+              onDayClick={(y: number, m: number, d: number) => { setDayViewDate({ year: y, month: m, day: d }); setTimelineOpen(false); }}
             />
           )}
 
