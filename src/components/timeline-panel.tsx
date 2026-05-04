@@ -451,7 +451,8 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
       {/* Main content - split 1/2 */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left: Timeline */}
-        <div className="w-1/2 border-r overflow-y-auto relative" style={{ borderColor: s.divider }} ref={timelineScrollRef}>
+        <div className="w-1/2 border-r relative" style={{ borderColor: s.divider }}>
+          <div className="absolute inset-0 overflow-y-auto" ref={timelineScrollRef}>
           <div
             ref={timelineRef}
             className="relative cursor-crosshair"
@@ -553,12 +554,13 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
               );
             })}
           </div>
+          </div>{/* end scroll container */}
 
-          {/* 定位到当前时间按钮 - sticky固定在滚动容器右下角 */}
+          {/* 定位到当前时间按钮 - absolute固定在右下角，不随滚动 */}
           {isToday && (
             <button
               onClick={scrollToNow}
-              className="sticky bottom-3 float-right mr-3 z-30 w-9 h-9 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110"
+              className="absolute bottom-3 right-3 z-30 w-9 h-9 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110"
               style={{ backgroundColor: s.swatch, color: '#fff', boxShadow: `0 2px 8px ${s.swatch}40` }}
               title="定位到当前时间"
             >
