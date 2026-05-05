@@ -151,11 +151,12 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     setAddEndTime(minutesToTime(endMin));
     setAddTitle('');
     setAddDescription('');
-    const scrollTop = timelineScrollRef.current?.scrollTop ?? 0;
-    const viewH = timelineScrollRef.current?.clientHeight ?? 600;
-    const maxTop = scrollTop + viewH - 380;
-    const minTop = scrollTop + 20;
-    setAddModalTop(Math.max(minTop, Math.min(y + scrollTop - 40, maxTop)));
+    const scrollContainer = timelineScrollRef.current;
+    const viewH = scrollContainer?.clientHeight ?? 600;
+    const scrollTop = scrollContainer?.scrollTop ?? 0;
+    const visibleTop = scrollTop + 20;
+    const visibleBottom = scrollTop + viewH - 380;
+    setAddModalTop(Math.max(visibleTop, Math.min(y - 40, visibleBottom)));
     setShowAddModal(true);
     setShowEditModal(false);
   }, []);
