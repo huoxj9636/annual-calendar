@@ -222,6 +222,10 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   // 点击事件 → 编辑弹框
   const handleEventClick = useCallback((ev: TimelineEvent, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (wasDraggingRef.current) {
+      wasDraggingRef.current = false; // 重置标记，跳过弹框
+      return;
+    }
     setSelectedEvent(ev);
     setEditEvent(ev);
     setEditTitle(ev.title);
@@ -450,6 +454,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
 
   const dragRef = useRef(dragState);
   dragRef.current = dragState;
+  const wasDraggingRef = useRef(false);
 
   const handleResizeStart = useCallback((
     e: React.MouseEvent,
@@ -474,6 +479,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     };
     setDragState(newState);
     dragRef.current = newState;
+    wasDraggingRef.current = false; // 拖拽开始，尚未移动
     document.body.style.userSelect = 'none';
     document.body.style.cursor = type === 'top' || type === 'bottom' ? 'ns-resize' : type === 'move' ? 'grabbing' : 'ew-resize';
   }, [eventLayoutMap]);
@@ -484,6 +490,9 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
       e.preventDefault();
       const ds = dragRef.current;
       if (!ds) return;
+      if (Math.abs(e.clientY - ds.startY) > 3 || Math.abs(e.clientX - ds.startX) > 3) {
+        wasDraggingRef.current = true; // 实际发生了拖拽移动
+      }
       const dy = e.clientY - ds.startY;
       const minDelta = Math.round((dy / HOUR_HEIGHT) * 60 / 15) * 15; // 15分钟对齐
 
