@@ -151,12 +151,16 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     setAddEndTime(minutesToTime(endMin));
     setAddTitle('');
     setAddDescription('');
+    // 弹框定位：使用视口坐标，弹框在滚动容器外部定位
     const scrollContainer = timelineScrollRef.current;
-    const viewH = scrollContainer?.clientHeight ?? 600;
-    const scrollTop = scrollContainer?.scrollTop ?? 0;
-    const visibleTop = scrollTop + 20;
-    const visibleBottom = scrollTop + viewH - 380;
-    setAddModalTop(Math.max(visibleTop, Math.min(y - 40, visibleBottom)));
+    const scrollRect = scrollContainer?.getBoundingClientRect();
+    if (scrollRect) {
+      const viewH = scrollRect.height;
+      const relY = e.clientY - scrollRect.top;
+      setAddModalTop(Math.max(20, Math.min(relY - 40, viewH - 380)));
+    } else {
+      setAddModalTop(Math.max(20, y - 40));
+    }
     setShowAddModal(true);
     setShowEditModal(false);
   }, []);
@@ -225,11 +229,13 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     setEditEndTime(ev.endTime || minutesToTime(timeToMinutes(ev.time) + 15));
     setEditDescription(ev.description || '');
     const topMin = timeToMinutes(ev.time);
-    const yPos = (topMin / 60) * HOUR_HEIGHT;
+    // 弹框在滚动容器外部，需要转换为面板内可视坐标
     const scrollContainer = timelineScrollRef.current;
-    const maxTop = scrollContainer ? scrollContainer.scrollTop + scrollContainer.clientHeight - 340 : 800;
-    const minTop = scrollContainer ? scrollContainer.scrollTop + 20 : 20;
-    setEditModalTop(Math.max(minTop, Math.min(yPos - 20, maxTop)));
+    const scrollTop = scrollContainer?.scrollTop ?? 0;
+    const viewH = scrollContainer?.clientHeight ?? 600;
+    const contentY = (topMin / 60) * HOUR_HEIGHT;
+    const visibleY = contentY - scrollTop; // 面板内的可视位置
+    setEditModalTop(Math.max(20, Math.min(visibleY - 20, viewH - 340)));
     setShowEditModal(true);
     setShowAddModal(false);
   }, []);
@@ -706,6 +712,248 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
               </svg>
             </button>
           )}
+
+          {/* 添加日程弹框 - 在左侧面板内，不遮挡右侧AI */}
+          {showAddModal && (
+            <div
+              className="absolute z-40"
+              style={{ top: addModalTop, left: TIME_LABEL_WIDTH + 10 }}
+            >
+              <div
+                className="w-[340px] rounded-xl shadow-2xl"
+                style={{
+                  backgroundColor: s.cardBg,
+                  border: `1px solid ${s.divider}`,
+                  boxShadow: `0 12px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)`,
+                }}
+              >
+                {/* 顶部彩色条 */}
+                <div className="h-1.5 w-full rounded-t-xl" style={{ backgroundColor: s.swatch }} />
+
+                <div className="px-5 pt-3 pb-2 relative">
+                  {/* 右上角关闭按钮 */}
+                  <button
+                    onClick={() => setShowAddModal(false)}
+                    className="absolute top-2 right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs transition-all hover:scale-110"
+                    style={{ backgroundColor: s.cardHover, color: s.textMuted }}
+                  >
+                    ✕
+                  </button>
+
+                  {/* 添加日程标题 */}
+                  <div className="text-xs font-semibold mb-3" style={{ color: s.textMuted }}>添加日程</div>
+
+                  {/* 标题输入 - 简约下划线 */}
+                  <input
+                    autoFocus
+                    value={addTitle}
+                    onChange={e => setAddTitle(e.target.value.slice(0, 50))}
+                    onKeyDown={e => { if (e.key === 'Enter') handleAddEvent(); if (e.key === 'Escape') setShowAddModal(false); }}
+                    placeholder="日程标题"
+                    className="w-full text-sm font-medium outline-none bg-transparent border-b pb-1.5 mb-3 placeholder:opacity-35"
+                    style={{ color: s.textPrimary, borderColor: s.divider }}
+                  />
+
+                  {/* 时间选择 - 简洁行：HH:MM 至 HH:MM */}
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <select
+                      value={addStartTime.split(':')[0]}
+                      onChange={e => {
+                        const mins = timeToMinutes(addStartTime);
+                        const newMins = Math.max(0, Math.min(Number(e.target.value) * 60 + (mins % 60), 24 * 60 - 15));
+                        const newStart = minutesToTime(newMins);
+                        setAddStartTime(newStart);
+                        setAddEndTime(minutesToTime(Math.min(newMins + 15, 24 * 60)));
+                      }}
+                      className="text-sm px-2 py-1 rounded-md border outline-none"
+                      style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
+                    >
+                      {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
+                    </select>
+                    <span className="text-sm" style={{ color: s.textMuted }}>:</span>
+                    <select
+                      value={Number(addStartTime.split(':')[1])}
+                      onChange={e => {
+                        const h = Number(addStartTime.split(':')[0]);
+                        const newMins = h * 60 + Number(e.target.value);
+                        setAddStartTime(minutesToTime(newMins));
+                        setAddEndTime(minutesToTime(Math.min(newMins + 15, 24 * 60)));
+                      }}
+                      className="text-sm px-2 py-1 rounded-md border outline-none"
+                      style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
+                    >
+                      {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
+                    </select>
+                    <span className="text-xs mx-1.5 font-medium" style={{ color: s.textMuted }}>至</span>
+                    <select
+                      value={addEndTime.split(':')[0]}
+                      onChange={e => {
+                        const mins = timeToMinutes(addEndTime);
+                        setAddEndTime(minutesToTime(Math.max(Number(e.target.value) * 60 + (mins % 60), timeToMinutes(addStartTime) + 15)));
+                      }}
+                      className="text-sm px-2 py-1 rounded-md border outline-none"
+                      style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
+                    >
+                      {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
+                    </select>
+                    <span className="text-sm" style={{ color: s.textMuted }}>:</span>
+                    <select
+                      value={Number(addEndTime.split(':')[1])}
+                      onChange={e => {
+                        const h = Number(addEndTime.split(':')[0]);
+                        setAddEndTime(minutesToTime(Math.max(h * 60 + Number(e.target.value), timeToMinutes(addStartTime) + 15)));
+                      }}
+                      className="text-sm px-2 py-1 rounded-md border outline-none"
+                      style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
+                    >
+                      {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
+                    </select>
+                  </div>
+
+                  {/* 详细描述 - 大文本框 */}
+                  <textarea
+                    value={addDescription}
+                    onChange={e => setAddDescription(e.target.value.slice(0, 500))}
+                    placeholder="添加详细描述..."
+                    rows={10}
+                    className="w-full text-xs outline-none bg-transparent border rounded-md px-2.5 py-2 mb-2 resize-none placeholder:opacity-35"
+                    style={{ color: s.textSecondary, borderColor: s.divider, backgroundColor: s.panelBg }}
+                  />
+                </div>
+
+                {/* 底部横条添加按钮 */}
+                <div className="px-5 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
+                  <button
+                    onClick={handleAddEvent}
+                    disabled={!addTitle.trim()}
+                    className="w-full py-2 rounded-lg text-white text-xs font-medium disabled:opacity-40 transition-opacity"
+                    style={{ backgroundColor: s.swatch }}
+                  >
+                    添加
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 编辑日程弹框 - 在左侧面板内 */}
+          {showEditModal && editEvent && (
+            <div
+              className="absolute z-40"
+              style={{ top: editModalTop, left: TIME_LABEL_WIDTH + 10 }}
+            >
+              <div
+                className="w-[340px] rounded-xl shadow-2xl"
+                style={{
+                  backgroundColor: s.cardBg,
+                  border: `1px solid ${s.divider}`,
+                  boxShadow: `0 12px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)`,
+                }}
+              >
+                {/* 顶部彩色条 */}
+                <div className="h-1.5 w-full rounded-t-xl" style={{ backgroundColor: s.swatch }} />
+
+                <div className="px-5 pt-3 pb-2 relative">
+                  {/* 右上角关闭按钮 */}
+                  <button
+                    onClick={() => { setShowEditModal(false); setEditEvent(null); }}
+                    className="absolute top-2 right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs transition-all hover:scale-110"
+                    style={{ backgroundColor: s.cardHover, color: s.textMuted }}
+                  >
+                    ✕
+                  </button>
+
+                  {/* 编辑日程标题 */}
+                  <div className="text-xs font-semibold mb-3" style={{ color: s.textMuted }}>编辑日程</div>
+
+                  {/* 标题输入 */}
+                  <input
+                    autoFocus
+                    value={editTitle}
+                    onChange={e => setEditTitle(e.target.value.slice(0, 50))}
+                    onKeyDown={e => { if (e.key === 'Enter') handleEditEvent(); if (e.key === 'Escape') { setShowEditModal(false); setEditEvent(null); } }}
+                    placeholder="日程标题"
+                    className="w-full text-sm font-medium outline-none bg-transparent border-b pb-1.5 mb-3 placeholder:opacity-35"
+                    style={{ color: s.textPrimary, borderColor: s.divider }}
+                  />
+
+                  {/* 时间选择 - 简洁行：HH:MM 至 HH:MM */}
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <select
+                      value={editStartTime.split(':')[0]}
+                      onChange={e => {
+                        const mins = timeToMinutes(editStartTime);
+                        const newMins = Number(e.target.value) * 60 + (mins % 60);
+                        setEditStartTime(minutesToTime(newMins));
+                      }}
+                      className="text-sm px-2 py-1 rounded-md border outline-none"
+                      style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
+                    >
+                      {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
+                    </select>
+                    <span className="text-sm" style={{ color: s.textMuted }}>:</span>
+                    <select
+                      value={Number(editStartTime.split(':')[1])}
+                      onChange={e => {
+                        const h = Number(editStartTime.split(':')[0]);
+                        setEditStartTime(minutesToTime(h * 60 + Number(e.target.value)));
+                      }}
+                      className="text-sm px-2 py-1 rounded-md border outline-none"
+                      style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
+                    >
+                      {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
+                    </select>
+                    <span className="text-xs mx-1.5 font-medium" style={{ color: s.textMuted }}>至</span>
+                    <select
+                      value={editEndTime.split(':')[0]}
+                      onChange={e => {
+                        const mins = timeToMinutes(editEndTime);
+                        setEditEndTime(minutesToTime(Number(e.target.value) * 60 + (mins % 60)));
+                      }}
+                      className="text-sm px-2 py-1 rounded-md border outline-none"
+                      style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
+                    >
+                      {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
+                    </select>
+                    <span className="text-sm" style={{ color: s.textMuted }}>:</span>
+                    <select
+                      value={Number(editEndTime.split(':')[1])}
+                      onChange={e => {
+                        const h = Number(editEndTime.split(':')[0]);
+                        setEditEndTime(minutesToTime(h * 60 + Number(e.target.value)));
+                      }}
+                      className="text-sm px-2 py-1 rounded-md border outline-none"
+                      style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
+                    >
+                      {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
+                    </select>
+                  </div>
+
+                  {/* 详细描述 - 大文本框 */}
+                  <textarea
+                    value={editDescription}
+                    onChange={e => setEditDescription(e.target.value.slice(0, 500))}
+                    placeholder="添加详细描述..."
+                    rows={10}
+                    className="w-full text-xs outline-none bg-transparent border rounded-md px-2.5 py-2 mb-2 resize-none placeholder:opacity-35"
+                    style={{ color: s.textSecondary, borderColor: s.divider, backgroundColor: s.panelBg }}
+                  />
+                </div>
+
+                {/* 底部横条保存按钮 */}
+                <div className="px-5 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
+                  <button
+                    onClick={handleEditEvent}
+                    disabled={!editTitle.trim()}
+                    className="w-full py-2 rounded-lg text-white text-xs font-medium disabled:opacity-40 transition-opacity"
+                    style={{ backgroundColor: s.swatch }}
+                  >
+                    保存
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: AI Chat */}
@@ -767,248 +1015,6 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
             </div>
           </div>
         </div>
-
-        {/* 添加日程弹框 - 简约风格，颜色自动跟随皮肤 */}
-        {showAddModal && (
-          <div
-            className="absolute z-50"
-            style={{ top: addModalTop, left: TIME_LABEL_WIDTH + 20 }}
-          >
-            <div
-              className="w-[380px] rounded-xl shadow-2xl"
-              style={{
-                backgroundColor: s.cardBg,
-                border: `1px solid ${s.divider}`,
-                boxShadow: `0 12px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)`,
-              }}
-            >
-              {/* 顶部彩色条 */}
-              <div className="h-1.5 w-full rounded-t-xl" style={{ backgroundColor: s.swatch }} />
-
-              <div className="px-5 pt-3 pb-2 relative">
-                {/* 右上角关闭按钮 */}
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="absolute top-2 right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs transition-all hover:scale-110"
-                  style={{ backgroundColor: s.cardHover, color: s.textMuted }}
-                >
-                  ✕
-                </button>
-
-                {/* 添加日程标题 */}
-                <div className="text-xs font-semibold mb-3" style={{ color: s.textMuted }}>添加日程</div>
-
-                {/* 标题输入 - 简约下划线 */}
-                <input
-                  autoFocus
-                  value={addTitle}
-                  onChange={e => setAddTitle(e.target.value.slice(0, 50))}
-                  onKeyDown={e => { if (e.key === 'Enter') handleAddEvent(); if (e.key === 'Escape') setShowAddModal(false); }}
-                  placeholder="日程标题"
-                  className="w-full text-sm font-medium outline-none bg-transparent border-b pb-1.5 mb-3 placeholder:opacity-35"
-                  style={{ color: s.textPrimary, borderColor: s.divider }}
-                />
-
-                {/* 时间选择 - 简洁行：HH:MM 至 HH:MM */}
-                <div className="flex items-center gap-1.5 mb-3">
-                  <select
-                    value={addStartTime.split(':')[0]}
-                    onChange={e => {
-                      const mins = timeToMinutes(addStartTime);
-                      const newMins = Math.max(0, Math.min(Number(e.target.value) * 60 + (mins % 60), 24 * 60 - 15));
-                      const newStart = minutesToTime(newMins);
-                      setAddStartTime(newStart);
-                      setAddEndTime(minutesToTime(Math.min(newMins + 15, 24 * 60)));
-                    }}
-                    className="text-sm px-2 py-1 rounded-md border outline-none"
-                    style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
-                  >
-                    {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
-                  </select>
-                  <span className="text-sm" style={{ color: s.textMuted }}>:</span>
-                  <select
-                    value={Number(addStartTime.split(':')[1])}
-                    onChange={e => {
-                      const h = Number(addStartTime.split(':')[0]);
-                      const newMins = h * 60 + Number(e.target.value);
-                      setAddStartTime(minutesToTime(newMins));
-                      setAddEndTime(minutesToTime(Math.min(newMins + 15, 24 * 60)));
-                    }}
-                    className="text-sm px-2 py-1 rounded-md border outline-none"
-                    style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
-                  >
-                    {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
-                  </select>
-                  <span className="text-xs mx-1.5 font-medium" style={{ color: s.textMuted }}>至</span>
-                  <select
-                    value={addEndTime.split(':')[0]}
-                    onChange={e => {
-                      const mins = timeToMinutes(addEndTime);
-                      setAddEndTime(minutesToTime(Math.max(Number(e.target.value) * 60 + (mins % 60), timeToMinutes(addStartTime) + 15)));
-                    }}
-                    className="text-sm px-2 py-1 rounded-md border outline-none"
-                    style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
-                  >
-                    {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
-                  </select>
-                  <span className="text-sm" style={{ color: s.textMuted }}>:</span>
-                  <select
-                    value={Number(addEndTime.split(':')[1])}
-                    onChange={e => {
-                      const h = Number(addEndTime.split(':')[0]);
-                      setAddEndTime(minutesToTime(Math.max(h * 60 + Number(e.target.value), timeToMinutes(addStartTime) + 15)));
-                    }}
-                    className="text-sm px-2 py-1 rounded-md border outline-none"
-                    style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
-                  >
-                    {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
-                  </select>
-                </div>
-
-                {/* 详细描述 - 大文本框 */}
-                <textarea
-                  value={addDescription}
-                  onChange={e => setAddDescription(e.target.value.slice(0, 500))}
-                  placeholder="添加详细描述..."
-                  rows={10}
-                  className="w-full text-xs outline-none bg-transparent border rounded-md px-2.5 py-2 mb-2 resize-none placeholder:opacity-35"
-                  style={{ color: s.textSecondary, borderColor: s.divider, backgroundColor: s.panelBg }}
-                />
-              </div>
-
-              {/* 底部横条添加按钮 */}
-              <div className="px-5 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
-                <button
-                  onClick={handleAddEvent}
-                  disabled={!addTitle.trim()}
-                  className="w-full py-2 rounded-lg text-white text-xs font-medium disabled:opacity-40 transition-opacity"
-                  style={{ backgroundColor: s.swatch }}
-                >
-                  添加
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 编辑日程弹框 - 简约风格 */}
-        {showEditModal && editEvent && (
-          <div
-            className="absolute z-50"
-            style={{ top: editModalTop, left: TIME_LABEL_WIDTH + 20 }}
-          >
-            <div
-              className="w-[380px] rounded-xl shadow-2xl"
-              style={{
-                backgroundColor: s.cardBg,
-                border: `1px solid ${s.divider}`,
-                boxShadow: `0 12px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)`,
-              }}
-            >
-              {/* 顶部彩色条 */}
-              <div className="h-1.5 w-full rounded-t-xl" style={{ backgroundColor: s.swatch }} />
-
-              <div className="px-5 pt-3 pb-2 relative">
-                {/* 右上角关闭按钮 */}
-                <button
-                  onClick={() => { setShowEditModal(false); setEditEvent(null); }}
-                  className="absolute top-2 right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs transition-all hover:scale-110"
-                  style={{ backgroundColor: s.cardHover, color: s.textMuted }}
-                >
-                  ✕
-                </button>
-
-                {/* 编辑日程标题 */}
-                <div className="text-xs font-semibold mb-3" style={{ color: s.textMuted }}>编辑日程</div>
-
-                {/* 标题输入 */}
-                <input
-                  autoFocus
-                  value={editTitle}
-                  onChange={e => setEditTitle(e.target.value.slice(0, 50))}
-                  onKeyDown={e => { if (e.key === 'Enter') handleEditEvent(); if (e.key === 'Escape') { setShowEditModal(false); setEditEvent(null); } }}
-                  placeholder="日程标题"
-                  className="w-full text-sm font-medium outline-none bg-transparent border-b pb-1.5 mb-3 placeholder:opacity-35"
-                  style={{ color: s.textPrimary, borderColor: s.divider }}
-                />
-
-                {/* 时间选择 - 简洁行：HH:MM 至 HH:MM */}
-                <div className="flex items-center gap-1.5 mb-3">
-                  <select
-                    value={editStartTime.split(':')[0]}
-                    onChange={e => {
-                      const mins = timeToMinutes(editStartTime);
-                      const newMins = Number(e.target.value) * 60 + (mins % 60);
-                      setEditStartTime(minutesToTime(newMins));
-                    }}
-                    className="text-sm px-2 py-1 rounded-md border outline-none"
-                    style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
-                  >
-                    {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
-                  </select>
-                  <span className="text-sm" style={{ color: s.textMuted }}>:</span>
-                  <select
-                    value={Number(editStartTime.split(':')[1])}
-                    onChange={e => {
-                      const h = Number(editStartTime.split(':')[0]);
-                      setEditStartTime(minutesToTime(h * 60 + Number(e.target.value)));
-                    }}
-                    className="text-sm px-2 py-1 rounded-md border outline-none"
-                    style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
-                  >
-                    {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
-                  </select>
-                  <span className="text-xs mx-1.5 font-medium" style={{ color: s.textMuted }}>至</span>
-                  <select
-                    value={editEndTime.split(':')[0]}
-                    onChange={e => {
-                      const mins = timeToMinutes(editEndTime);
-                      setEditEndTime(minutesToTime(Number(e.target.value) * 60 + (mins % 60)));
-                    }}
-                    className="text-sm px-2 py-1 rounded-md border outline-none"
-                    style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
-                  >
-                    {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
-                  </select>
-                  <span className="text-sm" style={{ color: s.textMuted }}>:</span>
-                  <select
-                    value={Number(editEndTime.split(':')[1])}
-                    onChange={e => {
-                      const h = Number(editEndTime.split(':')[0]);
-                      setEditEndTime(minutesToTime(h * 60 + Number(e.target.value)));
-                    }}
-                    className="text-sm px-2 py-1 rounded-md border outline-none"
-                    style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
-                  >
-                    {[0, 15, 30, 45].map(i => <option key={i} value={i}>{pad(i)}</option>)}
-                  </select>
-                </div>
-
-                {/* 详细描述 - 大文本框 */}
-                <textarea
-                  value={editDescription}
-                  onChange={e => setEditDescription(e.target.value.slice(0, 500))}
-                  placeholder="添加详细描述..."
-                  rows={10}
-                  className="w-full text-xs outline-none bg-transparent border rounded-md px-2.5 py-2 mb-2 resize-none placeholder:opacity-35"
-                  style={{ color: s.textSecondary, borderColor: s.divider, backgroundColor: s.panelBg }}
-                />
-              </div>
-
-              {/* 底部横条保存按钮 */}
-              <div className="px-5 py-2.5" style={{ borderTop: `1px solid ${s.divider}` }}>
-                <button
-                  onClick={handleEditEvent}
-                  disabled={!editTitle.trim()}
-                  className="w-full py-2 rounded-lg text-white text-xs font-medium disabled:opacity-40 transition-opacity"
-                  style={{ backgroundColor: s.swatch }}
-                >
-                  保存
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 右键菜单 */}
         {contextMenu && (
