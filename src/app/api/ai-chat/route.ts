@@ -1,12 +1,8 @@
 import { NextRequest } from 'next/server';
-import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+import { createLLMStream } from '@/lib/llm';
 
 export async function POST(request: NextRequest) {
   const { messages, selectedEvent } = await request.json();
-  const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-
-  const config = new Config();
-  const client = new LLMClient(config, customHeaders);
 
   const systemPrompt = `你是日程拆解助手。
 
@@ -29,36 +25,5 @@ export async function POST(request: NextRequest) {
     { role: 'user' as const, content: userContent },
   ];
 
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const llmStream = client.stream(chatMessages, {
-          model: 'doubao-seed-2-0-mini-260215',
-          temperature: 0.7,
-        });
-
-        for await (const chunk of llmStream) {
-          if (chunk.content) {
-            const text = chunk.content.toString();
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`));
-          }
-        }
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
-      } catch (error) {
-        const errMsg = error instanceof Error ? error.message : 'Unknown error';
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errMsg })}\n\n`));
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  });
+  return createLLMStream(request, chatMessages, { temperature: 0.7 });
 }
