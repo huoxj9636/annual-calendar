@@ -105,7 +105,7 @@ export default function YearCalendar() {
   }, [mounted]);
 
   const blocks = useMemo(() => getTwelveWeekBlocks(year), [year]);
-  const skin = useMemo(() => skinKey ? (SKINS.find(s => s.key === skinKey) ?? NO_SKIN) : NO_SKIN, [skinKey]);
+  const skin = useMemo(() => mounted ? (skinKey ? (SKINS.find(s => s.key === skinKey) ?? NO_SKIN) : NO_SKIN) : NO_SKIN, [skinKey, mounted]);
   const skinMonthColors = useMemo(() => generateMonthColors(skin), [skin]);
 
   const yearData = useMemo(
