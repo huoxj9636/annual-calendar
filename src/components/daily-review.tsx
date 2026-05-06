@@ -22,30 +22,45 @@ interface DailyReviewProps {
 }
 
 interface ReviewData {
-  achievements: string[];   // 今日成就
-  regrets: string[];        // 今日遗憾
-  insights: string[];       // 关键洞察
-  tomorrowFocus: string[];  // 明日重点
-  mood: number;             // 心情 1-5
-  energy: number;           // 精力 1-5
+  achievements: string;
+  regrets: string;
+  insights: string;
+  tomorrowFocus: string;
+  mood: number;
+  energy: number;
   updatedAt: string;
 }
 
 const MOOD_LABELS = ['', '疲惫', '低落', '一般', '不错', '很棒'];
 const ENERGY_LABELS = ['', '枯竭', '低迷', '正常', '充沛', '满格'];
-const DEFAULT_ITEMS = { achievements: ['', '', ''], regrets: ['', ''], insights: ['', ''], tomorrowFocus: ['', '', ''] };
 
 function getStorageKey(year: number, month: number, day: number) {
   return `daily-review-${year}-${month}-${day}`;
 }
 
 function loadReview(year: number, month: number, day: number): ReviewData {
-  if (typeof window === 'undefined') return { ...DEFAULT_ITEMS, mood: 3, energy: 3, updatedAt: '' };
+  if (typeof window === 'undefined') return { achievements: '', regrets: '', insights: '', tomorrowFocus: '', mood: 3, energy: 3, updatedAt: '' };
   try {
     const raw = localStorage.getItem(getStorageKey(year, month, day));
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migrate from old array format to string format
+      const migrate = (v: string[] | string | undefined): string => {
+        if (Array.isArray(v)) return v.filter(s => s.trim()).join('\n');
+        return v || '';
+      };
+      return {
+        achievements: migrate(parsed.achievements),
+        regrets: migrate(parsed.regrets),
+        insights: migrate(parsed.insights),
+        tomorrowFocus: migrate(parsed.tomorrowFocus),
+        mood: parsed.mood ?? 3,
+        energy: parsed.energy ?? 3,
+        updatedAt: parsed.updatedAt ?? '',
+      };
+    }
   } catch {}
-  return { ...DEFAULT_ITEMS, mood: 3, energy: 3, updatedAt: '' };
+  return { achievements: '', regrets: '', insights: '', tomorrowFocus: '', mood: 3, energy: 3, updatedAt: '' };
 }
 
 function saveReview(year: number, month: number, day: number, data: ReviewData) {
@@ -55,7 +70,7 @@ function saveReview(year: number, month: number, day: number, data: ReviewData) 
 }
 
 export default function DailyReview({ year, month, day, skin, events, todos, onClose }: DailyReviewProps) {
-  const [review, setReview] = useState<ReviewData>({ ...DEFAULT_ITEMS, mood: 3, energy: 3, updatedAt: '' });
+  const [review, setReview] = useState<ReviewData>({ achievements: '', regrets: '', insights: '', tomorrowFocus: '', mood: 3, energy: 3, updatedAt: '' });
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'write' | 'ai'>('write');
 
@@ -64,33 +79,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     setReview(loadReview(year, month, day));
   }, [year, month, day]);
 
-  const updateField = useCallback((field: keyof ReviewData, value: string[] | number) => {
+  const updateField = useCallback((field: keyof ReviewData, value: string | number) => {
     setReview(prev => {
       const next = { ...prev, [field]: value };
-      saveReview(year, month, day, next);
-      return next;
-    });
-  }, [year, month, day]);
-
-  const updateItem = useCallback((field: 'achievements' | 'regrets' | 'insights' | 'tomorrowFocus', index: number, value: string) => {
-    setReview(prev => {
-      const arr = [...prev[field]];
-      arr[index] = value;
-      // Auto-expand: if editing last item and it's not empty, add a new empty item
-      if (index === arr.length - 1 && value.trim() !== '') {
-        arr.push('');
-      }
-      const next = { ...prev, [field]: arr };
-      saveReview(year, month, day, next);
-      return next;
-    });
-  }, [year, month, day]);
-
-  const removeItem = useCallback((field: 'achievements' | 'regrets' | 'insights' | 'tomorrowFocus', index: number) => {
-    setReview(prev => {
-      const arr = prev[field].filter((_, i) => i !== index);
-      if (arr.length === 0) arr.push('');
-      const next = { ...prev, [field]: arr };
       saveReview(year, month, day, next);
       return next;
     });
@@ -108,15 +99,16 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     setAiLoading(true);
     setAiAnalysis('');
     try {
+      const toArray = (s: string) => s.split('\n').filter(l => l.trim());
       const res = await fetch('/api/daily-review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           date: `${year}年${month}月${day}日`,
-          achievements: review.achievements.filter(s => s.trim()),
-          regrets: review.regrets.filter(s => s.trim()),
-          insights: review.insights.filter(s => s.trim()),
-          tomorrowFocus: review.tomorrowFocus.filter(s => s.trim()),
+          achievements: toArray(review.achievements),
+          regrets: toArray(review.regrets),
+          insights: toArray(review.insights),
+          tomorrowFocus: toArray(review.tomorrowFocus),
           mood: MOOD_LABELS[review.mood],
           energy: ENERGY_LABELS[review.energy],
           events: dayEvents,
@@ -179,7 +171,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       </div>
 
       {activeTab === 'write' ? (
-        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
           {/* Mood & Energy */}
           <div className="flex gap-3">
             <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
@@ -212,49 +204,41 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
             </div>
           </div>
 
-          {/* Section: Achievements */}
-          <ReviewSection
-            title="今日成就"
-            icon="★"
-            items={review.achievements}
-            onUpdate={(i, v) => updateItem('achievements', i, v)}
-            onRemove={(i) => removeItem('achievements', i)}
-            skin={skin}
-            placeholder="记下一件值得骄傲的事..."
-          />
-
-          {/* Section: Regrets */}
-          <ReviewSection
-            title="今日遗憾"
-            icon="△"
-            items={review.regrets}
-            onUpdate={(i, v) => updateItem('regrets', i, v)}
-            onRemove={(i) => removeItem('regrets', i)}
-            skin={skin}
-            placeholder="写下未完成或做得不好的..."
-          />
-
-          {/* Section: Insights */}
-          <ReviewSection
-            title="关键洞察"
-            icon="◎"
-            items={review.insights}
-            onUpdate={(i, v) => updateItem('insights', i, v)}
-            onRemove={(i) => removeItem('insights', i)}
-            skin={skin}
-            placeholder="今天有什么新的认知？..."
-          />
-
-          {/* Section: Tomorrow */}
-          <ReviewSection
-            title="明日重点"
-            icon="→"
-            items={review.tomorrowFocus}
-            onUpdate={(i, v) => updateItem('tomorrowFocus', i, v)}
-            onRemove={(i) => removeItem('tomorrowFocus', i)}
-            skin={skin}
-            placeholder="明天最想完成的事..."
-          />
+          {/* 2x2 Grid: Achievements, Regrets, Insights, Tomorrow */}
+          <div className="grid grid-cols-2 gap-3">
+            <ReviewSection
+              title="今日成就"
+              icon="★"
+              value={review.achievements}
+              onChange={v => updateField('achievements', v)}
+              skin={skin}
+              placeholder="记下一件值得骄傲的事..."
+            />
+            <ReviewSection
+              title="今日遗憾"
+              icon="△"
+              value={review.regrets}
+              onChange={v => updateField('regrets', v)}
+              skin={skin}
+              placeholder="写下未完成或做得不好的..."
+            />
+            <ReviewSection
+              title="关键洞察"
+              icon="◎"
+              value={review.insights}
+              onChange={v => updateField('insights', v)}
+              skin={skin}
+              placeholder="今天有什么新的认知？..."
+            />
+            <ReviewSection
+              title="明日重点"
+              icon="→"
+              value={review.tomorrowFocus}
+              onChange={v => updateField('tomorrowFocus', v)}
+              skin={skin}
+              placeholder="明天最想完成的事..."
+            />
+          </div>
 
           {/* Event summary */}
           {(dayEvents.length > 0 || doneTodos.length > 0 || pendingTodos.length > 0) && (
@@ -295,45 +279,91 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   );
 }
 
-/* Review Section Component */
-function ReviewSection({ title, icon, items, onUpdate, onRemove, skin, placeholder }: {
+/* Review Section Component - Single textarea with auto-numbering */
+function ReviewSection({ title, icon, value, onChange, skin, placeholder }: {
   title: string;
   icon: string;
-  items: string[];
-  onUpdate: (index: number, value: string) => void;
-  onRemove: (index: number) => void;
+  value: string;
+  onChange: (value: string) => void;
   skin: DailyReviewProps['skin'];
   placeholder: string;
 }) {
+  // Convert value to numbered display: add "1. " prefix on each line
+  const displayValue = value;
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onChange(e.target.value);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter') {
+      const ta = e.currentTarget;
+      const pos = ta.selectionStart;
+      const before = ta.value.substring(0, pos);
+      const after = ta.value.substring(pos);
+      
+      // Check if current line starts with a number pattern like "1. " or "2. "
+      const currentLine = before.split('\n').pop() || '';
+      const match = currentLine.match(/^(\d+)\.\s*/);
+      
+      if (match) {
+        e.preventDefault();
+        const nextNum = parseInt(match[1]) + 1;
+        const newText = before + '\n' + nextNum + '. ' + after;
+        onChange(newText);
+        // Set cursor after the new number prefix
+        requestAnimationFrame(() => {
+          ta.selectionStart = ta.selectionEnd = pos + 1 + match[0].length;
+        });
+      }
+    }
+  };
+
+  // Add initial numbering if empty
+  const handleFocus = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    if (!value.trim()) {
+      onChange('1. ');
+      requestAnimationFrame(() => {
+        e.currentTarget.selectionStart = e.currentTarget.selectionEnd = 3;
+      });
+    }
+    e.currentTarget.style.borderColor = skin.swatch + '50';
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    e.currentTarget.style.borderColor = 'transparent';
+    // Clean up empty numbered lines on blur
+    const cleaned = value
+      .split('\n')
+      .filter(line => line.trim() && line.trim() !== '.' && !/^\d+\.\s*$/.test(line))
+      .map((line, i) => {
+        // Re-number lines
+        const content = line.replace(/^\d+\.\s*/, '');
+        return content ? `${i + 1}. ${content}` : '';
+      })
+      .join('\n');
+    if (cleaned !== value) {
+      onChange(cleaned);
+    }
+  };
+
   return (
-    <div className="rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
+    <div className="rounded-xl p-3 flex flex-col" style={{ backgroundColor: skin.cardBg }}>
       <div className="flex items-center gap-1.5 mb-2">
         <span className="text-sm" style={{ color: skin.swatch }}>{icon}</span>
         <span className="text-xs font-bold" style={{ color: skin.textPrimary }}>{title}</span>
       </div>
-      <div className="space-y-1.5">
-        {items.map((item, i) => (
-          <div key={i} className="flex items-center gap-1.5 group">
-            <span className="text-[10px] font-mono w-4 text-right flex-shrink-0" style={{ color: skin.textMuted }}>{i + 1}.</span>
-            <input
-              type="text"
-              value={item}
-              onChange={e => onUpdate(i, e.target.value)}
-              placeholder={i === 0 ? placeholder : ''}
-              className="flex-1 bg-transparent text-xs outline-none border-b border-transparent focus:border-current py-0.5 transition-colors"
-              style={{ color: skin.textPrimary, borderColor: 'transparent' }}
-              onFocus={e => (e.currentTarget.style.borderColor = skin.swatch + '40')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'transparent')}
-            />
-            {item.trim() !== '' && items.length > 1 && (
-              <button onClick={() => onRemove(i)}
-                className="opacity-0 group-hover:opacity-100 text-[10px] w-4 h-4 flex items-center justify-center rounded-full transition-opacity"
-                style={{ color: skin.textMuted }}
-              >✕</button>
-            )}
-          </div>
-        ))}
-      </div>
+      <textarea
+        value={displayValue}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        rows={4}
+        className="w-full bg-transparent text-xs leading-relaxed outline-none border border-transparent rounded-lg p-2 resize-none transition-colors"
+        style={{ color: skin.textPrimary, minHeight: '80px' }}
+      />
     </div>
   );
 }
