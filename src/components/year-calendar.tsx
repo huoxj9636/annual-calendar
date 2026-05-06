@@ -1083,7 +1083,6 @@ export default function YearCalendar() {
 
           {/* 今日复盘 - 覆盖层 */}
           {dailyReviewOpen && (
-            <div className="absolute z-50" style={{ top: 5, left: 0, right: 0, bottom: 0 }}>
             <DailyReview
               year={year}
               month={dailyReviewMonth}
@@ -1103,7 +1102,6 @@ export default function YearCalendar() {
               })()}
               onClose={() => setDailyReviewOpen(false)}
             />
-            </div>
           )}
 
           {/* 月度复盘 - 覆盖层，左侧从月份名列右侧开始 */}
