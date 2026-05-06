@@ -6,26 +6,37 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { date, achievements, regrets, insights, tomorrowFocus, mood, energy, events, doneTodos, pendingTodos } = body;
 
+    // Support both string (textarea) and array formats
+    const toArray = (v: unknown): string[] => {
+      if (Array.isArray(v)) return v;
+      if (typeof v === 'string' && v.trim()) return v.split('\n').filter((l: string) => l.trim());
+      return [];
+    };
+    const achArr = toArray(achievements);
+    const regArr = toArray(regrets);
+    const insArr = toArray(insights);
+    const tomArr = toArray(tomorrowFocus);
+
     const userContent = `
 日期：${date}
 心情：${mood}，精力：${energy}
 
 【今日成就】
-${achievements.length > 0 ? achievements.map((a: string, i: number) => `${i+1}. ${a}`).join('\n') : '（未填写）'}
+${achArr.length > 0 ? achArr.map((a: string, i: number) => `${i+1}. ${a}`).join('\n') : '（未填写）'}
 
 【今日遗憾】
-${regrets.length > 0 ? regrets.map((r: string, i: number) => `${i+1}. ${r}`).join('\n') : '（未填写）'}
+${regArr.length > 0 ? regArr.map((r: string, i: number) => `${i+1}. ${r}`).join('\n') : '（未填写）'}
 
 【关键洞察】
-${insights.length > 0 ? insights.map((ins: string, i: number) => `${i+1}. ${ins}`).join('\n') : '（未填写）'}
+${insArr.length > 0 ? insArr.map((ins: string, i: number) => `${i+1}. ${ins}`).join('\n') : '（未填写）'}
 
 【明日重点】
-${tomorrowFocus.length > 0 ? tomorrowFocus.map((t: string, i: number) => `${i+1}. ${t}`).join('\n') : '（未填写）'}
+${tomArr.length > 0 ? tomArr.map((t: string, i: number) => `${i+1}. ${t}`).join('\n') : '（未填写）'}
 
 【日程完成情况】
-已完成：${doneTodos.length > 0 ? doneTodos.join('、') : '无'}
-未完成：${pendingTodos.length > 0 ? pendingTodos.join('、') : '无'}
-日程：${events.length > 0 ? events.join('；') : '无'}
+已完成：${Array.isArray(doneTodos) && doneTodos.length > 0 ? doneTodos.join('、') : '无'}
+未完成：${Array.isArray(pendingTodos) && pendingTodos.length > 0 ? pendingTodos.join('、') : '无'}
+日程：${Array.isArray(events) && events.length > 0 ? events.join('；') : '无'}
 `;
 
     const systemPrompt = `你是每日复盘教练，专注帮用户从日常中提炼行动智慧。
@@ -39,8 +50,9 @@ ${tomorrowFocus.length > 0 ? tomorrowFocus.map((t: string, i: number) => `${i+1}
       { role: 'system' as const, content: systemPrompt },
       { role: 'user' as const, content: userContent },
     ], { temperature: 0.7 });
-  } catch {
-    return new Response(JSON.stringify({ error: '复盘分析失败' }), {
+  } catch (err) {
+    console.error('[daily-review] Error:', err);
+    return new Response(JSON.stringify({ error: '复盘分析失败', detail: err instanceof Error ? err.message : String(err) }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
