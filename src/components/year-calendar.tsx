@@ -938,20 +938,33 @@ export default function YearCalendar() {
                       <div className="relative" style={{ height: '33%' }}>
 
                         <div className="flex h-full">
-                          {/* Left half: click for daily review */}
+                          {/* Left half: click for timeline */}
                           <div
                             className="flex-1 flex flex-col items-start pl-1.5 pt-1 cursor-pointer transition-colors rounded-tl-md"
                             onClick={() => {
                               setSelectedMonth(null);
                               setInsightOpen(false);
                               setTrackOpen(false);
-                              setTimelineOpen(false);
-                              timelineOpenRef.current = false;
-                              setDailyReviewMonth(cell.month);
-                              setDailyReviewDay(cell.day);
-                              setDailyReviewOpen(true);
+                              setDailyReviewOpen(false);
+                              setTimelineMonth(cell.month);
+                              setTimelineDay(cell.day);
+                              if (!timelineOpen) {
+                                isSnapping.current = false;
+                                if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+                                if (scrollContainerRef.current) {
+                                  const container = scrollContainerRef.current;
+                                  const currentScroll = container.scrollTop;
+                                  container.style.overflowY = 'hidden';
+                                  container.style.scrollBehavior = 'auto';
+                                  const pageH = container.clientHeight;
+                                  const targetPage = Math.round(currentScroll / pageH) * pageH;
+                                  container.scrollTop = targetPage;
+                                }
+                                timelineOpenRef.current = true;
+                                setTimelineOpen(true);
+                              }
                             }}
-                            title="今日复盘"
+                            title="日程"
                           >
                             <span
                               className="text-[15px] font-bold leading-none"
@@ -993,33 +1006,19 @@ export default function YearCalendar() {
                         </div>
                       </div>
 
-                      {/* Bottom zone (2/3): click to open timeline panel */}
+                      {/* Bottom zone (2/3): click for daily review */}
                       <div
                         className="cursor-pointer  transition-all duration-200 rounded-b-sm"
                         style={{ height: '67%' }}
                         onClick={() => {
-                          // Close other panels
                           setSelectedMonth(null);
                           setInsightOpen(false);
                           setTrackOpen(false);
-                          setDailyReviewOpen(false);
-                          setTimelineMonth(cell.month);
-                          setTimelineDay(cell.day);
-                          if (!timelineOpen) {
-                            isSnapping.current = false;
-                            if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
-                            if (scrollContainerRef.current) {
-                              const container = scrollContainerRef.current;
-                              const currentScroll = container.scrollTop;
-                              container.style.overflowY = 'hidden';
-                              container.style.scrollBehavior = 'auto';
-                              const pageH = container.clientHeight;
-                              const targetPage = Math.round(currentScroll / pageH) * pageH;
-                              container.scrollTop = targetPage;
-                            }
-                            timelineOpenRef.current = true;
-                            setTimelineOpen(true);
-                          }
+                          setTimelineOpen(false);
+                          timelineOpenRef.current = false;
+                          setDailyReviewMonth(cell.month);
+                          setDailyReviewDay(cell.day);
+                          setDailyReviewOpen(true);
                         }}
                       />
                       {/* Blue dot indicator at top-right of entire cell */}
