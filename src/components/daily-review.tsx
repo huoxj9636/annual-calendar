@@ -151,79 +151,82 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         >✕</button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
-        {/* Mood & Energy */}
-        <div className="flex gap-3">
-          <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
-            <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>心情</div>
-            <div className="flex gap-1">
-              {[1,2,3,4,5].map(v => (
-                <button key={v} onClick={() => updateField('mood', v)}
-                  className="flex-1 py-1 text-xs rounded-md transition-all font-medium"
-                  style={review.mood >= v
-                    ? { backgroundColor: skin.swatch, color: '#fff' }
-                    : { backgroundColor: skin.cardHover, color: skin.textMuted }
-                  }
-                >{MOOD_LABELS[v]}</button>
-              ))}
+      {/* Content - Left/Right Layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: Form */}
+        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3 border-r" style={{ borderColor: skin.cellBorder }}>
+          {/* Mood & Energy */}
+          <div className="flex gap-3">
+            <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
+              <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>心情</div>
+              <div className="flex gap-1">
+                {[1,2,3,4,5].map(v => (
+                  <button key={v} onClick={() => updateField('mood', v)}
+                    className="flex-1 py-1 text-xs rounded-md transition-all font-medium"
+                    style={review.mood >= v
+                      ? { backgroundColor: skin.swatch, color: '#fff' }
+                      : { backgroundColor: skin.cardHover, color: skin.textMuted }
+                    }
+                  >{MOOD_LABELS[v]}</button>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
+              <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>精力</div>
+              <div className="flex gap-1">
+                {[1,2,3,4,5].map(v => (
+                  <button key={v} onClick={() => updateField('energy', v)}
+                    className="flex-1 py-1 text-xs rounded-md transition-all font-medium"
+                    style={review.energy >= v
+                      ? { backgroundColor: skin.swatch, color: '#fff' }
+                      : { backgroundColor: skin.cardHover, color: skin.textMuted }
+                    }
+                  >{ENERGY_LABELS[v]}</button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
-            <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>精力</div>
-            <div className="flex gap-1">
-              {[1,2,3,4,5].map(v => (
-                <button key={v} onClick={() => updateField('energy', v)}
-                  className="flex-1 py-1 text-xs rounded-md transition-all font-medium"
-                  style={review.energy >= v
-                    ? { backgroundColor: skin.swatch, color: '#fff' }
-                    : { backgroundColor: skin.cardHover, color: skin.textMuted }
-                  }
-                >{ENERGY_LABELS[v]}</button>
-              ))}
-            </div>
+
+          {/* 2x2 Grid: Achievements, Regrets, Insights, Tomorrow */}
+          <div className="grid grid-cols-2 gap-3">
+            <ReviewSection
+              title="今日成就"
+              icon="★"
+              value={review.achievements}
+              onChange={v => updateField('achievements', v)}
+              skin={skin}
+              placeholder="记下一件值得骄傲的事..."
+            />
+            <ReviewSection
+              title="今日遗憾"
+              icon="△"
+              value={review.regrets}
+              onChange={v => updateField('regrets', v)}
+              skin={skin}
+              placeholder="写下未完成或做得不好的..."
+            />
+            <ReviewSection
+              title="关键洞察"
+              icon="◎"
+              value={review.insights}
+              onChange={v => updateField('insights', v)}
+              skin={skin}
+              placeholder="今天有什么新的认知？..."
+            />
+            <ReviewSection
+              title="明日重点"
+              icon="→"
+              value={review.tomorrowFocus}
+              onChange={v => updateField('tomorrowFocus', v)}
+              skin={skin}
+              placeholder="明天最想完成的事..."
+            />
           </div>
         </div>
 
-        {/* 2x2 Grid: Achievements, Regrets, Insights, Tomorrow */}
-        <div className="grid grid-cols-2 gap-3">
-          <ReviewSection
-            title="今日成就"
-            icon="★"
-            value={review.achievements}
-            onChange={v => updateField('achievements', v)}
-            skin={skin}
-            placeholder="记下一件值得骄傲的事..."
-          />
-          <ReviewSection
-            title="今日遗憾"
-            icon="△"
-            value={review.regrets}
-            onChange={v => updateField('regrets', v)}
-            skin={skin}
-            placeholder="写下未完成或做得不好的..."
-          />
-          <ReviewSection
-            title="关键洞察"
-            icon="◎"
-            value={review.insights}
-            onChange={v => updateField('insights', v)}
-            skin={skin}
-            placeholder="今天有什么新的认知？..."
-          />
-          <ReviewSection
-            title="明日重点"
-            icon="→"
-            value={review.tomorrowFocus}
-            onChange={v => updateField('tomorrowFocus', v)}
-            skin={skin}
-            placeholder="明天最想完成的事..."
-          />
-        </div>
-
-        {/* AI Review - inline */}
-        <div className="rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
-          <div className="flex items-center justify-between mb-2">
+        {/* Right: AI Review */}
+        <div className="w-[320px] flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
             <div className="flex items-center gap-1.5">
               <span className="text-sm" style={{ color: skin.swatch }}>◈</span>
               <span className="text-xs font-bold" style={{ color: skin.textPrimary }}>AI 点评</span>
@@ -235,16 +238,21 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               >重新分析</button>
             )}
           </div>
-          {aiAnalysis === '' && !aiLoading ? (
-            <button onClick={runAiAnalysis}
-              className="w-full py-2 rounded-lg text-xs font-medium text-white transition-all"
-              style={{ backgroundColor: skin.swatch }}
-            >让AI帮你复盘今日</button>
-          ) : (
-            <pre className="whitespace-pre-wrap text-xs leading-relaxed" style={{ color: skin.textPrimary, fontFamily: 'inherit' }}>
-              {aiAnalysis}{aiLoading && <span className="animate-pulse">▌</span>}
-            </pre>
-          )}
+          <div className="flex-1 overflow-y-auto px-4 py-3">
+            {aiAnalysis === '' && !aiLoading ? (
+              <div className="flex flex-col items-center justify-center h-full gap-4">
+                <div className="text-xs" style={{ color: skin.textMuted }}>完成左侧复盘后</div>
+                <button onClick={runAiAnalysis}
+                  className="px-5 py-2 rounded-full text-xs font-medium text-white transition-all"
+                  style={{ backgroundColor: skin.swatch }}
+                >让AI帮你复盘今日</button>
+              </div>
+            ) : (
+              <pre className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: skin.textPrimary, fontFamily: 'inherit' }}>
+                {aiAnalysis}{aiLoading && <span className="animate-pulse">▌</span>}
+              </pre>
+            )}
+          </div>
         </div>
       </div>
     </div>
