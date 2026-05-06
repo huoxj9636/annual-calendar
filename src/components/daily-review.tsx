@@ -26,6 +26,7 @@ interface ReviewData {
   regrets: string;
   insights: string;
   tomorrowFocus: string;
+  gratitude: string;
   mood: number;
   energy: number;
   updatedAt: string;
@@ -39,7 +40,7 @@ function getStorageKey(year: number, month: number, day: number) {
 }
 
 function loadReview(year: number, month: number, day: number): ReviewData {
-  if (typeof window === 'undefined') return { achievements: '', regrets: '', insights: '', tomorrowFocus: '', mood: 3, energy: 3, updatedAt: '' };
+  if (typeof window === 'undefined') return { achievements: '', regrets: '', insights: '', tomorrowFocus: '', gratitude: '', mood: 3, energy: 3, updatedAt: '' };
   try {
     const raw = localStorage.getItem(getStorageKey(year, month, day));
     if (raw) {
@@ -54,13 +55,14 @@ function loadReview(year: number, month: number, day: number): ReviewData {
         regrets: migrate(parsed.regrets),
         insights: migrate(parsed.insights),
         tomorrowFocus: migrate(parsed.tomorrowFocus),
+        gratitude: migrate(parsed.gratitude),
         mood: parsed.mood ?? 3,
         energy: parsed.energy ?? 3,
         updatedAt: parsed.updatedAt ?? '',
       };
     }
   } catch {}
-  return { achievements: '', regrets: '', insights: '', tomorrowFocus: '', mood: 3, energy: 3, updatedAt: '' };
+  return { achievements: '', regrets: '', insights: '', tomorrowFocus: '', gratitude: '', mood: 3, energy: 3, updatedAt: '' };
 }
 
 function saveReview(year: number, month: number, day: number, data: ReviewData) {
@@ -70,7 +72,7 @@ function saveReview(year: number, month: number, day: number, data: ReviewData) 
 }
 
 export default function DailyReview({ year, month, day, skin, events, todos, onClose }: DailyReviewProps) {
-  const [review, setReview] = useState<ReviewData>({ achievements: '', regrets: '', insights: '', tomorrowFocus: '', mood: 3, energy: 3, updatedAt: '' });
+  const [review, setReview] = useState<ReviewData>({ achievements: '', regrets: '', insights: '', tomorrowFocus: '', gratitude: '', mood: 3, energy: 3, updatedAt: '' });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -104,10 +106,11 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           date: `${year}年${month}月${day}日`,
-          achievements: toArray(review.achievements),
-          regrets: toArray(review.regrets),
-          insights: toArray(review.insights),
-          tomorrowFocus: toArray(review.tomorrowFocus),
+          highlights: toArray(review.achievements),
+          reflections: toArray(review.regrets),
+          takeaways: toArray(review.insights),
+          nextActions: toArray(review.tomorrowFocus),
+          gratitude: toArray(review.gratitude),
           mood: MOOD_LABELS[review.mood],
           energy: ENERGY_LABELS[review.energy],
           events: dayEvents,
@@ -154,9 +157,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       {/* Content - Left/Right Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Form */}
-        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3 border-r" style={{ borderColor: skin.cellBorder }}>
+        <div className="flex-1 overflow-y-auto px-5 py-3 border-r" style={{ borderColor: skin.cellBorder }}>
           {/* Mood & Energy */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 mb-3">
             <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
               <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>心情</div>
               <div className="flex gap-1">
@@ -187,39 +190,48 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
             </div>
           </div>
 
-          {/* 2x2 Grid: Achievements, Regrets, Insights, Tomorrow */}
+          {/* 2-column grid: 5 sections (2+2+1) */}
           <div className="grid grid-cols-2 gap-3">
             <ReviewSection
-              title="今日成就"
+              title="今日亮点"
               icon="★"
               value={review.achievements}
               onChange={v => updateField('achievements', v)}
               skin={skin}
-              placeholder="记下一件值得骄傲的事..."
+              placeholder="记下今天值得骄傲的事..."
             />
             <ReviewSection
-              title="今日遗憾"
+              title="今日反思"
               icon="△"
               value={review.regrets}
               onChange={v => updateField('regrets', v)}
               skin={skin}
-              placeholder="写下未完成或做得不好的..."
+              placeholder="哪里做得不好？为什么？..."
             />
             <ReviewSection
-              title="关键洞察"
+              title="今日收获"
               icon="◎"
               value={review.insights}
               onChange={v => updateField('insights', v)}
               skin={skin}
-              placeholder="今天有什么新的认知？..."
+              placeholder="今天学到了什么？意识到了什么？..."
             />
             <ReviewSection
-              title="明日重点"
+              title="明日行动"
               icon="→"
               value={review.tomorrowFocus}
               onChange={v => updateField('tomorrowFocus', v)}
               skin={skin}
-              placeholder="明天最想完成的事..."
+              placeholder="明天最需要完成的事..."
+            />
+            <ReviewSection
+              title="今日感恩"
+              icon="♥"
+              value={review.gratitude}
+              onChange={v => updateField('gratitude', v)}
+              skin={skin}
+              placeholder="今天有什么值得感恩的人或事..."
+              fullSpan
             />
           </div>
         </div>
@@ -260,13 +272,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 }
 
 /* Review Section Component - Single textarea with auto-numbering */
-function ReviewSection({ title, icon, value, onChange, skin, placeholder }: {
+function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullSpan }: {
   title: string;
   icon: string;
   value: string;
   onChange: (value: string) => void;
   skin: DailyReviewProps['skin'];
   placeholder: string;
+  fullSpan?: boolean;
 }) {
   // Convert value to numbered display: add "1. " prefix on each line
   const displayValue = value;
@@ -328,7 +341,7 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder }: {
   };
 
   return (
-    <div className="rounded-xl p-3 flex flex-col" style={{ backgroundColor: skin.cardBg }}>
+    <div className={`rounded-xl p-3 flex flex-col ${fullSpan ? 'col-span-2' : ''}`} style={{ backgroundColor: skin.cardBg }}>
       <div className="flex items-center gap-1.5 mb-2">
         <span className="text-sm" style={{ color: skin.swatch }}>{icon}</span>
         <span className="text-xs font-bold" style={{ color: skin.textPrimary }}>{title}</span>
@@ -340,9 +353,9 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder }: {
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
-        rows={4}
+        rows={6}
         className="w-full bg-transparent text-xs leading-relaxed outline-none border border-transparent rounded-lg p-2 resize-none transition-colors"
-        style={{ color: skin.textPrimary, minHeight: '80px' }}
+        style={{ color: skin.textPrimary, minHeight: fullSpan ? '80px' : '120px' }}
       />
     </div>
   );

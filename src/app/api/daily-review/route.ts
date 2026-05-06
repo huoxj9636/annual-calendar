@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { date, achievements, regrets, insights, tomorrowFocus, mood, energy, events, doneTodos, pendingTodos } = body;
+    const { date, highlights, reflections, takeaways, nextActions, gratitude, mood, energy, events, doneTodos, pendingTodos } = body;
 
     // Support both string (textarea) and array formats
     const toArray = (v: unknown): string[] => {
@@ -12,26 +12,30 @@ export async function POST(request: NextRequest) {
       if (typeof v === 'string' && v.trim()) return v.split('\n').filter((l: string) => l.trim());
       return [];
     };
-    const achArr = toArray(achievements);
-    const regArr = toArray(regrets);
-    const insArr = toArray(insights);
-    const tomArr = toArray(tomorrowFocus);
+    const hlArr = toArray(highlights);
+    const refArr = toArray(reflections);
+    const tkArr = toArray(takeaways);
+    const naArr = toArray(nextActions);
+    const grArr = toArray(gratitude);
 
     const userContent = `
 日期：${date}
 心情：${mood}，精力：${energy}
 
-【今日成就】
-${achArr.length > 0 ? achArr.map((a: string, i: number) => `${i+1}. ${a}`).join('\n') : '（未填写）'}
+【今日亮点】
+${hlArr.length > 0 ? hlArr.map((a: string, i: number) => `${i+1}. ${a}`).join('\n') : '（未填写）'}
 
-【今日遗憾】
-${regArr.length > 0 ? regArr.map((r: string, i: number) => `${i+1}. ${r}`).join('\n') : '（未填写）'}
+【今日反思】
+${refArr.length > 0 ? refArr.map((r: string, i: number) => `${i+1}. ${r}`).join('\n') : '（未填写）'}
 
-【关键洞察】
-${insArr.length > 0 ? insArr.map((ins: string, i: number) => `${i+1}. ${ins}`).join('\n') : '（未填写）'}
+【今日收获】
+${tkArr.length > 0 ? tkArr.map((ins: string, i: number) => `${i+1}. ${ins}`).join('\n') : '（未填写）'}
 
-【明日重点】
-${tomArr.length > 0 ? tomArr.map((t: string, i: number) => `${i+1}. ${t}`).join('\n') : '（未填写）'}
+【明日行动】
+${naArr.length > 0 ? naArr.map((t: string, i: number) => `${i+1}. ${t}`).join('\n') : '（未填写）'}
+
+【今日感恩】
+${grArr.length > 0 ? grArr.map((g: string, i: number) => `${i+1}. ${g}`).join('\n') : '（未填写）'}
 
 【日程完成情况】
 已完成：${Array.isArray(doneTodos) && doneTodos.length > 0 ? doneTodos.join('、') : '无'}
@@ -44,6 +48,7 @@ ${tomArr.length > 0 ? tomArr.map((t: string, i: number) => `${i+1}. ${t}`).join(
 1. 先给一句话总结今天的整体评价
 2. 再给2-3条关键发现（每条1-2行）
 3. 最后给1-2条具体可执行的改进建议
+特别关注用户的亮点和感恩内容，给予正向反馈；对反思内容给出建设性意见而非批判。
 禁止寒暄、禁止鸡汤、禁止空泛鼓励，直接给有价值的洞察`;
 
     return createLLMStream(request, [
