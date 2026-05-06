@@ -170,21 +170,21 @@ export function generateMonthColors(skin: SkinTheme): MonthColor[] {
 
     if (isDark) {
       months.push({
-        bg: `hsla(${hue}, ${sat}%, 22%, 0.3)`,
-        accent: `hsl(${hue}, ${Math.min(sat + 25, 90)}%, 60%)`,
-        text: `hsl(${hue}, ${Math.min(sat + 35, 95)}%, 72%)`,
-        border: `hsla(${hue}, ${sat}%, 30%, 0.25)`,
-        hoverBg: `hsla(${hue}, ${sat}%, 28%, 0.15)`,
+        bg: hslToHex(hue, sat, 22),
+        accent: hslToHex(hue, Math.min(sat + 25, 90), 60),
+        text: hslToHex(hue, Math.min(sat + 35, 95), 72),
+        border: hslToHex(hue, sat, 30),
+        hoverBg: hslToHex(hue, sat, 28),
       });
     } else {
       // 亮度微妙变化：夏天稍亮，冬天稍暗
       const bgLight = Math.min(97, 93 + seasonMod * 2 + (i % 2));
       months.push({
-        bg: `hsl(${hue}, ${Math.max(sat - 25, 12)}%, ${bgLight}%)`,
-        accent: `hsl(${hue}, ${Math.min(sat + 15, 85)}%, ${Math.min(baseL + 8, 55)}%)`,
+        bg: hslToHex(hue, Math.max(sat - 25, 12), bgLight),
+        accent: hslToHex(hue, Math.min(sat + 15, 85), Math.min(baseL + 8, 55)),
         text: hslToHex(hue, Math.min(sat + 20, 90), Math.max(baseL - 18, 28)),
-        border: `hsla(${hue}, ${sat}%, ${Math.min(baseL + 10, 60)}%, 0.12)`,
-        hoverBg: `hsla(${hue}, ${sat}%, ${bgLight - 4}%, 0.5)`,
+        border: hslToHex(hue, sat, Math.min(baseL + 10, 60)),
+        hoverBg: hslToHex(hue, sat, bgLight - 4),
       });
     }
   }
