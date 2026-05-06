@@ -72,7 +72,6 @@ function saveReview(year: number, month: number, day: number, data: ReviewData) 
 export default function DailyReview({ year, month, day, skin, events, todos, onClose }: DailyReviewProps) {
   const [review, setReview] = useState<ReviewData>({ achievements: '', regrets: '', insights: '', tomorrowFocus: '', mood: 3, energy: 3, updatedAt: '' });
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'write' | 'ai'>('write');
 
   useEffect(() => {
     setMounted(true);
@@ -152,129 +151,102 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         >✕</button>
       </div>
 
-      {/* Tab */}
-      <div className="flex gap-1 px-5 pt-3">
-        <button onClick={() => setActiveTab('write')}
-          className="px-4 py-1.5 text-sm font-medium rounded-full transition-all"
-          style={activeTab === 'write'
-            ? { backgroundColor: skin.swatch, color: '#fff' }
-            : { backgroundColor: skin.cardBg, color: skin.textMuted }
-          }
-        >手写复盘</button>
-        <button onClick={() => setActiveTab('ai')}
-          className="px-4 py-1.5 text-sm font-medium rounded-full transition-all"
-          style={activeTab === 'ai'
-            ? { backgroundColor: skin.swatch, color: '#fff' }
-            : { backgroundColor: skin.cardBg, color: skin.textMuted }
-          }
-        >AI 点评</button>
-      </div>
-
-      {activeTab === 'write' ? (
-        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
-          {/* Mood & Energy */}
-          <div className="flex gap-3">
-            <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
-              <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>心情</div>
-              <div className="flex gap-1">
-                {[1,2,3,4,5].map(v => (
-                  <button key={v} onClick={() => updateField('mood', v)}
-                    className="flex-1 py-1 text-xs rounded-md transition-all font-medium"
-                    style={review.mood >= v
-                      ? { backgroundColor: skin.swatch, color: '#fff' }
-                      : { backgroundColor: skin.cardHover, color: skin.textMuted }
-                    }
-                  >{MOOD_LABELS[v]}</button>
-                ))}
-              </div>
-            </div>
-            <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
-              <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>精力</div>
-              <div className="flex gap-1">
-                {[1,2,3,4,5].map(v => (
-                  <button key={v} onClick={() => updateField('energy', v)}
-                    className="flex-1 py-1 text-xs rounded-md transition-all font-medium"
-                    style={review.energy >= v
-                      ? { backgroundColor: skin.swatch, color: '#fff' }
-                      : { backgroundColor: skin.cardHover, color: skin.textMuted }
-                    }
-                  >{ENERGY_LABELS[v]}</button>
-                ))}
-              </div>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
+        {/* Mood & Energy */}
+        <div className="flex gap-3">
+          <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
+            <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>心情</div>
+            <div className="flex gap-1">
+              {[1,2,3,4,5].map(v => (
+                <button key={v} onClick={() => updateField('mood', v)}
+                  className="flex-1 py-1 text-xs rounded-md transition-all font-medium"
+                  style={review.mood >= v
+                    ? { backgroundColor: skin.swatch, color: '#fff' }
+                    : { backgroundColor: skin.cardHover, color: skin.textMuted }
+                  }
+                >{MOOD_LABELS[v]}</button>
+              ))}
             </div>
           </div>
-
-          {/* 2x2 Grid: Achievements, Regrets, Insights, Tomorrow */}
-          <div className="grid grid-cols-2 gap-3">
-            <ReviewSection
-              title="今日成就"
-              icon="★"
-              value={review.achievements}
-              onChange={v => updateField('achievements', v)}
-              skin={skin}
-              placeholder="记下一件值得骄傲的事..."
-            />
-            <ReviewSection
-              title="今日遗憾"
-              icon="△"
-              value={review.regrets}
-              onChange={v => updateField('regrets', v)}
-              skin={skin}
-              placeholder="写下未完成或做得不好的..."
-            />
-            <ReviewSection
-              title="关键洞察"
-              icon="◎"
-              value={review.insights}
-              onChange={v => updateField('insights', v)}
-              skin={skin}
-              placeholder="今天有什么新的认知？..."
-            />
-            <ReviewSection
-              title="明日重点"
-              icon="→"
-              value={review.tomorrowFocus}
-              onChange={v => updateField('tomorrowFocus', v)}
-              skin={skin}
-              placeholder="明天最想完成的事..."
-            />
-          </div>
-
-          {/* Event summary */}
-          {(dayEvents.length > 0 || doneTodos.length > 0 || pendingTodos.length > 0) && (
-            <div className="rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
-              <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>今日日程摘要</div>
-              {dayEvents.map((e, i) => (
-                <div key={i} className="text-xs py-0.5" style={{ color: skin.textPrimary }}>• {e}</div>
-              ))}
-              {doneTodos.map((t, i) => (
-                <div key={`d${i}`} className="text-xs py-0.5 line-through" style={{ color: skin.textMuted }}>✓ {t}</div>
-              ))}
-              {pendingTodos.map((t, i) => (
-                <div key={`p${i}`} className="text-xs py-0.5" style={{ color: skin.swatch }}>○ {t}</div>
+          <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
+            <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>精力</div>
+            <div className="flex gap-1">
+              {[1,2,3,4,5].map(v => (
+                <button key={v} onClick={() => updateField('energy', v)}
+                  className="flex-1 py-1 text-xs rounded-md transition-all font-medium"
+                  style={review.energy >= v
+                    ? { backgroundColor: skin.swatch, color: '#fff' }
+                    : { backgroundColor: skin.cardHover, color: skin.textMuted }
+                  }
+                >{ENERGY_LABELS[v]}</button>
               ))}
             </div>
-          )}
+          </div>
         </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto px-5 py-3">
+
+        {/* 2x2 Grid: Achievements, Regrets, Insights, Tomorrow */}
+        <div className="grid grid-cols-2 gap-3">
+          <ReviewSection
+            title="今日成就"
+            icon="★"
+            value={review.achievements}
+            onChange={v => updateField('achievements', v)}
+            skin={skin}
+            placeholder="记下一件值得骄傲的事..."
+          />
+          <ReviewSection
+            title="今日遗憾"
+            icon="△"
+            value={review.regrets}
+            onChange={v => updateField('regrets', v)}
+            skin={skin}
+            placeholder="写下未完成或做得不好的..."
+          />
+          <ReviewSection
+            title="关键洞察"
+            icon="◎"
+            value={review.insights}
+            onChange={v => updateField('insights', v)}
+            skin={skin}
+            placeholder="今天有什么新的认知？..."
+          />
+          <ReviewSection
+            title="明日重点"
+            icon="→"
+            value={review.tomorrowFocus}
+            onChange={v => updateField('tomorrowFocus', v)}
+            skin={skin}
+            placeholder="明天最想完成的事..."
+          />
+        </div>
+
+        {/* AI Review - inline */}
+        <div className="rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm" style={{ color: skin.swatch }}>◈</span>
+              <span className="text-xs font-bold" style={{ color: skin.textPrimary }}>AI 点评</span>
+            </div>
+            {aiAnalysis && (
+              <button onClick={runAiAnalysis} disabled={aiLoading}
+                className="text-[10px] px-2 py-0.5 rounded-full font-medium transition-all"
+                style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
+              >重新分析</button>
+            )}
+          </div>
           {aiAnalysis === '' && !aiLoading ? (
-            <div className="flex flex-col items-center justify-center h-full gap-4">
-              <div className="text-sm" style={{ color: skin.textMuted }}>完成手写复盘后，让AI帮你深度分析</div>
-              <button onClick={runAiAnalysis}
-                className="px-6 py-2 rounded-full text-sm font-medium text-white transition-all"
-                style={{ backgroundColor: skin.swatch }}
-              >开始分析</button>
-            </div>
+            <button onClick={runAiAnalysis}
+              className="w-full py-2 rounded-lg text-xs font-medium text-white transition-all"
+              style={{ backgroundColor: skin.swatch }}
+            >让AI帮你复盘今日</button>
           ) : (
-            <div className="prose prose-sm max-w-none">
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: skin.textPrimary, fontFamily: 'inherit' }}>
-                {aiAnalysis}{aiLoading && <span className="animate-pulse">▌</span>}
-              </pre>
-            </div>
+            <pre className="whitespace-pre-wrap text-xs leading-relaxed" style={{ color: skin.textPrimary, fontFamily: 'inherit' }}>
+              {aiAnalysis}{aiLoading && <span className="animate-pulse">▌</span>}
+            </pre>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
