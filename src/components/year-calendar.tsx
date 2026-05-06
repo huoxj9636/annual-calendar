@@ -16,6 +16,7 @@ import DrawingOverlay, { DrawingOverlayHandle } from '@/components/drawing-overl
 import TimelinePanel from '@/components/timeline-panel';
 import InsightPanel from '@/components/insight-panel';
 import TrackPanel from '@/components/track-panel';
+import DailyReview from '@/components/daily-review';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -81,6 +82,9 @@ export default function YearCalendar() {
   const [mottoDraft, setMottoDraft] = useState('');
   const [timelineMonth, setTimelineMonth] = useState(() => new Date().getMonth() + 1);
   const [timelineDay, setTimelineDay] = useState(() => new Date().getDate());
+  const [dailyReviewOpen, setDailyReviewOpen] = useState(false);
+  const [dailyReviewMonth, setDailyReviewMonth] = useState(() => new Date().getMonth() + 1);
+  const [dailyReviewDay, setDailyReviewDay] = useState(() => new Date().getDate());
   const [insightOpen, setInsightOpen] = useState(false);
   const [insightMonth, setInsightMonth] = useState(() => new Date().getMonth() + 1);
   const [insightDay, setInsightDay] = useState(() => new Date().getDate());
@@ -921,53 +925,71 @@ export default function YearCalendar() {
                       )}
                       {/* Content wrapper above overlay */}
                       <div className="relative z-10 h-full flex flex-col">
-                      {/* Top zone (1/3): day+lunar+check, click to toggle ✓/✗ */}
-                      <div
-                        className="flex flex-col items-start pl-1.5 pt-1 cursor-pointer  transition-colors rounded-t-md"
-                        style={{ height: '33%' }}
-                        onClick={() => toggleDay(cell.month, cell.day)}
-                        title="切换满意/不满意"
-                      >
-                        <span
-                          className="text-[15px] font-bold leading-none"
-                          style={{
-                            color: isPast
-                              ? skin.pastText
-                              : cell.isWeekend
-                                ? monthColor.text
-                                : skin.textPrimary
+                      {/* Top zone (1/3): left=daily review, right=toggle ✓/✗ */}
+                      <div className="flex" style={{ height: '33%' }}>
+                        {/* Left half: day+lunar, click for daily review */}
+                        <div
+                          className="flex-1 flex flex-col items-start pl-1.5 pt-1 cursor-pointer transition-colors rounded-tl-md"
+                          onClick={() => {
+                            setSelectedMonth(null);
+                            setInsightOpen(false);
+                            setTrackOpen(false);
+                            setTimelineOpen(false);
+                            timelineOpenRef.current = false;
+                            setDailyReviewMonth(cell.month);
+                            setDailyReviewDay(cell.day);
+                            setDailyReviewOpen(true);
                           }}
+                          title="今日复盘"
                         >
-                          {cell.day}
-                        </span>
-                        <span
-                          className="text-[9px] leading-tight mt-0.5 whitespace-nowrap font-medium"
-                          style={{
-                            color: isPast
-                              ? skin.pastSubtext
-                              : cell.isSolarTerm
-                                ? skin.swatch
-                                : cell.isFestival
-                                  ? skin.crossColor
-                                  : cell.isLunarFirstDay
-                                    ? skin.tabActive
-                                    : cell.isWeekend
-                                      ? monthColor.accent
-                                      : skin.textMuted
-                          }}
+                          <span
+                            className="text-[15px] font-bold leading-none"
+                            style={{
+                              color: isPast
+                                ? skin.pastText
+                                : cell.isWeekend
+                                  ? monthColor.text
+                                  : skin.textPrimary
+                            }}
+                          >
+                            {cell.day}
+                          </span>
+                          <span
+                            className="text-[9px] leading-tight mt-0.5 whitespace-nowrap font-medium"
+                            style={{
+                              color: isPast
+                                ? skin.pastSubtext
+                                : cell.isSolarTerm
+                                  ? skin.swatch
+                                  : cell.isFestival
+                                    ? skin.crossColor
+                                    : cell.isLunarFirstDay
+                                      ? skin.tabActive
+                                      : cell.isWeekend
+                                        ? monthColor.accent
+                                        : skin.textMuted
+                            }}
+                          >
+                            {cell.lunarDisplay}
+                          </span>
+                        </div>
+                        {/* Right half: click to toggle ✓/✗ */}
+                        <div
+                          className="flex-1 cursor-pointer transition-colors rounded-tr-md flex items-start justify-center pt-1.5"
+                          onClick={() => toggleDay(cell.month, cell.day)}
+                          title="切换满意/不满意"
                         >
-                          {cell.lunarDisplay}
-                        </span>
+                          {mounted && status !== 'none' && (
+                            <span
+                              className="text-[14px] font-bold leading-none"
+                              style={{ color: status === 'crossed' ? skin.crossColor : skin.checkColor }}
+                            >
+                              {status === 'crossed' ? '✗' : '✓'}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {/* Centered check/cross watermark overlay - above past overlay */}
-                      {mounted && status !== 'none' && (
-                        <span
-                          className="absolute inset-0 flex items-center justify-center text-[22px] font-bold leading-none pointer-events-none z-20"
-                          style={{ color: status === 'crossed' ? skin.crossColor : skin.checkColor }}
-                        >
-                          {status === 'crossed' ? '✗' : '✓'}
-                        </span>
-                      )}
+
                       {/* Bottom zone (2/3): click to open timeline panel */}
                       <div
                         className="cursor-pointer  transition-all duration-200 rounded-b-sm"
@@ -977,6 +999,7 @@ export default function YearCalendar() {
                           setSelectedMonth(null);
                           setInsightOpen(false);
                           setTrackOpen(false);
+                          setDailyReviewOpen(false);
                           setTimelineMonth(cell.month);
                           setTimelineDay(cell.day);
                           if (!timelineOpen) {
@@ -1053,6 +1076,29 @@ export default function YearCalendar() {
                   scrollContainerRef.current.style.overflowY = 'scroll';
                 }
               }}
+            />
+          )}
+
+          {/* 今日复盘 - 覆盖层 */}
+          {dailyReviewOpen && (
+            <DailyReview
+              year={year}
+              month={dailyReviewMonth}
+              day={dailyReviewDay}
+              skin={skin}
+              events={(() => {
+                try {
+                const raw = localStorage.getItem(`dayview-events-${year}-${dailyReviewMonth}-${dailyReviewDay}`);
+                return raw ? JSON.parse(raw) : [];
+                } catch { return []; }
+              })()}
+              todos={(() => {
+                try {
+                const raw = localStorage.getItem(`dayview-todos-${year}-${dailyReviewMonth}-${dailyReviewDay}`);
+                return raw ? JSON.parse(raw) : [];
+                } catch { return []; }
+              })()}
+              onClose={() => setDailyReviewOpen(false)}
             />
           )}
 
