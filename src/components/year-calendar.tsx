@@ -923,19 +923,20 @@ export default function YearCalendar() {
                           style={{ backgroundColor: cell.isWeekend ? skin.pastWeekendBg : skin.pastBg }}
                         />
                       )}
+                      {/* ✓/✗ centered in entire cell */}
+                      {mounted && status !== 'none' && (
+                        <span
+                          className="absolute inset-0 flex items-center justify-center text-[26px] font-bold leading-none pointer-events-none select-none"
+                          style={{ color: status === 'crossed' ? skin.crossColor : skin.checkColor }}
+                        >
+                          {status === 'crossed' ? '✗' : '✓'}
+                        </span>
+                      )}
                       {/* Content wrapper above overlay */}
                       <div className="relative z-10 h-full flex flex-col">
                       {/* Top zone (1/3): left=daily review, right=toggle ✓/✗, ✓/✗ centered as watermark */}
                       <div className="relative" style={{ height: '33%' }}>
-                        {/* Centered ✓/✗ watermark */}
-                        {mounted && status !== 'none' && (
-                          <span
-                            className="absolute inset-0 flex items-center justify-center text-[22px] font-bold leading-none pointer-events-none select-none"
-                            style={{ color: status === 'crossed' ? skin.crossColor + '70' : skin.checkColor + '70' }}
-                          >
-                            {status === 'crossed' ? '✗' : '✓'}
-                          </span>
-                        )}
+
                         <div className="flex h-full">
                           {/* Left half: click for daily review */}
                           <div
