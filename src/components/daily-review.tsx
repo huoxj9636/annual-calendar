@@ -306,7 +306,7 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullSp
         onChange(newText);
         // Set cursor after the new number prefix
         requestAnimationFrame(() => {
-          ta.selectionStart = ta.selectionEnd = pos + 1 + match[0].length;
+          if (ta) ta.selectionStart = ta.selectionEnd = pos + 1 + match[0].length;
         });
       }
     }
@@ -316,8 +316,9 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullSp
   const handleFocus = (e: React.FocusEvent<HTMLTextAreaElement>) => {
     if (!value.trim()) {
       onChange('1. ');
+      const el = e.currentTarget;
       requestAnimationFrame(() => {
-        e.currentTarget.selectionStart = e.currentTarget.selectionEnd = 3;
+        if (el && el.isConnected) el.selectionStart = el.selectionEnd = 3;
       });
     }
     e.currentTarget.style.borderColor = skin.swatch + '50';
