@@ -925,68 +925,70 @@ export default function YearCalendar() {
                       )}
                       {/* Content wrapper above overlay */}
                       <div className="relative z-10 h-full flex flex-col">
-                      {/* Top zone (1/3): left=daily review, right=toggle ✓/✗ */}
-                      <div className="flex" style={{ height: '33%' }}>
-                        {/* Left half: day+lunar, click for daily review */}
-                        <div
-                          className="flex-1 flex flex-col items-start pl-1.5 pt-1 cursor-pointer transition-colors rounded-tl-md"
-                          onClick={() => {
-                            setSelectedMonth(null);
-                            setInsightOpen(false);
-                            setTrackOpen(false);
-                            setTimelineOpen(false);
-                            timelineOpenRef.current = false;
-                            setDailyReviewMonth(cell.month);
-                            setDailyReviewDay(cell.day);
-                            setDailyReviewOpen(true);
-                          }}
-                          title="今日复盘"
-                        >
+                      {/* Top zone (1/3): left=daily review, right=toggle ✓/✗, ✓/✗ centered as watermark */}
+                      <div className="relative" style={{ height: '33%' }}>
+                        {/* Centered ✓/✗ watermark */}
+                        {mounted && status !== 'none' && (
                           <span
-                            className="text-[15px] font-bold leading-none"
-                            style={{
-                              color: isPast
-                                ? skin.pastText
-                                : cell.isWeekend
-                                  ? monthColor.text
-                                  : skin.textPrimary
-                            }}
+                            className="absolute inset-0 flex items-center justify-center text-[22px] font-bold leading-none pointer-events-none select-none"
+                            style={{ color: status === 'crossed' ? skin.crossColor + '70' : skin.checkColor + '70' }}
                           >
-                            {cell.day}
+                            {status === 'crossed' ? '✗' : '✓'}
                           </span>
-                          <span
-                            className="text-[9px] leading-tight mt-0.5 whitespace-nowrap font-medium"
-                            style={{
-                              color: isPast
-                                ? skin.pastSubtext
-                                : cell.isSolarTerm
-                                  ? skin.swatch
-                                  : cell.isFestival
-                                    ? skin.crossColor
-                                    : cell.isLunarFirstDay
-                                      ? skin.tabActive
-                                      : cell.isWeekend
-                                        ? monthColor.accent
-                                        : skin.textMuted
+                        )}
+                        <div className="flex h-full">
+                          {/* Left half: click for daily review */}
+                          <div
+                            className="flex-1 flex flex-col items-start pl-1.5 pt-1 cursor-pointer transition-colors rounded-tl-md"
+                            onClick={() => {
+                              setSelectedMonth(null);
+                              setInsightOpen(false);
+                              setTrackOpen(false);
+                              setTimelineOpen(false);
+                              timelineOpenRef.current = false;
+                              setDailyReviewMonth(cell.month);
+                              setDailyReviewDay(cell.day);
+                              setDailyReviewOpen(true);
                             }}
+                            title="今日复盘"
                           >
-                            {cell.lunarDisplay}
-                          </span>
-                        </div>
-                        {/* Right half: click to toggle ✓/✗ */}
-                        <div
-                          className="flex-1 cursor-pointer transition-colors rounded-tr-md flex items-start justify-center pt-1.5"
-                          onClick={() => toggleDay(cell.month, cell.day)}
-                          title="切换满意/不满意"
-                        >
-                          {mounted && status !== 'none' && (
                             <span
-                              className="text-[14px] font-bold leading-none"
-                              style={{ color: status === 'crossed' ? skin.crossColor : skin.checkColor }}
+                              className="text-[15px] font-bold leading-none"
+                              style={{
+                                color: isPast
+                                  ? skin.pastText
+                                  : cell.isWeekend
+                                    ? monthColor.text
+                                    : skin.textPrimary
+                              }}
                             >
-                              {status === 'crossed' ? '✗' : '✓'}
+                              {cell.day}
                             </span>
-                          )}
+                            <span
+                              className="text-[9px] leading-tight mt-0.5 whitespace-nowrap font-medium"
+                              style={{
+                                color: isPast
+                                  ? skin.pastSubtext
+                                  : cell.isSolarTerm
+                                    ? skin.swatch
+                                    : cell.isFestival
+                                      ? skin.crossColor
+                                      : cell.isLunarFirstDay
+                                        ? skin.tabActive
+                                        : cell.isWeekend
+                                          ? monthColor.accent
+                                          : skin.textMuted
+                              }}
+                            >
+                              {cell.lunarDisplay}
+                            </span>
+                          </div>
+                          {/* Right half: click to toggle ✓/✗ */}
+                          <div
+                            className="flex-1 cursor-pointer transition-colors rounded-tr-md"
+                            onClick={() => toggleDay(cell.month, cell.day)}
+                            title="切换满意/不满意"
+                          />
                         </div>
                       </div>
 
