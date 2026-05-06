@@ -356,7 +356,7 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullSp
         placeholder={placeholder}
         rows={6}
         className="w-full bg-transparent text-xs leading-relaxed outline-none border border-transparent rounded-lg p-2 resize-none transition-colors"
-        style={{ color: skin.textPrimary, minHeight: fullSpan ? '84px' : '84px' }}
+        style={{ color: skin.textPrimary, minHeight: fullSpan ? '95px' : '95px' }}
       />
     </div>
   );
