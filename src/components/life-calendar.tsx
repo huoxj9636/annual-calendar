@@ -1,19 +1,25 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { SKINS, NO_SKIN, DEFAULT_SKIN, type SkinTheme } from '@/lib/skins';
+import { SKINS, NO_SKIN, DEFAULT_SKIN } from '@/lib/skins';
+import type { SkinTheme } from '@/lib/skins';
 
+/* ============ Props ============ */
 interface LifeCalendarProps {
-  birthYear: number; setBirthYear: (y: number) => void; onClose: () => void; skinKey?: string;
+  birthYear: number;
+  setBirthYear: (y: number) => void;
+  onClose: () => void;
+  skinKey?: string;
 }
 
 /* ============ Life Stage Types ============ */
 interface LifeStage {
-  range: string; label: string; icon: string; color: string;
-  actions: string[];
-}
-interface StageProgress {
-  [stageKey: string]: { [actionIdx: number]: boolean };
+  range: string;
+  label: string;
+  icon: string;
+  color: string;
+  focus: string;
+  details: string[];
 }
 
 /* ============ Goal / Step Types ============ */
@@ -22,29 +28,169 @@ type StepStatus = 'pending' | 'ai_doing' | 'waiting_user' | 'done';
 type CompletedBy = 'ai' | 'user' | 'ai_user' | '';
 
 interface Step {
-  id: string; text: string; type: StepType; status: StepStatus;
-  completedBy: CompletedBy; done: boolean; aiResult?: string;
-  createdAt: number; completedAt?: number;
+  id: string;
+  text: string;
+  type: StepType;
+  status: StepStatus;
+  completedBy: CompletedBy;
+  done: boolean;
+  aiResult?: string;
+  createdAt: number;
+  completedAt?: number;
 }
 interface Goal {
-  id: string; vision: string; duration: string; durationUnit: 'week' | 'month' | 'year';
-  steps: Step[]; createdAt: number;
+  id: string;
+  vision: string;
+  duration: string;
+  durationUnit: 'week' | 'month' | 'year';
+  steps: Step[];
+  createdAt: number;
 }
 interface DailyLog {
-  date: string; goalId: string; pct: number; done: number; total: number;
+  date: string;
+  goalId: string;
+  pct: number;
+  done: number;
+  total: number;
 }
 
-/* ============ Life Stages Data ============ */
+/* ============ Life Stages Data — 详尽版 ============ */
 const LIFE_STAGES: LifeStage[] = [
-  { range: '0-6', label: '幼年', icon: '🌱', color: '#22c55e', actions: ['学会走路说话', '建立基本安全感', '培养好奇心'] },
-  { range: '7-12', label: '童年', icon: '🌈', color: '#f59e0b', actions: ['养成学习习惯', '发展一项运动', '培养阅读兴趣'] },
-  { range: '13-18', label: '少年', icon: '⚡', color: '#3b82f6', actions: ['确立价值观', '找到擅长领域', '建立朋友圈'] },
-  { range: '19-22', label: '青年前期', icon: '🎓', color: '#8b5cf6', actions: ['选择专业方向', '第一次实习', '学会独立生活'] },
-  { range: '23-30', label: '青年', icon: '🚀', color: '#ec4899', actions: ['确立职业方向', '经济独立', '建立深度关系', '第一次跳槽/创业'] },
-  { range: '31-40', label: '而立', icon: '💪', color: '#ef4444', actions: ['职业上升期', '组建家庭', '买房安家', '管理团队'] },
-  { range: '41-50', label: '不惑', icon: '🎯', color: '#f97316', actions: ['事业巅峰期', '子女教育', '健康管理', '财富增值'] },
-  { range: '51-65', label: '知天命', icon: '🌅', color: '#14b8a6', actions: ['传帮带', '规划退休', '慢性病预防', '培养爱好'] },
-  { range: '66-80', label: '古稀', icon: '🍂', color: '#a855f7', actions: ['享受生活', '健康管理', '传承智慧', '旅行体验'] },
+  {
+    range: '0-6', label: '幼年', icon: '🌱', color: '#22c55e',
+    focus: '建立安全感和好奇心，学会与世界建立信任',
+    details: [
+      '【认知】0-3岁是大脑发育黄金期，多与孩子说话、共读绘本，词汇量决定未来学习能力',
+      '【情感】建立安全依恋关系，父母的及时回应是孩子一生自信的根基',
+      '【习惯】养成规律作息，睡眠、饮食、运动的基本节律影响终身健康',
+      '【社交】3岁后进入幼儿园，学会分享、排队、等待，这是社会化的起点',
+      '【探索】保护好奇心，不要阻止孩子摸爬滚打，感官体验是认知的基础',
+      '【语言】双语启蒙的窗口期，3岁前接触第二语言效果最佳',
+      '【运动】大运动发育(跑跳攀爬)比精细动作更重要，多户外活动',
+      '【品格】犯错时不要惩罚，要引导，"你试试看"比"不许"更有力量',
+    ],
+  },
+  {
+    range: '7-12', label: '童年', icon: '🌈', color: '#f59e0b',
+    focus: '培养学习能力和一项持久兴趣，建立"我能行"的自我认知',
+    details: [
+      '【学习习惯】学会制定小计划并完成，番茄钟、任务清单从这时开始练习',
+      '【阅读】从绘本过渡到文字书，每天30分钟阅读量直接影响理解力',
+      '【一项运动】选择一项团体运动(篮球/足球/游泳)，坚持3年以上，培养韧性和团队意识',
+      '【一项艺术】音乐/绘画/书法，不求考级，但要能沉浸其中',
+      '【数学思维】不是刷题，是理解数量关系、空间想象、逻辑推理',
+      '【社交】从玩伴到朋友，学会倾听和表达不同意见，处理小矛盾',
+      '【家务】承担力所能及的家务，责任感不是教出来的，是做出来的',
+      '【财商】开始管理零花钱，学会储蓄和延迟满足',
+      '【屏幕】控制屏幕时间，但不要完全禁止，教会自律而非依赖管控',
+    ],
+  },
+  {
+    range: '13-18', label: '少年', icon: '⚡', color: '#3b82f6',
+    focus: '寻找自我定位，建立价值观和独立思考能力',
+    details: [
+      '【身份认同】我是谁？我擅长什么？这些问题比成绩更重要，需要探索而非被安排',
+      '【价值观】开始独立判断是非，父母的角色从"指挥官"变为"顾问"',
+      '【学习方法】从被动接受到主动学习，学会记笔记、画思维导图、费曼学习法',
+      '【深度兴趣】在1-2个领域深入钻研，参加竞赛/社团/项目，体验深度投入的快感',
+      '【情商】学会管理情绪，特别是愤怒和焦虑，这是成人世界的核心竞争力',
+      '【社交边界】理解个人空间和边界感，学会说"不"，也尊重别人的"不"',
+      '【身体管理】青春期身体剧变，建立运动习惯和营养意识，这将影响30岁后的状态',
+      '【职业启蒙】不要急着定方向，但要广泛接触：实习、访谈、职业体验日',
+      '【逆商】第一次大考失利、第一次被拒绝，这些都是成长的必修课',
+      '【数字素养】理解信息真假辨别、隐私保护、网络礼仪',
+    ],
+  },
+  {
+    range: '19-22', label: '青年前期', icon: '🎓', color: '#8b5cf6',
+    focus: '选择专业方向，学会独立生活和深度学习',
+    details: [
+      '【专业选择】选你愿意花1万小时深入的方向，而不是"好就业"的方向',
+      '【深度学习】大学最大的价值不是文凭，是学会如何快速掌握一个领域',
+      '【第一次实习】越早越好，大二就开始，真实世界和课本完全不同',
+      '【独立生活】理财、做饭、看病、租房，这些生存技能比GPA重要',
+      '【人脉】大学同学是最纯粹的社交网络，深度交往5-10个值得长期交往的人',
+      '【阅读升级】从教材到经典，每年至少读10本非专业领域的书',
+      '【身体投资】20岁的运动习惯决定40岁的身体状态，每周至少3次运动',
+      '【表达力】学会公开演讲、写文章、做PPT，这是所有职业的通用能力',
+      '【试错】这是试错成本最低的时期，创业、gap year、换专业都值得尝试',
+    ],
+  },
+  {
+    range: '23-30', label: '青年', icon: '🚀', color: '#ec4899',
+    focus: '确立职业方向，经济独立，建立深度关系',
+    details: [
+      '【职业方向】25岁前可以频繁切换，28岁后需要聚焦，30岁时应有清晰赛道',
+      '【核心竞争力】找到你的"不可替代性"，T型人才(一专多能)最具竞争力',
+      '【经济独立】先有存款再消费，建立3-6个月应急基金，拒绝消费主义陷阱',
+      '【第一次跳槽】不要因为不舒服而跳，要因为成长空间而跳，每次跳槽薪资至少涨30%',
+      '【深度关系】2-3个能托付后背的朋友，1段认真对待的感情，比100个点赞重要',
+      '【健康底线】每年体检，关注心理健康，焦虑和抑郁不是矫情是病',
+      '【认知升级】开始系统学习金融、法律、心理学，这三门课学校不教但社会必考',
+      '【副业/创业】30岁前至少尝试一次，即使失败也是最好的MBA',
+      '【家庭对话】理解父母的局限，完成心理上的"弑父弑母"(独立判断)',
+      '【城市选择】一线城市的核心价值不是薪资，是认知密度和可能性',
+    ],
+  },
+  {
+    range: '31-40', label: '而立', icon: '💪', color: '#ef4444',
+    focus: '职业上升期，组建家庭，开始长期主义思维',
+    details: [
+      '【职业上升】从执行者到管理者，学会通过他人拿结果，个人英雄主义到此为止',
+      '【管理能力】不是"我最强"，而是"让团队最强"，这是35岁后最重要的能力',
+      '【家庭建设】如果选择组建家庭，优先选择三观一致的伴侣，而非条件最优',
+      '【买房决策】量力而行，不要让房贷压垮生活质量，租房不丢人',
+      '【子女教育】身教大于言传，你的行为是孩子最大的教材',
+      '【健康管理】代谢开始下降，每年增肌比减脂更重要，骨密度从35岁开始流失',
+      '【财富增值】开始学习投资，复利的起点越早效果越惊人，但先学再投',
+      '【时间管理】学会说不，把时间留给真正重要的人和事',
+      '【情绪成熟】不再追求所有人的认可，接受"被误解是表达者的宿命"',
+      '【长期主义】5年规划比年度目标更重要，做时间的朋友',
+    ],
+  },
+  {
+    range: '41-50', label: '不惑', icon: '🎯', color: '#f97316',
+    focus: '事业巅峰期，关注传承和下一代，守住健康底线',
+    details: [
+      '【事业巅峰】这是职业收入的高峰期，但不要用命换钱，40岁后的健康债利滚利',
+      '【传帮带】开始培养接班人，你的经验是组织最大的隐性资产',
+      '【子女青春期】最难也最重要的阶段，倾听比说教有效100倍',
+      '【中年危机】不是危机，是重新审视人生意义的机会，迷茫是正常的',
+      '【健康红线】心血管、前列腺/乳腺、颈椎腰椎，这些是40+的四大杀手',
+      '【资产配置】从追求增长转向保值，分散投资，降低风险敞口',
+      '【关系经营】维护5-8个深度关系，比扩展500个弱连接更有价值',
+      '【第二曲线】如果主业见顶，开始布局B计划，副业/投资/教学/写作',
+      '【心理韧性】接受不完美，接受失控，这是中年人最重要的心理建设',
+    ],
+  },
+  {
+    range: '51-65', label: '知天命', icon: '🌅', color: '#14b8a6',
+    focus: '从获取者变为给予者，规划退休，培养精神世界',
+    details: [
+      '【传帮带】将经验制度化、系统化，写书/做课/当顾问，让智慧不止于你',
+      '【退休规划】55岁开始规划，60岁执行，财务自由=支出<被动收入',
+      '【慢性病管理】高血压、糖尿病、关节退化，控制比治愈更现实',
+      '【精神世界】培养1-2个深度的非功利爱好，书法/园艺/太极/摄影',
+      '【空巢适应】子女独立后重新定义家庭关系，和伴侣重新认识彼此',
+      '【社会参与】社区志愿者/行业协会/公益组织，从参与者变为组织者',
+      '【旅行清单】60岁前去需要体力的地方(徒步/高原/远洋)，70岁后以休闲为主',
+      '【遗产规划】不只是财产分配，更是价值观和家族故事的传承',
+    ],
+  },
+  {
+    range: '66-80', label: '古稀', icon: '🍂', color: '#a855f7',
+    focus: '享受生命，传承智慧，与时间和解',
+    details: [
+      '【健康管理】每周3次以上适度运动(散步/太极/游泳)，保持社交活动延缓认知衰退',
+      '【智慧传承】写回忆录/家族史/人生信条，这是给后代最珍贵的遗产',
+      '【社交活跃】孤独比疾病更致命，保持至少每周1次深度社交',
+      '【终身学习】学新技能(手机/互联网/新语言)保持大脑活力，预防阿尔茨海默',
+      '【财务安全】不碰高风险投资，保住养老金，警惕针对老人的诈骗',
+      '【与疾病共存】接受身体衰退是自然规律，重点是生活质量而非寿命长度',
+      '【和解】与过去的遗憾和解，与疏远的亲友和解，与自己的不完美和解',
+      '【活在当下】不再为未来焦虑，每个清晨都是礼物，认真过好每一天',
+    ],
+  },
 ];
 
 const STEP_CFG: Record<StepType, { label: string; color: string; icon: string }> = {
@@ -91,18 +237,23 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const [innerSkin] = useState(DEFAULT_SKIN);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
-  const [stageProgress, setStageProgress] = useState<StageProgress>({});
   const [selId, setSelId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newVision, setNewVision] = useState('');
-  const [newDurIdx, setNewDurIdx] = useState(4); // default: 半年
+  const [newDurIdx, setNewDurIdx] = useState(4);
   const [addText, setAddText] = useState('');
   const [addType, setAddType] = useState<StepType>('online');
   const [decomposing, setDecomposing] = useState(false);
   const [decompText, setDecompText] = useState('');
   const [aiExecId, setAiExecId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedStage, setExpandedStage] = useState<number | null>(null);
+  const [stageProgress, setStageProgress] = useState<Record<string, Record<number, boolean>>>({});
   const streamRef = useRef('');
+
+  // Voice recognition
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   const skin: SkinTheme = (skinKey ?? innerSkin) ? (SKINS.find(s => s.key === (skinKey ?? innerSkin)) ?? NO_SKIN) : NO_SKIN;
   const goal = goals.find(g => g.id === selId);
@@ -116,7 +267,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
 
   const save = useCallback((g: Goal[]) => { setGoals(g); try { localStorage.setItem('life-goals', JSON.stringify(g)); } catch { /* */ } }, []);
   const saveLogs = useCallback((l: DailyLog[]) => { setDailyLogs(l); try { localStorage.setItem('life-daily-logs', JSON.stringify(l)); } catch { /* */ } }, []);
-  const saveStage = useCallback((p: StageProgress) => { setStageProgress(p); try { localStorage.setItem('life-stage-progress', JSON.stringify(p)); } catch { /* */ } }, []);
+  const saveStage = useCallback((p: Record<string, Record<number, boolean>>) => { setStageProgress(p); try { localStorage.setItem('life-stage-progress', JSON.stringify(p)); } catch { /* */ } }, []);
 
   const progress = (g: Goal) => g.steps.length ? Math.round(g.steps.filter(s => s.done).length / g.steps.length * 100) : 0;
   const todayPct = (g: Goal) => {
@@ -259,6 +410,38 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
 
   const recentLogs = dailyLogs.filter(l => l.goalId === selId).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
 
+  // Voice recognition setup
+  const startVoice = useCallback(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert('浏览器不支持语音识别'); return; }
+    if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch { /* */ } }
+    const rec = new SR();
+    rec.lang = 'zh-CN';
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (e: any) => {
+      let transcript = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) transcript += e.results[i][0].transcript;
+      }
+      if (transcript) setNewVision(prev => prev ? prev + transcript : transcript);
+      setIsListening(false);
+    };
+    rec.onerror = () => { setIsListening(false); };
+    rec.onend = () => { setIsListening(false); };
+    recognitionRef.current = rec;
+    rec.start();
+    setIsListening(true);
+  }, []);
+
+  const stopVoice = useCallback(() => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch { /* */ }
+    }
+    setIsListening(false);
+  }, []);
+
   // Find current stage
   const currentStageIdx = LIFE_STAGES.findIndex(s => {
     const [lo, hi] = s.range.split('-').map(Number);
@@ -267,12 +450,12 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
 
   return (
     <div className="absolute inset-0 z-50 flex" style={{ background: skin.panelBg }}>
-      {/* Close button */}
-      <button onClick={onClose} className="absolute top-4 left-4 z-50 w-8 h-8 rounded-full flex items-center justify-center text-lg hover:opacity-80 transition-opacity" style={{ background: skin.swatch, color: '#fff' }}>←</button>
+      {/* Close button — 右上角✕ */}
+      <button onClick={onClose} className="absolute top-4 right-4 z-50 w-8 h-8 rounded-full flex items-center justify-center text-base font-bold hover:opacity-80 transition-opacity" style={{ background: skin.swatch, color: '#fff' }}>✕</button>
 
       {/* ===== LEFT: Life Stages ===== */}
       <div className="w-[340px] border-r flex flex-col" style={{ borderColor: skin.cellBorder }}>
-        <div className="p-5 pt-14 pb-3">
+        <div className="p-5 pt-5 pb-3">
           <h2 className="text-xl font-bold" style={{ color: skin.swatch }}>人生旅途</h2>
           <p className="text-xs mt-1" style={{ color: skin.textMuted }}>每个阶段，都有该做的事</p>
         </div>
@@ -289,39 +472,49 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
         {/* Stages */}
         <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-1">
           {LIFE_STAGES.map((stage, idx) => {
+            const isCurrent = idx === currentStageIdx;
+            const isExpanded = expandedStage === idx;
             const sp = stageProgress[`${idx}`] || {};
             const doneCount = Object.values(sp).filter(Boolean).length;
-            const total = stage.actions.length;
-            const isCurrent = idx === currentStageIdx;
+            const total = stage.details.length;
             return (
               <div key={idx}
-                className={`rounded-lg p-3 transition-all ${isCurrent ? 'ring-2' : ''}`}
+                className={`rounded-lg transition-all cursor-pointer ${isCurrent ? 'ring-1' : ''}`}
                 style={{
-                  background: isCurrent ? `${stage.color}10` : skin.cardBg,
+                  background: isCurrent ? `${stage.color}08` : skin.cardBg,
                   borderLeft: `3px solid ${isCurrent ? stage.color : skin.cellBorder}`,
-                  ...(isCurrent ? { boxShadow: `0 0 8px ${stage.color}30` } : {}),
+                  ...(isCurrent ? { boxShadow: `0 0 6px ${stage.color}20` } : {}),
                 }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{stage.icon}</span>
-                    <span className="text-sm font-bold" style={{ color: isCurrent ? stage.color : skin.textPrimary }}>{stage.label}</span>
-                    <span className="text-[10px]" style={{ color: skin.textMuted }}>{stage.range}岁</span>
+                {/* Header — always visible */}
+                <div className="p-3" onClick={() => setExpandedStage(isExpanded ? null : idx)}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{stage.icon}</span>
+                      <span className="text-sm font-bold" style={{ color: isCurrent ? stage.color : skin.textPrimary }}>{stage.label}</span>
+                      <span className="text-[10px]" style={{ color: skin.textMuted }}>{stage.range}岁</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {doneCount > 0 && <span className="text-[10px] font-bold" style={{ color: doneCount === total ? '#22c55e' : stage.color }}>{doneCount}/{total}</span>}
+                      <span className="text-[10px] transition-transform" style={{ color: skin.textMuted, transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                    </div>
                   </div>
-                  <span className="text-[10px] font-bold" style={{ color: doneCount === total && total > 0 ? '#22c55e' : skin.textMuted }}>
-                    {doneCount}/{total}
-                  </span>
+                  <p className="text-[11px] mt-1 leading-snug" style={{ color: isCurrent ? stage.color : skin.textMuted }}>{stage.focus}</p>
                 </div>
-                <div className="mt-1.5 space-y-1">
-                  {stage.actions.map((act, ai) => (
-                    <label key={ai} className="flex items-center gap-2 cursor-pointer group">
-                      <input type="checkbox" checked={!!sp[ai]} onChange={() => toggleAction(idx, ai)}
-                        className="w-3.5 h-3.5 rounded accent-current"
-                        style={{ accentColor: stage.color }} />
-                      <span className={`text-[11px] leading-tight ${sp[ai] ? 'line-through opacity-50' : ''}`}
-                        style={{ color: skin.textPrimary }}>{act}</span>
-                    </label>
-                  ))}
-                </div>
+
+                {/* Expanded details */}
+                {isExpanded && (
+                  <div className="px-3 pb-3 space-y-1 border-t" style={{ borderColor: `${stage.color}15` }}>
+                    {stage.details.map((detail, di) => (
+                      <label key={di} className="flex items-start gap-2 cursor-pointer group py-1">
+                        <input type="checkbox" checked={!!sp[di]} onChange={() => toggleAction(idx, di)}
+                          className="w-3.5 h-3.5 rounded mt-0.5 shrink-0"
+                          style={{ accentColor: stage.color }} />
+                        <span className={`text-[10px] leading-relaxed ${sp[di] ? 'line-through opacity-40' : ''}`}
+                          style={{ color: skin.textPrimary }}>{detail}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -331,7 +524,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       {/* ===== RIGHT: Goal Management ===== */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Goal Tabs */}
-        <div className="px-5 pt-14 pb-0 flex items-center gap-2 border-b" style={{ borderColor: skin.cellBorder }}>
+        <div className="px-5 pt-5 pb-0 flex items-center gap-2 border-b" style={{ borderColor: skin.cellBorder }}>
           <div className="flex-1 overflow-x-auto flex gap-1 pb-2">
             {goals.map(g => {
               const pct = progress(g);
@@ -409,71 +602,70 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                 <button onClick={addStep} className="px-3 py-2 rounded-lg text-sm font-bold text-white" style={{ background: skin.swatch }}>+</button>
               </div>
 
-              {/* Step list */}
+              {/* Steps list */}
               <div className="space-y-2">
                 {goal.steps.map(step => {
                   const cfg = STEP_CFG[step.type];
                   const stCfg = STATUS_CFG[step.status];
-                  const isExpanded = expandedId === step.id;
+                  const isExp = expandedId === step.id;
                   return (
-                    <div key={step.id}
-                      className="rounded-lg border transition-all"
-                      style={{ background: step.done ? `${skin.swatch}10` : skin.cardBg, borderColor: step.done ? skin.swatch : skin.cellBorder }}>
-                      <div className="flex items-center gap-2 px-3 py-2.5">
-                        <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: `${cfg.color}20`, color: cfg.color }}>{cfg.icon} {cfg.label}</span>
-                        {!step.done && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: `${stCfg.color}20`, color: stCfg.color }}>{stCfg.label}</span>}
-                        {step.done && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#22c55e20', color: '#22c55e' }}>✓ {step.completedBy === 'ai' ? 'AI完成' : step.completedBy === 'user' ? '你完成' : '协作完成'}</span>}
-                        <span className={`flex-1 text-sm ${step.done ? 'line-through opacity-60' : ''}`} style={{ color: skin.textPrimary }}>{step.text}</span>
-                        <div className="flex items-center gap-1">
-                          {step.type !== 'offline' && !step.done && step.status !== 'ai_doing' && (
+                    <div key={step.id} className={`rounded-lg border p-3 transition-all ${step.done ? 'opacity-60' : ''}`}
+                      style={{ background: skin.cardBg, borderColor: step.done ? skin.cellBorder : cfg.color + '40' }}>
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs shrink-0 mt-0.5">{cfg.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm ${step.done ? 'line-through' : ''}`} style={{ color: skin.textPrimary }}>{step.text}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: cfg.color + '15', color: cfg.color }}>{cfg.label}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: stCfg.color + '15', color: stCfg.color }}>{stCfg.label}</span>
+                            {step.completedBy && <span className="text-[10px]" style={{ color: skin.textMuted }}>by {step.completedBy === 'ai' ? 'AI' : step.completedBy === 'user' ? '我' : '协作'}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {!step.done && step.type !== 'offline' && step.status !== 'ai_doing' && (
                             <button onClick={() => aiExec(step.id)} disabled={aiExecId === step.id}
                               className="text-[10px] px-2 py-1 rounded font-bold text-white disabled:opacity-50"
-                              style={{ background: '#3b82f6' }}>
-                              {aiExecId === step.id ? '...' : 'AI执行'}
-                            </button>
+                              style={{ background: skin.swatch }}>AI执行</button>
                           )}
                           {step.status === 'waiting_user' && (
                             <button onClick={() => userDone(step.id)}
                               className="text-[10px] px-2 py-1 rounded font-bold text-white"
-                              style={{ background: '#f59e0b' }}>轮到我了</button>
+                              style={{ background: '#22c55e' }}>该你了</button>
                           )}
-                          {!step.done && step.status === 'pending' && step.type === 'offline' && (
+                          {!step.done && step.type === 'offline' && (
                             <button onClick={() => userDone(step.id)}
-                              className="text-[10px] px-2 py-1 rounded font-bold text-white"
-                              style={{ background: '#f59e0b' }}>完成</button>
+                              className="text-[10px] px-2 py-1 rounded font-bold"
+                              style={{ background: '#f59e0b20', color: '#f59e0b' }}>完成</button>
                           )}
-                          {step.aiResult && (
-                            <button onClick={() => setExpandedId(isExpanded ? null : step.id)}
-                              className="text-[10px] px-1.5 py-1 rounded"
-                              style={{ background: skin.cardHover, color: skin.textMuted }}>详情</button>
-                          )}
+                          <button onClick={() => setExpandedId(isExp ? null : step.id)}
+                            className="text-[10px] px-1 py-1 rounded hover:opacity-70"
+                            style={{ color: skin.textMuted }}>{isExp ? '▲' : '▼'}</button>
                           <button onClick={() => deleteStep(step.id)}
-                            className="text-[10px] px-1.5 py-1 rounded opacity-50 hover:opacity-100"
-                            style={{ color: skin.textMuted }}>✕</button>
+                            className="text-[10px] px-1 py-1 rounded hover:opacity-70"
+                            style={{ color: '#ef4444' }}>✕</button>
                         </div>
                       </div>
-                      {isExpanded && step.aiResult && (
-                        <div className="px-3 pb-3 text-xs whitespace-pre-wrap" style={{ color: skin.textMuted, borderTop: `1px solid ${skin.cellBorder}` }}>
-                          <div className="pt-2 font-bold mb-1" style={{ color: skin.swatch }}>AI 执行结果：</div>
-                          {step.aiResult}
-                        </div>
+                      {isExp && step.aiResult && (
+                        <div className="mt-2 p-2 rounded text-xs whitespace-pre-wrap" style={{ background: skin.panelBg, color: skin.textMuted }}>{step.aiResult}</div>
                       )}
                     </div>
                   );
                 })}
               </div>
 
-              {/* Daily Log */}
+              {/* Recent logs */}
               {recentLogs.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="text-sm font-bold mb-2" style={{ color: skin.textPrimary }}>近7日参与度</h3>
-                  <div className="flex gap-1 items-end h-16">
-                    {recentLogs.map(log => (
-                      <div key={log.date} className="flex-1 flex flex-col items-center gap-1">
-                        <div className="w-full rounded-sm transition-all" style={{
-                          height: `${Math.max(log.pct, 4)}%`, background: log.pct > 0 ? skin.swatch : skin.cellBorder,
-                        }} />
-                        <span className="text-[8px]" style={{ color: skin.textMuted }}>{log.date.slice(5)}</span>
+                  <h3 className="text-xs font-bold mb-2" style={{ color: skin.textMuted }}>近7日参与度</h3>
+                  <div className="flex gap-1">
+                    {recentLogs.map((log, i) => (
+                      <div key={i} className="flex-1 text-center">
+                        <div className="h-8 rounded-sm flex items-end justify-center" style={{ background: skin.cellBorder }}>
+                          <div className="w-full rounded-sm" style={{ height: `${log.pct}%`, background: skin.swatch, minHeight: log.pct > 0 ? '2px' : '0' }} />
+                        </div>
+                        <div className="text-[8px] mt-0.5" style={{ color: skin.textMuted }}>{log.pct}%</div>
                       </div>
                     ))}
                   </div>
@@ -481,55 +673,79 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               )}
             </div>
 
-            <div className="px-6 py-3 border-t" style={{ borderColor: skin.cellBorder }}>
-              <button onClick={() => { if (confirm('确定删除此计划？')) deleteGoal(goal.id); }}
-                className="text-xs hover:underline" style={{ color: '#ef4444' }}>删除此计划</button>
+            <div className="px-6 py-3 border-t flex justify-between" style={{ borderColor: skin.cellBorder }}>
+              <button onClick={() => deleteGoal(goal.id)} className="text-xs px-3 py-1.5 rounded" style={{ color: '#ef4444', background: '#ef444410' }}>删除计划</button>
             </div>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-4xl mb-3">🎯</div>
-              <p className="text-sm" style={{ color: skin.textMuted }}>创建一个长期计划，AI帮你拆解执行</p>
+              <p className="text-lg font-bold" style={{ color: skin.textMuted }}>创建你的第一个长期计划</p>
+              <p className="text-xs mt-1" style={{ color: skin.textMuted }}>AI帮你拆解步骤，在线步骤AI可代劳</p>
               <button onClick={() => setCreating(true)}
                 className="mt-4 px-6 py-2 rounded-lg text-sm font-bold text-white"
-                style={{ background: skin.swatch }}>创建计划</button>
+                style={{ background: skin.swatch }}>+ 创建计划</button>
+            </div>
+          </div>
+        )}
+
+        {/* Create Goal Modal */}
+        {creating && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)' }}>
+            <div className="w-[440px] rounded-xl p-6 shadow-2xl" style={{ background: skin.panelBg }}>
+              <h3 className="text-lg font-bold mb-4" style={{ color: skin.textPrimary }}>创建长期计划</h3>
+
+              {/* Vision input with voice */}
+              <div className="mb-4">
+                <label className="text-xs font-bold mb-1 block" style={{ color: skin.textMuted }}>目标愿景</label>
+                <div className="flex gap-2">
+                  <textarea value={newVision} onChange={e => setNewVision(e.target.value)}
+                    placeholder="描述你想达成的目标，例如：成为一名独立开发者"
+                    rows={3}
+                    className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none resize-none"
+                    style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }} />
+                  <button onClick={isListening ? stopVoice : startVoice}
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 self-end transition-all ${isListening ? 'animate-pulse' : ''}`}
+                    style={{ background: isListening ? '#ef4444' : skin.swatch, color: '#fff' }}
+                    title={isListening ? '停止录音' : '语音输入'}>
+                    {isListening ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                    )}
+                  </button>
+                </div>
+                {isListening && <p className="text-[10px] mt-1 animate-pulse" style={{ color: skin.swatch }}>正在聆听...</p>}
+              </div>
+
+              {/* Duration */}
+              <div className="mb-4">
+                <label className="text-xs font-bold mb-1 block" style={{ color: skin.textMuted }}>计划周期</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DURATIONS.map((d, i) => (
+                    <button key={i} onClick={() => setNewDurIdx(i)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      style={{
+                        background: newDurIdx === i ? skin.swatch : skin.cardBg,
+                        color: newDurIdx === i ? '#fff' : skin.textPrimary,
+                        border: `1px solid ${newDurIdx === i ? skin.swatch : skin.cellBorder}`,
+                      }}>{d.label}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => { setCreating(false); setNewVision(''); }}
+                  className="px-4 py-2 rounded-lg text-sm"
+                  style={{ color: skin.textMuted }}>取消</button>
+                <button onClick={createGoal} disabled={!newVision.trim()}
+                  className="px-6 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50"
+                  style={{ background: skin.swatch }}>创建</button>
+              </div>
             </div>
           </div>
         )}
       </div>
-
-      {/* Create Goal Modal */}
-      {creating && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }}>
-          <div className="w-[400px] rounded-xl p-6 shadow-2xl" style={{ background: skin.panelBg }}>
-            <h3 className="text-lg font-bold mb-4" style={{ color: skin.textPrimary }}>创建长期计划</h3>
-            <label className="text-xs font-medium mb-1 block" style={{ color: skin.textMuted }}>你想达成什么目标？</label>
-            <textarea value={newVision} onChange={e => setNewVision(e.target.value)} rows={3}
-              className="w-full rounded-lg border px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2"
-              style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }}
-              placeholder="例如：学会日语N2、转行做产品经理、跑一次马拉松..." />
-            <label className="text-xs font-medium mb-2 mt-3 block" style={{ color: skin.textMuted }}>计划周期</label>
-            <div className="flex flex-wrap gap-1.5">
-              {DURATIONS.map((d, i) => (
-                <button key={i} onClick={() => setNewDurIdx(i)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                  style={{
-                    background: newDurIdx === i ? skin.swatch : skin.cardBg,
-                    color: newDurIdx === i ? '#fff' : skin.textMuted,
-                    border: `1px solid ${newDurIdx === i ? skin.swatch : skin.cellBorder}`,
-                  }}>
-                  {d.label}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2 mt-5">
-              <button onClick={() => setCreating(false)} className="flex-1 py-2 rounded-lg text-sm" style={{ background: skin.cardBg, color: skin.textMuted }}>取消</button>
-              <button onClick={createGoal} className="flex-1 py-2 rounded-lg text-sm font-bold text-white" style={{ background: skin.swatch }}>创建计划</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
