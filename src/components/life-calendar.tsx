@@ -502,60 +502,62 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
         </header>
 
         {/* Two main tabs: 人生阶段 / 我的计划 */}
-        <div className="px-4 pb-3 flex gap-1">
+        <div className="px-5 pt-3 pb-2 flex gap-2">
           <button onClick={() => { setActiveTab('stage'); setViewingStage(null); }}
-            className="flex-1 py-2 rounded-lg text-sm font-bold transition-all"
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
             style={{
               background: activeTab === 'stage' ? skin.swatch : skin.cardBg,
               color: activeTab === 'stage' ? '#fff' : skin.textMuted,
+              boxShadow: activeTab === 'stage' ? `0 2px 8px ${skin.swatch}30` : 'none',
             }}>
             人生阶段
           </button>
           <button onClick={() => { setActiveTab('plans'); setViewingStage(null); }}
-            className="flex-1 py-2 rounded-lg text-sm font-bold transition-all relative"
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all relative"
             style={{
               background: activeTab === 'plans' ? skin.swatch : skin.cardBg,
               color: activeTab === 'plans' ? '#fff' : skin.textMuted,
+              boxShadow: activeTab === 'plans' ? `0 2px 8px ${skin.swatch}30` : 'none',
             }}>
             我的计划
             {goals.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold text-white" style={{ background: '#ef4444' }}>{goals.length}</span>
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full text-[10px] flex items-center justify-center font-bold text-white px-1" style={{ background: '#ef4444' }}>{goals.length}</span>
             )}
           </button>
         </div>
 
         {/* Voice create + birth year row */}
-        <div className="px-4 pb-3 flex items-center gap-2">
+        <div className="px-5 pb-3 flex items-center gap-3">
           <button onClick={isListening ? stopVoice : startVoiceCreate}
-            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${isListening ? 'animate-pulse' : 'hover:opacity-80'}`}
-            style={{ background: isListening ? '#ef4444' : skin.swatch, color: '#fff' }}
+            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isListening ? 'animate-pulse' : 'hover:opacity-80'}`}
+            style={{ background: isListening ? '#ef4444' : skin.swatch, color: '#fff', boxShadow: `0 1px 4px ${isListening ? '#ef444440' : skin.swatch}20` }}
             title={isListening ? '停止录音' : '语音创建计划'}>
             {isListening ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
             ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
             )}
           </button>
-          <div className="flex items-center gap-1.5 flex-1">
-            <span className="text-[10px]" style={{ color: skin.textMuted }}>出生</span>
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-[11px]" style={{ color: skin.textMuted }}>出生年</span>
             <input type="number" value={birthYear || 1990} onChange={e => setBirthYear(Number(e.target.value))}
-              className="w-14 rounded border px-1.5 py-0.5 text-[11px] focus:outline-none"
+              className="w-16 rounded-lg border px-2 py-1 text-xs text-center focus:outline-none"
               style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }} />
-            <span className="text-[10px]" style={{ color: skin.textMuted }}>{currentAge}岁</span>
+            <span className="text-[11px] font-medium" style={{ color: skin.textSecondary }}>{currentAge}岁</span>
           </div>
         </div>
 
         {/* Voice listening indicator */}
         {isListening && (
-          <div className="mx-4 mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ background: '#ef444415' }}>
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-[10px] text-red-500 font-bold">正在聆听，说出你的计划...</span>
+          <div className="mx-5 mb-2 px-4 py-2.5 rounded-xl flex items-center gap-2.5" style={{ background: '#ef444412', border: '1px solid #ef444425' }}>
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-xs text-red-500 font-bold">正在聆听，说出你的计划...</span>
           </div>
         )}
 
         {/* ===== Stage list (when tab=stage) ===== */}
         {activeTab === 'stage' && (
-          <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-0.5">
+          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1.5">
             {LIFE_STAGES.map((stage, idx) => {
               const isCurrent = idx === currentStageIdx;
               const isSelected = viewingStage === idx;
@@ -563,25 +565,28 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               const doneCount = Object.values(sp).filter(Boolean).length;
               return (
                 <div key={idx}
-                  className={`rounded-lg transition-all cursor-pointer hover:brightness-95 ${isCurrent ? 'ring-1' : ''}`}
+                  className={`rounded-xl transition-all cursor-pointer hover:brightness-95 ${isCurrent ? 'ring-1' : ''}`}
                   style={{
-                    background: isSelected ? `${stage.color}18` : isCurrent ? `${stage.color}08` : 'transparent',
+                    background: isSelected ? `${stage.color}18` : isCurrent ? `${stage.color}08` : skin.cardBg,
                     borderLeft: `3px solid ${isSelected ? stage.color : isCurrent ? stage.color : 'transparent'}`,
-                    ...(isCurrent && !isSelected ? { boxShadow: `0 0 4px ${stage.color}15` } : {}),
+                    ...(isCurrent && !isSelected ? { boxShadow: `0 0 6px ${stage.color}15` } : {}),
+                    ...(isSelected ? { boxShadow: `0 2px 8px ${stage.color}20` } : {}),
                   }}
                   onClick={() => setViewingStage(isSelected ? null : idx)}>
-                  <div className="px-3 py-2">
+                  <div className="px-4 py-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">{stage.icon}</span>
-                        <span className="text-xs font-bold" style={{ color: isSelected || isCurrent ? stage.color : skin.textPrimary }}>{stage.label}</span>
-                        <span className="text-[10px]" style={{ color: skin.textMuted }}>{stage.range}岁</span>
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base">{stage.icon}</span>
+                        <span className="text-sm font-bold" style={{ color: isSelected || isCurrent ? stage.color : skin.textPrimary }}>{stage.label}</span>
                       </div>
-                      {doneCount > 0 && (
-                        <span className="text-[10px] font-bold" style={{ color: doneCount >= stage.details.length ? '#22c55e' : stage.color }}>{doneCount}/{stage.details.length}</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-medium" style={{ color: skin.textMuted }}>{stage.range}岁</span>
+                        {doneCount > 0 && (
+                          <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: doneCount >= stage.details.length ? '#22c55e' : stage.color, background: doneCount >= stage.details.length ? '#22c55e12' : `${stage.color}12` }}>{doneCount}/{stage.details.length}</span>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-[10px] mt-0.5 leading-snug truncate" style={{ color: isCurrent ? stage.color : skin.textMuted }}>{stage.focus}</p>
+                    <p className="text-xs mt-1.5 leading-relaxed truncate" style={{ color: isCurrent ? stage.color : skin.textSecondary }}>{stage.focus}</p>
                   </div>
                 </div>
               );
@@ -591,37 +596,37 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
 
         {/* ===== Plans list (when tab=plans) ===== */}
         {activeTab === 'plans' && (
-          <div className="flex-1 overflow-y-auto px-3 pb-4">
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
             {/* New plan button */}
             <button onClick={() => { setSelId(null); setViewingStage(null); }}
-              className="w-full py-2.5 rounded-lg text-sm font-bold text-white mb-3 hover:opacity-90 transition-all"
-              style={{ background: skin.swatch }}>
+              className="w-full py-3 rounded-xl text-sm font-bold text-white mb-4 hover:opacity-90 transition-all"
+              style={{ background: skin.swatch, boxShadow: `0 2px 8px ${skin.swatch}25` }}>
               + 新建计划
             </button>
 
             {goals.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-sm" style={{ color: skin.textMuted }}>还没有计划</p>
-                <p className="text-[10px] mt-1" style={{ color: skin.textMuted }}>点击上方按钮或麦克风创建</p>
+              <div className="text-center py-10">
+                <p className="text-base font-medium" style={{ color: skin.textMuted }}>还没有计划</p>
+                <p className="text-xs mt-2" style={{ color: skin.textSecondary }}>点击上方按钮或麦克风创建</p>
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {goals.map(g => {
                   const pct = progress(g);
                   const isActive = selId === g.id;
                   return (
                     <div key={g.id} onClick={() => { setSelId(g.id); setViewingStage(null); }}
-                      className="p-3 rounded-lg cursor-pointer transition-all hover:brightness-95"
-                      style={{ background: isActive ? skin.cardBg : 'transparent', borderLeft: isActive ? `3px solid ${skin.swatch}` : '3px solid transparent' }}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold truncate flex-1" style={{ color: isActive ? skin.swatch : skin.textPrimary }}>{g.vision}</span>
-                        <span className="text-[10px] font-black shrink-0 ml-2" style={{ color: pct > 0 ? skin.swatch : skin.textMuted }}>{pct}%</span>
+                      className="p-4 rounded-xl cursor-pointer transition-all hover:brightness-95"
+                      style={{ background: isActive ? skin.cardBg : skin.cardBg, borderLeft: isActive ? `3px solid ${skin.swatch}` : '3px solid transparent', boxShadow: isActive ? `0 2px 8px ${skin.swatch}12` : 'none' }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold truncate flex-1" style={{ color: isActive ? skin.swatch : skin.textPrimary }}>{g.vision}</span>
+                        <span className="text-sm font-black shrink-0 ml-3" style={{ color: pct > 0 ? skin.swatch : skin.textMuted }}>{pct}%</span>
                       </div>
-                      <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background: skin.cellBorder }}>
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: skin.cellBorder }}>
                         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: skin.swatch }} />
                       </div>
-                      <p className="text-[10px] mt-1" style={{ color: skin.textMuted }}>
-                        {g.duration}{g.durationUnit === 'week' ? '周' : g.durationUnit === 'month' ? '个月' : '年'} | 剩余{daysLeft(g)}天
+                      <p className="text-xs mt-2 font-medium" style={{ color: skin.textSecondary }}>
+                        {g.duration}{g.durationUnit === 'week' ? '周' : g.durationUnit === 'month' ? '个月' : '年'} · 剩余{daysLeft(g)}天
                       </p>
                     </div>
                   );
@@ -637,18 +642,20 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
         {/* Stage detail view */}
         {activeTab === 'stage' && viewStage ? (
           <>
-            <div className="px-8 pt-8 pb-4" style={{ borderBottom: `2px solid ${viewStage.color}30` }}>
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">{viewStage.icon}</span>
+            <div className="px-10 pt-10 pb-6" style={{ borderBottom: `2px solid ${viewStage.color}30` }}>
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: `${viewStage.color}15` }}>
+                  <span className="text-3xl">{viewStage.icon}</span>
+                </div>
                 <div>
-                  <h2 className="text-2xl font-black" style={{ color: viewStage.color }}>{viewStage.label}</h2>
-                  <p className="text-sm" style={{ color: skin.textMuted }}>{viewStage.range}岁</p>
+                  <h2 className="text-3xl font-black tracking-tight" style={{ color: viewStage.color }}>{viewStage.label}</h2>
+                  <p className="text-base font-medium mt-0.5" style={{ color: skin.textSecondary }}>{viewStage.range}岁</p>
                 </div>
               </div>
-              <p className="text-base mt-3 leading-relaxed font-medium" style={{ color: viewStage.color }}>{viewStage.focus}</p>
+              <p className="text-lg mt-4 leading-relaxed font-semibold" style={{ color: viewStage.color }}>{viewStage.focus}</p>
             </div>
-            <div className="flex-1 overflow-y-auto px-8 py-6">
-              <div className="space-y-3">
+            <div className="flex-1 overflow-y-auto px-10 py-8">
+              <div className="space-y-4">
                 {viewStage.details.map((detail, di) => {
                   const done = !!viewStageProgress[di];
                   const tagMatch = detail.match(/^【(.+?)】(.+)$/);
@@ -656,30 +663,30 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                   const text = tagMatch ? tagMatch[2] : detail;
                   return (
                     <div key={di}
-                      className="flex items-start gap-3 p-3 rounded-lg transition-all cursor-pointer hover:brightness-95"
+                      className="flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer hover:brightness-95"
                       style={{ background: done ? `${viewStage.color}08` : skin.cardBg, opacity: done ? 0.5 : 1 }}
                       onClick={() => toggleAction(viewingStage!, di)}>
-                      <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all"
+                      <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all"
                         style={{ borderColor: done ? viewStage.color : skin.cellBorder, background: done ? viewStage.color : 'transparent' }}>
-                        {done && <span className="text-white text-[10px]">✓</span>}
+                        {done && <span className="text-white text-xs">✓</span>}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="inline-block text-[10px] px-1.5 py-0.5 rounded mr-2 font-bold" style={{ background: `${viewStage.color}15`, color: viewStage.color }}>{tag}</span>
-                        <span className={`text-sm leading-relaxed ${done ? 'line-through' : ''}`} style={{ color: skin.textPrimary }}>{text}</span>
+                        {tag && <span className="inline-block text-[11px] px-2 py-0.5 rounded-md mr-2 font-bold mb-1" style={{ background: `${viewStage.color}15`, color: viewStage.color }}>{tag}</span>}
+                        <span className={`text-base leading-relaxed ${done ? 'line-through' : ''}`} style={{ color: skin.textPrimary }}>{text}</span>
                       </div>
                     </div>
                   );
                 })}
               </div>
               {/* Progress */}
-              <div className="mt-8 p-4 rounded-lg" style={{ background: skin.cardBg }}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold" style={{ color: skin.textMuted }}>完成进度</span>
-                  <span className="text-sm font-black" style={{ color: viewStage.color }}>
+              <div className="mt-10 p-5 rounded-xl" style={{ background: skin.cardBg }}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-bold" style={{ color: skin.textSecondary }}>完成进度</span>
+                  <span className="text-lg font-black" style={{ color: viewStage.color }}>
                     {Object.values(viewStageProgress).filter(Boolean).length} / {viewStage.details.length}
                   </span>
                 </div>
-                <div className="h-2 rounded-full overflow-hidden" style={{ background: skin.cellBorder }}>
+                <div className="h-2.5 rounded-full overflow-hidden" style={{ background: skin.cellBorder }}>
                   <div className="h-full rounded-full transition-all" style={{
                     width: `${Math.round(Object.values(viewStageProgress).filter(Boolean).length / viewStage.details.length * 100)}%`,
                     background: viewStage.color,
@@ -692,113 +699,113 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
           /* Stage tab but no stage selected */
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <p className="text-4xl mb-4">🗺</p>
-              <p className="text-lg font-bold" style={{ color: skin.textMuted }}>选择左侧的人生阶段</p>
-              <p className="text-sm mt-1" style={{ color: skin.textMuted }}>查看每个阶段应该做的事</p>
+              <div className="w-20 h-20 rounded-2xl mx-auto mb-5 flex items-center justify-center" style={{ background: `${skin.swatch}12` }}>
+                <span className="text-4xl">🗺</span>
+              </div>
+              <p className="text-xl font-bold" style={{ color: skin.textPrimary }}>选择左侧的人生阶段</p>
+              <p className="text-sm mt-2" style={{ color: skin.textMuted }}>查看每个阶段应该做的事</p>
             </div>
           </div>
         ) : activeTab === 'plans' && goal ? (
           /* Goal detail view */
           <>
-            <div className="px-6 py-4 border-b" style={{ borderColor: skin.cellBorder }}>
+            <div className="px-8 py-6 border-b" style={{ borderColor: skin.cellBorder }}>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h2 className="text-lg font-bold" style={{ color: skin.textPrimary }}>{goal.vision}</h2>
-                  <p className="text-xs mt-1" style={{ color: skin.textMuted }}>
-                    周期: {goal.duration}{goal.durationUnit === 'week' ? '周' : goal.durationUnit === 'month' ? '个月' : '年'} | 剩余 <b style={{ color: daysLeft(goal) < 30 ? '#ef4444' : skin.swatch }}>{daysLeft(goal)}天</b>
+                  <h2 className="text-xl font-bold" style={{ color: skin.textPrimary }}>{goal.vision}</h2>
+                  <p className="text-sm mt-2 font-medium" style={{ color: skin.textSecondary }}>
+                    周期: {goal.duration}{goal.durationUnit === 'week' ? '周' : goal.durationUnit === 'month' ? '个月' : '年'} · 剩余 <b style={{ color: daysLeft(goal) < 30 ? '#ef4444' : skin.swatch }}>{daysLeft(goal)}天</b>
                   </p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-6">
                   <div className="text-center">
-                    <div className="text-2xl font-black" style={{ color: skin.swatch }}>{todayPct(goal)}%</div>
-                    <div className="text-[9px]" style={{ color: skin.textMuted }}>今日参与</div>
+                    <div className="text-3xl font-black" style={{ color: skin.swatch }}>{todayPct(goal)}%</div>
+                    <div className="text-[10px] font-medium mt-0.5" style={{ color: skin.textMuted }}>今日参与</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-black" style={{ color: progress(goal) > 0 ? skin.swatch : skin.textMuted }}>{progress(goal)}%</div>
-                    <div className="text-[9px]" style={{ color: skin.textMuted }}>总进度</div>
+                    <div className="text-3xl font-black" style={{ color: progress(goal) > 0 ? skin.swatch : skin.textMuted }}>{progress(goal)}%</div>
+                    <div className="text-[10px] font-medium mt-0.5" style={{ color: skin.textMuted }}>总进度</div>
                   </div>
                 </div>
               </div>
-              <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background: skin.cellBorder }}>
+              <div className="mt-4 h-2 rounded-full overflow-hidden" style={{ background: skin.cellBorder }}>
                 <div className="h-full rounded-full transition-all" style={{ width: `${progress(goal)}%`, background: skin.swatch }} />
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="flex-1 overflow-y-auto px-8 py-6">
               {/* AI Decompose */}
-              <div className="mb-4">
+              <div className="mb-6">
                 <button onClick={decompose} disabled={decomposing}
-                  className="px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50"
-                  style={{ background: skin.swatch }}>
+                  className="px-5 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition-all"
+                  style={{ background: skin.swatch, boxShadow: `0 2px 8px ${skin.swatch}20` }}>
                   {decomposing ? 'AI拆解中...' : 'AI 拆解步骤'}
                 </button>
                 {decomposing && decompText && (
-                  <div className="mt-2 p-3 rounded-lg text-xs whitespace-pre-wrap" style={{ background: skin.cardBg, color: skin.textMuted }}>{decompText}</div>
+                  <div className="mt-3 p-4 rounded-xl text-xs whitespace-pre-wrap leading-relaxed" style={{ background: skin.cardBg, color: skin.textSecondary }}>{decompText}</div>
                 )}
               </div>
 
               {/* Add step */}
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-6">
                 <input value={addText} onChange={e => setAddText(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStep()}
-                  placeholder="添加步骤..." className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                  placeholder="添加步骤..." className="flex-1 rounded-xl border px-4 py-2.5 text-sm focus:outline-none"
                   style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }} />
                 <select value={addType} onChange={e => setAddType(e.target.value as StepType)}
-                  className="rounded-lg border px-2 py-2 text-sm"
+                  className="rounded-xl border px-3 py-2.5 text-sm"
                   style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }}>
                   <option value="online">☁ 线上</option>
                   <option value="offline">📍 线下</option>
                   <option value="collab">🤝 协作</option>
                 </select>
-                <button onClick={addStep} className="px-3 py-2 rounded-lg text-sm font-bold text-white" style={{ background: skin.swatch }}>+</button>
+                <button onClick={addStep} className="px-4 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background: skin.swatch }}>+</button>
               </div>
 
               {/* Steps list */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {goal.steps.map(step => {
                   const cfg = STEP_CFG[step.type];
                   const stCfg = STATUS_CFG[step.status];
                   const isExp = expandedId === step.id;
                   return (
-                    <div key={step.id} className={`rounded-lg border p-3 transition-all ${step.done ? 'opacity-60' : ''}`}
+                    <div key={step.id} className={`rounded-xl border p-4 transition-all ${step.done ? 'opacity-60' : ''}`}
                       style={{ background: skin.cardBg, borderColor: step.done ? skin.cellBorder : cfg.color + '40' }}>
-                      <div className="flex items-start gap-2">
-                        <span className="text-xs shrink-0 mt-0.5">{cfg.icon}</span>
+                      <div className="flex items-start gap-3">
+                        <span className="text-sm shrink-0 mt-0.5">{cfg.icon}</span>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-sm ${step.done ? 'line-through' : ''}`} style={{ color: skin.textPrimary }}>{step.text}</span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: cfg.color + '15', color: cfg.color }}>{cfg.label}</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: stCfg.color + '15', color: stCfg.color }}>{stCfg.label}</span>
-                            {step.completedBy && <span className="text-[10px]" style={{ color: skin.textMuted }}>by {step.completedBy === 'ai' ? 'AI' : step.completedBy === 'user' ? '我' : '协作'}</span>}
+                          <span className={`text-sm font-medium ${step.done ? 'line-through' : ''}`} style={{ color: skin.textPrimary }}>{step.text}</span>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-[11px] px-2 py-0.5 rounded-md font-medium" style={{ background: cfg.color + '15', color: cfg.color }}>{cfg.label}</span>
+                            <span className="text-[11px] px-2 py-0.5 rounded-md font-medium" style={{ background: stCfg.color + '15', color: stCfg.color }}>{stCfg.label}</span>
+                            {step.completedBy && <span className="text-[11px] font-medium" style={{ color: skin.textMuted }}>by {step.completedBy === 'ai' ? 'AI' : step.completedBy === 'user' ? '我' : '协作'}</span>}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {!step.done && step.type !== 'offline' && step.status !== 'ai_doing' && (
                             <button onClick={() => aiExec(step.id)} disabled={aiExecId === step.id}
-                              className="text-[10px] px-2 py-1 rounded font-bold text-white disabled:opacity-50"
+                              className="text-[11px] px-3 py-1 rounded-lg font-bold text-white disabled:opacity-50"
                               style={{ background: skin.swatch }}>AI执行</button>
                           )}
                           {step.status === 'waiting_user' && (
                             <button onClick={() => userDone(step.id)}
-                              className="text-[10px] px-2 py-1 rounded font-bold text-white"
+                              className="text-[11px] px-3 py-1 rounded-lg font-bold text-white"
                               style={{ background: '#22c55e' }}>该你了</button>
                           )}
                           {!step.done && step.type === 'offline' && (
                             <button onClick={() => userDone(step.id)}
-                              className="text-[10px] px-2 py-1 rounded font-bold"
+                              className="text-[11px] px-3 py-1 rounded-lg font-bold"
                               style={{ background: '#f59e0b20', color: '#f59e0b' }}>完成</button>
                           )}
                           <button onClick={() => setExpandedId(isExp ? null : step.id)}
-                            className="text-[10px] px-1 py-1 rounded hover:opacity-70"
+                            className="text-xs px-1.5 py-1 rounded-lg hover:opacity-70"
                             style={{ color: skin.textMuted }}>{isExp ? '▲' : '▼'}</button>
                           <button onClick={() => deleteStep(step.id)}
-                            className="text-[10px] px-1 py-1 rounded hover:opacity-70"
+                            className="text-xs px-1.5 py-1 rounded-lg hover:opacity-70"
                             style={{ color: '#ef4444' }}>✕</button>
                         </div>
                       </div>
                       {isExp && step.aiResult && (
-                        <div className="mt-2 p-2 rounded text-xs whitespace-pre-wrap" style={{ background: skin.panelBg, color: skin.textMuted }}>{step.aiResult}</div>
+                        <div className="mt-3 p-3 rounded-lg text-xs whitespace-pre-wrap leading-relaxed" style={{ background: skin.panelBg, color: skin.textSecondary }}>{step.aiResult}</div>
                       )}
                     </div>
                   );
@@ -807,15 +814,15 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
 
               {/* Recent logs */}
               {recentLogs.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-xs font-bold mb-2" style={{ color: skin.textMuted }}>近7日参与度</h3>
-                  <div className="flex gap-1">
+                <div className="mt-8">
+                  <h3 className="text-sm font-bold mb-3" style={{ color: skin.textSecondary }}>近7日参与度</h3>
+                  <div className="flex gap-2">
                     {recentLogs.map((log, i) => (
                       <div key={i} className="flex-1 text-center">
-                        <div className="h-8 rounded-sm flex items-end justify-center" style={{ background: skin.cellBorder }}>
-                          <div className="w-full rounded-sm" style={{ height: `${log.pct}%`, background: skin.swatch, minHeight: log.pct > 0 ? '2px' : '0' }} />
+                        <div className="h-10 rounded-lg flex items-end justify-center overflow-hidden" style={{ background: skin.cellBorder }}>
+                          <div className="w-full rounded-t-lg" style={{ height: `${log.pct}%`, background: skin.swatch, minHeight: log.pct > 0 ? '2px' : '0' }} />
                         </div>
-                        <div className="text-[8px] mt-0.5" style={{ color: skin.textMuted }}>{log.pct}%</div>
+                        <div className="text-[10px] mt-1 font-medium" style={{ color: skin.textMuted }}>{log.pct}%</div>
                       </div>
                     ))}
                   </div>
@@ -823,20 +830,23 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               )}
             </div>
 
-            <div className="px-6 py-3 border-t flex justify-between" style={{ borderColor: skin.cellBorder }}>
-              <button onClick={() => deleteGoal(goal.id)} className="text-xs px-3 py-1.5 rounded" style={{ color: '#ef4444', background: '#ef444410' }}>删除计划</button>
+            <div className="px-8 py-4 border-t flex justify-end" style={{ borderColor: skin.cellBorder }}>
+              <button onClick={() => deleteGoal(goal.id)} className="text-xs px-4 py-2 rounded-lg font-medium" style={{ color: '#ef4444', background: '#ef444410' }}>删除计划</button>
             </div>
           </>
         ) : activeTab === 'plans' && !goal ? (
           /* Plans tab — no goal selected, show create form */
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center max-w-md">
+              <div className="w-20 h-20 rounded-2xl mx-auto mb-5 flex items-center justify-center" style={{ background: `${skin.swatch}12` }}>
+                <span className="text-4xl">🎯</span>
+              </div>
               <p className="text-xl font-bold mb-2" style={{ color: skin.textPrimary }}>创建你的第一个长期计划</p>
-              <p className="text-sm mb-6" style={{ color: skin.textMuted }}>点击麦克风说出你的计划，AI自动识别并拆解</p>
-              <div className="flex items-center justify-center gap-4">
+              <p className="text-sm mb-8" style={{ color: skin.textMuted }}>点击麦克风说出你的计划，AI自动识别并拆解</p>
+              <div className="flex items-center justify-center gap-5 mb-8">
                 <button onClick={isListening ? stopVoice : startVoiceCreate}
                   className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${isListening ? 'animate-pulse' : 'hover:opacity-80'}`}
-                  style={{ background: isListening ? '#ef4444' : skin.swatch, color: '#fff' }}
+                  style={{ background: isListening ? '#ef4444' : skin.swatch, color: '#fff', boxShadow: `0 4px 16px ${isListening ? '#ef444440' : skin.swatch}30` }}
                   title={isListening ? '停止录音' : '语音创建计划'}>
                   {isListening ? (
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
@@ -845,19 +855,19 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                   )}
                 </button>
                 <div className="text-left">
-                  <p className="text-sm font-bold" style={{ color: skin.textPrimary }}>语音创建</p>
-                  <p className="text-xs" style={{ color: skin.textMuted }}>说出你的目标，AI自动拆解</p>
+                  <p className="text-base font-bold" style={{ color: skin.textPrimary }}>语音创建</p>
+                  <p className="text-sm" style={{ color: skin.textMuted }}>说出你的目标，AI自动拆解</p>
                 </div>
               </div>
               {isListening && decompText && (
-                <div className="mt-4 p-3 rounded-lg text-sm text-left" style={{ background: skin.cardBg, color: skin.textPrimary }}>{decompText}</div>
+                <div className="mb-6 p-4 rounded-xl text-sm text-left leading-relaxed" style={{ background: skin.cardBg, color: skin.textPrimary }}>{decompText}</div>
               )}
-              <div className="mt-6">
-                <p className="text-[10px] mb-2" style={{ color: skin.textMuted }}>或选择周期后手动输入</p>
-                <div className="flex flex-wrap gap-1.5 justify-center mb-3">
+              <div>
+                <p className="text-xs mb-3 font-medium" style={{ color: skin.textMuted }}>或选择周期后手动输入</p>
+                <div className="flex flex-wrap gap-2 justify-center mb-4">
                   {DURATIONS.map((d, i) => (
                     <button key={i} onClick={() => setNewDurIdx(i)}
-                      className="px-2.5 py-1 rounded text-[11px] font-medium transition-all"
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                       style={{
                         background: newDurIdx === i ? skin.swatch : skin.cardBg,
                         color: newDurIdx === i ? '#fff' : skin.textPrimary,
@@ -868,12 +878,12 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                 <div className="flex gap-2">
                   <input id="new-goal-input"
                     placeholder="输入你的目标..."
-                    className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                    className="flex-1 rounded-xl border px-4 py-2.5 text-sm focus:outline-none"
                     style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }}
                     onKeyDown={e => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value; if (v.trim()) createGoalWithVision(v); } }} />
                   <button
                     onClick={() => { const el = document.querySelector<HTMLInputElement>('#new-goal-input'); if (el?.value.trim()) createGoalWithVision(el.value); }}
-                    className="px-4 py-2 rounded-lg text-sm font-bold text-white"
+                    className="px-5 py-2.5 rounded-xl text-sm font-bold text-white"
                     style={{ background: skin.swatch }}>创建</button>
                 </div>
               </div>
