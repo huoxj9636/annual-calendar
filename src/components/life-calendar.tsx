@@ -233,6 +233,9 @@ function daysLeft(g: Goal): number {
   return Math.max(0, Math.ceil((dl.getTime() - Date.now()) / 86400000));
 }
 
+/* ===== Tab type for right panel ===== */
+type RightTab = 'stage' | 'plans';
+
 export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey }: LifeCalendarProps) {
   const [innerSkin] = useState(DEFAULT_SKIN);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -246,6 +249,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const [aiExecId, setAiExecId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewingStage, setViewingStage] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<RightTab>('stage');
   const [stageProgress, setStageProgress] = useState<Record<string, Record<number, boolean>>>({});
   const streamRef = useRef('');
 
@@ -307,7 +311,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       steps: [], createdAt: Date.now(),
     };
     const gs = [...goals, g]; save(gs); setSelId(g.id);
-    setViewingStage(null);
+    setActiveTab('plans');
   }, [newDurIdx, goals, save]);
 
   // Add manual step
@@ -442,7 +446,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     rec.start();
     setIsListening(true);
     setDecompText('');
-    setViewingStage(null);
+    setActiveTab('plans');
   }, [createGoalWithVision]);
 
   const stopVoice = useCallback(() => {
@@ -463,109 +467,152 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const viewStageProgress = viewingStage !== null ? (stageProgress[`${viewingStage}`] || {}) : {};
 
   return (
-    <div className="absolute inset-0 z-50 flex" style={{ background: skin.panelBg }}>
+    <div className="fixed inset-0 z-50 flex" style={{ background: skin.panelBg }}>
       {/* Close button */}
       <button onClick={onClose} className="absolute top-4 right-4 z-50 w-8 h-8 rounded-full flex items-center justify-center text-base font-bold hover:opacity-80 transition-opacity" style={{ background: skin.swatch, color: '#fff' }}>✕</button>
 
-      {/* ===== LEFT: Life Stages ===== */}
-      <div className="w-[300px] border-r flex flex-col" style={{ borderColor: skin.cellBorder }}>
-        <div className="p-5 pt-5 pb-2 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold" style={{ color: skin.swatch }}>人生旅途</h2>
-            <p className="text-[10px] mt-0.5" style={{ color: skin.textMuted }}>每个阶段，都有该做的事</p>
-          </div>
-          {/* Voice create button */}
-          <button onClick={isListening ? stopVoice : startVoiceCreate}
-            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isListening ? 'animate-pulse' : 'hover:opacity-80'}`}
-            style={{ background: isListening ? '#ef4444' : skin.swatch, color: '#fff' }}
-            title={isListening ? '停止录音' : '语音创建计划'}>
-            {isListening ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+      {/* ===== LEFT: Navigation ===== */}
+      <div className="w-[280px] border-r flex flex-col" style={{ borderColor: skin.cellBorder }}>
+        {/* Title */}
+        <div className="p-5 pb-3">
+          <h2 className="text-xl font-black" style={{ color: skin.swatch }}>人生旅途</h2>
+        </div>
+
+        {/* Two main tabs: 人生阶段 / 我的计划 */}
+        <div className="px-4 pb-3 flex gap-1">
+          <button onClick={() => { setActiveTab('stage'); setViewingStage(null); }}
+            className="flex-1 py-2 rounded-lg text-sm font-bold transition-all"
+            style={{
+              background: activeTab === 'stage' ? skin.swatch : skin.cardBg,
+              color: activeTab === 'stage' ? '#fff' : skin.textMuted,
+            }}>
+            人生阶段
+          </button>
+          <button onClick={() => { setActiveTab('plans'); setViewingStage(null); }}
+            className="flex-1 py-2 rounded-lg text-sm font-bold transition-all relative"
+            style={{
+              background: activeTab === 'plans' ? skin.swatch : skin.cardBg,
+              color: activeTab === 'plans' ? '#fff' : skin.textMuted,
+            }}>
+            我的计划
+            {goals.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold text-white" style={{ background: '#ef4444' }}>{goals.length}</span>
             )}
           </button>
         </div>
 
+        {/* Voice create + birth year row */}
+        <div className="px-4 pb-3 flex items-center gap-2">
+          <button onClick={isListening ? stopVoice : startVoiceCreate}
+            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${isListening ? 'animate-pulse' : 'hover:opacity-80'}`}
+            style={{ background: isListening ? '#ef4444' : skin.swatch, color: '#fff' }}
+            title={isListening ? '停止录音' : '语音创建计划'}>
+            {isListening ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+            )}
+          </button>
+          <div className="flex items-center gap-1.5 flex-1">
+            <span className="text-[10px]" style={{ color: skin.textMuted }}>出生</span>
+            <input type="number" value={birthYear || 1990} onChange={e => setBirthYear(Number(e.target.value))}
+              className="w-14 rounded border px-1.5 py-0.5 text-[11px] focus:outline-none"
+              style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }} />
+            <span className="text-[10px]" style={{ color: skin.textMuted }}>{currentAge}岁</span>
+          </div>
+        </div>
+
         {/* Voice listening indicator */}
         {isListening && (
-          <div className="mx-5 mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ background: '#ef444415' }}>
+          <div className="mx-4 mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ background: '#ef444415' }}>
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-xs text-red-500 font-bold">正在聆听，说出你的计划...</span>
+            <span className="text-[10px] text-red-500 font-bold">正在聆听，说出你的计划...</span>
           </div>
         )}
 
-        {/* Birth year */}
-        <div className="px-5 pb-2 flex items-center gap-2">
-          <span className="text-[10px]" style={{ color: skin.textMuted }}>出生年份</span>
-          <input type="number" value={birthYear || 1990} onChange={e => setBirthYear(Number(e.target.value))}
-            className="w-16 rounded border px-1.5 py-0.5 text-xs focus:outline-none"
-            style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }} />
-          <span className="text-[10px]" style={{ color: skin.textMuted }}>{currentAge}岁</span>
-        </div>
-
-        {/* Stages — click to show details on the right */}
-        <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-0.5">
-          {LIFE_STAGES.map((stage, idx) => {
-            const isCurrent = idx === currentStageIdx;
-            const isSelected = viewingStage === idx;
-            const sp = stageProgress[`${idx}`] || {};
-            const doneCount = Object.values(sp).filter(Boolean).length;
-            return (
-              <div key={idx}
-                className={`rounded-lg transition-all cursor-pointer hover:brightness-95 ${isCurrent ? 'ring-1' : ''}`}
-                style={{
-                  background: isSelected ? `${stage.color}15` : isCurrent ? `${stage.color}08` : 'transparent',
-                  borderLeft: `3px solid ${isSelected ? stage.color : isCurrent ? stage.color : 'transparent'}`,
-                  ...(isCurrent && !isSelected ? { boxShadow: `0 0 4px ${stage.color}15` } : {}),
-                }}
-                onClick={() => setViewingStage(isSelected ? null : idx)}>
-                <div className="px-3 py-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{stage.icon}</span>
-                      <span className="text-sm font-bold" style={{ color: isSelected || isCurrent ? stage.color : skin.textPrimary }}>{stage.label}</span>
-                      <span className="text-[10px]" style={{ color: skin.textMuted }}>{stage.range}岁</span>
-                    </div>
-                    {doneCount > 0 && (
-                      <span className="text-[10px] font-bold" style={{ color: doneCount >= stage.details.length ? '#22c55e' : stage.color }}>{doneCount}/{stage.details.length}</span>
-                    )}
-                  </div>
-                  <p className="text-[10px] mt-0.5 leading-snug" style={{ color: isCurrent ? stage.color : skin.textMuted }}>{stage.focus}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Goal tabs at bottom of left panel */}
-        {goals.length > 0 && (
-          <div className="border-t px-3 py-2 space-y-0.5 max-h-[160px] overflow-y-auto" style={{ borderColor: skin.cellBorder }}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-bold" style={{ color: skin.textMuted }}>我的计划</span>
-              <button onClick={() => { setViewingStage(null); setSelId(null); }}
-                className="text-[10px] px-2 py-0.5 rounded hover:opacity-80"
-                style={{ color: skin.swatch }}>+ 新计划</button>
-            </div>
-            {goals.map(g => {
-              const pct = progress(g);
+        {/* ===== Stage list (when tab=stage) ===== */}
+        {activeTab === 'stage' && (
+          <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-0.5">
+            {LIFE_STAGES.map((stage, idx) => {
+              const isCurrent = idx === currentStageIdx;
+              const isSelected = viewingStage === idx;
+              const sp = stageProgress[`${idx}`] || {};
+              const doneCount = Object.values(sp).filter(Boolean).length;
               return (
-                <div key={g.id} onClick={() => { setSelId(g.id); setViewingStage(null); }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:brightness-95 transition-all"
-                  style={{ background: selId === g.id ? skin.cardBg : 'transparent' }}>
-                  <span className="text-[10px] truncate flex-1" style={{ color: selId === g.id ? skin.swatch : skin.textPrimary }}>{g.vision}</span>
-                  <span className="text-[10px] font-bold shrink-0" style={{ color: pct > 0 ? skin.swatch : skin.textMuted }}>{pct}%</span>
+                <div key={idx}
+                  className={`rounded-lg transition-all cursor-pointer hover:brightness-95 ${isCurrent ? 'ring-1' : ''}`}
+                  style={{
+                    background: isSelected ? `${stage.color}18` : isCurrent ? `${stage.color}08` : 'transparent',
+                    borderLeft: `3px solid ${isSelected ? stage.color : isCurrent ? stage.color : 'transparent'}`,
+                    ...(isCurrent && !isSelected ? { boxShadow: `0 0 4px ${stage.color}15` } : {}),
+                  }}
+                  onClick={() => setViewingStage(isSelected ? null : idx)}>
+                  <div className="px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{stage.icon}</span>
+                        <span className="text-xs font-bold" style={{ color: isSelected || isCurrent ? stage.color : skin.textPrimary }}>{stage.label}</span>
+                        <span className="text-[10px]" style={{ color: skin.textMuted }}>{stage.range}岁</span>
+                      </div>
+                      {doneCount > 0 && (
+                        <span className="text-[10px] font-bold" style={{ color: doneCount >= stage.details.length ? '#22c55e' : stage.color }}>{doneCount}/{stage.details.length}</span>
+                      )}
+                    </div>
+                    <p className="text-[10px] mt-0.5 leading-snug truncate" style={{ color: isCurrent ? stage.color : skin.textMuted }}>{stage.focus}</p>
+                  </div>
                 </div>
               );
             })}
           </div>
         )}
+
+        {/* ===== Plans list (when tab=plans) ===== */}
+        {activeTab === 'plans' && (
+          <div className="flex-1 overflow-y-auto px-3 pb-4">
+            {/* New plan button */}
+            <button onClick={() => { setSelId(null); setViewingStage(null); }}
+              className="w-full py-2.5 rounded-lg text-sm font-bold text-white mb-3 hover:opacity-90 transition-all"
+              style={{ background: skin.swatch }}>
+              + 新建计划
+            </button>
+
+            {goals.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm" style={{ color: skin.textMuted }}>还没有计划</p>
+                <p className="text-[10px] mt-1" style={{ color: skin.textMuted }}>点击上方按钮或麦克风创建</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {goals.map(g => {
+                  const pct = progress(g);
+                  const isActive = selId === g.id;
+                  return (
+                    <div key={g.id} onClick={() => { setSelId(g.id); setViewingStage(null); }}
+                      className="p-3 rounded-lg cursor-pointer transition-all hover:brightness-95"
+                      style={{ background: isActive ? skin.cardBg : 'transparent', borderLeft: isActive ? `3px solid ${skin.swatch}` : '3px solid transparent' }}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold truncate flex-1" style={{ color: isActive ? skin.swatch : skin.textPrimary }}>{g.vision}</span>
+                        <span className="text-[10px] font-black shrink-0 ml-2" style={{ color: pct > 0 ? skin.swatch : skin.textMuted }}>{pct}%</span>
+                      </div>
+                      <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background: skin.cellBorder }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: skin.swatch }} />
+                      </div>
+                      <p className="text-[10px] mt-1" style={{ color: skin.textMuted }}>
+                        {g.duration}{g.durationUnit === 'week' ? '周' : g.durationUnit === 'month' ? '个月' : '年'} | 剩余{daysLeft(g)}天
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* ===== RIGHT: Stage Detail OR Goal Management ===== */}
+      {/* ===== RIGHT: Content Area ===== */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Viewing a life stage */}
-        {viewStage ? (
+        {/* Stage detail view */}
+        {activeTab === 'stage' && viewStage ? (
           <>
             <div className="px-8 pt-8 pb-4" style={{ borderBottom: `2px solid ${viewStage.color}30` }}>
               <div className="flex items-center gap-3">
@@ -618,7 +665,16 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               </div>
             </div>
           </>
-        ) : goal ? (
+        ) : activeTab === 'stage' && !viewStage ? (
+          /* Stage tab but no stage selected */
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-4xl mb-4">🗺</p>
+              <p className="text-lg font-bold" style={{ color: skin.textMuted }}>选择左侧的人生阶段</p>
+              <p className="text-sm mt-1" style={{ color: skin.textMuted }}>查看每个阶段应该做的事</p>
+            </div>
+          </div>
+        ) : activeTab === 'plans' && goal ? (
           /* Goal detail view */
           <>
             <div className="px-6 py-4 border-b" style={{ borderColor: skin.cellBorder }}>
@@ -748,8 +804,8 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               <button onClick={() => deleteGoal(goal.id)} className="text-xs px-3 py-1.5 rounded" style={{ color: '#ef4444', background: '#ef444410' }}>删除计划</button>
             </div>
           </>
-        ) : (
-          /* Empty state — create first goal */
+        ) : activeTab === 'plans' && !goal ? (
+          /* Plans tab — no goal selected, show create form */
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center max-w-md">
               <p className="text-xl font-bold mb-2" style={{ color: skin.textPrimary }}>创建你的第一个长期计划</p>
@@ -787,20 +843,20 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <input
+                  <input id="new-goal-input"
                     placeholder="输入你的目标..."
                     className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none"
                     style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }}
                     onKeyDown={e => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value; if (v.trim()) createGoalWithVision(v); } }} />
                   <button
-                    onClick={() => { const el = document.querySelector<HTMLInputElement>('input[placeholder="输入你的目标..."]'); if (el?.value.trim()) createGoalWithVision(el.value); }}
+                    onClick={() => { const el = document.querySelector<HTMLInputElement>('#new-goal-input'); if (el?.value.trim()) createGoalWithVision(el.value); }}
                     className="px-4 py-2 rounded-lg text-sm font-bold text-white"
                     style={{ background: skin.swatch }}>创建</button>
                 </div>
               </div>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -1332,15 +1332,6 @@ export default function YearCalendar() {
         </div>
       )}
 
-      {/* 人生日历侧边栏 */}
-      {showLifeCalendar && (
-        <LifeCalendar
-          birthYear={birthYear}
-          setBirthYear={setBirthYear}
-          onClose={() => setShowLifeCalendar(false)}
-          skinKey={skinKey}
-        />
-      )}
       </div>{/* end flex-1 container */}
       </div>{/* end page1 container */}
 
@@ -1456,6 +1447,15 @@ export default function YearCalendar() {
             </div>
           </div>
         </div>
+      )}
+      {/* 人生日历侧边栏 - 渲染在最外层以覆盖整个页面 */}
+      {showLifeCalendar && (
+        <LifeCalendar
+          birthYear={birthYear}
+          setBirthYear={setBirthYear}
+          onClose={() => setShowLifeCalendar(false)}
+          skinKey={skinKey}
+        />
       )}
     </div>
   );
