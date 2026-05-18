@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { SKINS, NO_SKIN, DEFAULT_SKIN } from '@/lib/skins';
 import type { SkinTheme } from '@/lib/skins';
+import ParticleEffect from '@/components/particle-effect';
 
 /* ============ Props ============ */
 interface LifeCalendarProps {
@@ -467,11 +468,40 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const viewStageProgress = viewingStage !== null ? (stageProgress[`${viewingStage}`] || {}) : {};
 
   return (
-    <div className="fixed inset-0 z-50 flex" style={{ background: skin.panelBg }}>
-      {/* Close button */}
-      <button onClick={onClose} className="absolute top-4 right-4 z-50 w-8 h-8 rounded-full flex items-center justify-center text-base font-bold hover:opacity-80 transition-opacity" style={{ background: skin.swatch, color: '#fff' }}>✕</button>
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: skin.panelBg }}>
+      {/* ===== Header Banner ===== */}
+      <header className="flex-shrink-0 relative overflow-hidden" style={{ height: 88 }}>
+        {skin.headerBgImage ? (
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+        ) : (
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }} />
+        )}
+        <div className="absolute inset-0" style={{ background: skin.headerBgOverlay }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
+        <ParticleEffect color={skin.swatch} count={30} />
+        <div className="relative h-full flex items-center justify-between px-8">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🗺</span>
+            <h1 className="text-3xl font-black tracking-tight" style={{ color: skin.textPrimary, textShadow: `0 1px 2px ${skin.swatch}15` }}>
+              人生旅途
+            </h1>
+            <span className="text-sm font-medium" style={{ color: skin.textSecondary }}>0 ~ 80 岁人生蓝图</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {currentStageIdx >= 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                <span className="text-sm">{LIFE_STAGES[currentStageIdx].icon}</span>
+                <span className="text-xs font-bold" style={{ color: skin.textPrimary }}>当前: {LIFE_STAGES[currentStageIdx].label} ({currentAge}岁)</span>
+              </div>
+            )}
+          </div>
+        </div>
+        {/* Close button */}
+        <button onClick={onClose} className="absolute top-3 right-4 z-50 w-8 h-8 rounded-full flex items-center justify-center text-base font-bold hover:opacity-80 transition-opacity" style={{ background: skin.swatch, color: '#fff' }}>✕</button>
+      </header>
 
-      {/* ===== LEFT: Navigation ===== */}
+      {/* ===== Body: LEFT + RIGHT ===== */}
+      <div className="flex-1 flex overflow-hidden">
       <div className="w-[280px] border-r flex flex-col" style={{ borderColor: skin.cellBorder }}>
         {/* Title */}
         <div className="p-5 pb-3">
@@ -857,6 +887,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
             </div>
           </div>
         ) : null}
+      </div>
       </div>
     </div>
   );
