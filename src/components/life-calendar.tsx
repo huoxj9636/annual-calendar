@@ -550,7 +550,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       <button onClick={onClose} className="fixed top-4 right-5 z-[60] w-9 h-9 rounded-full flex items-center justify-center text-base font-bold hover:opacity-80 transition-opacity shadow-lg" style={{ background: skin.swatch, color: '#fff' }}>✕</button>
 
       {/* ===== LEFT: Header Banner + Stage/Plan List ===== */}
-      <div className="w-[500px] flex-shrink-0 border-r flex flex-col" style={{ borderColor: skin.cellBorder }}>
+      <div className="w-[480px] flex-shrink-0 border-r flex flex-col" style={{ borderColor: skin.cellBorder }}>
         {/* Header Banner - same width as left panel, same height as main page header */}
         <header className="flex-shrink-0 relative overflow-hidden" style={{ height: 110 }}>
           {skin.headerBgImage ? (

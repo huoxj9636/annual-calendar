@@ -677,7 +677,7 @@ export default function YearCalendar() {
         </button>
 
         {/* Calendar / Task toggle sidebar */}
-        <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10" style={{ gap: '12px' }}>
+        <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 pb-4 justify-between z-10">
           {/* Calendar / Schedule button */}
           {moduleVisibility.timeline && (
           <button
@@ -1525,8 +1525,9 @@ export default function YearCalendar() {
       {mounted && (
         <button
           onClick={() => setSettingsOpen(true)}
-          className="fixed bottom-5 left-5 z-30 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
+          className="fixed bottom-4 z-30 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
           style={{
+            left: '64px',
             backgroundColor: skin.swatch,
             color: '#ffffff',
             boxShadow: `0 2px 8px rgba(0,0,0,0.3)`,
