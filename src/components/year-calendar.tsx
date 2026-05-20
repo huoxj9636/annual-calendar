@@ -89,6 +89,13 @@ export default function YearCalendar() {
   const [insightMonth, setInsightMonth] = useState(() => new Date().getMonth() + 1);
   const [insightDay, setInsightDay] = useState(() => new Date().getDate());
   const [trackOpen, setTrackOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [moduleVisibility, setModuleVisibility] = useState<Record<string, boolean>>({
+    timeline: true,
+    dida: true,
+    insight: true,
+    track: true,
+  });
 
   // Real-time clock with centiseconds (2-digit)
   useEffect(() => {
@@ -152,6 +159,12 @@ export default function YearCalendar() {
       const savedMotto = localStorage.getItem('calendar-motto');
       if (savedMotto) setMotto(savedMotto);
 
+      // Load module visibility
+      const savedVisibility = localStorage.getItem('calendar-module-visibility');
+      if (savedVisibility) {
+        try { setModuleVisibility(JSON.parse(savedVisibility)); } catch { /* ignore */ }
+      }
+
       // Check if drawing has strokes
       const savedDrawing = localStorage.getItem(`calendar-drawing-${year}`);
       if (savedDrawing) {
@@ -188,6 +201,14 @@ export default function YearCalendar() {
       // Ignore
     }
   }, [notes, year, mounted]);
+
+  // Save module visibility to localStorage
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      localStorage.setItem('calendar-module-visibility', JSON.stringify(moduleVisibility));
+    } catch { /* ignore */ }
+  }, [moduleVisibility, mounted]);
 
   const saveNote = useCallback(() => {
     if (!notePopup) return;
@@ -658,6 +679,7 @@ export default function YearCalendar() {
         {/* Calendar / Task toggle sidebar */}
         <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10" style={{ gap: '12px' }}>
           {/* Calendar / Schedule button */}
+          {moduleVisibility.timeline && (
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -705,10 +727,14 @@ export default function YearCalendar() {
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
               style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>日程</span>
           </button>
+          )}
 
+          {moduleVisibility.timeline && moduleVisibility.dida && (
           <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
+          )}
 
           {/* Dida (TickTick) - opens in new tab */}
+          {moduleVisibility.dida && (
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -733,10 +759,14 @@ export default function YearCalendar() {
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
               style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>滴答</span>
           </button>
+          )}
 
+          {moduleVisibility.dida && moduleVisibility.insight && (
           <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
+          )}
 
           {/* Daily Insight button */}
+          {moduleVisibility.insight && (
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -778,10 +808,14 @@ export default function YearCalendar() {
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
               style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>洞察</span>
           </button>
+          )}
 
+          {moduleVisibility.insight && moduleVisibility.track && (
           <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
+          )}
 
           {/* Track button */}
+          {moduleVisibility.track && (
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -822,6 +856,7 @@ export default function YearCalendar() {
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
               style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>轨迹</span>
           </button>
+          )}
         </div>
 
         <div
@@ -1484,6 +1519,68 @@ export default function YearCalendar() {
           onClose={() => setShowLifeCalendar(false)}
           skinKey={skinKey}
         />
+      )}
+
+      {/* Settings button - bottom left corner */}
+      {mounted && (
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="fixed bottom-5 left-5 z-30 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
+          style={{
+            backgroundColor: skin.swatch,
+            color: '#ffffff',
+            boxShadow: `0 2px 8px rgba(0,0,0,0.3)`,
+          }}
+          title="设置"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+      )}
+
+      {/* Settings popup */}
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
+          onClick={() => setSettingsOpen(false)}>
+          <div className="rounded-2xl shadow-2xl p-6 w-80"
+            onClick={(e) => e.stopPropagation()}
+            style={{ backgroundColor: skin.panelBg, border: `1px solid ${skin.cellBorder}` }}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold" style={{ color: skin.textPrimary }}>模块设置</h2>
+              <button onClick={() => setSettingsOpen(false)}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-black/10 cursor-pointer"
+                style={{ color: skin.textSecondary }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+            <p className="text-xs mb-4" style={{ color: skin.textSecondary }}>控制侧边栏模块的显示与隐藏</p>
+            <div className="space-y-3">
+              {([
+                { key: 'timeline', label: '日程', icon: '📅' },
+                { key: 'dida', label: '滴答清单', icon: '✅' },
+                { key: 'insight', label: '洞察', icon: '💡' },
+                { key: 'track', label: '轨迹', icon: '📊' },
+              ] as const).map(item => (
+                <div key={item.key} className="flex items-center justify-between py-2 px-3 rounded-xl"
+                  style={{ backgroundColor: moduleVisibility[item.key] ? `${skin.swatch}15` : 'rgba(0,0,0,0.05)' }}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">{item.icon}</span>
+                    <span className="text-sm font-medium" style={{ color: skin.textPrimary }}>{item.label}</span>
+                  </div>
+                  <button
+                    onClick={() => setModuleVisibility(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                    className="w-10 h-6 rounded-full relative transition-all cursor-pointer"
+                    style={{ backgroundColor: moduleVisibility[item.key] ? skin.swatch : '#d1d5db' }}>
+                    <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
+                      style={{ left: moduleVisibility[item.key] ? '18px' : '2px' }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
