@@ -16,7 +16,7 @@ importers:
         version: 2.1.1
       coze-coding-dev-sdk:
         specifier: ^0.7.21
-        version: 0.7.21(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
+        version: 0.7.21(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
       lucide-react:
         specifier: ^0.468.0
         version: 0.468.0(react@19.2.3)
@@ -41,10 +41,10 @@ importers:
     devDependencies:
       '@langchain/core':
         specifier: ^1.1.44
-        version: 1.1.44(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
+        version: 1.1.44(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
       '@langchain/openai':
         specifier: ^1.4.5
-        version: 1.4.5(@langchain/core@1.1.44(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))(ws@8.19.0)
+        version: 1.4.5(@langchain/core@1.1.44(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))(ws@8.19.0)
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.1.18
@@ -65,7 +65,7 @@ importers:
         version: 16.1.1(@typescript-eslint/parser@8.54.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
       langsmith:
         specifier: ^0.6.1
-        version: 0.6.1(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
+        version: 0.6.1(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
       only-allow:
         specifier: ^1.2.2
         version: 1.2.2
@@ -377,8 +377,8 @@ packages:
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
 
-  '@img/colour@1.0.0':
-    resolution: {integrity: sha512-A5P/LfWGFSl6nsckYtjw9da+19jB8hkJ6ACTGcDfEJ0aE+l2n2El7dsVM7UVHZQ9s2lmYMWlrS21YLy2IR1LUw==}
+  '@img/colour@1.1.0':
+    resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
     engines: {node: '>=18'}
 
   '@img/sharp-darwin-arm64@0.34.5':
@@ -2137,18 +2137,6 @@ packages:
     resolution: {integrity: sha512-uxyNYDsCh5YIJ780G7hC5OHjVUr9reHsbZNMM80L9tZlTpb3hUzb36KXgW4ZUGtJKQnGA3xegmWg1BxhWV0jJA==}
     hasBin: true
 
-  openai@6.16.0:
-    resolution: {integrity: sha512-fZ1uBqjFUjXzbGc35fFtYKEOxd20kd9fDpFeqWtsOZWiubY8CZ1NAlXHW3iathaFvqmNtCWMIsosCuyeI7Joxg==}
-    hasBin: true
-    peerDependencies:
-      ws: ^8.18.0
-      zod: ^3.25 || ^4.0
-    peerDependenciesMeta:
-      ws:
-        optional: true
-      zod:
-        optional: true
-
   openai@6.36.0:
     resolution: {integrity: sha512-Has2YbIusMq9wQEierFsgf9c783dy1y9arX459LmphNacEkkM5yxi2RIyXP0LmkOroQyW19iTwALHL8Yf26UKA==}
     hasBin: true
@@ -2964,7 +2952,7 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@img/colour@1.0.0':
+  '@img/colour@1.1.0':
     optional: true
 
   '@img/sharp-darwin-arm64@0.34.5':
@@ -3080,7 +3068,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@langchain/core@1.1.44(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)':
+  '@langchain/core@1.1.44(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@standard-schema/spec': 1.1.0
@@ -3088,7 +3076,7 @@ snapshots:
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.21
-      langsmith: 0.6.1(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
+      langsmith: 0.6.1(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
       mustache: 4.2.0
       p-queue: 6.6.2
       zod: 4.3.6
@@ -3099,9 +3087,9 @@ snapshots:
       - openai
       - ws
 
-  '@langchain/openai@1.4.5(@langchain/core@1.1.44(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))(ws@8.19.0)':
+  '@langchain/openai@1.4.5(@langchain/core@1.1.44(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))(ws@8.19.0)':
     dependencies:
-      '@langchain/core': 1.1.44(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
+      '@langchain/core': 1.1.44(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
       js-tiktoken: 1.0.21
       openai: 6.36.0(ws@8.19.0)(zod@4.3.6)
       zod: 4.3.6
@@ -3738,10 +3726,10 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  coze-coding-dev-sdk@0.7.21(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0):
+  coze-coding-dev-sdk@0.7.21(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0):
     dependencies:
-      '@langchain/core': 1.1.44(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
-      '@langchain/openai': 1.4.5(@langchain/core@1.1.44(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))(ws@8.19.0)
+      '@langchain/core': 1.1.44(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
+      '@langchain/openai': 1.4.5(@langchain/core@1.1.44(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))(ws@8.19.0)
       '@supabase/supabase-js': 2.95.3
       axios: 1.13.4
       pg: 8.17.2
@@ -4512,11 +4500,11 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
-  langsmith@0.6.1(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0):
+  langsmith@0.6.1(openai@6.36.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0):
     dependencies:
       p-queue: 6.6.2
     optionalDependencies:
-      openai: 6.16.0(ws@8.19.0)(zod@4.3.6)
+      openai: 6.36.0(ws@8.19.0)(zod@4.3.6)
       ws: 8.19.0
 
   language-subtag-registry@0.3.23: {}
@@ -4728,12 +4716,6 @@ snapshots:
   only-allow@1.2.2:
     dependencies:
       which-pm-runs: 1.1.0
-
-  openai@6.16.0(ws@8.19.0)(zod@4.3.6):
-    optionalDependencies:
-      ws: 8.19.0
-      zod: 4.3.6
-    optional: true
 
   openai@6.36.0(ws@8.19.0)(zod@4.3.6):
     optionalDependencies:
@@ -5016,7 +4998,7 @@ snapshots:
 
   sharp@0.34.5:
     dependencies:
-      '@img/colour': 1.0.0
+      '@img/colour': 1.1.0
       detect-libc: 2.1.2
       semver: 7.7.3
     optionalDependencies:
