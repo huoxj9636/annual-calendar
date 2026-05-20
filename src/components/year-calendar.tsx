@@ -1521,11 +1521,11 @@ export default function YearCalendar() {
         />
       )}
 
-      {/* Settings button - bottom left corner */}
+      {/* Settings button - top left corner */}
       {mounted && (
         <button
           onClick={() => setSettingsOpen(true)}
-          className="fixed bottom-5 left-5 z-30 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
+          className="fixed top-5 left-5 z-30 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
           style={{
             backgroundColor: skin.swatch,
             color: '#ffffff',
