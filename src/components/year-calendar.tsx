@@ -565,48 +565,67 @@ export default function YearCalendar() {
             </span>
           </div>
 
-          {/* Legend & Stats */}
-          <div className="flex items-center gap-2.5 text-xs">
-            <div className="flex items-center gap-3 text-gray-500">
-              <span className="flex items-center gap-1">
-                <span className="inline-flex w-[23px] h-[23px] rounded-md items-center justify-center text-[17px] font-bold"
-                style={{ backgroundColor: skin.checkColor + "10", color: skin.checkColor }}>
-                  ✓
+          {/* Legend & Stats + Settings */}
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-0.5 text-xs">
+              <div className="flex items-center gap-3 text-gray-500">
+                <span className="flex items-center gap-1">
+                  <span className="inline-flex w-[23px] h-[23px] rounded-md items-center justify-center text-[17px] font-bold"
+                  style={{ backgroundColor: skin.checkColor + "10", color: skin.checkColor }}>
+                    ✓
+                  </span>
+                  <span>满意</span>
                 </span>
-                <span>满意</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-flex w-[23px] h-[23px] rounded-md items-center justify-center text-[17px] font-bold"
-                style={{ backgroundColor: skin.crossColor + "10", color: skin.crossColor }}>
-                  ✗
+                <span className="flex items-center gap-1">
+                  <span className="inline-flex w-[23px] h-[23px] rounded-md items-center justify-center text-[17px] font-bold"
+                  style={{ backgroundColor: skin.crossColor + "10", color: skin.crossColor }}>
+                    ✗
+                  </span>
+                  <span>不满意</span>
                 </span>
-                <span>不满意</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3"
-                  style={{ color: skin.swatch }}>
-                  <path d="M3 3.5A1.5 1.5 0 014.5 2h7A1.5 1.5 0 0113 3.5v9a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 12.5v-9zM4.5 3a.5.5 0 00-.5.5v9a.5.5 0 00.5.5h7a.5.5 0 00.5-.5v-9a.5.5 0 00-.5-.5h-7z"/>
-                  <path d="M6 7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5z"/>
-                </svg>
-                <span>备注</span>
-              </span>
-            </div>
-            {mounted && stats.total > 0 && (
-              <div className="flex items-center gap-2 pl-3 ml-1 border-l border-gray-200">
-                <span className="text-gray-400">已过 <strong className="text-gray-700 font-semibold">{stats.total}</strong> 天</span>
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-semibold"
-                    style={{ backgroundColor: skin.checkColor + "10", color: skin.checkColor }}>
-                  ✓{stats.checked}
-                </span>
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-semibold"
-                    style={{ backgroundColor: skin.crossColor + "10", color: skin.crossColor }}>
-                  ✗{stats.crossed}
-                </span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs text-white"
-                    style={{ backgroundColor: skin.swatch }}>
-                  {stats.rate}%
+                <span className="flex items-center gap-1">
+                  <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3"
+                    style={{ color: skin.swatch }}>
+                    <path d="M3 3.5A1.5 1.5 0 014.5 2h7A1.5 1.5 0 0113 3.5v9a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 12.5v-9zM4.5 3a.5.5 0 00-.5.5v9a.5.5 0 00.5.5h7a.5.5 0 00.5-.5v-9a.5.5 0 00-.5-.5h-7z"/>
+                    <path d="M6 7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5z"/>
+                  </svg>
+                  <span>备注</span>
                 </span>
               </div>
+              {mounted && stats.total > 0 && (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <span className="text-gray-400">已过 <strong className="text-gray-700 font-semibold">{stats.total}</strong> 天</span>
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-semibold"
+                      style={{ backgroundColor: skin.checkColor + "10", color: skin.checkColor }}>
+                    ✓{stats.checked}
+                  </span>
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-semibold"
+                      style={{ backgroundColor: skin.crossColor + "10", color: skin.crossColor }}>
+                    ✗{stats.crossed}
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs text-white"
+                      style={{ backgroundColor: skin.swatch }}>
+                    {stats.rate}%
+                  </span>
+                </div>
+              )}
+            </div>
+            {/* Settings button */}
+            {mounted && (
+              <button
+                onClick={() => setSettingsOpen(true)}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer ml-1"
+                style={{
+                  backgroundColor: skin.swatch + "18",
+                  color: skin.swatch,
+                }}
+                title="设置"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+              </button>
             )}
           </div>
         </div>
@@ -1519,25 +1538,6 @@ export default function YearCalendar() {
           onClose={() => setShowLifeCalendar(false)}
           skinKey={skinKey}
         />
-      )}
-
-      {/* Settings button - top left corner */}
-      {mounted && (
-        <button
-          onClick={() => setSettingsOpen(true)}
-          className="fixed top-5 left-5 z-30 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
-          style={{
-            backgroundColor: skin.swatch,
-            color: '#ffffff',
-            boxShadow: `0 2px 8px rgba(0,0,0,0.3)`,
-          }}
-          title="设置"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </button>
       )}
 
       {/* Settings popup */}
