@@ -734,6 +734,8 @@ export default function YearCalendar() {
               style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>滴答</span>
           </button>
 
+          <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
+
           {/* Daily Insight button */}
           <button
             onClick={(e) => {
