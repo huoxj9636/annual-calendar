@@ -89,7 +89,6 @@ export default function YearCalendar() {
   const [insightMonth, setInsightMonth] = useState(() => new Date().getMonth() + 1);
   const [insightDay, setInsightDay] = useState(() => new Date().getDate());
   const [trackOpen, setTrackOpen] = useState(false);
-  const [didaOpen, setDidaOpen] = useState(false);
 
   // Real-time clock with centiseconds (2-digit)
   useEffect(() => {
@@ -646,7 +645,7 @@ export default function YearCalendar() {
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
         {/* Left arrow for Life Calendar */}
         <button
-          onClick={() => { setShowLifeCalendar(true); setDidaOpen(false); }}
+          onClick={() => { setShowLifeCalendar(true); }}
           className="flex-shrink-0 w-14 flex items-center justify-center transition-all group cursor-pointer z-10"
           style={{ background: `linear-gradient(to right, ${skin.swatch}18, transparent)` }}
           title="人生旅途"
@@ -668,7 +667,6 @@ export default function YearCalendar() {
                 setSelectedMonth(null);
                 setInsightOpen(false);
                 setTrackOpen(false);
-                setDidaOpen(false);
                 isSnapping.current = false;
                 if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
                 if (scrollContainerRef.current) {
@@ -708,25 +706,18 @@ export default function YearCalendar() {
               style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>日程</span>
           </button>
 
-          {/* Dida (TickTick) button */}
+          <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
+
+          {/* Dida (TickTick) - opens in new tab */}
           <button
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              const opening = !didaOpen;
-              if (opening) {
-                setSelectedMonth(null);
-                timelineOpenRef.current = false;
-                setTimelineOpen(false);
-                setInsightOpen(false);
-                setTrackOpen(false);
-                setShowLifeCalendar(false);
-              }
-              setDidaOpen(opening);
+              window.open('https://dida365.com/webapp/#q/all/timeline', '_blank');
             }}
             onMouseDown={(e) => e.preventDefault()}
             className="group flex flex-col items-center gap-1 cursor-pointer"
-            title="滴答"
+            title="滴答清单"
           >
             <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
               style={{
@@ -743,8 +734,6 @@ export default function YearCalendar() {
               style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>滴答</span>
           </button>
 
-          <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
-
           {/* Daily Insight button */}
           <button
             onClick={(e) => {
@@ -756,7 +745,6 @@ export default function YearCalendar() {
                 timelineOpenRef.current = false;
                 setTimelineOpen(false);
                 setTrackOpen(false);
-                setDidaOpen(false);
                 if (scrollContainerRef.current) {
                   const container = scrollContainerRef.current;
                   container.style.overflowY = 'hidden';
@@ -802,7 +790,6 @@ export default function YearCalendar() {
                 timelineOpenRef.current = false;
                 setTimelineOpen(false);
                 setInsightOpen(false);
-                setDidaOpen(false);
                 if (scrollContainerRef.current) {
                   const container = scrollContainerRef.current;
                   container.style.overflowY = 'hidden';
@@ -877,8 +864,7 @@ export default function YearCalendar() {
                     }
                     setInsightOpen(false);
                     setTrackOpen(false);
-                    setDidaOpen(false);
-                    if (timelineOpen || insightOpen || trackOpen) {
+                        if (timelineOpen || insightOpen || trackOpen) {
                       if (scrollContainerRef.current) {
                         scrollContainerRef.current.style.overflowY = 'scroll';
                       }
@@ -986,8 +972,7 @@ export default function YearCalendar() {
                               setInsightOpen(false);
                               setTrackOpen(false);
                               setDailyReviewOpen(false);
-                              setDidaOpen(false);
-                              setTimelineMonth(cell.month);
+                                            setTimelineMonth(cell.month);
                               setTimelineDay(cell.day);
                               if (!timelineOpen) {
                                 isSnapping.current = false;
@@ -1497,41 +1482,6 @@ export default function YearCalendar() {
           onClose={() => setShowLifeCalendar(false)}
           skinKey={skinKey}
         />
-      )}
-
-      {/* 滴答清单 - 全屏iframe */}
-      {didaOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: '#1a1a2e' }}>
-          {/* Header bar */}
-          <div className="flex items-center justify-between px-4 h-12 flex-shrink-0" style={{ backgroundColor: skin.swatch }}>
-            <div className="flex items-center gap-2">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
-                <path d="M8 12l3 3 5-6" />
-              </svg>
-              <span className="text-white font-bold text-sm">滴答清单</span>
-            </div>
-            <button
-              onClick={() => setDidaOpen(false)}
-              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors cursor-pointer"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-          {/* iframe */}
-          <div className="flex-1 relative">
-            <iframe
-              src="https://dida365.com/webapp/#q/all/timeline"
-              className="absolute inset-0 w-full h-full border-0"
-              allow="clipboard-read; clipboard-write"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation"
-              title="滴答清单"
-            />
-          </div>
-        </div>
       )}
     </div>
   );
