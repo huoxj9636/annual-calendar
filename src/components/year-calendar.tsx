@@ -97,6 +97,13 @@ export default function YearCalendar() {
     insight: true,
     track: true,
   });
+  const [moduleLinks, setModuleLinks] = useState<Record<string, string>>({
+    timeline: '',
+    dida: 'https://dida365.com/webapp/#q/all/timeline',
+    longterm: '',
+    insight: '',
+    track: '',
+  });
 
   // Real-time clock with centiseconds (2-digit)
   useEffect(() => {
@@ -166,6 +173,12 @@ export default function YearCalendar() {
         try { setModuleVisibility(JSON.parse(savedVisibility)); } catch { /* ignore */ }
       }
 
+      // Load module links
+      const savedLinks = localStorage.getItem('calendar-module-links');
+      if (savedLinks) {
+        try { setModuleLinks(prev => ({ ...prev, ...JSON.parse(savedLinks) })); } catch { /* ignore */ }
+      }
+
       // Check if drawing has strokes
       const savedDrawing = localStorage.getItem(`calendar-drawing-${year}`);
       if (savedDrawing) {
@@ -227,6 +240,14 @@ export default function YearCalendar() {
       localStorage.setItem('calendar-module-visibility', JSON.stringify(moduleVisibility));
     } catch { /* ignore */ }
   }, [moduleVisibility, mounted]);
+
+  // Save module links to localStorage
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      localStorage.setItem('calendar-module-links', JSON.stringify(moduleLinks));
+    } catch { /* ignore */ }
+  }, [moduleLinks, mounted]);
 
   const saveNote = useCallback(() => {
     if (!notePopup) return;
@@ -721,6 +742,7 @@ export default function YearCalendar() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              if (moduleLinks.timeline) { window.open(moduleLinks.timeline, '_blank'); return; }
               const opening = !timelineOpen;
               if (opening) {
                 setSelectedMonth(null);
@@ -776,7 +798,7 @@ export default function YearCalendar() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              window.open('https://dida365.com/webapp/#q/all/timeline', '_blank');
+              window.open(moduleLinks.dida || 'https://dida365.com/webapp/#q/all/timeline', '_blank');
             }}
             onMouseDown={(e) => e.preventDefault()}
             className="group flex flex-col items-center gap-1 cursor-pointer"
@@ -808,6 +830,7 @@ export default function YearCalendar() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              if (moduleLinks.longterm) { window.open(moduleLinks.longterm, '_blank'); return; }
               setShowLifeCalendar(true);
             }}
             onMouseDown={(e) => e.preventDefault()}
@@ -842,6 +865,7 @@ export default function YearCalendar() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              if (moduleLinks.insight) { window.open(moduleLinks.insight, '_blank'); return; }
               const opening = !insightOpen;
               if (opening) {
                 setSelectedMonth(null);
@@ -891,6 +915,7 @@ export default function YearCalendar() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              if (moduleLinks.track) { window.open(moduleLinks.track, '_blank'); return; }
               const opening = !trackOpen;
               if (opening) {
                 setSelectedMonth(null);
@@ -1596,7 +1621,7 @@ export default function YearCalendar() {
       {settingsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
           onClick={() => setSettingsOpen(false)}>
-          <div className="rounded-2xl shadow-2xl p-6 w-80"
+          <div className="rounded-2xl shadow-2xl p-6 w-96 max-h-[80vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
             style={{ backgroundColor: skin.panelBg, border: `1px solid ${skin.cellBorder}` }}>
             <div className="flex items-center justify-between mb-5">
@@ -1607,7 +1632,7 @@ export default function YearCalendar() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
-            <p className="text-xs mb-4" style={{ color: skin.textSecondary }}>控制侧边栏模块的显示与隐藏</p>
+            <p className="text-xs mb-4" style={{ color: skin.textSecondary }}>控制模块显隐 · 填写链接后点击按钮将跳转到外部页面</p>
             <div className="space-y-3">
               {([
                 { key: 'timeline', label: '日程', icon: '📅' },
@@ -1616,19 +1641,50 @@ export default function YearCalendar() {
                 { key: 'insight', label: '洞察', icon: '💡' },
                 { key: 'track', label: '轨迹', icon: '📊' },
               ] as const).map(item => (
-                <div key={item.key} className="flex items-center justify-between py-2 px-3 rounded-xl"
+                <div key={item.key} className="py-2 px-3 rounded-xl"
                   style={{ backgroundColor: moduleVisibility[item.key] ? `${skin.swatch}15` : 'rgba(0,0,0,0.05)' }}>
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-base">{item.icon}</span>
-                    <span className="text-sm font-medium" style={{ color: skin.textPrimary }}>{item.label}</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-base">{item.icon}</span>
+                      <span className="text-sm font-medium" style={{ color: skin.textPrimary }}>{item.label}</span>
+                      {moduleLinks[item.key] && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: `${skin.swatch}25`, color: skin.swatch }}>外链</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setModuleVisibility(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                      className="w-10 h-6 rounded-full relative transition-all cursor-pointer"
+                      style={{ backgroundColor: moduleVisibility[item.key] ? skin.swatch : '#d1d5db' }}>
+                      <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
+                        style={{ left: moduleVisibility[item.key] ? '18px' : '2px' }} />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setModuleVisibility(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
-                    className="w-10 h-6 rounded-full relative transition-all cursor-pointer"
-                    style={{ backgroundColor: moduleVisibility[item.key] ? skin.swatch : '#d1d5db' }}>
-                    <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-                      style={{ left: moduleVisibility[item.key] ? '18px' : '2px' }} />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={skin.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    </svg>
+                    <input
+                      type="url"
+                      placeholder="添加外链则跳转，留空用内置"
+                      value={moduleLinks[item.key] || ''}
+                      onChange={(e) => setModuleLinks(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      className="flex-1 text-xs px-2 py-1 rounded-lg outline-none transition-colors"
+                      style={{
+                        backgroundColor: 'rgba(0,0,0,0.05)',
+                        color: skin.textPrimary,
+                        border: `1px solid ${moduleLinks[item.key] ? skin.swatch + '60' : 'transparent'}`,
+                      }}
+                    />
+                    {moduleLinks[item.key] && (
+                      <button
+                        onClick={() => setModuleLinks(prev => ({ ...prev, [item.key]: '' }))}
+                        className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-black/10 cursor-pointer flex-shrink-0"
+                        style={{ color: skin.textSecondary }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
