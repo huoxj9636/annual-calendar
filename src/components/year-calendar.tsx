@@ -1619,68 +1619,102 @@ export default function YearCalendar() {
 
       {/* Settings popup */}
       {settingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
+          style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}
           onClick={() => setSettingsOpen(false)}>
-          <div className="rounded-2xl shadow-2xl p-6 w-96 max-h-[80vh] overflow-y-auto"
+          <div className="rounded-3xl shadow-2xl p-7 w-[420px] max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
-            style={{ backgroundColor: skin.panelBg, border: `1px solid ${skin.cellBorder}` }}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold" style={{ color: skin.textPrimary }}>模块设置</h2>
+            style={{
+              backgroundColor: skin.panelBg,
+              border: `1px solid ${skin.cellBorder}`,
+              boxShadow: `0 25px 60px -12px rgba(0,0,0,0.25), 0 0 0 1px ${skin.cellBorder}`,
+            }}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight" style={{ color: skin.textPrimary }}>模块设置</h2>
+                <p className="text-xs mt-1" style={{ color: skin.textSecondary }}>控制显隐 · 填写链接后跳转外部页面</p>
+              </div>
               <button onClick={() => setSettingsOpen(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-black/10 cursor-pointer"
+                className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer"
                 style={{ color: skin.textSecondary }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
-            <p className="text-xs mb-4" style={{ color: skin.textSecondary }}>控制模块显隐 · 填写链接后点击按钮将跳转到外部页面</p>
-            <div className="space-y-3">
+
+            {/* Module list */}
+            <div className="space-y-2.5">
               {([
-                { key: 'timeline', label: '日程', icon: '📅' },
-                { key: 'dida', label: '滴答清单', icon: '✅' },
-                { key: 'longterm', label: '长程', icon: '🧭' },
-                { key: 'insight', label: '洞察', icon: '💡' },
-                { key: 'track', label: '轨迹', icon: '📊' },
+                { key: 'timeline', label: '日程', icon: '📅', desc: '时间轴日程管理' },
+                { key: 'dida', label: '滴答清单', icon: '✅', desc: '任务清单工具' },
+                { key: 'longterm', label: '长程', icon: '🧭', desc: '人生旅途规划' },
+                { key: 'insight', label: '洞察', icon: '💡', desc: '每日洞察分析' },
+                { key: 'track', label: '轨迹', icon: '📊', desc: '计划轨迹对照' },
               ] as const).map(item => (
-                <div key={item.key} className="py-2 px-3 rounded-xl"
-                  style={{ backgroundColor: moduleVisibility[item.key] ? `${skin.swatch}15` : 'rgba(0,0,0,0.05)' }}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-base">{item.icon}</span>
-                      <span className="text-sm font-medium" style={{ color: skin.textPrimary }}>{item.label}</span>
-                      {moduleLinks[item.key] && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: `${skin.swatch}25`, color: skin.swatch }}>外链</span>
-                      )}
+                <div key={item.key}
+                  className="rounded-2xl p-4 transition-all"
+                  style={{
+                    backgroundColor: moduleVisibility[item.key] ? `${skin.swatch}08` : 'rgba(0,0,0,0.03)',
+                    border: `1.5px solid ${moduleVisibility[item.key] ? `${skin.swatch}30` : 'transparent'}`,
+                  }}>
+                  {/* Top row: icon + label + switch */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
+                        style={{ backgroundColor: moduleVisibility[item.key] ? `${skin.swatch}15` : 'rgba(0,0,0,0.06)' }}>
+                        {item.icon}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold" style={{ color: skin.textPrimary }}>{item.label}</span>
+                          {moduleLinks[item.key] && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                              style={{ backgroundColor: `${skin.swatch}18`, color: skin.swatch, border: `1px solid ${skin.swatch}30` }}>
+                              外链
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px]" style={{ color: skin.textSecondary }}>{item.desc}</span>
+                      </div>
                     </div>
                     <button
                       onClick={() => setModuleVisibility(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
-                      className="w-10 h-6 rounded-full relative transition-all cursor-pointer"
-                      style={{ backgroundColor: moduleVisibility[item.key] ? skin.swatch : '#d1d5db' }}>
-                      <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-                        style={{ left: moduleVisibility[item.key] ? '18px' : '2px' }} />
+                      className="w-11 h-7 rounded-full relative transition-all cursor-pointer flex-shrink-0"
+                      style={{
+                        backgroundColor: moduleVisibility[item.key] ? skin.swatch : '#d1d5db',
+                        boxShadow: moduleVisibility[item.key] ? `0 2px 8px ${skin.swatch}40` : 'none',
+                      }}>
+                      <span className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm transition-all"
+                        style={{ left: moduleVisibility[item.key] ? '22px' : '4px' }} />
                     </button>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={skin.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                    </svg>
+
+                  {/* Bottom row: link input */}
+                  <div className="flex items-center gap-2 mt-3">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0"
+                      style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={skin.textSecondary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                    </div>
                     <input
                       type="url"
                       placeholder="添加外链则跳转，留空用内置"
                       value={moduleLinks[item.key] || ''}
                       onChange={(e) => setModuleLinks(prev => ({ ...prev, [item.key]: e.target.value }))}
-                      className="flex-1 text-xs px-2 py-1 rounded-lg outline-none transition-colors"
+                      className="flex-1 text-xs px-3 py-2 rounded-xl outline-none transition-all"
                       style={{
-                        backgroundColor: 'rgba(0,0,0,0.05)',
+                        backgroundColor: moduleLinks[item.key] ? `${skin.swatch}08` : 'rgba(0,0,0,0.04)',
                         color: skin.textPrimary,
-                        border: `1px solid ${moduleLinks[item.key] ? skin.swatch + '60' : 'transparent'}`,
+                        border: `1.5px solid ${moduleLinks[item.key] ? `${skin.swatch}50` : 'transparent'}`,
                       }}
                     />
                     {moduleLinks[item.key] && (
                       <button
                         onClick={() => setModuleLinks(prev => ({ ...prev, [item.key]: '' }))}
-                        className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-black/10 cursor-pointer flex-shrink-0"
-                        style={{ color: skin.textSecondary }}>
+                        className="w-6 h-6 rounded-lg flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer flex-shrink-0"
+                        style={{ color: skin.textSecondary, backgroundColor: 'rgba(0,0,0,0.05)' }}>
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                       </button>
                     )}
