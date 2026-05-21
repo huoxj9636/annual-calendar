@@ -180,9 +180,18 @@ export default function YearCalendar() {
     }
   }, [year]);
 
-  // Save overrides to localStorage
+  // Save overrides to localStorage (skip first render after mount to avoid overwriting with empty {})
+  const overridesLoadedRef = useRef(false);
   useEffect(() => {
     if (!mounted) return;
+    if (!overridesLoadedRef.current) {
+      // Only start saving once overrides have been loaded from localStorage
+      if (Object.keys(overrides).length > 0 || localStorage.getItem(`calendar-overrides-${year}`)) {
+        overridesLoadedRef.current = true;
+      } else {
+        return; // Skip saving on first render before data is loaded
+      }
+    }
     try {
       localStorage.setItem(
         `calendar-overrides-${year}`,
@@ -194,8 +203,16 @@ export default function YearCalendar() {
   }, [overrides, year, mounted]);
 
   // Save notes to localStorage
+  const notesLoadedRef = useRef(false);
   useEffect(() => {
     if (!mounted) return;
+    if (!notesLoadedRef.current) {
+      if (Object.keys(notes).length > 0 || localStorage.getItem(`calendar-notes-${year}`)) {
+        notesLoadedRef.current = true;
+      } else {
+        return;
+      }
+    }
     try {
       localStorage.setItem(`calendar-notes-${year}`, JSON.stringify(notes));
     } catch {
