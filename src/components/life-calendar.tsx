@@ -1,807 +1,1209 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { SKINS, NO_SKIN, DEFAULT_SKIN } from '@/lib/skins';
-import type { SkinTheme } from '@/lib/skins';
+import ParticleEffect from '@/components/particle-effect';
 
-/* ============ Props ============ */
 interface LifeCalendarProps {
   birthYear: number;
-  setBirthYear: (y: number) => void;
+  setBirthYear: (year: number) => void;
   onClose: () => void;
   skinKey?: string;
 }
 
-/* ============ Life Stage Types ============ */
-interface LifeStage {
-  range: string;
-  label: string;
-  icon: string;
-  color: string;
-  focus: string;
-  details: string[];
-}
-
-/* ============ Goal / Step Types ============ */
-type StepType = 'online' | 'offline' | 'collab';
-type StepStatus = 'pending' | 'ai_doing' | 'waiting_user' | 'done';
-type CompletedBy = 'ai' | 'user' | 'ai_user' | '';
-
-interface Step {
+interface ActionItem {
   id: string;
   text: string;
-  type: StepType;
-  status: StepStatus;
-  completedBy: CompletedBy;
   done: boolean;
-  aiResult?: string;
-  createdAt: number;
-  completedAt?: number;
+  addedToCalendar: boolean;
 }
-interface Goal {
+
+interface Category {
+  key: string;
+  title: string;
+  icon: string;
+  actions: ActionItem[];
+}
+
+interface Stage {
+  key: string;
+  label: string;
+  range: string;
+  emoji: string;
+  start: number;
+  end: number;
+  slogan: string;
+  categories: Category[];
+}
+
+// 长期计划
+interface Milestone {
   id: string;
-  vision: string;
-  duration: string;
-  durationUnit: 'week' | 'month' | 'year';
-  steps: Step[];
+  text: string;
+  done: boolean;
+}
+
+interface LongTermPlan {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  category: string;
+  startYear: number;
+  targetYear: number;
+  milestones: Milestone[];
+  source: string; // template key or 'custom'
   createdAt: number;
 }
-interface DailyLog {
-  date: string;
-  goalId: string;
-  pct: number;
-  done: number;
-  total: number;
+
+interface LifeTemplate {
+  key: string;
+  name: string;
+  icon: string;
+  description: string;
+  tags: string[];
+  category: string;
+  milestones: Milestone[];
 }
 
-/* ============ Life Stages Data ============ */
-const LIFE_STAGES: LifeStage[] = [
+const STAGES: Stage[] = [
   {
-    range: '0-6', label: '幼年', icon: '🌱', color: '#22c55e',
-    focus: '建立安全感和好奇心，学会与世界建立信任',
-    details: [
-      '【认知】0-3岁是大脑发育黄金期，多与孩子说话、共读绘本，词汇量决定未来学习能力',
-      '【情感】建立安全依恋关系，父母的及时回应是孩子一生自信的根基',
-      '【习惯】养成规律作息，睡眠、饮食、运动的基本节律影响终身健康',
-      '【社交】3岁后进入幼儿园，学会分享、排队、等待，这是社会化的起点',
-      '【探索】保护好奇心，不要阻止孩子摸爬滚打，感官体验是认知的基础',
-      '【语言】双语启蒙的窗口期，3岁前接触第二语言效果最佳',
-      '【运动】大运动发育(跑跳攀爬)比精细动作更重要，多户外活动',
-      '【品格】犯错时不要惩罚，要引导，"你试试看"比"不许"更有力量',
-    ],
+    key: 'childhood', label: '童年', range: '0-5岁', emoji: '🌱', start: 0, end: 5,
+    slogan: '万物皆可探索',
+    categories: [
+      { key: 'body', title: '身体成长', icon: '🏃', actions: [
+        { id: 'c1', text: '学会独立走路和跑步', done: false, addedToCalendar: false },
+        { id: 'c2', text: '能自己用筷子吃饭', done: false, addedToCalendar: false },
+        { id: 'c3', text: '每天户外活动至少1小时', done: false, addedToCalendar: false },
+        { id: 'c4', text: '学会骑儿童自行车', done: false, addedToCalendar: false },
+        { id: 'c5', text: '养成早睡早起的作息', done: false, addedToCalendar: false },
+      ]},
+      { key: 'mind', title: '认知启蒙', icon: '🧠', actions: [
+        { id: 'c6', text: '认识26个英文字母', done: false, addedToCalendar: false },
+        { id: 'c7', text: '能数到100', done: false, addedToCalendar: false },
+        { id: 'c8', text: '每天亲子阅读20分钟', done: false, addedToCalendar: false },
+        { id: 'c9', text: '学会10首儿歌', done: false, addedToCalendar: false },
+        { id: 'c10', text: '认识常见动物和植物', done: false, addedToCalendar: false },
+      ]},
+      { key: 'emotion', title: '情感培养', icon: '❤️', actions: [
+        { id: 'c11', text: '学会说"我爱你"和"谢谢"', done: false, addedToCalendar: false },
+        { id: 'c12', text: '能表达自己的开心和难过', done: false, addedToCalendar: false },
+        { id: 'c13', text: '建立安全感，知道家人永远在', done: false, addedToCalendar: false },
+        { id: 'c14', text: '学会和小朋友分享玩具', done: false, addedToCalendar: false },
+      ]},
+      { key: 'social', title: '社交萌芽', icon: '🤝', actions: [
+        { id: 'c15', text: '交到第一个好朋友', done: false, addedToCalendar: false },
+        { id: 'c16', text: '学会排队和轮流', done: false, addedToCalendar: false },
+        { id: 'c17', text: '在集体活动中不哭闹', done: false, addedToCalendar: false },
+      ]},
+    ]
   },
   {
-    range: '7-12', label: '童年', icon: '🌈', color: '#f59e0b',
-    focus: '培养学习能力和一项持久兴趣，建立"我能行"的自我认知',
-    details: [
-      '【学习习惯】学会制定小计划并完成，番茄钟、任务清单从这时开始练习',
-      '【阅读】从绘本过渡到文字书，每天30分钟阅读量直接影响理解力',
-      '【一项运动】选择一项团体运动(篮球/足球/游泳)，坚持3年以上，培养韧性和团队意识',
-      '【一项艺术】音乐/绘画/书法，不求考级，但要能沉浸其中',
-      '【数学思维】不是刷题，是理解数量关系、空间想象、逻辑推理',
-      '【社交】从玩伴到朋友，学会倾听和表达不同意见，处理小矛盾',
-      '【家务】承担力所能及的家务，责任感不是教出来的，是做出来的',
-      '【财商】开始管理零花钱，学会储蓄和延迟满足',
-      '【屏幕】控制屏幕时间，但不要完全禁止，教会自律而非依赖管控',
-    ],
+    key: 'youth', label: '少年', range: '6-11岁', emoji: '🌿', start: 6, end: 11,
+    slogan: '好奇心是最棒的老师',
+    categories: [
+      { key: 'study', title: '学业基础', icon: '📚', actions: [
+        { id: 'y1', text: '养成每天按时完成作业的习惯', done: false, addedToCalendar: false },
+        { id: 'y2', text: '找到一门最喜欢的学科', done: false, addedToCalendar: false },
+        { id: 'y3', text: '读完整套《十万个为什么》', done: false, addedToCalendar: false },
+        { id: 'y4', text: '学会查字典和独立找资料', done: false, addedToCalendar: false },
+        { id: 'y5', text: '参加一次学科竞赛或考试', done: false, addedToCalendar: false },
+      ]},
+      { key: 'hobby', title: '兴趣发展', icon: '🎨', actions: [
+        { id: 'y6', text: '选择一项运动并坚持练习1年', done: false, addedToCalendar: false },
+        { id: 'y7', text: '学会一种乐器的基础演奏', done: false, addedToCalendar: false },
+        { id: 'y8', text: '完成一幅自己满意的画作', done: false, addedToCalendar: false },
+        { id: 'y9', text: '学会做3道简单的菜', done: false, addedToCalendar: false },
+      ]},
+      { key: 'character', title: '品格塑造', icon: '💎', actions: [
+        { id: 'y10', text: '学会承认错误并道歉', done: false, addedToCalendar: false },
+        { id: 'y11', text: '坚持做完一件困难的事', done: false, addedToCalendar: false },
+        { id: 'y12', text: '每月做一件帮助别人的事', done: false, addedToCalendar: false },
+        { id: 'y13', text: '学会管理自己的零花钱', done: false, addedToCalendar: false },
+      ]},
+      { key: 'explore', title: '视野拓展', icon: '🌍', actions: [
+        { id: 'y14', text: '去一次博物馆或科技馆', done: false, addedToCalendar: false },
+        { id: 'y15', text: '了解3个不同国家的文化', done: false, addedToCalendar: false },
+        { id: 'y16', text: '写一本观察日记', done: false, addedToCalendar: false },
+      ]},
+    ]
   },
   {
-    range: '13-18', label: '少年', icon: '⚡', color: '#3b82f6',
-    focus: '寻找自我定位，建立价值观和独立思考能力',
-    details: [
-      '【身份认同】我是谁？我擅长什么？这些问题比成绩更重要，需要探索而非被安排',
-      '【价值观】开始独立判断是非，父母的角色从"指挥官"变为"顾问"',
-      '【学习方法】从被动接受到主动学习，学会记笔记、画思维导图、费曼学习法',
-      '【深度兴趣】在1-2个领域深入钻研，参加竞赛/社团/项目，体验深度投入的快感',
-      '【情商】学会管理情绪，特别是愤怒和焦虑，这是成人世界的核心竞争力',
-      '【社交边界】理解个人空间和边界感，学会说"不"，也尊重别人的"不"',
-      '【身体管理】青春期身体剧变，建立运动习惯和营养意识，这将影响30岁后的状态',
-      '【职业启蒙】不要急着定方向，但要广泛接触：实习、访谈、职业体验日',
-      '【逆商】第一次大考失利、第一次被拒绝，这些都是成长的必修课',
-      '【数字素养】理解信息真假辨别、隐私保护、网络礼仪',
-    ],
+    key: 'teenager', label: '青春', range: '12-17岁', emoji: '🌳', start: 12, end: 17,
+    slogan: '找到自己热爱的事',
+    categories: [
+      { key: 'academics', title: '学业进阶', icon: '📖', actions: [
+        { id: 't1', text: '确定自己的文理方向偏好', done: false, addedToCalendar: false },
+        { id: 't2', text: '建立一套适合自己的学习方法', done: false, addedToCalendar: false },
+        { id: 't3', text: '读完10本课外经典名著', done: false, addedToCalendar: false },
+        { id: 't4', text: '为中考/高考制定详细复习计划', done: false, addedToCalendar: false },
+        { id: 't5', text: '参加至少一个学术类社团', done: false, addedToCalendar: false },
+      ]},
+      { key: 'identity', title: '自我认知', icon: '🪞', actions: [
+        { id: 't6', text: '写一封信给10年后的自己', done: false, addedToCalendar: false },
+        { id: 't7', text: '列出自己最擅长的3件事', done: false, addedToCalendar: false },
+        { id: 't8', text: '找到一件即使没人夸也会做的事', done: false, addedToCalendar: false },
+        { id: 't9', text: '学会独处，享受一个人的时光', done: false, addedToCalendar: false },
+      ]},
+      { key: 'career', title: '职业启蒙', icon: '🧭', actions: [
+        { id: 't10', text: '了解5种不同职业的日常工作', done: false, addedToCalendar: false },
+        { id: 't11', text: '和长辈聊他们为什么选这份工作', done: false, addedToCalendar: false },
+        { id: 't12', text: '做一次职业兴趣测评', done: false, addedToCalendar: false },
+        { id: 't13', text: '尝试一份兼职或志愿者工作', done: false, addedToCalendar: false },
+      ]},
+      { key: 'health', title: '身心成长', icon: '💪', actions: [
+        { id: 't14', text: '养成每周运动3次的习惯', done: false, addedToCalendar: false },
+        { id: 't15', text: '学会3种缓解压力的方法', done: false, addedToCalendar: false },
+        { id: 't16', text: '和信任的人聊一次心里话', done: false, addedToCalendar: false },
+      ]},
+    ]
   },
   {
-    range: '19-22', label: '青年前期', icon: '🎓', color: '#8b5cf6',
-    focus: '选择专业方向，学会独立生活和深度学习',
-    details: [
-      '【专业选择】选你愿意花1万小时深入的方向，而不是"好就业"的方向',
-      '【深度学习】大学最大的价值不是文凭，是学会如何快速掌握一个领域',
-      '【第一次实习】越早越好，大二就开始，真实世界和课本完全不同',
-      '【独立生活】理财、做饭、看病、租房，这些生存技能比GPA重要',
-      '【人脉】大学同学是最纯粹的社交网络，深度交往5-10个值得长期交往的人',
-      '【阅读升级】从教材到经典，每年至少读10本非专业领域的书',
-      '【身体投资】20岁的运动习惯决定40岁的身体状态，每周至少3次运动',
-      '【表达力】学会公开演讲、写文章、做PPT，这是所有职业的通用能力',
-      '【试错】这是试错成本最低的时期，创业、gap year、换专业都值得尝试',
-    ],
+    key: 'young-adult', label: '青年', range: '18-29岁', emoji: '🚀', start: 18, end: 29,
+    slogan: '用行动丈量世界的广度',
+    categories: [
+      { key: 'career', title: '职业探索', icon: '💼', actions: [
+        { id: 'ya1', text: '完成学历教育或职业技能培训', done: false, addedToCalendar: false },
+        { id: 'ya2', text: '找到第一份工作，养活自己', done: false, addedToCalendar: false },
+        { id: 'ya3', text: '换一次工作，知道自己不要什么', done: false, addedToCalendar: false },
+        { id: 'ya4', text: '建立个人职业发展3年规划', done: false, addedToCalendar: false },
+        { id: 'ya5', text: '存下第一个10万', done: false, addedToCalendar: false },
+        { id: 'ya6', text: '在某个领域成为被咨询的专家', done: false, addedToCalendar: false },
+      ]},
+      { key: 'relationship', title: '亲密关系', icon: '💑', actions: [
+        { id: 'ya7', text: '认真谈一次恋爱，学会爱与被爱', done: false, addedToCalendar: false },
+        { id: 'ya8', text: '想清楚自己对伴侣的核心需求', done: false, addedToCalendar: false },
+        { id: 'ya9', text: '学会在关系中说"不"和"我需要"', done: false, addedToCalendar: false },
+        { id: 'ya10', text: '如果遇到对的人，考虑组建家庭', done: false, addedToCalendar: false },
+      ]},
+      { key: 'finance', title: '财务独立', icon: '💰', actions: [
+        { id: 'ya11', text: '建立3-6个月的应急储备金', done: false, addedToCalendar: false },
+        { id: 'ya12', text: '开始每月定投指数基金', done: false, addedToCalendar: false },
+        { id: 'ya13', text: '学会做月度预算并执行', done: false, addedToCalendar: false },
+        { id: 'ya14', text: '配置基础保险(医疗+意外)', done: false, addedToCalendar: false },
+      ]},
+      { key: 'growth', title: '个人成长', icon: '🌟', actions: [
+        { id: 'ya15', text: '独自旅行一次，学会与自己相处', done: false, addedToCalendar: false },
+        { id: 'ya16', text: '每年学一项新技能(编程/设计/外语)', done: false, addedToCalendar: false },
+        { id: 'ya17', text: '读50本关于认知和成长的书', done: false, addedToCalendar: false },
+        { id: 'ya18', text: '建立自己的知识管理系统', done: false, addedToCalendar: false },
+      ]},
+    ]
   },
   {
-    range: '23-30', label: '青年', icon: '🚀', color: '#ec4899',
-    focus: '确立职业方向，经济独立，建立深度关系',
-    details: [
-      '【职业方向】25岁前可以频繁切换，28岁后需要聚焦，30岁时应有清晰赛道',
-      '【核心竞争力】找到你的"不可替代性"，T型人才(一专多能)最具竞争力',
-      '【经济独立】先有存款再消费，建立3-6个月应急基金，拒绝消费主义陷阱',
-      '【第一次跳槽】不要因为不舒服而跳，要因为成长空间而跳，每次跳槽薪资至少涨30%',
-      '【深度关系】2-3个能托付后背的朋友，1段认真对待的感情，比100个点赞重要',
-      '【健康底线】每年体检，关注心理健康，焦虑和抑郁不是矫情是病',
-      '【认知升级】开始系统学习金融、法律、心理学，这三门课学校不教但社会必考',
-      '【副业/创业】30岁前至少尝试一次，即使失败也是最好的MBA',
-      '【家庭对话】理解父母的局限，完成心理上的"弑父弑母"(独立判断)',
-      '【城市选择】一线城市的核心价值不是薪资，是认知密度和可能性',
-    ],
+    key: 'thirties', label: '而立', range: '30-39岁', emoji: '⛰️', start: 30, end: 39,
+    slogan: '在深耕中建立不可替代性',
+    categories: [
+      { key: 'career', title: '事业深耕', icon: '🏔️', actions: [
+        { id: 'th1', text: '从执行者转型为管理者或专家', done: false, addedToCalendar: false },
+        { id: 'th2', text: '找到自己的专业壁垒和护城河', done: false, addedToCalendar: false },
+        { id: 'th3', text: '带出一个高绩效团队', done: false, addedToCalendar: false },
+        { id: 'th4', text: '完成一个让你骄傲的项目', done: false, addedToCalendar: false },
+        { id: 'th5', text: '建立行业人脉网络', done: false, addedToCalendar: false },
+      ]},
+      { key: 'family', title: '家庭经营', icon: '🏠', actions: [
+        { id: 'th6', text: '每周安排一次家庭活动日', done: false, addedToCalendar: false },
+        { id: 'th7', text: '学会有效沟通，减少争吵', done: false, addedToCalendar: false },
+        { id: 'th8', text: '和伴侣保持每月一次深度对话', done: false, addedToCalendar: false },
+        { id: 'th9', text: '为孩子制定教养原则(如有)', done: false, addedToCalendar: false },
+        { id: 'th10', text: '建立家庭年度旅行传统', done: false, addedToCalendar: false },
+      ]},
+      { key: 'finance', title: '财务进阶', icon: '📊', actions: [
+        { id: 'th11', text: '被动收入覆盖基本生活支出', done: false, addedToCalendar: false },
+        { id: 'th12', text: '制定并执行子女教育金计划', done: false, addedToCalendar: false },
+        { id: 'th13', text: '完善家庭保障体系(重疾+寿险)', done: false, addedToCalendar: false },
+        { id: 'th14', text: '开始规划退休储蓄', done: false, addedToCalendar: false },
+      ]},
+      { key: 'health', title: '健康管理', icon: '🏋️', actions: [
+        { id: 'th15', text: '每年做一次全面体检', done: false, addedToCalendar: false },
+        { id: 'th16', text: '养成每周3次有氧运动习惯', done: false, addedToCalendar: false },
+        { id: 'th17', text: '注意颈椎腰椎，调整工位', done: false, addedToCalendar: false },
+        { id: 'th18', text: '学会2种以上放松和冥想技巧', done: false, addedToCalendar: false },
+      ]},
+    ]
   },
   {
-    range: '31-40', label: '而立', icon: '💪', color: '#ef4444',
-    focus: '职业上升期，组建家庭，开始长期主义思维',
-    details: [
-      '【职业上升】从执行者到管理者，学会通过他人拿结果，个人英雄主义到此为止',
-      '【管理能力】不是"我最强"，而是"让团队最强"，这是35岁后最重要的能力',
-      '【家庭建设】如果选择组建家庭，优先选择三观一致的伴侣，而非条件最优',
-      '【买房决策】量力而行，不要让房贷压垮生活质量，租房不丢人',
-      '【子女教育】身教大于言传，你的行为是孩子最大的教材',
-      '【健康管理】代谢开始下降，每年增肌比减脂更重要，骨密度从35岁开始流失',
-      '【财富增值】开始学习投资，复利的起点越早效果越惊人，但先学再投',
-      '【时间管理】学会说不，把时间留给真正重要的人和事',
-      '【情绪成熟】不再追求所有人的认可，接受"被误解是表达者的宿命"',
-      '【长期主义】5年规划比年度目标更重要，做时间的朋友',
-    ],
+    key: 'forties', label: '不惑', range: '40-49岁', emoji: '🏔️', start: 40, end: 49,
+    slogan: '知道自己要什么，更知道自己不要什么',
+    categories: [
+      { key: 'career', title: '事业进阶', icon: '🎯', actions: [
+        { id: 'fo1', text: '成为行业内被尊重的声音', done: false, addedToCalendar: false },
+        { id: 'fo2', text: '培养接班人或传承经验', done: false, addedToCalendar: false },
+        { id: 'fo3', text: '评估是否需要职业第二曲线', done: false, addedToCalendar: false },
+        { id: 'fo4', text: '参与行业标准的制定或评审', done: false, addedToCalendar: false },
+      ]},
+      { key: 'children', title: '子女教育', icon: '👨‍👧', actions: [
+        { id: 'fo5', text: '从管教者转变为引导者', done: false, addedToCalendar: false },
+        { id: 'fo6', text: '每周一次和孩子的单独相处', done: false, addedToCalendar: false },
+        { id: 'fo7', text: '帮助孩子找到他们的热爱', done: false, addedToCalendar: false },
+        { id: 'fo8', text: '学会放手，允许孩子犯错', done: false, addedToCalendar: false },
+      ]},
+      { key: 'balance', title: '身心平衡', icon: '⚖️', actions: [
+        { id: 'fo9', text: '接受身体的变化，调整运动方式', done: false, addedToCalendar: false },
+        { id: 'fo10', text: '每年一次深度体检+专项筛查', done: false, addedToCalendar: false },
+        { id: 'fo11', text: '培养一个与工作无关的深度爱好', done: false, addedToCalendar: false },
+        { id: 'fo12', text: '学会说"不"，减少不必要的社交', done: false, addedToCalendar: false },
+      ]},
+      { key: 'meaning', title: '人生思考', icon: '🪶', actions: [
+        { id: 'fo13', text: '写一份人生中期回顾', done: false, addedToCalendar: false },
+        { id: 'fo14', text: '和父母深入聊一次他们的人生', done: false, addedToCalendar: false },
+        { id: 'fo15', text: '思考什么是真正让自己快乐的事', done: false, addedToCalendar: false },
+      ]},
+    ]
   },
   {
-    range: '41-50', label: '不惑', icon: '🎯', color: '#f97316',
-    focus: '事业巅峰期，关注传承和下一代，守住健康底线',
-    details: [
-      '【事业巅峰】这是职业收入的高峰期，但不要用命换钱，40岁后的健康债利滚利',
-      '【传帮带】开始培养接班人，你的经验是组织最大的隐性资产',
-      '【子女青春期】最难也最重要的阶段，倾听比说教有效100倍',
-      '【中年危机】不是危机，是重新审视人生意义的机会，迷茫是正常的',
-      '【健康红线】心血管、前列腺/乳腺、颈椎腰椎，这些是40+的四大杀手',
-      '【资产配置】从追求增长转向保值，分散投资，降低风险敞口',
-      '【关系经营】维护5-8个深度关系，比扩展500个弱连接更有价值',
-      '【第二曲线】如果主业见顶，开始布局B计划，副业/投资/教学/写作',
-      '【心理韧性】接受不完美，接受失控，这是中年人最重要的心理建设',
-    ],
+    key: 'fifties', label: '知天命', range: '50-59岁', emoji: '🌅', start: 50, end: 59,
+    slogan: '享受从参与者到传承者的转变',
+    categories: [
+      { key: 'legacy', title: '经验传承', icon: '📜', actions: [
+        { id: 'fi1', text: '带3个年轻人成长', done: false, addedToCalendar: false },
+        { id: 'fi2', text: '整理自己的人生经验写成文章', done: false, addedToCalendar: false },
+        { id: 'fi3', text: '在行业协会或社区担任顾问', done: false, addedToCalendar: false },
+      ]},
+      { key: 'hobby', title: '兴趣深耕', icon: '🎭', actions: [
+        { id: 'fi4', text: '把一个爱好练到专业水平', done: false, addedToCalendar: false },
+        { id: 'fi5', text: '尝试一个一直想做但没做的事', done: false, addedToCalendar: false },
+        { id: 'fi6', text: '加入一个兴趣社群，结交新朋友', done: false, addedToCalendar: false },
+      ]},
+      { key: 'health', title: '健康保养', icon: '🧘', actions: [
+        { id: 'fi7', text: '建立每日晨练的习惯(太极/散步/瑜伽)', done: false, addedToCalendar: false },
+        { id: 'fi8', text: '关注心脑血管健康，定期检查', done: false, addedToCalendar: false },
+        { id: 'fi9', text: '调整饮食结构，少油少盐多蔬果', done: false, addedToCalendar: false },
+      ]},
+      { key: 'freedom', title: '放下执念', icon: '🍃', actions: [
+        { id: 'fi10', text: '和过去和解，原谅该原谅的人', done: false, addedToCalendar: false },
+        { id: 'fi11', text: '清理不再需要的物品和关系', done: false, addedToCalendar: false },
+        { id: 'fi12', text: '学会享受当下，而非追逐更多', done: false, addedToCalendar: false },
+      ]},
+    ]
   },
   {
-    range: '51-65', label: '知天命', icon: '🌅', color: '#14b8a6',
-    focus: '从获取者变为给予者，规划退休，培养精神世界',
-    details: [
-      '【传帮带】将经验制度化、系统化，写书/做课/当顾问，让智慧不止于你',
-      '【退休规划】55岁开始规划，60岁执行，财务自由=支出<被动收入',
-      '【慢性病管理】高血压、糖尿病、关节退化，控制比治愈更现实',
-      '【精神世界】培养1-2个深度的非功利爱好，书法/园艺/太极/摄影',
-      '【空巢适应】子女独立后重新定义家庭关系，和伴侣重新认识彼此',
-      '【社会参与】社区志愿者/行业协会/公益组织，从参与者变为组织者',
-      '【旅行清单】60岁前去需要体力的地方(徒步/高原/远洋)，70岁后以休闲为主',
-      '【遗产规划】不只是财产分配，更是价值观和家族故事的传承',
-    ],
+    key: 'sixties', label: '耳顺', range: '60-69岁', emoji: '🌾', start: 60, end: 69,
+    slogan: '人生下半场，活出真正的自己',
+    categories: [
+      { key: 'retire', title: '退休规划', icon: '🏖️', actions: [
+        { id: 'si1', text: '制定退休后的日程表，保持节奏感', done: false, addedToCalendar: false },
+        { id: 'si2', text: '评估退休金是否足够，调整支出', done: false, addedToCalendar: false },
+        { id: 'si3', text: '找到退休后的身份认同', done: false, addedToCalendar: false },
+      ]},
+      { key: 'family', title: '家庭温情', icon: '👴', actions: [
+        { id: 'si4', text: '每周和子女通一次电话', done: false, addedToCalendar: false },
+        { id: 'si5', text: '和老伴培养共同爱好', done: false, addedToCalendar: false },
+        { id: 'si6', text: '给孙辈讲你年轻时的故事', done: false, addedToCalendar: false },
+      ]},
+      { key: 'explore', title: '人生新探索', icon: '🗺️', actions: [
+        { id: 'si7', text: '去3个一直想去的地方旅行', done: false, addedToCalendar: false },
+        { id: 'si8', text: '学会用智能手机和社交软件', done: false, addedToCalendar: false },
+        { id: 'si9', text: '尝试一种新的艺术形式(书法/绘画/摄影)', done: false, addedToCalendar: false },
+      ]},
+      { key: 'health', title: '健康管理', icon: '🏥', actions: [
+        { id: 'si10', text: '每年做2次体检', done: false, addedToCalendar: false },
+        { id: 'si11', text: '每天散步6000步以上', done: false, addedToCalendar: false },
+        { id: 'si12', text: '保持社交活跃，预防认知衰退', done: false, addedToCalendar: false },
+      ]},
+    ]
   },
   {
-    range: '66-80', label: '古稀', icon: '🍂', color: '#a855f7',
-    focus: '享受生命，传承智慧，与时间和解',
-    details: [
-      '【健康管理】每周3次以上适度运动(散步/太极/游泳)，保持社交活动延缓认知衰退',
-      '【智慧传承】写回忆录/家族史/人生信条，这是给后代最珍贵的遗产',
-      '【社交活跃】孤独比疾病更致命，保持至少每周1次深度社交',
-      '【终身学习】学新技能(手机/互联网/新语言)保持大脑活力，预防阿尔茨海默',
-      '【财务安全】不碰高风险投资，保住养老金，警惕针对老人的诈骗',
-      '【与疾病共存】接受身体衰退是自然规律，重点是生活质量而非寿命长度',
-      '【和解】与过去的遗憾和解，与疏远的亲友和解，与自己的不完美和解',
-      '【活在当下】不再为未来焦虑，每个清晨都是礼物，认真过好每一天',
-    ],
+    key: 'seventies', label: '古稀', range: '70-79岁', emoji: '🌕', start: 70, end: 79,
+    slogan: '每一天都是礼物',
+    categories: [
+      { key: 'wisdom', title: '智慧传承', icon: '📝', actions: [
+        { id: 'se1', text: '写回忆录或家族史', done: false, addedToCalendar: false },
+        { id: 'se2', text: '把人生教训告诉下一代', done: false, addedToCalendar: false },
+        { id: 'se3', text: '整理照片和书信，留给家人', done: false, addedToCalendar: false },
+      ]},
+      { key: 'peace', title: '安享生活', icon: '☀️', actions: [
+        { id: 'se4', text: '每天做一件让自己开心的小事', done: false, addedToCalendar: false },
+        { id: 'se5', text: '和老朋友保持联系，每月见一次', done: false, addedToCalendar: false },
+        { id: 'se6', text: '养花种草，享受生命的节奏', done: false, addedToCalendar: false },
+      ]},
+      { key: 'body', title: '身体照护', icon: '🩺', actions: [
+        { id: 'se7', text: '按时服药，定期复查', done: false, addedToCalendar: false },
+        { id: 'se8', text: '预防跌倒，注意居家安全', done: false, addedToCalendar: false },
+        { id: 'se9', text: '保持适度活动，量力而行', done: false, addedToCalendar: false },
+      ]},
+      { key: 'spirit', title: '心灵富足', icon: '🕊️', actions: [
+        { id: 'se10', text: '每天感恩三件事', done: false, addedToCalendar: false },
+        { id: 'se11', text: '放下所有遗憾，与自己和解', done: false, addedToCalendar: false },
+        { id: 'se12', text: '对身边的人说"谢谢你们陪伴我"', done: false, addedToCalendar: false },
+      ]},
+    ]
   },
 ];
 
-const STEP_CFG: Record<StepType, { label: string; color: string; icon: string }> = {
-  online: { label: '线上', color: '#3b82f6', icon: '☁' },
-  offline: { label: '线下', color: '#f59e0b', icon: '📍' },
-  collab: { label: '协作', color: '#8b5cf6', icon: '🤝' },
-};
-const STATUS_CFG: Record<StepStatus, { label: string; color: string }> = {
-  pending: { label: '待执行', color: '#6b7280' },
-  ai_doing: { label: 'AI处理中', color: '#3b82f6' },
-  waiting_user: { label: '等你行动', color: '#f59e0b' },
-  done: { label: '已完成', color: '#22c55e' },
-};
-
-const DURATIONS = [
-  { value: '1', unit: 'week' as const, label: '1周' },
-  { value: '2', unit: 'week' as const, label: '2周' },
-  { value: '1', unit: 'month' as const, label: '1个月' },
-  { value: '3', unit: 'month' as const, label: '3个月' },
-  { value: '6', unit: 'month' as const, label: '半年' },
-  { value: '1', unit: 'year' as const, label: '1年' },
-  { value: '3', unit: 'year' as const, label: '3年' },
-  { value: '5', unit: 'year' as const, label: '5年' },
-  { value: '10', unit: 'year' as const, label: '10年' },
+// 长期计划模板
+const PLAN_TEMPLATES: LifeTemplate[] = [
+  {
+    key: 'career-first', name: '事业优先型', icon: '💼',
+    description: '以职业发展为核心，追求专业成就和财务自由',
+    tags: ['职场', '晋升', '财富'],
+    category: 'career',
+    milestones: [
+      { id: 'cf1', text: '确定职业方向并深耕3年', done: false },
+      { id: 'cf2', text: '考取行业核心证书', done: false },
+      { id: 'cf3', text: '3年内晋升一次', done: false },
+      { id: 'cf4', text: '建立个人品牌和行业影响力', done: false },
+      { id: 'cf5', text: '存下第一桶金(10万+)', done: false },
+      { id: 'cf6', text: '成为团队负责人或技术专家', done: false },
+      { id: 'cf7', text: '发展副业或被动收入', done: false },
+      { id: 'cf8', text: '实现财务自由里程碑', done: false },
+    ]
+  },
+  {
+    key: 'family-first', name: '家庭幸福型', icon: '🏠',
+    description: '以家庭为重心，追求亲密关系和生活品质',
+    tags: ['家庭', '陪伴', '温情'],
+    category: 'family',
+    milestones: [
+      { id: 'ff1', text: '学会经营亲密关系', done: false },
+      { id: 'ff2', text: '找到人生伴侣', done: false },
+      { id: 'ff3', text: '建立家庭仪式感', done: false },
+      { id: 'ff4', text: '每周高质量家庭时间', done: false },
+      { id: 'ff5', text: '培养亲子深度关系', done: false },
+      { id: 'ff6', text: '建立家庭年度传统', done: false },
+      { id: 'ff7', text: '规划子女教育路径', done: false },
+      { id: 'ff8', text: '创建家族文化和价值观', done: false },
+    ]
+  },
+  {
+    key: 'freedom-first', name: '自由探索型', icon: '🌍',
+    description: '追求体验和自由，不被传统路径束缚',
+    tags: ['自由', '探索', '体验'],
+    category: 'lifestyle',
+    milestones: [
+      { id: 'fr1', text: '完成一次长途独自旅行', done: false },
+      { id: 'fr2', text: '学习2门外语', done: false },
+      { id: 'fr3', text: '尝试3种不同工作', done: false },
+      { id: 'fr4', text: '建立远程工作能力', done: false },
+      { id: 'fr5', text: '积累12个月生活储备金', done: false },
+      { id: 'fr6', text: '实现地理自由/数字游民', done: false },
+      { id: 'fr7', text: '每年探索一个新国家', done: false },
+      { id: 'fr8', text: '记录并分享探索故事', done: false },
+    ]
+  },
+  {
+    key: 'balanced', name: '平衡发展型', icon: '⚖️',
+    description: '事业、家庭、个人成长均衡发展',
+    tags: ['平衡', '全面', '稳健'],
+    category: 'growth',
+    milestones: [
+      { id: 'bd1', text: '建立职业基础', done: false },
+      { id: 'bd2', text: '培养一段认真的关系', done: false },
+      { id: 'bd3', text: '开始规律健身', done: false },
+      { id: 'bd4', text: '每月读2本书', done: false },
+      { id: 'bd5', text: '职业稳步晋升', done: false },
+      { id: 'bd6', text: '经营家庭和谐关系', done: false },
+      { id: 'bd7', text: '发展深度爱好', done: false },
+      { id: 'bd8', text: '财务稳健增长', done: false },
+    ]
+  },
+  {
+    key: 'health-first', name: '健康为本型', icon: '🧘',
+    description: '以身心健康为根基，一切从健康出发',
+    tags: ['健康', '养生', '长寿'],
+    category: 'health',
+    milestones: [
+      { id: 'hf1', text: '建立规律运动习惯(每周4次)', done: false },
+      { id: 'hf2', text: '学会冥想和压力管理', done: false },
+      { id: 'hf3', text: '戒掉熬夜，保证7h+睡眠', done: false },
+      { id: 'hf4', text: '建立健康饮食体系', done: false },
+      { id: 'hf5', text: '每年全面体检', done: false },
+      { id: 'hf6', text: '培养一项户外运动', done: false },
+      { id: 'hf7', text: '关注心理健康和情绪管理', done: false },
+      { id: 'hf8', text: '建立终身健康管理体系', done: false },
+    ]
+  },
+  {
+    key: 'creator', name: '创造者型', icon: '🎨',
+    description: '以创造和表达为核心，追求留下作品和影响力',
+    tags: ['创造', '艺术', '影响力'],
+    category: 'creative',
+    milestones: [
+      { id: 'cr1', text: '找到创作方向', done: false },
+      { id: 'cr2', text: '完成第一个作品', done: false },
+      { id: 'cr3', text: '建立每日创作习惯', done: false },
+      { id: 'cr4', text: '形成个人风格', done: false },
+      { id: 'cr5', text: '产出系列作品', done: false },
+      { id: 'cr6', text: '建立受众群体', done: false },
+      { id: 'cr7', text: '创作代表作', done: false },
+      { id: 'cr8', text: '扩大影响力', done: false },
+    ]
+  },
 ];
 
-function genId() { return `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`; }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
-function todayStart() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
-function calcDeadline(g: Goal): Date {
-  const d = new Date(g.createdAt);
-  const n = parseInt(g.duration);
-  if (g.durationUnit === 'week') d.setDate(d.getDate() + n * 7);
-  else if (g.durationUnit === 'month') d.setMonth(d.getMonth() + n);
-  else d.setFullYear(d.getFullYear() + n);
-  return d;
-}
-function daysLeft(g: Goal): number {
-  const dl = calcDeadline(g);
-  return Math.max(0, Math.ceil((dl.getTime() - Date.now()) / 86400000));
-}
+const PLAN_ICONS = ['🎯', '💡', '🏔️', '🚀', '📚', '💪', '🎨', '💰', '🌍', '🏠', '❤️', '🔬', '🎵', '✨'];
+const PLAN_CATEGORIES = [
+  { key: 'career', label: '职业', color: '#3b82f6' },
+  { key: 'family', label: '家庭', color: '#f59e0b' },
+  { key: 'health', label: '健康', color: '#22c55e' },
+  { key: 'finance', label: '财务', color: '#8b5cf6' },
+  { key: 'growth', label: '成长', color: '#06b6d4' },
+  { key: 'lifestyle', label: '生活', color: '#ec4899' },
+  { key: 'creative', label: '创造', color: '#f97316' },
+];
 
 export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey }: LifeCalendarProps) {
-  const [innerSkin] = useState(DEFAULT_SKIN);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
-  const [selId, setSelId] = useState<string | null>(null);
-  const [newDurIdx, setNewDurIdx] = useState(4);
-  const [addText, setAddText] = useState('');
-  const [addType, setAddType] = useState<StepType>('online');
-  const [decomposing, setDecomposing] = useState(false);
-  const [decompText, setDecompText] = useState('');
-  const [aiExecId, setAiExecId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [viewingStage, setViewingStage] = useState<number | null>(null);
-  const [stageProgress, setStageProgress] = useState<Record<string, Record<number, boolean>>>({});
-  const streamRef = useRef('');
+  const [expandedStage, setExpandedStage] = useState<string | null>(null);
+  const [stageData, setStageData] = useState<Record<string, Record<string, Record<string, ActionItem>>>>({});
+  const [innerSkin, setInnerSkin] = useState<string>(DEFAULT_SKIN);
 
-  // Voice recognition
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
+  // 长期计划
+  const [plans, setPlans] = useState<LongTermPlan[]>([]);
+  const [activeTab, setActiveTab] = useState<'plans' | 'templates'>('plans');
+  const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
+  const [showCreatePlan, setShowCreatePlan] = useState(false);
+  const [newPlanName, setNewPlanName] = useState('');
+  const [newPlanIcon, setNewPlanIcon] = useState('🎯');
+  const [newPlanDesc, setNewPlanDesc] = useState('');
+  const [newPlanCategory, setNewPlanCategory] = useState('career');
+  const [newPlanTargetYear, setNewPlanTargetYear] = useState(new Date().getFullYear() + 3);
+  const [newMilestones, setNewMilestones] = useState('');
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
-  const skin: SkinTheme = (skinKey ?? innerSkin) ? (SKINS.find(s => s.key === (skinKey ?? innerSkin)) ?? NO_SKIN) : NO_SKIN;
-  const goal = goals.find(g => g.id === selId);
-  const currentAge = birthYear ? new Date().getFullYear() - birthYear : 30;
+  const activeSkinKey = skinKey ?? innerSkin;
+  const skin = activeSkinKey ? (SKINS.find(s => s.key === activeSkinKey) ?? NO_SKIN) : NO_SKIN;
+
+  const currentYear = new Date().getFullYear();
+  const currentAge = currentYear - birthYear;
 
   useEffect(() => {
-    try { const s = localStorage.getItem('life-goals'); if (s) { const p = JSON.parse(s) as Goal[]; setGoals(p); if (p.length) setSelId(p[0].id); } } catch { /* */ }
-    try { const s = localStorage.getItem('life-daily-logs'); if (s) setDailyLogs(JSON.parse(s)); } catch { /* */ }
-    try { const s = localStorage.getItem('life-stage-progress'); if (s) setStageProgress(JSON.parse(s)); } catch { /* */ }
-  }, []);
-
-  const save = useCallback((g: Goal[]) => { setGoals(g); try { localStorage.setItem('life-goals', JSON.stringify(g)); } catch { /* */ } }, []);
-  const saveLogs = useCallback((l: DailyLog[]) => { setDailyLogs(l); try { localStorage.setItem('life-daily-logs', JSON.stringify(l)); } catch { /* */ } }, []);
-  const saveStage = useCallback((p: Record<string, Record<number, boolean>>) => { setStageProgress(p); try { localStorage.setItem('life-stage-progress', JSON.stringify(p)); } catch { /* */ } }, []);
-
-  const progress = (g: Goal) => g.steps.length ? Math.round(g.steps.filter(s => s.done).length / g.steps.length * 100) : 0;
-  const todayPct = (g: Goal) => {
-    const ts = todayStart();
-    const d = g.steps.filter(s => s.done && s.completedAt && s.completedAt >= ts).length;
-    return g.steps.length ? Math.round(d / g.steps.length * 100) : 0;
-  };
-
-  const logUpdate = useCallback((gid: string, gs: Goal[]) => {
-    const g = gs.find(x => x.id === gid); if (!g) return;
-    const today = todayStr(); const pct = todayPct(g);
-    const ts = todayStart(); const d = g.steps.filter(s => s.done && s.completedAt && s.completedAt >= ts).length;
-    const entry: DailyLog = { date: today, goalId: gid, pct, done: d, total: g.steps.length };
-    const idx = dailyLogs.findIndex(l => l.date === today && l.goalId === gid);
-    const logs = [...dailyLogs];
-    if (idx >= 0) logs[idx] = entry; else logs.push(entry);
-    saveLogs(logs);
-  }, [dailyLogs, saveLogs]);
-
-  const updateGoal = useCallback((gid: string, fn: (g: Goal) => Goal) => {
-    const gs = goals.map(g => g.id === gid ? fn(g) : g);
-    save(gs); logUpdate(gid, gs);
-  }, [goals, save, logUpdate]);
-
-  const toggleAction = (stageIdx: number, actionIdx: number) => {
-    const key = `${stageIdx}`;
-    const sp = { ...stageProgress };
-    if (!sp[key]) sp[key] = {};
-    sp[key][actionIdx] = !sp[key][actionIdx];
-    saveStage(sp);
-  };
-
-  // Create goal with vision text
-  const createGoalWithVision = useCallback((vision: string) => {
-    if (!vision.trim()) return;
-    const dur = DURATIONS[newDurIdx];
-    const g: Goal = {
-      id: genId(), vision: vision.trim(), duration: dur.value, durationUnit: dur.unit,
-      steps: [], createdAt: Date.now(),
-    };
-    const gs = [...goals, g]; save(gs); setSelId(g.id);
-    setViewingStage(null);
-  }, [newDurIdx, goals, save]);
-
-  // Add manual step
-  const addStep = () => {
-    if (!goal || !addText.trim()) return;
-    updateGoal(goal.id, g => ({
-      ...g, steps: [...g.steps, { id: genId(), text: addText.trim(), type: addType, status: 'pending', completedBy: '', done: false, createdAt: Date.now() }],
-    }));
-    setAddText('');
-  };
-
-  // AI decompose
-  const decompose = async () => {
-    if (!goal || decomposing) return;
-    setDecomposing(true); setDecompText(''); streamRef.current = '';
-    try {
-      const dur = goal.duration + (goal.durationUnit === 'week' ? '周' : goal.durationUnit === 'month' ? '个月' : '年');
-      const res = await fetch('/api/life-decompose', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vision: goal.vision, targetYear: dur }),
-      });
-      const reader = res.body?.getReader(); if (!reader) return;
-      const dec = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read(); if (done) break;
-        dec.decode(value, { stream: true }).split('\n').forEach(line => {
-          if (!line.startsWith('data: ')) return;
-          const d = line.slice(6);
-          if (d === '[DONE]') return;
-          try { const j = JSON.parse(d); if (j.content) { streamRef.current += j.content; setDecompText(streamRef.current); } } catch { /* */ }
-        });
-      }
-      const steps = streamRef.current.split('\n').filter(l => /^\d+[.、)\s]/.test(l.trim())).map(l => l.replace(/^\d+[.、)\s]+/, '').trim()).filter(Boolean);
-      if (steps.length) {
-        updateGoal(goal.id, g => ({
-          ...g, steps: [...g.steps, ...steps.map(text => {
-            const isOff = /见面|拜访|跑|走|去|到场|线下|实体|面对面/.test(text);
-            const isCol = /协作|合作|对接|沟通|讨论|确认|审批/.test(text);
-            return { id: genId(), text, type: (isCol ? 'collab' : isOff ? 'offline' : 'online') as StepType, status: 'pending' as StepStatus, completedBy: '' as CompletedBy, done: false, createdAt: Date.now() };
-          })],
-        }));
-      }
-    } catch { /* */ }
-    setDecomposing(false);
-  };
-
-  // AI execute step
-  const aiExec = async (sid: string) => {
-    if (!goal) return;
-    const step = goal.steps.find(s => s.id === sid);
-    if (!step || step.type === 'offline') return;
-    setAiExecId(sid); streamRef.current = '';
-    updateGoal(goal.id, g => ({ ...g, steps: g.steps.map(s => s.id === sid ? { ...s, status: 'ai_doing' as StepStatus } : s) }));
-    try {
-      const res = await fetch('/api/life-execute', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ step: step.text, vision: goal.vision }),
-      });
-      const reader = res.body?.getReader(); if (!reader) return;
-      const dec = new TextDecoder(); let result = '';
-      while (true) {
-        const { done, value } = await reader.read(); if (done) break;
-        dec.decode(value, { stream: true }).split('\n').forEach(line => {
-          if (!line.startsWith('data: ')) return;
-          const d = line.slice(6);
-          try { const j = JSON.parse(d); if (j.content) result += j.content; } catch { /* */ }
-        });
-      }
-      const newStatus: StepStatus = step.type === 'collab' ? 'waiting_user' : 'done';
-      const newBy: CompletedBy = step.type === 'collab' ? 'ai' : 'ai';
-      const newDone = step.type !== 'collab';
-      updateGoal(goal.id, g => ({
-        ...g, steps: g.steps.map(s => s.id === sid ? { ...s, status: newStatus, completedBy: newBy, done: newDone, aiResult: result, completedAt: newDone ? Date.now() : undefined } : s),
-      }));
-    } catch { /* */ }
-    setAiExecId(null);
-  };
-
-  const userDone = (sid: string) => {
-    if (!goal) return;
-    updateGoal(goal.id, g => ({
-      ...g, steps: g.steps.map(s => s.id === sid ? {
-        ...s, done: true, status: 'done' as StepStatus,
-        completedBy: (s.completedBy === 'ai' ? 'ai_user' : 'user') as CompletedBy,
-        completedAt: Date.now(),
-      } : s),
-    }));
-  };
-
-  const deleteGoal = (gid: string) => {
-    const gs = goals.filter(g => g.id !== gid); save(gs);
-    if (selId === gid) setSelId(gs.length ? gs[0].id : null);
-  };
-  const deleteStep = (sid: string) => {
-    if (!goal) return;
-    updateGoal(goal.id, g => ({ ...g, steps: g.steps.filter(s => s.id !== sid) }));
-  };
-
-  const recentLogs = dailyLogs.filter(l => l.goalId === selId).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
-
-  // Voice: click mic → record → auto create goal + auto decompose
-  const startVoiceCreate = useCallback(() => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { alert('浏览器不支持语音识别'); return; }
-    if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch { /* */ } }
-    const rec = new SR();
-    rec.lang = 'zh-CN';
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.maxAlternatives = 1;
-    let finalTranscript = '';
-    rec.onresult = (e: any) => {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          finalTranscript += e.results[i][0].transcript;
-        } else {
-          interim += e.results[i][0].transcript;
-        }
-      }
-      setDecompText(finalTranscript + interim);
-    };
-    rec.onerror = () => { setIsListening(false); };
-    rec.onend = () => {
-      setIsListening(false);
-      if (finalTranscript.trim()) {
-        createGoalWithVision(finalTranscript.trim());
-        setDecompText('');
-      }
-    };
-    recognitionRef.current = rec;
-    rec.start();
-    setIsListening(true);
-    setDecompText('');
-    setViewingStage(null);
-  }, [createGoalWithVision]);
-
-  const stopVoice = useCallback(() => {
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch { /* */ }
+    if (!skinKey) {
+      try {
+        const savedSkin = localStorage.getItem('life-calendar-skin');
+        if (savedSkin && SKINS.find(s => s.key === savedSkin)) setInnerSkin(savedSkin);
+      } catch { /* ignore */ }
     }
-    setIsListening(false);
+
+    try {
+      const saved = localStorage.getItem('life-calendar-progress');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const data: Record<string, Record<string, Record<string, ActionItem>>> = {};
+        STAGES.forEach(stage => {
+          data[stage.key] = {};
+          stage.categories.forEach(cat => {
+            data[stage.key][cat.key] = {};
+            cat.actions.forEach(action => {
+              const savedAction = parsed[stage.key]?.[cat.key]?.[action.id];
+              data[stage.key][cat.key][action.id] = savedAction ? { ...action, ...savedAction } : action;
+            });
+          });
+        });
+        setStageData(data);
+      } else {
+        initData();
+      }
+    } catch {
+      initData();
+    }
+
+    // 加载长期计划
+    try {
+      const savedPlans = localStorage.getItem('life-calendar-plans');
+      if (savedPlans) setPlans(JSON.parse(savedPlans));
+    } catch { /* ignore */ }
+
+    const current = STAGES.find(s => currentAge >= s.start && currentAge <= s.end);
+    if (current) setExpandedStage(current.key);
+  }, [currentAge, skinKey]);
+
+  const initData = () => {
+    const data: Record<string, Record<string, Record<string, ActionItem>>> = {};
+    STAGES.forEach(stage => {
+      data[stage.key] = {};
+      stage.categories.forEach(cat => {
+        data[stage.key][cat.key] = {};
+        cat.actions.forEach(action => { data[stage.key][cat.key][action.id] = { ...action }; });
+      });
+    });
+    setStageData(data);
+  };
+
+  const saveData = useCallback((data: Record<string, Record<string, Record<string, ActionItem>>>) => {
+    try { localStorage.setItem('life-calendar-progress', JSON.stringify(data)); } catch { /* ignore */ }
   }, []);
 
-  // Find current stage
-  const currentStageIdx = LIFE_STAGES.findIndex(s => {
-    const [lo, hi] = s.range.split('-').map(Number);
-    return currentAge >= lo && currentAge <= hi;
-  });
+  const savePlans = useCallback((p: LongTermPlan[]) => {
+    setPlans(p);
+    try { localStorage.setItem('life-calendar-plans', JSON.stringify(p)); } catch { /* ignore */ }
+  }, []);
 
-  // Stage being viewed on the right
-  const viewStage = viewingStage !== null ? LIFE_STAGES[viewingStage] : null;
-  const viewStageProgress = viewingStage !== null ? (stageProgress[`${viewingStage}`] || {}) : {};
+  const toggleAction = (stageKey: string, catKey: string, actionId: string) => {
+    setStageData(prev => {
+      const next = { ...prev };
+      next[stageKey] = { ...next[stageKey] };
+      next[stageKey][catKey] = { ...next[stageKey][catKey] };
+      next[stageKey][catKey][actionId] = { ...next[stageKey][catKey][actionId], done: !next[stageKey][catKey][actionId].done };
+      saveData(next);
+      return next;
+    });
+  };
+
+  const addToCalendar = (stageKey: string, catKey: string, actionId: string) => {
+    setStageData(prev => {
+      const next = { ...prev };
+      next[stageKey] = { ...next[stageKey] };
+      next[stageKey][catKey] = { ...next[stageKey][catKey] };
+      const action = next[stageKey][catKey][actionId];
+      next[stageKey][catKey][actionId] = { ...action, addedToCalendar: !action.addedToCalendar };
+      saveData(next);
+      return next;
+    });
+  };
+
+  const getStageProgress = (stage: Stage) => {
+    const stageD = stageData[stage.key];
+    if (!stageD) return 0;
+    let total = 0, done = 0;
+    stage.categories.forEach(cat => {
+      cat.actions.forEach(action => { total++; if (stageD[cat.key]?.[action.id]?.done) done++; });
+    });
+    if (stageD['template']) {
+      Object.values(stageD['template']).forEach(a => { total++; if (a.done) done++; });
+    }
+    return total > 0 ? Math.round((done / total) * 100) : 0;
+  };
+
+  const getStageStatus = (stage: Stage): 'past' | 'current' | 'future' => {
+    if (currentAge > stage.end) return 'past';
+    if (currentAge >= stage.start && currentAge <= stage.end) return 'current';
+    return 'future';
+  };
+
+  // 长期计划操作
+  const getPlanProgress = (plan: LongTermPlan) => {
+    if (plan.milestones.length === 0) return 0;
+    return Math.round((plan.milestones.filter(m => m.done).length / plan.milestones.length) * 100);
+  };
+
+  const toggleMilestone = (planId: string, milestoneId: string) => {
+    const updated = plans.map(p => {
+      if (p.id !== planId) return p;
+      return { ...p, milestones: p.milestones.map(m => m.id === milestoneId ? { ...m, done: !m.done } : m) };
+    });
+    savePlans(updated);
+  };
+
+  const createPlanFromTemplate = (template: LifeTemplate) => {
+    const plan: LongTermPlan = {
+      id: `plan-${Date.now()}`,
+      name: template.name,
+      icon: template.icon,
+      description: template.description,
+      category: template.category,
+      startYear: currentYear,
+      targetYear: currentYear + 5,
+      milestones: template.milestones.map(m => ({ ...m, id: `m-${Date.now()}-${m.id}` })),
+      source: template.key,
+      createdAt: Date.now(),
+    };
+    savePlans([...plans, plan]);
+    setExpandedPlan(plan.id);
+    setActiveTab('plans');
+  };
+
+  const createCustomPlan = () => {
+    if (!newPlanName.trim()) return;
+    const milestones = newMilestones.split('\n').filter(s => s.trim()).map((text, idx) => ({
+      id: `m-${Date.now()}-${idx}`,
+      text: text.trim(),
+      done: false,
+    }));
+    const plan: LongTermPlan = {
+      id: `plan-${Date.now()}`,
+      name: newPlanName.trim(),
+      icon: newPlanIcon,
+      description: newPlanDesc.trim(),
+      category: newPlanCategory,
+      startYear: currentYear,
+      targetYear: newPlanTargetYear,
+      milestones,
+      source: 'custom',
+      createdAt: Date.now(),
+    };
+    savePlans([...plans, plan]);
+    setShowCreatePlan(false);
+    setExpandedPlan(plan.id);
+    setNewPlanName('');
+    setNewPlanDesc('');
+    setNewMilestones('');
+    setNewPlanTargetYear(currentYear + 3);
+  };
+
+  const deletePlan = (planId: string) => {
+    savePlans(plans.filter(p => p.id !== planId));
+    if (expandedPlan === planId) setExpandedPlan(null);
+  };
+
+  const addMilestoneToPlan = (planId: string, text: string) => {
+    if (!text.trim()) return;
+    const updated = plans.map(p => {
+      if (p.id !== planId) return p;
+      return { ...p, milestones: [...p.milestones, { id: `m-${Date.now()}`, text: text.trim(), done: false }] };
+    });
+    savePlans(updated);
+  };
+
+  const removeMilestone = (planId: string, milestoneId: string) => {
+    const updated = plans.map(p => {
+      if (p.id !== planId) return p;
+      return { ...p, milestones: p.milestones.filter(m => m.id !== milestoneId) };
+    });
+    savePlans(updated);
+  };
+
+  // 统计
+  const totalMilestones = plans.reduce((s, p) => s + p.milestones.length, 0);
+  const doneMilestones = plans.reduce((s, p) => s + p.milestones.filter(m => m.done).length, 0);
+  const overallProgress = totalMilestones > 0 ? Math.round((doneMilestones / totalMilestones) * 100) : 0;
 
   return (
-    <div className="absolute inset-0 z-50 flex" style={{ background: skin.panelBg }}>
-      {/* Close button */}
-      <button onClick={onClose} className="absolute top-4 right-4 z-50 w-8 h-8 rounded-full flex items-center justify-center text-base font-bold hover:opacity-80 transition-opacity" style={{ background: skin.swatch, color: '#fff' }}>✕</button>
+    <div className="fixed top-0 left-0 right-0 z-50 h-full animate-slide-in-left shadow-2xl flex transition-colors duration-500"
+      style={{ background: skin.panelBg }}>
 
-      {/* ===== LEFT: Life Stages ===== */}
-      <div className="w-[300px] border-r flex flex-col" style={{ borderColor: skin.cellBorder }}>
-        <div className="p-5 pt-5 pb-2 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold" style={{ color: skin.swatch }}>人生旅途</h2>
-            <p className="text-[10px] mt-0.5" style={{ color: skin.textMuted }}>每个阶段，都有该做的事</p>
-          </div>
-          {/* Voice create button */}
-          <button onClick={isListening ? stopVoice : startVoiceCreate}
-            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isListening ? 'animate-pulse' : 'hover:opacity-80'}`}
-            style={{ background: isListening ? '#ef4444' : skin.swatch, color: '#fff' }}
-            title={isListening ? '停止录音' : '语音创建计划'}>
-            {isListening ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-            )}
-          </button>
-        </div>
+      {/* Left Panel: Age Stages */}
+      <div className="w-[480px] flex-shrink-0 flex flex-col h-full border-r"
+        style={{ borderColor: skin.divider }}>
 
-        {/* Voice listening indicator */}
-        {isListening && (
-          <div className="mx-5 mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ background: '#ef444415' }}>
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-xs text-red-500 font-bold">正在聆听，说出你的计划...</span>
-          </div>
-        )}
-
-        {/* Birth year */}
-        <div className="px-5 pb-2 flex items-center gap-2">
-          <span className="text-[10px]" style={{ color: skin.textMuted }}>出生年份</span>
-          <input type="number" value={birthYear || 1990} onChange={e => setBirthYear(Number(e.target.value))}
-            className="w-16 rounded border px-1.5 py-0.5 text-xs focus:outline-none"
-            style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }} />
-          <span className="text-[10px]" style={{ color: skin.textMuted }}>{currentAge}岁</span>
-        </div>
-
-        {/* Stages — click to show details on the right */}
-        <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-0.5">
-          {LIFE_STAGES.map((stage, idx) => {
-            const isCurrent = idx === currentStageIdx;
-            const isSelected = viewingStage === idx;
-            const sp = stageProgress[`${idx}`] || {};
-            const doneCount = Object.values(sp).filter(Boolean).length;
-            return (
-              <div key={idx}
-                className={`rounded-lg transition-all cursor-pointer hover:brightness-95 ${isCurrent ? 'ring-1' : ''}`}
-                style={{
-                  background: isSelected ? `${stage.color}15` : isCurrent ? `${stage.color}08` : 'transparent',
-                  borderLeft: `3px solid ${isSelected ? stage.color : isCurrent ? stage.color : 'transparent'}`,
-                  ...(isCurrent && !isSelected ? { boxShadow: `0 0 4px ${stage.color}15` } : {}),
-                }}
-                onClick={() => setViewingStage(isSelected ? null : idx)}>
-                <div className="px-3 py-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{stage.icon}</span>
-                      <span className="text-sm font-bold" style={{ color: isSelected || isCurrent ? stage.color : skin.textPrimary }}>{stage.label}</span>
-                      <span className="text-[10px]" style={{ color: skin.textMuted }}>{stage.range}岁</span>
-                    </div>
-                    {doneCount > 0 && (
-                      <span className="text-[10px] font-bold" style={{ color: doneCount >= stage.details.length ? '#22c55e' : stage.color }}>{doneCount}/{stage.details.length}</span>
-                    )}
-                  </div>
-                  <p className="text-[10px] mt-0.5 leading-snug" style={{ color: isCurrent ? stage.color : skin.textMuted }}>{stage.focus}</p>
+        {/* Header */}
+        <div className="flex-shrink-0 px-5 pb-4 relative overflow-hidden" style={{ paddingTop: '0.95rem', ...(skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }) }}>
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}cc, ${skin.sidebarTo}bb)` }} />
+          <ParticleEffect color={skin.swatch} count={30} />
+          <div className="relative z-10">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-xl font-bold tracking-wide text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>人生旅途</h2>
+                <div className="flex items-center gap-2 mt-2 text-xs text-white/70">
+                  <span>出生年份</span>
+                  <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}
+                    className="w-16 px-1.5 py-0.5 rounded text-center text-xs border focus:outline-none bg-white/20 text-white border-white/20" />
+                  <span className="text-white/40">|</span>
+                  <span>当前 {currentAge} 岁</span>
                 </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex-1 h-1 rounded-full overflow-hidden bg-white/15">
+                    <div className="h-full rounded-full transition-all bg-white/40" style={{ width: `${Math.min((currentAge / 80) * 100, 100)}%` }} />
+                  </div>
+                  <span className="text-[10px] text-white/60">{currentAge}/80</span>
+                </div>
+              </div>
+              <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/20 text-white/50 hover:text-white transition-colors"
+                style={{ background: 'rgba(0,0,0,0.2)' }}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Stages List */}
+        <div className="flex-1 overflow-y-auto py-4 px-4 space-y-3 sidebar-scroll">
+          {STAGES.map((stage, idx) => {
+            const status = getStageStatus(stage);
+            const isExpanded = expandedStage === stage.key;
+            const progress = getStageProgress(stage);
+            const stageD = stageData[stage.key];
+            const sc = skin.stageColors[idx] ?? skin.stageColors[0];
+
+            return (
+              <div key={stage.key} className="rounded-xl overflow-hidden transition-all duration-300"
+                style={{
+                  background: skin.cardBg,
+                  border: `1px solid ${isExpanded ? sc.border : skin.divider}`,
+                  boxShadow: isExpanded ? `0 4px 20px ${sc.border}40` : 'none',
+                }}>
+                <button onClick={() => setExpandedStage(isExpanded ? null : stage.key)}
+                  className="w-full px-4 py-3 flex items-center gap-3 text-left transition-colors"
+                  style={{ background: isExpanded ? sc.bg : (status === 'current' ? sc.bg : skin.cardBg) }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
+                    style={{ background: sc.color + '40' }}>
+                    {stage.emoji}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm" style={{ color: skin.textPrimary }}>{stage.label}</span>
+                      <span className="text-xs" style={{ color: skin.textMuted }}>{stage.range}</span>
+                      {status === 'current' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-medium" style={{ background: sc.accent }}>当前</span>
+                      )}
+                    </div>
+                    {!isExpanded && <p className="text-xs mt-0.5 truncate" style={{ color: skin.textMuted }}>{stage.slogan}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs font-medium" style={{ color: progress > 0 ? sc.accent : skin.textMuted }}>{progress}%</span>
+                    <svg width="28" height="28" viewBox="0 0 28 28" className="-rotate-90">
+                      <circle cx="14" cy="14" r="11" fill="none" stroke={skin.progressTrack} strokeWidth="2.5" />
+                      <circle cx="14" cy="14" r="11" fill="none" stroke={sc.accent} strokeWidth="2.5"
+                        strokeDasharray={`${progress * 0.691} 69.1`} strokeLinecap="round" />
+                    </svg>
+                    <span className="text-xs" style={{ color: skin.textMuted }}>{isExpanded ? '▲' : '▼'}</span>
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="animate-fade-in" style={{ background: sc.bg }}>
+                    <div className="px-4 py-2 border-b" style={{ borderColor: sc.border + '60' }}>
+                      <p className="text-xs font-medium" style={{ color: sc.accent }}>「{stage.slogan}」</p>
+                    </div>
+                    <div className="px-4 py-3 space-y-4">
+                      {stage.categories.map(cat => {
+                        const catActions = cat.actions.map(a => stageD?.[cat.key]?.[a.id]).filter(Boolean);
+                        const catDone = catActions.filter(a => a.done).length;
+                        const catTotal = cat.actions.length;
+
+                        return (
+                          <div key={cat.key}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm">{cat.icon}</span>
+                              <span className="text-sm font-medium" style={{ color: skin.textPrimary }}>{cat.title}</span>
+                              <span className="text-[10px] ml-auto" style={{ color: skin.textMuted }}>{catDone}/{catTotal}</span>
+                            </div>
+                            <div className="space-y-1">
+                              {cat.actions.map(action => {
+                                const saved = stageD?.[cat.key]?.[action.id];
+                                const isDone = saved?.done ?? false;
+                                const isAdded = saved?.addedToCalendar ?? false;
+
+                                return (
+                                  <div key={action.id}
+                                    className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg transition-colors group"
+                                    style={{ opacity: status === 'past' && !isDone ? 0.4 : 1 }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = skin.isDark ? sc.color + '15' : 'rgba(255,255,255,0.6)'; }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+                                    <button onClick={() => toggleAction(stage.key, cat.key, action.id)}
+                                      className="w-[18px] h-[18px] rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all"
+                                      style={{
+                                        borderColor: isDone ? skin.checkboxDone : (skin.isDark ? '#64748b' : '#c8c4be'),
+                                        background: isDone ? skin.checkboxDone : 'transparent',
+                                      }}>
+                                      {isDone && <span className="text-white text-[9px] font-bold">✓</span>}
+                                    </button>
+                                    <span className={`text-[13px] leading-5 flex-1 ${isDone ? 'line-through' : ''}`}
+                                      style={{ color: isDone ? skin.textMuted : skin.textPrimary }}>
+                                      {action.text}
+                                    </span>
+                                    <button onClick={() => addToCalendar(stage.key, cat.key, action.id)}
+                                      className={`flex-shrink-0 text-[10px] px-2 py-1 rounded-full transition-all opacity-0 group-hover:opacity-100 ${isAdded ? 'opacity-100' : ''}`}
+                                      style={{
+                                        background: isAdded ? skin.plannedBg : skin.planBtnBg,
+                                        color: isAdded ? skin.plannedText : skin.textMuted,
+                                        border: isAdded ? 'none' : `1px solid ${skin.divider}`,
+                                      }}>
+                                      {isAdded ? '✓ 已计划' : '+ 计划'}
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
-        </div>
 
-        {/* Goal tabs at bottom of left panel */}
-        {goals.length > 0 && (
-          <div className="border-t px-3 py-2 space-y-0.5 max-h-[160px] overflow-y-auto" style={{ borderColor: skin.cellBorder }}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-bold" style={{ color: skin.textMuted }}>我的计划</span>
-              <button onClick={() => { setViewingStage(null); setSelId(null); }}
-                className="text-[10px] px-2 py-0.5 rounded hover:opacity-80"
-                style={{ color: skin.swatch }}>+ 新计划</button>
-            </div>
-            {goals.map(g => {
-              const pct = progress(g);
-              return (
-                <div key={g.id} onClick={() => { setSelId(g.id); setViewingStage(null); }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:brightness-95 transition-all"
-                  style={{ background: selId === g.id ? skin.cardBg : 'transparent' }}>
-                  <span className="text-[10px] truncate flex-1" style={{ color: selId === g.id ? skin.swatch : skin.textPrimary }}>{g.vision}</span>
-                  <span className="text-[10px] font-bold shrink-0" style={{ color: pct > 0 ? skin.swatch : skin.textMuted }}>{pct}%</span>
-                </div>
-              );
-            })}
+          <div className="mt-4 mb-2 px-4 py-3 rounded-xl text-center"
+            style={{ background: skin.cardBg, border: `1px solid ${skin.divider}` }}>
+            <p className="text-sm italic" style={{ color: skin.textMuted }}>
+              &ldquo;种一棵树最好的时间是十年前，其次是现在。&rdquo;
+            </p>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* ===== RIGHT: Stage Detail OR Goal Management ===== */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Viewing a life stage */}
-        {viewStage ? (
-          <>
-            <div className="px-8 pt-8 pb-4" style={{ borderBottom: `2px solid ${viewStage.color}30` }}>
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">{viewStage.icon}</span>
-                <div>
-                  <h2 className="text-2xl font-black" style={{ color: viewStage.color }}>{viewStage.label}</h2>
-                  <p className="text-sm" style={{ color: skin.textMuted }}>{viewStage.range}岁</p>
-                </div>
+      {/* Right Panel: 长期计划 */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Right Header with Tabs */}
+        <div className="flex-shrink-0 border-b" style={{ borderColor: skin.divider }}>
+          <div className="px-6 pt-4 pb-0">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-lg font-bold" style={{ color: skin.textPrimary }}>长期计划</h3>
+                <p className="text-xs mt-0.5" style={{ color: skin.textMuted }}>跨越年度的人生规划，追踪长期目标完成度</p>
               </div>
-              <p className="text-base mt-3 leading-relaxed font-medium" style={{ color: viewStage.color }}>{viewStage.focus}</p>
+              {plans.length > 0 && (
+                <div className="text-right">
+                  <div className="text-2xl font-bold" style={{ color: skin.swatch }}>{overallProgress}%</div>
+                  <div className="text-[10px]" style={{ color: skin.textMuted }}>{doneMilestones}/{totalMilestones} 里程碑</div>
+                </div>
+              )}
             </div>
-            <div className="flex-1 overflow-y-auto px-8 py-6">
-              <div className="space-y-3">
-                {viewStage.details.map((detail, di) => {
-                  const done = !!viewStageProgress[di];
-                  const tagMatch = detail.match(/^【(.+?)】(.+)$/);
-                  const tag = tagMatch ? tagMatch[1] : '';
-                  const text = tagMatch ? tagMatch[2] : detail;
-                  return (
-                    <div key={di}
-                      className="flex items-start gap-3 p-3 rounded-lg transition-all cursor-pointer hover:brightness-95"
-                      style={{ background: done ? `${viewStage.color}08` : skin.cardBg, opacity: done ? 0.5 : 1 }}
-                      onClick={() => toggleAction(viewingStage!, di)}>
-                      <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all"
-                        style={{ borderColor: done ? viewStage.color : skin.cellBorder, background: done ? viewStage.color : 'transparent' }}>
-                        {done && <span className="text-white text-[10px]">✓</span>}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="inline-block text-[10px] px-1.5 py-0.5 rounded mr-2 font-bold" style={{ background: `${viewStage.color}15`, color: viewStage.color }}>{tag}</span>
-                        <span className={`text-sm leading-relaxed ${done ? 'line-through' : ''}`} style={{ color: skin.textPrimary }}>{text}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Progress */}
-              <div className="mt-8 p-4 rounded-lg" style={{ background: skin.cardBg }}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold" style={{ color: skin.textMuted }}>完成进度</span>
-                  <span className="text-sm font-black" style={{ color: viewStage.color }}>
-                    {Object.values(viewStageProgress).filter(Boolean).length} / {viewStage.details.length}
-                  </span>
-                </div>
-                <div className="h-2 rounded-full overflow-hidden" style={{ background: skin.cellBorder }}>
-                  <div className="h-full rounded-full transition-all" style={{
-                    width: `${Math.round(Object.values(viewStageProgress).filter(Boolean).length / viewStage.details.length * 100)}%`,
-                    background: viewStage.color,
-                  }} />
-                </div>
-              </div>
-            </div>
-          </>
-        ) : goal ? (
-          /* Goal detail view */
-          <>
-            <div className="px-6 py-4 border-b" style={{ borderColor: skin.cellBorder }}>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h2 className="text-lg font-bold" style={{ color: skin.textPrimary }}>{goal.vision}</h2>
-                  <p className="text-xs mt-1" style={{ color: skin.textMuted }}>
-                    周期: {goal.duration}{goal.durationUnit === 'week' ? '周' : goal.durationUnit === 'month' ? '个月' : '年'} | 剩余 <b style={{ color: daysLeft(goal) < 30 ? '#ef4444' : skin.swatch }}>{daysLeft(goal)}天</b>
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-black" style={{ color: skin.swatch }}>{todayPct(goal)}%</div>
-                    <div className="text-[9px]" style={{ color: skin.textMuted }}>今日参与</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-black" style={{ color: progress(goal) > 0 ? skin.swatch : skin.textMuted }}>{progress(goal)}%</div>
-                    <div className="text-[9px]" style={{ color: skin.textMuted }}>总进度</div>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background: skin.cellBorder }}>
-                <div className="h-full rounded-full transition-all" style={{ width: `${progress(goal)}%`, background: skin.swatch }} />
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-6 py-4">
-              {/* AI Decompose */}
-              <div className="mb-4">
-                <button onClick={decompose} disabled={decomposing}
-                  className="px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50"
-                  style={{ background: skin.swatch }}>
-                  {decomposing ? 'AI拆解中...' : 'AI 拆解步骤'}
-                </button>
-                {decomposing && decompText && (
-                  <div className="mt-2 p-3 rounded-lg text-xs whitespace-pre-wrap" style={{ background: skin.cardBg, color: skin.textMuted }}>{decompText}</div>
+            {/* Tabs */}
+            <div className="flex gap-0">
+              <button
+                onClick={() => setActiveTab('plans')}
+                className="px-4 py-2 text-sm font-medium transition-colors relative"
+                style={{ color: activeTab === 'plans' ? skin.swatch : skin.textMuted }}
+              >
+                我的计划
+                {plans.length > 0 && (
+                  <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: skin.swatch + '20', color: skin.swatch }}>{plans.length}</span>
                 )}
-              </div>
+                {activeTab === 'plans' && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: skin.swatch }} />}
+              </button>
+              <button
+                onClick={() => setActiveTab('templates')}
+                className="px-4 py-2 text-sm font-medium transition-colors relative"
+                style={{ color: activeTab === 'templates' ? skin.swatch : skin.textMuted }}
+              >
+                人生模板
+                {activeTab === 'templates' && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: skin.swatch }} />}
+              </button>
+            </div>
+          </div>
+        </div>
 
-              {/* Add step */}
-              <div className="flex gap-2 mb-4">
-                <input value={addText} onChange={e => setAddText(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStep()}
-                  placeholder="添加步骤..." className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none"
-                  style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }} />
-                <select value={addType} onChange={e => setAddType(e.target.value as StepType)}
-                  className="rounded-lg border px-2 py-2 text-sm"
-                  style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }}>
-                  <option value="online">☁ 线上</option>
-                  <option value="offline">📍 线下</option>
-                  <option value="collab">🤝 协作</option>
-                </select>
-                <button onClick={addStep} className="px-3 py-2 rounded-lg text-sm font-bold text-white" style={{ background: skin.swatch }}>+</button>
-              </div>
+        {/* Tab Content */}
+        <div className="flex-1 overflow-y-auto sidebar-scroll">
+          {activeTab === 'plans' && (
+            <div className="p-6">
+              {/* 创建计划按钮 */}
+              <button
+                onClick={() => { setShowCreatePlan(true); setEditingPlanId(null); setNewPlanName(''); setNewPlanDesc(''); setNewPlanIcon('🎯'); setNewPlanCategory('career'); setNewPlanTargetYear(currentYear + 3); setNewMilestones(''); }}
+                className="w-full py-3 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 text-sm font-medium transition-all hover:opacity-80 mb-5"
+                style={{ borderColor: skin.divider, color: skin.textMuted, background: skin.cardBg }}
+              >
+                <span className="text-lg">+</span> 创建长期计划
+              </button>
 
-              {/* Steps list */}
-              <div className="space-y-2">
-                {goal.steps.map(step => {
-                  const cfg = STEP_CFG[step.type];
-                  const stCfg = STATUS_CFG[step.status];
-                  const isExp = expandedId === step.id;
+              {/* 计划列表 */}
+              {plans.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-3">🗺️</div>
+                  <p className="text-sm font-medium" style={{ color: skin.textPrimary }}>还没有长期计划</p>
+                  <p className="text-xs mt-1 mb-4" style={{ color: skin.textMuted }}>创建自定义计划或从模板开始</p>
+                  <button
+                    onClick={() => setActiveTab('templates')}
+                    className="text-xs px-4 py-2 rounded-full text-white font-medium"
+                    style={{ background: skin.swatch }}
+                  >
+                    浏览人生模板
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {plans.map(plan => {
+                    const progress = getPlanProgress(plan);
+                    const isExpanded = expandedPlan === plan.id;
+                    const catInfo = PLAN_CATEGORIES.find(c => c.key === plan.category);
+                    const doneCount = plan.milestones.filter(m => m.done).length;
+
+                    return (
+                      <div key={plan.id}
+                        className="rounded-xl overflow-hidden transition-all duration-200"
+                        style={{
+                          background: skin.cardBg,
+                          border: `1.5px solid ${isExpanded ? skin.swatch : skin.divider}`,
+                          boxShadow: isExpanded ? `0 4px 20px ${skin.swatch}20` : 'none',
+                        }}
+                      >
+                        {/* Plan Header */}
+                        <div
+                          className="px-4 py-3 cursor-pointer flex items-center gap-3"
+                          onClick={() => setExpandedPlan(isExpanded ? null : plan.id)}
+                        >
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
+                            style={{ background: (catInfo?.color || skin.swatch) + '20' }}>
+                            {plan.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm truncate" style={{ color: skin.textPrimary }}>{plan.name}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: (catInfo?.color || skin.swatch) + '15', color: catInfo?.color || skin.swatch }}>
+                                {catInfo?.label || '其他'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: skin.divider }}>
+                                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: skin.swatch }} />
+                              </div>
+                              <span className="text-xs font-medium flex-shrink-0" style={{ color: progress > 0 ? skin.swatch : skin.textMuted }}>{progress}%</span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-1 text-[10px]" style={{ color: skin.textMuted }}>
+                              <span>{plan.startYear}-{plan.targetYear}</span>
+                              <span>{doneCount}/{plan.milestones.length} 里程碑</span>
+                            </div>
+                          </div>
+                          <span className="text-xs flex-shrink-0" style={{ color: skin.textMuted }}>{isExpanded ? '▲' : '▼'}</span>
+                        </div>
+
+                        {/* Expanded Milestones */}
+                        {isExpanded && (
+                          <div className="animate-fade-in px-4 pb-4">
+                            {plan.description && (
+                              <p className="text-xs mb-3 px-1" style={{ color: skin.textMuted }}>{plan.description}</p>
+                            )}
+                            <div className="space-y-1.5">
+                              {plan.milestones.map(milestone => (
+                                <div key={milestone.id}
+                                  className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors group"
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = skin.swatch + '08'; }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                >
+                                  <button
+                                    onClick={() => toggleMilestone(plan.id, milestone.id)}
+                                    className="w-[18px] h-[18px] rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
+                                    style={{
+                                      borderColor: milestone.done ? skin.swatch : (skin.isDark ? '#64748b' : '#c8c4be'),
+                                      background: milestone.done ? skin.swatch : 'transparent',
+                                    }}
+                                  >
+                                    {milestone.done && <span className="text-white text-[9px] font-bold">✓</span>}
+                                  </button>
+                                  <span className={`text-[13px] leading-5 flex-1 ${milestone.done ? 'line-through' : ''}`}
+                                    style={{ color: milestone.done ? skin.textMuted : skin.textPrimary }}>
+                                    {milestone.text}
+                                  </span>
+                                  <button
+                                    onClick={() => removeMilestone(plan.id, milestone.id)}
+                                    className="flex-shrink-0 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style={{ color: skin.textMuted }}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* 添加里程碑 */}
+                            <AddMilestoneInput onAdd={(text) => addMilestoneToPlan(plan.id, text)} skin={skin} />
+
+                            {/* 删除计划 */}
+                            <div className="mt-3 pt-3 flex justify-end" style={{ borderTop: `1px solid ${skin.divider}` }}>
+                              <button
+                                onClick={() => deletePlan(plan.id)}
+                                className="text-xs px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
+                                style={{ color: '#ef4444', background: '#fef2f2' }}
+                              >
+                                删除计划
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'templates' && (
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-4">
+                {PLAN_TEMPLATES.map(tpl => {
+                  const catInfo = PLAN_CATEGORIES.find(c => c.key === tpl.category);
+                  const alreadyCreated = plans.some(p => p.source === tpl.key);
+
                   return (
-                    <div key={step.id} className={`rounded-lg border p-3 transition-all ${step.done ? 'opacity-60' : ''}`}
-                      style={{ background: skin.cardBg, borderColor: step.done ? skin.cellBorder : cfg.color + '40' }}>
-                      <div className="flex items-start gap-2">
-                        <span className="text-xs shrink-0 mt-0.5">{cfg.icon}</span>
+                    <div key={tpl.key}
+                      className="rounded-xl p-4 transition-all duration-200"
+                      style={{
+                        background: skin.cardBg,
+                        border: `1.5px solid ${alreadyCreated ? skin.swatch : skin.divider}`,
+                        boxShadow: alreadyCreated ? `0 4px 20px ${skin.swatch}20` : 'none',
+                      }}
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
+                          style={{ background: (catInfo?.color || skin.swatch) + '20' }}>
+                          {tpl.icon}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className={`text-sm ${step.done ? 'line-through' : ''}`} style={{ color: skin.textPrimary }}>{step.text}</span>
+                            <span className="font-bold text-sm" style={{ color: skin.textPrimary }}>{tpl.name}</span>
+                            {alreadyCreated && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full text-white" style={{ background: skin.swatch }}>已创建</span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: cfg.color + '15', color: cfg.color }}>{cfg.label}</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: stCfg.color + '15', color: stCfg.color }}>{stCfg.label}</span>
-                            {step.completedBy && <span className="text-[10px]" style={{ color: skin.textMuted }}>by {step.completedBy === 'ai' ? 'AI' : step.completedBy === 'user' ? '我' : '协作'}</span>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {!step.done && step.type !== 'offline' && step.status !== 'ai_doing' && (
-                            <button onClick={() => aiExec(step.id)} disabled={aiExecId === step.id}
-                              className="text-[10px] px-2 py-1 rounded font-bold text-white disabled:opacity-50"
-                              style={{ background: skin.swatch }}>AI执行</button>
-                          )}
-                          {step.status === 'waiting_user' && (
-                            <button onClick={() => userDone(step.id)}
-                              className="text-[10px] px-2 py-1 rounded font-bold text-white"
-                              style={{ background: '#22c55e' }}>该你了</button>
-                          )}
-                          {!step.done && step.type === 'offline' && (
-                            <button onClick={() => userDone(step.id)}
-                              className="text-[10px] px-2 py-1 rounded font-bold"
-                              style={{ background: '#f59e0b20', color: '#f59e0b' }}>完成</button>
-                          )}
-                          <button onClick={() => setExpandedId(isExp ? null : step.id)}
-                            className="text-[10px] px-1 py-1 rounded hover:opacity-70"
-                            style={{ color: skin.textMuted }}>{isExp ? '▲' : '▼'}</button>
-                          <button onClick={() => deleteStep(step.id)}
-                            className="text-[10px] px-1 py-1 rounded hover:opacity-70"
-                            style={{ color: '#ef4444' }}>✕</button>
+                          <p className="text-[11px] mt-0.5 leading-4" style={{ color: skin.textMuted }}>{tpl.description}</p>
                         </div>
                       </div>
-                      {isExp && step.aiResult && (
-                        <div className="mt-2 p-2 rounded text-xs whitespace-pre-wrap" style={{ background: skin.panelBg, color: skin.textMuted }}>{step.aiResult}</div>
-                      )}
+
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {tpl.tags.map(tag => (
+                          <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full"
+                            style={{ background: (catInfo?.color || skin.swatch) + '15', color: catInfo?.color || skin.swatch }}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="space-y-1 mb-3">
+                        {tpl.milestones.slice(0, 4).map(m => (
+                          <p key={m.id} className="text-[11px] pl-3 leading-4" style={{ color: skin.textMuted }}>
+                            · {m.text}
+                          </p>
+                        ))}
+                        {tpl.milestones.length > 4 && (
+                          <p className="text-[10px] pl-3" style={{ color: skin.textMuted, opacity: 0.6 }}>
+                            +{tpl.milestones.length - 4} 项更多里程碑
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => createPlanFromTemplate(tpl)}
+                        disabled={alreadyCreated}
+                        className="w-full py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
+                        style={{
+                          background: alreadyCreated ? skin.divider : skin.swatch,
+                          color: alreadyCreated ? skin.textMuted : '#fff',
+                        }}
+                      >
+                        {alreadyCreated ? '已创建计划' : '使用此模板'}
+                      </button>
                     </div>
                   );
                 })}
               </div>
+            </div>
+          )}
+        </div>
 
-              {/* Recent logs */}
-              {recentLogs.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-xs font-bold mb-2" style={{ color: skin.textMuted }}>近7日参与度</h3>
-                  <div className="flex gap-1">
-                    {recentLogs.map((log, i) => (
-                      <div key={i} className="flex-1 text-center">
-                        <div className="h-8 rounded-sm flex items-end justify-center" style={{ background: skin.cellBorder }}>
-                          <div className="w-full rounded-sm" style={{ height: `${log.pct}%`, background: skin.swatch, minHeight: log.pct > 0 ? '2px' : '0' }} />
-                        </div>
-                        <div className="text-[8px] mt-0.5" style={{ color: skin.textMuted }}>{log.pct}%</div>
-                      </div>
+        {/* 创建计划弹框 */}
+        {showCreatePlan && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)' }}>
+            <div className="w-[440px] rounded-xl shadow-2xl overflow-hidden" style={{ background: skin.panelBg, border: `1px solid ${skin.divider}` }}>
+              <div className="h-1.5 w-full" style={{ background: skin.swatch }} />
+              <div className="px-5 pt-4 pb-2 relative">
+                <button onClick={() => setShowCreatePlan(false)}
+                  className="absolute top-3 right-4 w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                  style={{ background: skin.cardHover, color: skin.textMuted }}>
+                  ✕
+                </button>
+                <h4 className="text-sm font-bold mb-4" style={{ color: skin.textPrimary }}>创建长期计划</h4>
+
+                {/* 图标选择 */}
+                <div className="mb-3">
+                  <label className="text-[10px] font-medium block mb-1.5" style={{ color: skin.textMuted }}>图标</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PLAN_ICONS.map(icon => (
+                      <button key={icon}
+                        onClick={() => setNewPlanIcon(icon)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
+                        style={{
+                          background: newPlanIcon === icon ? skin.swatch + '20' : skin.cardBg,
+                          border: `1.5px solid ${newPlanIcon === icon ? skin.swatch : skin.divider}`,
+                        }}>
+                        {icon}
+                      </button>
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
 
-            <div className="px-6 py-3 border-t flex justify-between" style={{ borderColor: skin.cellBorder }}>
-              <button onClick={() => deleteGoal(goal.id)} className="text-xs px-3 py-1.5 rounded" style={{ color: '#ef4444', background: '#ef444410' }}>删除计划</button>
-            </div>
-          </>
-        ) : (
-          /* Empty state — create first goal */
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center max-w-md">
-              <p className="text-xl font-bold mb-2" style={{ color: skin.textPrimary }}>创建你的第一个长期计划</p>
-              <p className="text-sm mb-6" style={{ color: skin.textMuted }}>点击麦克风说出你的计划，AI自动识别并拆解</p>
-              <div className="flex items-center justify-center gap-4">
-                <button onClick={isListening ? stopVoice : startVoiceCreate}
-                  className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${isListening ? 'animate-pulse' : 'hover:opacity-80'}`}
-                  style={{ background: isListening ? '#ef4444' : skin.swatch, color: '#fff' }}
-                  title={isListening ? '停止录音' : '语音创建计划'}>
-                  {isListening ? (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-                  ) : (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-                  )}
-                </button>
-                <div className="text-left">
-                  <p className="text-sm font-bold" style={{ color: skin.textPrimary }}>语音创建</p>
-                  <p className="text-xs" style={{ color: skin.textMuted }}>说出你的目标，AI自动拆解</p>
+                {/* 名称 */}
+                <input
+                  value={newPlanName}
+                  onChange={e => setNewPlanName(e.target.value.slice(0, 50))}
+                  placeholder="计划名称"
+                  className="w-full text-sm font-medium outline-none bg-transparent border-b pb-1.5 mb-3 placeholder:opacity-35"
+                  style={{ color: skin.textPrimary, borderColor: skin.divider }}
+                  autoFocus
+                />
+
+                {/* 描述 */}
+                <input
+                  value={newPlanDesc}
+                  onChange={e => setNewPlanDesc(e.target.value.slice(0, 100))}
+                  placeholder="简要描述(可选)"
+                  className="w-full text-xs outline-none bg-transparent border-b pb-1.5 mb-3 placeholder:opacity-35"
+                  style={{ color: skin.textSecondary, borderColor: skin.divider }}
+                />
+
+                {/* 分类 */}
+                <div className="mb-3">
+                  <label className="text-[10px] font-medium block mb-1.5" style={{ color: skin.textMuted }}>分类</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PLAN_CATEGORIES.map(cat => (
+                      <button key={cat.key}
+                        onClick={() => setNewPlanCategory(cat.key)}
+                        className="text-[11px] px-2.5 py-1 rounded-full transition-all"
+                        style={{
+                          background: newPlanCategory === cat.key ? cat.color + '20' : skin.cardBg,
+                          color: newPlanCategory === cat.key ? cat.color : skin.textMuted,
+                          border: `1px solid ${newPlanCategory === cat.key ? cat.color : skin.divider}`,
+                        }}>
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 目标年份 */}
+                <div className="mb-3">
+                  <label className="text-[10px] font-medium block mb-1.5" style={{ color: skin.textMuted }}>目标完成年份</label>
+                  <input type="number" value={newPlanTargetYear}
+                    onChange={e => setNewPlanTargetYear(Number(e.target.value))}
+                    className="w-24 text-sm px-2 py-1 rounded-md border outline-none"
+                    style={{ borderColor: skin.divider, color: skin.textPrimary, backgroundColor: skin.cardBg }}
+                  />
+                </div>
+
+                {/* 里程碑 */}
+                <div className="mb-2">
+                  <label className="text-[10px] font-medium block mb-1.5" style={{ color: skin.textMuted }}>里程碑 (每行一个)</label>
+                  <textarea
+                    value={newMilestones}
+                    onChange={e => setNewMilestones(e.target.value.slice(0, 500))}
+                    placeholder={"完成第一个里程碑\n达成关键目标\n实现最终成果"}
+                    rows={5}
+                    className="w-full text-xs outline-none border rounded-md px-2.5 py-2 resize-none placeholder:opacity-35"
+                    style={{ color: skin.textSecondary, borderColor: skin.divider, backgroundColor: skin.cardBg }}
+                  />
                 </div>
               </div>
-              {isListening && decompText && (
-                <div className="mt-4 p-3 rounded-lg text-sm text-left" style={{ background: skin.cardBg, color: skin.textPrimary }}>{decompText}</div>
-              )}
-              <div className="mt-6">
-                <p className="text-[10px] mb-2" style={{ color: skin.textMuted }}>或选择周期后手动输入</p>
-                <div className="flex flex-wrap gap-1.5 justify-center mb-3">
-                  {DURATIONS.map((d, i) => (
-                    <button key={i} onClick={() => setNewDurIdx(i)}
-                      className="px-2.5 py-1 rounded text-[11px] font-medium transition-all"
-                      style={{
-                        background: newDurIdx === i ? skin.swatch : skin.cardBg,
-                        color: newDurIdx === i ? '#fff' : skin.textPrimary,
-                        border: `1px solid ${newDurIdx === i ? skin.swatch : skin.cellBorder}`,
-                      }}>{d.label}</button>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    placeholder="输入你的目标..."
-                    className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none"
-                    style={{ background: skin.cardBg, borderColor: skin.cellBorder, color: skin.textPrimary }}
-                    onKeyDown={e => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value; if (v.trim()) createGoalWithVision(v); } }} />
-                  <button
-                    onClick={() => { const el = document.querySelector<HTMLInputElement>('input[placeholder="输入你的目标..."]'); if (el?.value.trim()) createGoalWithVision(el.value); }}
-                    className="px-4 py-2 rounded-lg text-sm font-bold text-white"
-                    style={{ background: skin.swatch }}>创建</button>
-                </div>
+
+              <div className="px-5 py-3" style={{ borderTop: `1px solid ${skin.divider}` }}>
+                <button
+                  onClick={createCustomPlan}
+                  disabled={!newPlanName.trim()}
+                  className="w-full py-2 rounded-lg text-white text-xs font-medium disabled:opacity-40 transition-opacity"
+                  style={{ backgroundColor: skin.swatch }}
+                >
+                  创建计划
+                </button>
               </div>
             </div>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// 添加里程碑输入组件
+function AddMilestoneInput({ onAdd, skin }: { onAdd: (text: string) => void; skin: typeof NO_SKIN }) {
+  const [text, setText] = useState('');
+
+  const handleSubmit = () => {
+    if (!text.trim()) return;
+    onAdd(text.trim());
+    setText('');
+  };
+
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <input
+        value={text}
+        onChange={e => setText(e.target.value.slice(0, 100))}
+        onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+        placeholder="添加里程碑..."
+        className="flex-1 text-xs px-2.5 py-1.5 border rounded-lg outline-none"
+        style={{ borderColor: skin.divider, color: skin.textPrimary, backgroundColor: skin.cardBg }}
+      />
+      <button
+        onClick={handleSubmit}
+        disabled={!text.trim()}
+        className="text-xs px-3 py-1.5 rounded-lg text-white disabled:opacity-40"
+        style={{ backgroundColor: skin.swatch }}
+      >
+        添加
+      </button>
     </div>
   );
 }
