@@ -843,6 +843,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
               </button>
             </div>
           </div>
+        </div>
 
         {/* Stats row */}
         <div className="flex-shrink-0 px-5 py-2 flex items-center gap-4 text-xs border-b" style={{ borderColor: s.divider, backgroundColor: s.cardBg }}>
@@ -920,7 +921,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
             </button>
           )}
         </div>
-      </div>{/* end left panel */}
+      </div>
 
       {/* ══════════ RIGHT PANEL: OKR DETAIL ══════════ */}
       <div className="flex-1 overflow-y-auto">
