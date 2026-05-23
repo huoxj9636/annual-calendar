@@ -234,6 +234,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
   const [epitaphData, setEpitaphData] = useState<EpitaphData | null>(null);
   const [epitaphAnimStep, setEpitaphAnimStep] = useState(-1); // -1 = not playing
   const [epitaphTab, setEpitaphTab] = useState<'refs' | 'write' | 'deduce'>('refs');
+  const [epitaphFilter, setEpitaphFilter] = useState<string>('all');
   // Write form
   const [epOneLiner, setEpOneLiner] = useState('');
   const [epCareer, setEpCareer] = useState('');
@@ -442,6 +443,30 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
     localStorage.setItem('epitaph-data', JSON.stringify(data));
   }, [epOneLiner, epCareer, epCharacter, epRelationship, epWork1, epWork2, epWork3]);
 
+  // Auto-deduce 5 dimensions from epitaph content
+  const autoDeduceDimensions = useCallback(() => {
+    if (!epitaphData) return;
+    const works = epitaphData.threeWorks.filter(Boolean);
+    const { career, character, relationship } = epitaphData.evaluation;
+    const newInputs: Record<string, string> = {};
+    // 事业价值: career evaluation + work-related works
+    const careerWorks = works.filter(w => /产品|工具|公司|项目|业务|客户|团队|技术|平台|创业|职业|事业|行业|工作/.test(w));
+    newInputs['事业价值'] = [career, ...careerWorks].filter(Boolean).join('；') || `在事业上实现${epitaphData.oneLiner.slice(0, 10)}的核心追求`;
+    // 财富自由: income/asset-related works
+    const wealthWorks = works.filter(w => /收入|资产|投资|房|车|存款|财务|自由|百万|千万|亿/.test(w));
+    newInputs['财富自由'] = wealthWorks.join('；') || '实现财务独立，不再为生存出售时间';
+    // 健康精力
+    const healthWorks = works.filter(w => /运动|健康|体检|跑步|健身|养生|睡眠|精力/.test(w));
+    newInputs['健康精力'] = healthWorks.join('；') || '保持充沛精力，支撑所有目标';
+    // 亲密关系
+    const relWorks = works.filter(w => /家|陪伴|孩子|伴侣|父母|朋友|爱人|旅行|团聚/.test(w));
+    newInputs['亲密关系'] = [relationship, ...relWorks].filter(Boolean).join('；') || '经营深度关系，不让爱缺席';
+    // 自我成长
+    const growthWorks = works.filter(w => /学习|读书|写作|技能|成长|语言|学历|知识/.test(w));
+    newInputs['自我成长'] = [character, ...growthWorks].filter(Boolean).join('；') || '持续成长，成为更好的自己';
+    setDimInputs(newInputs);
+  }, [epitaphData]);
+
   const generateOKRsFromEpitaph = useCallback(() => {
     const newOkrs: OKR[] = LIFE_DIMENSIONS.map(dim => {
       const customObj = dimInputs[dim]?.trim();
@@ -575,7 +600,17 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
           {epitaphTab === 'refs' && (
             <div className="space-y-6">
               <p className="text-sm text-gray-500 mb-4">对标不同人生选择，看清内心真正向往的人生。</p>
-              {Array.from(new Set(EPITAPH_REFS.map(r => r.type))).map(type => (
+              {/* Filter tags */}
+              <div className="flex flex-wrap gap-2">
+                {['all', ...Array.from(new Set(EPITAPH_REFS.map(r => r.type)))].map(type => (
+                  <button key={type} onClick={() => setEpitaphFilter(type)}
+                          className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+                          style={{ backgroundColor: epitaphFilter === type ? '#444' : '#1a1a1a', color: epitaphFilter === type ? '#fff' : '#666', border: '1px solid ' + (epitaphFilter === type ? '#555' : '#2a2a2a') }}>
+                    {type === 'all' ? '全部' : type}
+                  </button>
+                ))}
+              </div>
+              {Array.from(new Set(EPITAPH_REFS.filter(r => epitaphFilter === 'all' || r.type === epitaphFilter).map(r => r.type))).map(type => (
                 <div key={type}>
                   <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{type}</div>
                   <div className="space-y-2">
@@ -599,7 +634,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
               {/* One liner */}
               <div>
                 <label className="text-xs text-gray-400 block mb-1.5">我的墓志铭一句话</label>
-                <input value={epOneLiner} onChange={e => setEpOneLiner(e.target.value)} placeholder="刻在墓碑上的最终评价…"
+                <input value={epOneLiner} onChange={e => setEpOneLiner(e.target.value)} placeholder="例：这里躺着一个有趣的人，一辈子做了3款改变普通人效率的工具"
                        className="w-full rounded-lg px-4 py-3 text-white text-base outline-none placeholder-gray-600"
                        style={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }} />
               </div>
@@ -615,7 +650,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                   ] as const).map(([label, val, set]) => (
                     <div key={label} className="flex items-center gap-3">
                       <span className="text-sm text-gray-500 w-8 flex-shrink-0">{label}</span>
-                      <input value={val} onChange={e => set(e.target.value)} placeholder={`${label}方面…`}
+                      <input value={val} onChange={e => set(e.target.value)} placeholder={label === '事业' ? '他做的产品帮上千万人提升了效率' : label === '品格' ? '他永远真诚，从不妥协底线' : '他是家人最坚实的依靠'}
                              className="flex-1 rounded-lg px-3 py-2 text-sm text-white outline-none placeholder-gray-600"
                              style={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }} />
                     </div>
@@ -634,7 +669,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                   ] as const).map(([n, val, set]) => (
                     <div key={n} className="flex items-center gap-3">
                       <span className="text-sm text-gray-500 w-4 flex-shrink-0">{n}</span>
-                      <input value={val} onChange={e => set(e.target.value)} placeholder="作品/成果…"
+                      <input value={val} onChange={e => set(e.target.value)} placeholder={n === '1' ? '例：打造用户量破千万的效率工具' : n === '2' ? '例：出版一本个人成长畅销书' : '例：和家人环游世界50国'}
                              className="flex-1 rounded-lg px-3 py-2 text-sm text-white outline-none placeholder-gray-600"
                              style={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }} />
                     </div>
@@ -680,13 +715,20 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                     <div className="text-white text-lg italic">&quot;{epitaphData.oneLiner}&quot;</div>
                   </div>
 
+                  {/* Auto-deduce button */}
+                  <button onClick={autoDeduceDimensions}
+                          className="w-full py-2.5 rounded-lg text-white text-sm font-medium hover:brightness-110 transition-all"
+                          style={{ background: 'linear-gradient(135deg, #333 0%, #444 100%)', border: '1px solid #555' }}>
+                    ⚡ 自动从墓志铭拆解到五大维度
+                  </button>
+
                   {/* 5 dimensions */}
                   <div className="space-y-3">
                     {LIFE_DIMENSIONS.map(dim => (
                       <div key={dim} className="rounded-lg p-4" style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
                         <div className="text-sm font-bold text-white mb-2">{dim}</div>
                         <input value={dimInputs[dim] || ''} onChange={e => setDimInputs(prev => ({ ...prev, [dim]: e.target.value }))}
-                               placeholder={`${dim}方面的年度目标（可选，留空使用默认）`}
+                               placeholder={`${dim}方面的年度目标（点击上方自动拆解，或手动输入）`}
                                className="w-full rounded px-3 py-2 text-sm text-white outline-none placeholder-gray-600"
                                style={{ backgroundColor: '#111', border: '1px solid #333' }} />
                       </div>
@@ -711,7 +753,19 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
   // MAIN OKR WORKSPACE (left-right layout)
   // ═══════════════════════════════════════════════════
   return (
-    <div className="fixed inset-0 z-50 flex" style={{ backgroundColor: s.bg }}>
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: s.bg }}>
+      {/* Epitaph summary top banner (if saved) */}
+      {epitaphData && (
+        <div className="flex-shrink-0 px-6 py-2 flex items-center gap-3 border-b"
+             style={{ backgroundColor: '#1a1a1a', borderColor: '#333' }}>
+          <span className="text-[10px] tracking-widest text-gray-500 flex-shrink-0">墓志铭</span>
+          <span className="flex-1 text-xs text-gray-300 italic truncate">&quot;{epitaphData.oneLiner}&quot;</span>
+          <button onClick={() => setShowEpitaph(true)} className="text-[10px] text-gray-500 hover:text-white transition-colors flex-shrink-0">
+            编辑
+          </button>
+        </div>
+      )}
+      <div className="flex flex-1 min-h-0">
 
       {/* ══════════ LEFT PANEL: OKR LIST ══════════ */}
       <div className="w-[480px] flex-shrink-0 flex flex-col border-r" style={{ backgroundColor: s.panelBg, borderColor: s.divider }}>
@@ -750,15 +804,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
           </div>
         </div>
 
-        {/* Epitaph summary bar (if saved) */}
-        {epitaphData && (
-          <div className="flex-shrink-0 px-5 py-2 text-xs border-b flex items-center gap-2"
-               style={{ borderColor: s.divider, backgroundColor: s.cardBg }}>
-            <span style={{ color: s.textMuted }}>墓志铭:</span>
-            <span className="truncate italic" style={{ color: s.text2 }}>&quot;{epitaphData.oneLiner}&quot;</span>
-            <button onClick={() => setShowEpitaph(true)} className="ml-auto flex-shrink-0 hover:underline" style={{ color: swatch }}>编辑</button>
-          </div>
-        )}
+
 
         {/* Stats row */}
         <div className="flex-shrink-0 px-5 py-2 flex items-center gap-4 text-xs border-b" style={{ borderColor: s.divider, backgroundColor: s.cardBg }}>
@@ -1030,6 +1076,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
             </div>
           );
         })()}
+      </div>
       </div>
 
       {/* ══════ TIMER MODAL ══════ */}
