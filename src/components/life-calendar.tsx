@@ -302,36 +302,23 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   );
 
   // Render tree node in left list (recursive, indented)
-  const renderTreeNode = (node: GoalNode, depth: number = 0): React.ReactNode => {
+  // Left panel: flat list of top-level goals only (no tree, no checkboxes)
+  const renderLeftItem = (node: GoalNode): React.ReactNode => {
     const pct = Math.round(nodeProgress(node) * 100);
-    const isLeaf = node.children.length === 0;
     const isSelected = selectedId === node.id;
     return (
-      <div key={node.id}>
-        <div
-          onClick={() => setSelectedId(node.id)}
-          className="py-2 cursor-pointer transition-all border-l-[3px] flex items-center gap-2"
-          style={{
-            paddingLeft: `${16 + depth * 16}px`,
-            paddingRight: '16px',
-            backgroundColor: isSelected ? s.cardHover : 'transparent',
-            borderLeftColor: isSelected ? swatch : 'transparent',
-          }}
-        >
-          {isLeaf ? (
-            <button
-              onClick={e => { e.stopPropagation(); toggleLeaf(node.id); }}
-              className="text-sm flex-shrink-0 w-4 text-center"
-              style={{ color: node.status === 'completed' ? '#22c55e' : s.textMuted }}
-            >
-              {node.status === 'completed' ? '☑' : '☐'}
-            </button>
-          ) : null}
-          <span className={`flex-1 text-sm truncate ${node.status === 'completed' && isLeaf ? 'line-through' : ''}`}
-            style={{ color: node.status === 'completed' && isLeaf ? s.textMuted : s.text1 }}>{node.title}</span>
-          <span className="text-xs font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
-        </div>
-        {node.children.map(c => renderTreeNode(c, depth + 1))}
+      <div key={node.id}
+        onClick={() => setSelectedId(node.id)}
+        className="py-2 cursor-pointer transition-all border-l-[3px] flex items-center gap-2"
+        style={{
+          paddingLeft: '16px',
+          paddingRight: '16px',
+          backgroundColor: isSelected ? s.cardHover : 'transparent',
+          borderLeftColor: isSelected ? swatch : 'transparent',
+        }}
+      >
+        <span className="flex-1 text-sm truncate" style={{ color: s.text1 }}>{node.title}</span>
+        <span className="text-xs font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
       </div>
     );
   };
@@ -345,18 +332,11 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       <div key={node.id} className={depth > 0 ? 'ml-3' : ''} style={{ borderLeft: depth > 0 ? `1px dashed ${s.divider}` : 'none', paddingLeft: depth > 0 ? 8 : 0 }}>
         <div className="flex items-center gap-1.5 py-1.5 group cursor-pointer"
              onClick={() => { if (!isLeaf) toggleExpand(node.id); }}>
-          {/* Expand/collapse toggle */}
+          {/* Expand/collapse toggle or spacer */}
           {!isLeaf ? (
             <span className="text-[10px] flex-shrink-0 transition-transform duration-200" style={{ color: s.textMuted, transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
           ) : (
-            <span className="w-[10px] flex-shrink-0" /> /* spacer for leaf */
-          )}
-          {/* Leaf checkbox */}
-          {isLeaf && (
-            <button onClick={e => { e.stopPropagation(); toggleLeaf(node.id); }} className="flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors"
-                    style={{ borderColor: node.status === 'completed' ? '#22c55e' : s.divider, backgroundColor: node.status === 'completed' ? '#22c55e' : 'transparent' }}>
-              {node.status === 'completed' && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-            </button>
+            <span className="w-[10px] flex-shrink-0" />
           )}
           {/* Title: click to edit */}
           {editingId === node.id ? (
@@ -366,8 +346,8 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                    className="flex-1 text-sm outline-none rounded px-1.5 py-0.5"
                    style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
           ) : (
-            <span className={`flex-1 text-sm truncate ${node.status === 'completed' && isLeaf ? 'line-through' : ''}`}
-                  style={{ color: node.status === 'completed' && isLeaf ? s.textMuted : s.text1 }}
+            <span className="flex-1 text-sm truncate"
+                  style={{ color: s.text1 }}
                   onClick={e => { e.stopPropagation(); setEditingId(node.id); setEditText(node.title); }}>
               {node.title}
             </span>
@@ -491,7 +471,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               <span className="text-4xl mb-2">🎯</span>
               <p className="text-sm">输入目标开始吧</p>
             </div>
-          ) : filteredGoals.map(g => renderTreeNode(g))}
+          ) : filteredGoals.map(g => renderLeftItem(g))}
         </div>
       </div>
 
