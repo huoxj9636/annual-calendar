@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { SKINS } from '@/lib/skins';
+import ParticleEffect from '@/components/particle-effect';
 
 interface LifeCalendarProps {
   birthYear: number;
@@ -367,19 +368,31 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
       {/* ══════════ LEFT PANEL: OKR LIST ══════════ */}
       <div className="w-[480px] flex-shrink-0 flex flex-col border-r" style={{ backgroundColor: s.panelBg, borderColor: s.divider }}>
 
-        {/* Left header */}
-        <div className="flex-shrink-0 px-5 py-3 border-b flex items-center gap-2" style={{ borderColor: s.divider }}>
-          {/* Period */}
-          <div className="flex items-center gap-1">
-            {(['annual', 'Q1', 'Q2', 'Q3', 'Q4'] as PeriodType[]).map(p => (
-              <button key={p} onClick={() => setPeriod(p)} className="px-2 py-1 rounded text-xs font-medium transition-all"
-                      style={{ backgroundColor: period === p ? swatch : 'transparent', color: period === p ? '#fff' : s.text2, border: period === p ? 'none' : `1px solid ${s.divider}` }}>
-                {p === 'annual' ? '年度' : p}
+        {/* Header banner */}
+        <div className="flex-shrink-0 px-5 pb-4 relative overflow-hidden" style={{ paddingTop: '0.95rem', ...(skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }) }}>
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${skin.sidebarFrom}cc, ${skin.sidebarTo}bb)` }} />
+          <ParticleEffect color={skin.swatch} count={30} />
+          <div className="relative z-10">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-xl font-bold tracking-wide text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>人生旅途</h2>
+                <div className="flex items-center gap-1 mt-2">
+                  {(['annual', 'Q1', 'Q2', 'Q3', 'Q4'] as PeriodType[]).map(p => (
+                    <button key={p} onClick={() => setPeriod(p)} className="px-2 py-0.5 rounded text-xs font-medium transition-all"
+                            style={{ backgroundColor: period === p ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)', color: period === p ? '#fff' : 'rgba(255,255,255,0.7)' }}>
+                      {p === 'annual' ? '年度' : p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/20 text-white/50 hover:text-white transition-colors"
+                style={{ background: 'rgba(0,0,0,0.2)' }}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
-            ))}
+            </div>
           </div>
-          <div className="flex-1" />
-          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-sm hover:opacity-70" style={{ color: s.textMuted }}>✕</button>
         </div>
 
         {/* Stats row */}
