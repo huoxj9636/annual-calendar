@@ -321,64 +321,58 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const renderDetailChildren = (node: GoalNode, depth: number = 0): React.ReactNode => {
     if (node.children.length === 0 && depth === 0) return null;
     return (
-      <div className="space-y-2">
-        {node.children.map((child, idx) => {
+      <div>
+        {node.children.map((child) => {
           const pct = Math.round(nodeProgress(child) * 100);
           const isLeaf = child.children.length === 0;
           return (
-            <div key={child.id} className="rounded-xl overflow-hidden" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
-              <div className="px-4 py-3 flex items-center gap-2">
+            <div key={child.id}>
+              <div className="flex items-center gap-2 py-2 group" style={{ borderBottom: `1px solid ${s.divider}` }}>
                 {isLeaf ? (
-                  <button onClick={() => toggleLeaf(child.id)}
-                          className="text-sm flex-shrink-0"
+                  <button onClick={() => toggleLeaf(child.id)} className="text-sm flex-shrink-0"
                           style={{ color: child.status === 'completed' ? '#22c55e' : s.textMuted }}>
                     {child.status === 'completed' ? '☑' : '☐'}
                   </button>
                 ) : (
                   <button onClick={() => { setSelectedId(child.id); setAddInputParentId(null); }}
-                          className="text-sm flex-shrink-0 font-bold"
-                          style={{ color: swatch }}>
-                    ▸
-                  </button>
+                          className="text-sm flex-shrink-0 font-bold" style={{ color: swatch }}>▸</button>
                 )}
                 {editingId === child.id ? (
                   <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                          onBlur={() => saveTitle(child.id)}
                          onKeyDown={e => { if (e.key === 'Enter') saveTitle(child.id); if (e.key === 'Escape') setEditingId(null); }}
-                         className="flex-1 text-sm outline-none rounded px-2 py-1"
+                         className="flex-1 text-sm outline-none rounded px-2 py-0.5"
                          style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
                 ) : (
-                  <span className="flex-1 text-sm cursor-pointer hover:opacity-80" style={{ color: s.text1 }}
+                  <span className={`flex-1 text-sm cursor-pointer ${child.status === 'completed' ? 'line-through' : ''}`}
+                        style={{ color: child.status === 'completed' ? s.textMuted : s.text1 }}
                         onClick={() => { setEditingId(child.id); setEditText(child.title); }}>
                     {child.title}
                   </span>
                 )}
-                <span className="text-xs font-bold" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
-                <div className="w-16">{pb(pct, 4, swatch)}</div>
-                <span className="text-[11px]" style={{ color: s.textMuted }}>{child.children.length}项</span>
+                <span className="text-[11px] font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
+                {!isLeaf && <span className="text-[10px] flex-shrink-0" style={{ color: s.textMuted }}>{child.children.length}项</span>}
                 <button onClick={() => deleteGoal(child.id)}
-                        className="text-xs opacity-30 hover:opacity-80 flex-shrink-0" style={{ color: '#ef4444' }}>✕</button>
+                        className="text-[11px] opacity-0 group-hover:opacity-60 hover:!opacity-100 flex-shrink-0 transition-opacity" style={{ color: '#ef4444' }}>✕</button>
               </div>
-              {/* Show grandchildren inline if depth < 2 */}
-              {child.children.length > 0 && depth < 2 && (
-                <div className="px-4 pb-2 space-y-1" style={{ borderLeft: `3px solid ${swatch}`, marginLeft: 24 }}>
-                  {child.children.map(gc => {
-                    return (
-                      <div key={gc.id} className="flex items-center gap-2 py-1 px-2 rounded"
-                           style={{ backgroundColor: s.panelBg }}>
-                        <button onClick={() => toggleLeaf(gc.id)}
-                                className="text-xs" style={{ color: gc.status === 'completed' ? '#22c55e' : s.textMuted }}>
-                          {gc.status === 'completed' ? '☑' : '☐'}
-                        </button>
-                        <span className={`flex-1 text-sm ${gc.status === 'completed' ? 'line-through' : ''}`}
-                              style={{ color: gc.status === 'completed' ? s.textMuted : s.text2 }}>
-                          {gc.title}
-                        </span>
-                        <button onClick={() => deleteGoal(gc.id)}
-                                className="text-xs opacity-20 hover:opacity-70" style={{ color: '#ef4444' }}>✕</button>
-                      </div>
-                    );
-                  })}
+              {/* Nested children */}
+              {child.children.length > 0 && (
+                <div style={{ paddingLeft: 20, borderLeft: `2px solid ${s.divider}`, marginLeft: 8 }}>
+                  {renderDetailChildren(child, depth + 1)}
+                  {/* Add sub-item inline */}
+                  <div className="flex items-center gap-2 py-1.5 group" style={{ borderBottom: `1px solid ${s.divider}` }}>
+                    <span className="text-xs flex-shrink-0" style={{ color: s.textMuted }}>+</span>
+                    <input type="text" value={addInputParentId === child.id ? newChild : ''}
+                           onChange={e => { setAddInputParentId(child.id); setNewChild(e.target.value); }}
+                           onFocus={() => setAddInputParentId(child.id)}
+                           onKeyDown={e => { if (e.key === 'Enter' && newChild.trim()) { addChild(child.id); } }}
+                           placeholder="添加子项..."
+                           className="flex-1 text-xs outline-none bg-transparent"
+                           style={{ color: s.text1 }} />
+                    {addInputParentId === child.id && newChild.trim() && (
+                      <button onClick={() => addChild(child.id)} className="text-[10px] font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -534,38 +528,37 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                 </div>
               </div>
 
-              {/* Add child */}
-              <div className="rounded-xl p-4" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
-                <div className="text-sm font-medium mb-2" style={{ color: s.text1 }}>
-                  添加子目标 / 执行步骤
-                </div>
-                <div className="flex items-center gap-2">
-                  <input ref={addInputRef} type="text" value={newChild} onChange={e => setNewChild(e.target.value)}
-                         onKeyDown={e => e.key === 'Enter' && addChild(node.id)}
-                         placeholder="输入子项名称，回车添加" className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
-                         style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                  {/* Voice for child */}
-                  <button onClick={voiceChild.listening || voiceChild.polishing ? undefined : voiceChild.start}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
-                          style={{ backgroundColor: voiceChild.polishing ? swatch : voiceChild.listening ? '#ef4444' : s.panelBg, border: `1px solid ${s.divider}`, color: voiceChild.listening || voiceChild.polishing ? '#fff' : s.textMuted }}
-                          disabled={voiceChild.polishing}>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                      <line x1="12" y1="19" x2="12" y2="23" />
-                      <line x1="8" y1="23" x2="16" y2="23" />
-                    </svg>
-                  </button>
-                  <button onClick={() => addChild(node.id)} disabled={!newChild.trim()}
-                          className="px-3 py-1.5 rounded-lg text-white text-xs font-bold disabled:opacity-40 flex-shrink-0"
-                          style={{ backgroundColor: swatch }}>+ 添加</button>
-                </div>
-                {(voiceChild.listening || voiceChild.polishing) && (
-                  <div className="text-xs mt-1.5 flex items-center gap-2" style={{ color: voiceChild.polishing ? swatch : '#ef4444' }}>
-                    <span className="animate-pulse">●</span> {voiceChild.polishing ? 'AI润色中...' : '正在语音识别...'}
-                  </div>
+              {/* Add child - simple inline */}
+              <div className="flex items-center gap-2 py-2" style={{ borderBottom: `1px solid ${s.divider}` }}>
+                <span className="text-sm flex-shrink-0 font-bold" style={{ color: swatch }}>+</span>
+                <input ref={addInputRef} type="text" value={addInputParentId === node.id ? newChild : ''}
+                       onChange={e => { setAddInputParentId(node.id); setNewChild(e.target.value); }}
+                       onFocus={() => setAddInputParentId(node.id)}
+                       onKeyDown={e => e.key === 'Enter' && addChild(node.id)}
+                       placeholder="添加子目标 / 执行步骤..."
+                       className="flex-1 text-sm outline-none bg-transparent"
+                       style={{ color: s.text1 }} />
+                {/* Voice for child */}
+                <button onClick={voiceChild.listening || voiceChild.polishing ? undefined : voiceChild.start}
+                        className="w-7 h-7 flex items-center justify-center rounded transition-all flex-shrink-0"
+                        style={{ backgroundColor: voiceChild.polishing ? swatch : voiceChild.listening ? '#ef4444' : 'transparent', color: voiceChild.listening || voiceChild.polishing ? '#fff' : s.textMuted }}
+                        disabled={voiceChild.polishing}>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                    <line x1="12" y1="19" x2="12" y2="23" />
+                    <line x1="8" y1="23" x2="16" y2="23" />
+                  </svg>
+                </button>
+                {addInputParentId === node.id && newChild.trim() && (
+                  <button onClick={() => addChild(node.id)} className="text-xs font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
                 )}
               </div>
+              {(voiceChild.listening || voiceChild.polishing) && (
+                <div className="text-xs py-1 flex items-center gap-2" style={{ color: voiceChild.polishing ? swatch : '#ef4444' }}>
+                  <span className="animate-pulse">●</span> {voiceChild.polishing ? 'AI润色中...' : '正在语音识别...'}
+                </div>
+              )}
 
               {/* Children list */}
               {renderDetailChildren(node)}
