@@ -439,7 +439,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
           <span style={{ color: s.textMuted }}>目标 <b style={{ color: s.text1 }}>{globalStats.totalOKRs}</b></span>
           <span style={{ color: s.textMuted }}>子项 <b style={{ color: s.text1 }}>{globalStats.totalNodes}</b></span>
           <span style={{ color: s.textMuted }}>已完成 <b style={{ color: '#22c55e' }}>{globalStats.doneNodes}</b></span>
-          <span style={{ color: s.textMuted }}>完成率 <b style={{ color: swatch }}>{globalStats.avgProgress}%</b></span>
         </div>
 
         {/* Add goal inline */}
@@ -472,6 +471,12 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               <p className="text-sm">输入目标开始吧</p>
             </div>
           ) : filteredGoals.map(g => renderLeftItem(g))}
+        </div>
+
+        {/* Bottom: completion rate */}
+        <div className="flex-shrink-0 px-5 py-3 border-t flex items-center gap-3" style={{ borderColor: s.divider, backgroundColor: s.panelBg }}>
+          <div className="flex-1">{pb(globalStats.avgProgress, 6, swatch)}</div>
+          <span className="text-sm font-bold" style={{ color: globalStats.avgProgress > 0 ? swatch : s.textMuted }}>{globalStats.avgProgress}%</span>
         </div>
       </div>
 
