@@ -108,9 +108,12 @@ function migrateGoals(raw: any[]): GoalNode[] {
 // ── Voice Recognition Hook ──
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SRInstance = any;
+type VoicePhase = 'idle' | 'listening' | 'recognized' | 'polishing' | 'done';
+
 function useVoiceRecognition(onResult: (text: string) => void, context?: string) {
-  const [listening, setListening] = useState(false);
-  const [polishing, setPolishing] = useState(false);
+  const [phase, setPhase] = useState<VoicePhase>('idle');
+  const [rawText, setRawText] = useState('');
+  const [polishedText, setPolishedText] = useState('');
   const recRef = useRef<SRInstance>(null);
 
   const start = useCallback(() => {
@@ -121,41 +124,55 @@ function useVoiceRecognition(onResult: (text: string) => void, context?: string)
     const rec = new SR();
     rec.lang = 'zh-CN';
     rec.continuous = false;
-    rec.interimResults = false;
+    rec.interimResults = true;
+    setRawText('');
+    setPolishedText('');
+    setPhase('listening');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onresult = async (e: any) => {
-      const raw = e.results?.[0]?.[0]?.transcript || '';
-      setListening(false);
-      if (!raw) return;
-      // Polish via LLM
-      setPolishing(true);
-      try {
-        const res = await fetch('/api/polish-text', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: raw, context }),
-        });
-        const data = await res.json();
-        onResult(data.result || raw);
-      } catch {
-        onResult(raw);
-      } finally {
-        setPolishing(false);
+      let interim = '';
+      let final = '';
+      for (let i = 0; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) final += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      const display = final || interim;
+      if (display) setRawText(display);
+      // When we have a final result, move to recognized phase
+      if (final) {
+        setPhase('recognized');
+        // Polish via LLM
+        setPhase('polishing');
+        try {
+          const res = await fetch('/api/polish-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: final, context }),
+          });
+          const data = await res.json();
+          setPolishedText(data.result || final);
+          onResult(data.result || final);
+        } catch {
+          setPolishedText(final);
+          onResult(final);
+        }
+        setPhase('done');
+        setTimeout(() => setPhase('idle'), 1200);
       }
     };
-    rec.onerror = () => setListening(false);
-    rec.onend = () => setListening(false);
+    rec.onerror = () => { setPhase('idle'); };
+    rec.onend = () => { /* phase managed by onresult */ };
     recRef.current = rec;
     rec.start();
-    setListening(true);
   }, [onResult, context]);
 
   const stop = useCallback(() => {
     recRef.current?.stop();
-    setListening(false);
+    setPhase('idle');
   }, []);
 
-  return { listening, polishing, start, stop };
+  return { phase, rawText, polishedText, start, stop };
 }
 
 // ── Component ──
@@ -446,10 +463,10 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                  placeholder="输入目标，回车创建" className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
                  style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
           {/* Voice button */}
-          <button onClick={voiceTop.listening || voiceTop.polishing ? undefined : voiceTop.start}
+          <button onClick={voiceTop.phase !== 'idle' ? undefined : voiceTop.start}
                   className="w-8 h-8 flex items-center justify-center rounded-lg transition-all"
-                  style={{ backgroundColor: voiceTop.polishing ? swatch : voiceTop.listening ? '#ef4444' : s.cardBg, border: `1px solid ${s.divider}`, color: voiceTop.listening || voiceTop.polishing ? '#fff' : s.textMuted }}
-                  disabled={voiceTop.polishing}>
+                  style={{ backgroundColor: voiceTop.phase === 'listening' ? '#ef4444' : voiceTop.phase !== 'idle' ? swatch : s.cardBg, border: `1px solid ${s.divider}`, color: voiceTop.phase !== 'idle' ? '#fff' : s.textMuted }}
+                  disabled={voiceTop.phase !== 'idle'}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -460,11 +477,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
           <button onClick={addGoal} disabled={!newTitle.trim()} className="px-3 py-1.5 rounded-lg text-white text-xs font-bold disabled:opacity-40"
                   style={{ backgroundColor: swatch }}>+ 目标</button>
         </div>
-        {(voiceTop.listening || voiceTop.polishing) && (
-          <div className="flex-shrink-0 px-5 py-1.5 text-xs flex items-center gap-2" style={{ color: voiceTop.polishing ? swatch : '#ef4444', backgroundColor: s.cardBg }}>
-            <span className="animate-pulse">●</span> {voiceTop.polishing ? 'AI润色中...' : '正在语音识别...'}
-          </div>
-        )}
 
         {/* Goal tree list */}
         <div className="flex-1 overflow-y-auto">
@@ -539,10 +551,10 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                        className="flex-1 text-sm outline-none bg-transparent"
                        style={{ color: s.text1 }} />
                 {/* Voice for child */}
-                <button onClick={voiceChild.listening || voiceChild.polishing ? undefined : voiceChild.start}
+                <button onClick={voiceChild.phase !== 'idle' ? undefined : voiceChild.start}
                         className="w-7 h-7 flex items-center justify-center rounded transition-all flex-shrink-0"
-                        style={{ backgroundColor: voiceChild.polishing ? swatch : voiceChild.listening ? '#ef4444' : 'transparent', color: voiceChild.listening || voiceChild.polishing ? '#fff' : s.textMuted }}
-                        disabled={voiceChild.polishing}>
+                        style={{ backgroundColor: voiceChild.phase === 'listening' ? '#ef4444' : voiceChild.phase !== 'idle' ? swatch : 'transparent', color: voiceChild.phase !== 'idle' ? '#fff' : s.textMuted }}
+                        disabled={voiceChild.phase !== 'idle'}>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -554,11 +566,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                   <button onClick={() => addChild(node.id)} className="text-xs font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
                 )}
               </div>
-              {(voiceChild.listening || voiceChild.polishing) && (
-                <div className="text-xs py-1 flex items-center gap-2" style={{ color: voiceChild.polishing ? swatch : '#ef4444' }}>
-                  <span className="animate-pulse">●</span> {voiceChild.polishing ? 'AI润色中...' : '正在语音识别...'}
-                </div>
-              )}
 
               {/* Children list */}
               {renderDetailChildren(node)}
@@ -591,6 +598,76 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
           );
         })()}
       </div>
+
+      {/* Voice recognition modal */}
+      {(voiceTop.phase !== 'idle' || voiceChild.phase !== 'idle') && (() => {
+        const v = voiceTop.phase !== 'idle' ? voiceTop : voiceChild;
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <div className="rounded-2xl p-6 w-[360px] shadow-2xl" style={{ backgroundColor: s.panelBg }}>
+              {/* Listening phase */}
+              {v.phase === 'listening' && (
+                <div className="text-center">
+                  {/* Sound wave animation */}
+                  <div className="flex items-center justify-center gap-1 h-12 mb-4">
+                    {[0,1,2,3,4,5,6,7,8].map(i => (
+                      <div key={i} className="w-1.5 rounded-full animate-pulse" style={{
+                        backgroundColor: '#ef4444',
+                        height: `${16 + Math.random() * 24}px`,
+                        animationDelay: `${i * 0.1}s`,
+                        animationDuration: '0.6s',
+                      }} />
+                    ))}
+                  </div>
+                  <div className="text-sm font-medium mb-2" style={{ color: s.text1 }}>正在聆听...</div>
+                  <div className="text-xs" style={{ color: s.textMuted }}>请说出您的目标</div>
+                  {v.rawText && (
+                    <div className="mt-4 rounded-lg px-3 py-2 text-sm text-left" style={{ backgroundColor: s.cardBg, color: s.text2 }}>
+                      {v.rawText}<span className="animate-pulse">|</span>
+                    </div>
+                  )}
+                  <button onClick={v.stop} className="mt-4 px-4 py-1.5 rounded-lg text-xs" style={{ backgroundColor: s.cardBg, color: s.text2, border: `1px solid ${s.divider}` }}>取消</button>
+                </div>
+              )}
+              {/* Recognized → Polishing transition */}
+              {(v.phase === 'recognized' || v.phase === 'polishing') && (
+                <div>
+                  <div className="text-xs mb-2" style={{ color: s.textMuted }}>语音识别结果</div>
+                  <div className="rounded-lg px-3 py-2 text-sm mb-4" style={{ backgroundColor: s.cardBg, color: s.text2 }}>
+                    {v.rawText}
+                  </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="h-px flex-1" style={{ backgroundColor: s.divider }} />
+                    <span className="text-xs animate-pulse" style={{ color: swatch }}>AI 润色中...</span>
+                    <div className="h-px flex-1" style={{ backgroundColor: s.divider }} />
+                  </div>
+                  <div className="rounded-lg px-3 py-2 text-sm min-h-[40px]" style={{ backgroundColor: s.cardBg, border: `1px dashed ${swatch}`, color: s.textMuted }}>
+                    {v.polishedText || '...'}
+                  </div>
+                </div>
+              )}
+              {/* Done */}
+              {v.phase === 'done' && (
+                <div className="text-center">
+                  <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: '#10b981' }}>
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div className="text-xs mb-1" style={{ color: s.textMuted }}>原文</div>
+                  <div className="rounded-lg px-3 py-1.5 text-sm mb-2 line-through" style={{ backgroundColor: s.cardBg, color: s.textMuted }}>
+                    {v.rawText}
+                  </div>
+                  <div className="text-xs mb-1" style={{ color: swatch }}>润色结果</div>
+                  <div className="rounded-lg px-3 py-1.5 text-sm font-medium" style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${swatch}` }}>
+                    {v.polishedText}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
