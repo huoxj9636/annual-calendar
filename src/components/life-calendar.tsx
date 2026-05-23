@@ -11,7 +11,7 @@ interface LifeCalendarProps {
   skinKey?: string;
 }
 
-// ── Data types ──
+// ── OKR Data types ──
 type OKRStatus = 'not_started' | 'in_progress' | 'completed';
 
 interface TomatoItem {
@@ -52,6 +52,20 @@ interface OKR {
 
 type PeriodType = 'annual' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
+// ── Epitaph Data types ──
+interface EpitaphData {
+  oneLiner: string;          // 墓志铭一句话
+  evaluation: { career: string; character: string; relationship: string }; // 别人如何评价
+  threeWorks: [string, string, string]; // 三件作品/成果
+  updatedAt: number;
+}
+
+interface EpitaphRef {
+  type: string;
+  epitaph: string;
+  summary: string;
+}
+
 // ── Constants ──
 const STATUS_CYCLE: OKRStatus[] = ['not_started', 'in_progress', 'completed'];
 const STATUS_CFG: Record<OKRStatus, { label: string; icon: string }> = {
@@ -59,6 +73,36 @@ const STATUS_CFG: Record<OKRStatus, { label: string; icon: string }> = {
   in_progress: { label: '进行中', icon: '🔵' },
   completed: { label: '已完成', icon: '🟢' },
 };
+
+const EPITAPH_REFS: EpitaphRef[] = [
+  { type: '实干成就', epitaph: '「她用双手铸就了不可磨灭的事业」', summary: '一生扎根实业，从零到一，用行动证明价值，留下实实在在的成果。' },
+  { type: '实干成就', epitaph: '「他让荒地变沃土，让不可能变日常」', summary: '实干家的人生信条：问题来了就解决，路堵了就开路。' },
+  { type: '学术探索', epitaph: '「他为人类知识边界推进了一厘米」', summary: '在未知的黑暗中举着火把，那一小步却照亮了后来者的路。' },
+  { type: '学术探索', epitaph: '「她一生追问为什么，直到答案开花」', summary: '学术的孤独只有自己知道，但成果属于全人类。' },
+  { type: '家庭温暖', epitaph: '「他的家，是所有人最想回去的地方」', summary: '没做过惊天动地的事，但把身边每个人都照顾得很好。' },
+  { type: '家庭温暖', epitaph: '「她把一生过成了最温暖的诗」', summary: '以温柔为力量，用陪伴书写了最动人的篇章。' },
+  { type: '自由行者', epitaph: '「他从未被定义，也从未停止行走」', summary: '不按剧本活，每一步都是自己的选择，每一程都是风景。' },
+  { type: '自由行者', epitaph: '「她活成了别人只敢想的样子」', summary: '自由的代价是孤独，但自由的回报是无悔。' },
+  { type: '商业创造', epitaph: '「他创造了价值，也改变了规则」', summary: '商业的本质不是赚钱，是创造别人需要的东西。' },
+  { type: '商业创造', epitaph: '「她让一万个人有了更好的生活」', summary: '商业的最高境界：自己成功的同时，让世界更好了一点。' },
+  { type: '碌碌无为', epitaph: '「他来过，但没人记得他做过什么」', summary: '警示：随波逐流的一生，连遗憾都平淡无味。' },
+  { type: '碌碌无为', epitaph: '「她总说明天开始，直到没有明天」', summary: '警示：拖延不是性格，是对生命的浪费。' },
+];
+
+const LIFE_DIMENSIONS = ['事业价值', '财富自由', '健康精力', '亲密关系', '自我成长'] as const;
+
+// Life animation script
+const LIFE_SCRIPT = [
+  { text: '出生', sub: '一声啼哭，来到这个世界' },
+  { text: '上学', sub: '随大流，按部就班' },
+  { text: '毕业', sub: '不知道自己要什么，先找份工作吧' },
+  { text: '工作', sub: '为生存奔波，日复一日' },
+  { text: '被推着走', sub: '结婚、买房、生子……社会时钟不停' },
+  { text: '中年', sub: '突然迷茫——这是我想要的生活吗？' },
+  { text: '晚年', sub: '回首一生，遗憾比成就多' },
+  { text: '墓碑', sub: '无字。一生潦草落幕' },
+  { text: '', sub: '如果这是你的结局，你甘心吗？' },
+];
 
 function genId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -184,6 +228,23 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
   const [dailyTarget, setDailyTarget] = useState(8);
   const [interruptions, setInterruptions] = useState(0);
 
+  // ── Epitaph state ──
+  const [showEpitaph, setShowEpitaph] = useState(false);
+  const [epitaphSeen, setEpitaphSeen] = useState(false);
+  const [epitaphData, setEpitaphData] = useState<EpitaphData | null>(null);
+  const [epitaphAnimStep, setEpitaphAnimStep] = useState(-1); // -1 = not playing
+  const [epitaphTab, setEpitaphTab] = useState<'refs' | 'write' | 'deduce'>('refs');
+  // Write form
+  const [epOneLiner, setEpOneLiner] = useState('');
+  const [epCareer, setEpCareer] = useState('');
+  const [epCharacter, setEpCharacter] = useState('');
+  const [epRelationship, setEpRelationship] = useState('');
+  const [epWork1, setEpWork1] = useState('');
+  const [epWork2, setEpWork2] = useState('');
+  const [epWork3, setEpWork3] = useState('');
+  // Deduce: dimension inputs
+  const [dimInputs, setDimInputs] = useState<Record<string, string>>({});
+
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
   const periodLabel = period === 'annual' ? `${year}年度` : `${year} ${period}`;
@@ -196,6 +257,12 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
     if (dt) setDailyTarget(Number(dt) || 8);
     const ir = localStorage.getItem(`tomato-interrupt-${todayKey}`);
     if (ir) setInterruptions(Number(ir) || 0);
+    // Epitaph
+    const seen = localStorage.getItem('epitaph-seen');
+    setEpitaphSeen(!!seen);
+    const ed = localStorage.getItem('epitaph-data');
+    if (ed) { try { setEpitaphData(JSON.parse(ed)); } catch { /* ignore */ } }
+    if (!seen) { setEpitaphAnimStep(0); }
     setMounted(true);
   }, [todayKey]);
 
@@ -203,6 +270,24 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
   useEffect(() => { if (mounted) localStorage.setItem('okr-data', JSON.stringify(okrs)); }, [okrs, mounted]);
   useEffect(() => { if (mounted) localStorage.setItem('tomato-daily-target', String(dailyTarget)); }, [dailyTarget, mounted]);
   useEffect(() => { if (mounted) localStorage.setItem(`tomato-interrupt-${todayKey}`, String(interruptions)); }, [interruptions, mounted, todayKey]);
+  useEffect(() => { if (mounted && epitaphData) localStorage.setItem('epitaph-data', JSON.stringify(epitaphData)); }, [epitaphData, mounted]);
+
+  // ── Epitaph animation ──
+  useEffect(() => {
+    if (epitaphAnimStep < 0 || epitaphAnimStep >= LIFE_SCRIPT.length) return;
+    const delay = epitaphAnimStep === LIFE_SCRIPT.length - 1 ? 4000 : 2200;
+    const tid = setTimeout(() => {
+      if (epitaphAnimStep < LIFE_SCRIPT.length - 1) {
+        setEpitaphAnimStep(prev => prev + 1);
+      } else {
+        setEpitaphAnimStep(-1);
+        setEpitaphSeen(true);
+        localStorage.setItem('epitaph-seen', '1');
+        setShowEpitaph(true);
+      }
+    }, delay);
+    return () => clearTimeout(tid);
+  }, [epitaphAnimStep]);
 
   // ── Derived ──
   const filteredOKRs = useMemo(() => okrs.filter(o => o.period === periodKey), [okrs, periodKey]);
@@ -345,6 +430,56 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
     setExpandedTask(prev => { const n = new Set(prev); n.has(taskId) ? n.delete(taskId) : n.add(taskId); return n; });
   }, []);
 
+  // ── Epitaph actions ──
+  const saveEpitaph = useCallback(() => {
+    const data: EpitaphData = {
+      oneLiner: epOneLiner.trim(),
+      evaluation: { career: epCareer.trim(), character: epCharacter.trim(), relationship: epRelationship.trim() },
+      threeWorks: [epWork1.trim(), epWork2.trim(), epWork3.trim()],
+      updatedAt: Date.now(),
+    };
+    setEpitaphData(data);
+    localStorage.setItem('epitaph-data', JSON.stringify(data));
+  }, [epOneLiner, epCareer, epCharacter, epRelationship, epWork1, epWork2, epWork3]);
+
+  const generateOKRsFromEpitaph = useCallback(() => {
+    const newOkrs: OKR[] = LIFE_DIMENSIONS.map(dim => {
+      const customObj = dimInputs[dim]?.trim();
+      return {
+        id: genId(),
+        objective: customObj || `${dim}：实现墓志铭中的${dim}目标`,
+        status: 'not_started' as OKRStatus,
+        period: periodKey,
+        keyResults: [{ id: genId(), description: `定义${dim}的关键衡量标准`, tasks: [] }],
+        reviews: [],
+        createdAt: Date.now(),
+      };
+    });
+    setOkrs(prev => [...prev, ...newOkrs]);
+    setShowEpitaph(false);
+    if (newOkrs.length > 0) setSelectedId(newOkrs[0].id);
+  }, [dimInputs, periodKey]);
+
+  const skipAnimation = useCallback(() => {
+    setEpitaphAnimStep(-1);
+    setEpitaphSeen(true);
+    localStorage.setItem('epitaph-seen', '1');
+    setShowEpitaph(true);
+  }, []);
+
+  // Load epitaph into form when opening write tab
+  useEffect(() => {
+    if (showEpitaph && epitaphTab === 'write' && epitaphData) {
+      setEpOneLiner(epitaphData.oneLiner);
+      setEpCareer(epitaphData.evaluation.career);
+      setEpCharacter(epitaphData.evaluation.character);
+      setEpRelationship(epitaphData.evaluation.relationship);
+      setEpWork1(epitaphData.threeWorks[0]);
+      setEpWork2(epitaphData.threeWorks[1]);
+      setEpWork3(epitaphData.threeWorks[2]);
+    }
+  }, [showEpitaph, epitaphTab, epitaphData]);
+
   if (!mounted) return null;
 
   const s = {
@@ -362,6 +497,219 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
     </div>
   );
 
+  // ═══════════════════════════════════════════════════
+  // EPITAPH ANIMATION OVERLAY
+  // ═══════════════════════════════════════════════════
+  if (epitaphAnimStep >= 0) {
+    const step = LIFE_SCRIPT[epitaphAnimStep];
+    const isLast = epitaphAnimStep === LIFE_SCRIPT.length - 1;
+    return (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center"
+           style={{ background: 'linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%)' }}>
+        {/* Vignette */}
+        <div className="absolute inset-0" style={{ boxShadow: 'inset 0 0 150px rgba(0,0,0,0.8)' }} />
+
+        {/* Timeline dots on the left */}
+        <div className="absolute left-[15%] top-1/2 -translate-y-1/2 flex flex-col gap-4">
+          {LIFE_SCRIPT.map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="w-2.5 h-2.5 rounded-full transition-all duration-700"
+                   style={{ backgroundColor: i <= epitaphAnimStep ? (isLast && i === epitaphAnimStep ? '#ef4444' : '#fff') : '#333', boxShadow: i === epitaphAnimStep ? '0 0 8px rgba(255,255,255,0.4)' : 'none' }} />
+              {i < LIFE_SCRIPT.length - 1 && (
+                <div className="w-px h-4" style={{ backgroundColor: i < epitaphAnimStep ? '#555' : '#222' }} />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Center text */}
+        <div className="relative z-10 text-center animate-fadeIn">
+          {step.text && (
+            <div className="text-5xl font-bold text-white mb-4" style={{ textShadow: '0 0 30px rgba(255,255,255,0.15)' }}>
+              {step.text}
+            </div>
+          )}
+          <div className={`text-lg ${isLast ? 'text-red-400 text-xl font-medium' : 'text-gray-400'}`}
+               style={{ textShadow: isLast ? '0 0 20px rgba(239,68,68,0.3)' : 'none' }}>
+            {step.sub}
+          </div>
+        </div>
+
+        {/* Skip button */}
+        <button onClick={skipAnimation}
+                className="absolute bottom-8 right-8 text-sm text-gray-600 hover:text-gray-300 transition-colors">
+          跳过 →
+        </button>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // EPITAPH MAIN OVERLAY (black & white style)
+  // ═══════════════════════════════════════════════════
+  if (showEpitaph) {
+    return (
+      <div className="fixed inset-0 z-[70] flex flex-col" style={{ background: 'linear-gradient(180deg, #0f0f0f 0%, #1a1a1a 50%, #111 100%)' }}>
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: '#222' }}>
+          <h2 className="text-lg font-bold text-white tracking-wider">终局 · 墓志铭</h2>
+          <button onClick={() => setShowEpitaph(false)} className="text-gray-500 hover:text-white transition-colors text-sm">
+            ✕ 返回OKR
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 px-6 pt-3">
+          {([['refs', '参考库'], ['write', '我的墓志铭'], ['deduce', '终局倒推']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setEpitaphTab(k)}
+                    className="px-4 py-2 rounded-t-lg text-sm font-medium transition-all"
+                    style={{ backgroundColor: epitaphTab === k ? '#222' : 'transparent', color: epitaphTab === k ? '#fff' : '#666' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {/* ──── Tab: 参考库 ──── */}
+          {epitaphTab === 'refs' && (
+            <div className="space-y-6">
+              <p className="text-sm text-gray-500 mb-4">对标不同人生选择，看清内心真正向往的人生。</p>
+              {Array.from(new Set(EPITAPH_REFS.map(r => r.type))).map(type => (
+                <div key={type}>
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{type}</div>
+                  <div className="space-y-2">
+                    {EPITAPH_REFS.filter(r => r.type === type).map((ref, i) => (
+                      <div key={i} className="rounded-lg p-4" style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+                        <div className="text-white font-medium mb-1">{ref.epitaph}</div>
+                        <div className="text-sm text-gray-500">{ref.summary}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ──── Tab: 我的墓志铭 ──── */}
+          {epitaphTab === 'write' && (
+            <div className="max-w-2xl mx-auto space-y-6">
+              <p className="text-sm text-gray-500">写下你希望刻在墓碑上的话，从终点倒推当下。</p>
+
+              {/* One liner */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1.5">我的墓志铭一句话</label>
+                <input value={epOneLiner} onChange={e => setEpOneLiner(e.target.value)} placeholder="刻在墓碑上的最终评价…"
+                       className="w-full rounded-lg px-4 py-3 text-white text-base outline-none placeholder-gray-600"
+                       style={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }} />
+              </div>
+
+              {/* Evaluation */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1.5">我希望在最后一天，别人如何评价我</label>
+                <div className="space-y-2">
+                  {([
+                    ['事业', epCareer, setEpCareer],
+                    ['品格', epCharacter, setEpCharacter],
+                    ['关系', epRelationship, setEpRelationship],
+                  ] as const).map(([label, val, set]) => (
+                    <div key={label} className="flex items-center gap-3">
+                      <span className="text-sm text-gray-500 w-8 flex-shrink-0">{label}</span>
+                      <input value={val} onChange={e => set(e.target.value)} placeholder={`${label}方面…`}
+                             className="flex-1 rounded-lg px-3 py-2 text-sm text-white outline-none placeholder-gray-600"
+                             style={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Three works */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1.5">我这一生最想留下的 3 件作品 / 成果</label>
+                <div className="space-y-2">
+                  {([
+                    ['1', epWork1, setEpWork1],
+                    ['2', epWork2, setEpWork2],
+                    ['3', epWork3, setEpWork3],
+                  ] as const).map(([n, val, set]) => (
+                    <div key={n} className="flex items-center gap-3">
+                      <span className="text-sm text-gray-500 w-4 flex-shrink-0">{n}</span>
+                      <input value={val} onChange={e => set(e.target.value)} placeholder="作品/成果…"
+                             className="flex-1 rounded-lg px-3 py-2 text-sm text-white outline-none placeholder-gray-600"
+                             style={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button onClick={saveEpitaph}
+                      className="px-6 py-2.5 rounded-lg text-white font-medium text-sm hover:brightness-110 transition-all"
+                      style={{ backgroundColor: '#333', border: '1px solid #444' }}>
+                保存墓志铭
+              </button>
+
+              {epitaphData && (
+                <div className="rounded-lg p-4 mt-2" style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+                  <div className="text-xs text-gray-500 mb-1">已保存</div>
+                  <div className="text-white text-sm italic">&quot;{epitaphData.oneLiner}&quot;</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ──── Tab: 终局倒推 ──── */}
+          {epitaphTab === 'deduce' && (
+            <div className="max-w-2xl mx-auto space-y-6">
+              <p className="text-sm text-gray-500">从墓志铭出发，自动拆解为五大人生维度，生成年度OKR。</p>
+
+              {!epitaphData ? (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-3">📝</div>
+                  <p className="text-gray-400 text-sm">请先在「我的墓志铭」中写下你的终局目标</p>
+                  <button onClick={() => setEpitaphTab('write')}
+                          className="mt-4 px-4 py-2 rounded-lg text-white text-sm hover:brightness-110"
+                          style={{ backgroundColor: '#333', border: '1px solid #444' }}>
+                    去撰写
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Epitaph reminder */}
+                  <div className="rounded-lg p-4 text-center" style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+                    <div className="text-xs text-gray-500 mb-1">你的墓志铭</div>
+                    <div className="text-white text-lg italic">&quot;{epitaphData.oneLiner}&quot;</div>
+                  </div>
+
+                  {/* 5 dimensions */}
+                  <div className="space-y-3">
+                    {LIFE_DIMENSIONS.map(dim => (
+                      <div key={dim} className="rounded-lg p-4" style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+                        <div className="text-sm font-bold text-white mb-2">{dim}</div>
+                        <input value={dimInputs[dim] || ''} onChange={e => setDimInputs(prev => ({ ...prev, [dim]: e.target.value }))}
+                               placeholder={`${dim}方面的年度目标（可选，留空使用默认）`}
+                               className="w-full rounded px-3 py-2 text-sm text-white outline-none placeholder-gray-600"
+                               style={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                      </div>
+                    ))}
+                  </div>
+
+                  <button onClick={generateOKRsFromEpitaph}
+                          className="w-full py-3 rounded-lg text-white font-bold text-base hover:brightness-110 transition-all"
+                          style={{ background: 'linear-gradient(135deg, #333 0%, #555 100%)', border: '1px solid #666' }}>
+                    生成年度OKR →
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // MAIN OKR WORKSPACE (left-right layout)
+  // ═══════════════════════════════════════════════════
   return (
     <div className="fixed inset-0 z-50 flex" style={{ backgroundColor: s.bg }}>
 
@@ -375,7 +723,14 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
           <div className="relative z-10">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-bold tracking-wide text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>人生旅途</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold tracking-wide text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>人生旅途</h2>
+                  <button onClick={() => setShowEpitaph(true)}
+                          className="px-2 py-0.5 rounded text-[11px] font-medium text-white/70 hover:text-white transition-colors"
+                          style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
+                    终局 · 墓志铭
+                  </button>
+                </div>
                 <div className="flex items-center gap-1 mt-2">
                   {(['annual', 'Q1', 'Q2', 'Q3', 'Q4'] as PeriodType[]).map(p => (
                     <button key={p} onClick={() => setPeriod(p)} className="px-2 py-0.5 rounded text-xs font-medium transition-all"
@@ -394,6 +749,16 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
             </div>
           </div>
         </div>
+
+        {/* Epitaph summary bar (if saved) */}
+        {epitaphData && (
+          <div className="flex-shrink-0 px-5 py-2 text-xs border-b flex items-center gap-2"
+               style={{ borderColor: s.divider, backgroundColor: s.cardBg }}>
+            <span style={{ color: s.textMuted }}>墓志铭:</span>
+            <span className="truncate italic" style={{ color: s.text2 }}>&quot;{epitaphData.oneLiner}&quot;</span>
+            <button onClick={() => setShowEpitaph(true)} className="ml-auto flex-shrink-0 hover:underline" style={{ color: swatch }}>编辑</button>
+          </div>
+        )}
 
         {/* Stats row */}
         <div className="flex-shrink-0 px-5 py-2 flex items-center gap-4 text-xs border-b" style={{ borderColor: s.divider, backgroundColor: s.cardBg }}>
@@ -419,6 +784,9 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
             <div className="flex flex-col items-center justify-center py-16" style={{ color: s.textMuted }}>
               <span className="text-4xl mb-2">🎯</span>
               <p className="text-sm">输入目标开始吧</p>
+              <button onClick={() => setShowEpitaph(true)} className="mt-3 text-xs hover:underline" style={{ color: swatch }}>
+                或从墓志铭生成 →
+              </button>
             </div>
           ) : filteredOKRs.map(okr => {
             const pct = Math.round(okrProgress(okr) * 100);
