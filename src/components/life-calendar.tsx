@@ -281,6 +281,259 @@ function DarkWellAnimation({ step, onSkip }: { step: number; onSkip: () => void 
   );
 }
 
+// ── OKR Detail Panel (sub-component to avoid IIFE in JSX) ──
+type SkinColorsT = { bg: string; panelBg: string; cardBg: string; cardHover: string; text1: string; text2: string; textMuted: string; divider: string; progressTrack: string; progressFill: string };
+
+interface OKRDetailPanelProps {
+  okr: OKR;
+  s: SkinColorsT;
+  swatch: string;
+  okrProgress: (o: OKR) => number;
+  krProgress: (kr: KeyResult) => number;
+  statusColor: (status: OKRStatus, sw: string) => string;
+  okrTomatoStats: (o: OKR) => { done: number; total: number };
+  krTomatoStats: (kr: KeyResult) => { done: number; total: number };
+  pb: (pct: number, h: number, c?: string) => React.ReactNode;
+  STATUS_CFG: Record<OKRStatus, { icon: string; label: string }>;
+  editingO: string | null; editOText: string; setEditOText: (v: string) => void;
+  saveObjective: (id: string) => void; setEditingO: (v: string | null) => void;
+  reviewO: string | null; setReviewO: (v: string | null) => void;
+  deleteOKR: (id: string) => void;
+  cycleStatus: (id: string) => void;
+  expandedKR: Set<string>; toggleKR: (id: string) => void;
+  expandedTask: Set<string>; toggleTask: (id: string) => void;
+  removeKR: (okrId: string, krId: string) => void;
+  removeTask: (okrId: string, krId: string, taskId: string) => void;
+  removeTomato: (okrId: string, krId: string, taskId: string, tmId: string) => void;
+  startTimer: (okrId: string, krId: string, taskId: string, tmId: string, labels: string[]) => void;
+  addKR: (okrId: string) => void; addTask: (okrId: string, krId: string) => void;
+  addTomato: (okrId: string, krId: string, taskId: string) => void;
+  addReview: (okrId: string) => void;
+  addKR_O: string | null; setAddKR_O: (v: string | null) => void;
+  newKRDesc: string; setNewKRDesc: (v: string) => void;
+  addTask_KR: string | null; setAddTask_KR: (v: string | null) => void;
+  newTaskTitle: string; setNewTaskTitle: (v: string) => void;
+  newTaskEst: string; setNewTaskEst: (v: string) => void;
+  addTomato_Task: string | null; setAddTomato_Task: (v: string | null) => void;
+  newTomatoTitle: string; setNewTomatoTitle: (v: string) => void;
+  reviewText: string; setReviewText: (v: string) => void;
+}
+
+function OKRDetailPanel({
+  okr, s, swatch, okrProgress, krProgress, statusColor, okrTomatoStats, krTomatoStats,
+  pb, STATUS_CFG, editingO, editOText, setEditOText, saveObjective, setEditingO,
+  reviewO, setReviewO, deleteOKR, cycleStatus, expandedKR, toggleKR, expandedTask, toggleTask,
+  removeKR, removeTask, removeTomato, startTimer, addKR, addTask, addTomato, addReview,
+  addKR_O, setAddKR_O, newKRDesc, setNewKRDesc, addTask_KR, setAddTask_KR,
+  newTaskTitle, setNewTaskTitle, newTaskEst, setNewTaskEst,
+  addTomato_Task, setAddTomato_Task, newTomatoTitle, setNewTomatoTitle,
+  reviewText, setReviewText,
+}: OKRDetailPanelProps) {
+  const pct = Math.round(okrProgress(okr) * 100);
+  const color = statusColor(okr.status, swatch);
+  const tmStats = okrTomatoStats(okr);
+
+  return (
+    <div className="p-6 space-y-5">
+      {/* O Header */}
+      <div>
+        <div className="flex items-center gap-3 mb-3">
+          <button onClick={() => cycleStatus(okr.id)} className="text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer flex-shrink-0"
+                  style={{ backgroundColor: color + '18', color }}>
+            {STATUS_CFG[okr.status].icon} {STATUS_CFG[okr.status].label}
+          </button>
+          {editingO === okr.id ? (
+            <input autoFocus value={editOText} onChange={e => setEditOText(e.target.value)}
+                   onBlur={() => saveObjective(okr.id)}
+                   onKeyDown={e => { if (e.key === 'Enter') saveObjective(okr.id); if (e.key === 'Escape') setEditingO(null); }}
+                   className="flex-1 text-lg font-bold outline-none rounded-lg px-2 py-1"
+                   style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+          ) : (
+            <h2 className="flex-1 text-lg font-bold cursor-pointer hover:opacity-80" style={{ color: s.text1 }}
+                onClick={() => { setEditingO(okr.id); setEditOText(okr.objective); }}>
+              O：{okr.objective}
+            </h2>
+          )}
+          <span className="text-2xl font-bold flex-shrink-0" style={{ color }}>{pct}%</span>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button onClick={() => setReviewO(reviewO === okr.id ? null : okr.id)}
+                    className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: s.textMuted }}>复盘</button>
+            <button onClick={() => deleteOKR(okr.id)}
+                    className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: '#ef4444' }}>删除</button>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1">{pb(pct, 8, color)}</div>
+          <span className="text-sm whitespace-nowrap" style={{ color: s.textMuted }}>🍅 {tmStats.done}/{tmStats.total}</span>
+        </div>
+      </div>
+
+      {/* Flow chain visualization */}
+      <div className="rounded-xl p-4" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+        <div className="text-xs font-medium mb-3" style={{ color: s.textMuted }}>
+          目标拆解链路：O → KR → 任务 → 动作(番茄) → 时间
+        </div>
+        <div className="flex items-center gap-2 flex-wrap text-xs">
+          <span className="px-2 py-1 rounded font-bold" style={{ backgroundColor: color + '18', color }}>O 目标</span>
+          <span style={{ color: s.textMuted }}>→</span>
+          <span className="px-2 py-1 rounded" style={{ backgroundColor: swatch + '12', color: swatch }}>KR{okr.keyResults.length}</span>
+          <span style={{ color: s.textMuted }}>→</span>
+          <span className="px-2 py-1 rounded" style={{ backgroundColor: s.panelBg, color: s.text2 }}>
+            任务{okr.keyResults.reduce((acc: number, kr: KeyResult) => acc + kr.tasks.length, 0)}
+          </span>
+          <span style={{ color: s.textMuted }}>→</span>
+          <span className="px-2 py-1 rounded" style={{ backgroundColor: s.panelBg, color: s.text2 }}>
+            动作{okr.keyResults.reduce((acc: number, kr: KeyResult) => acc + kr.tasks.reduce((a2: number, t: Task) => a2 + t.tomatoes.length, 0), 0)}
+          </span>
+          <span style={{ color: s.textMuted }}>→</span>
+          <span className="px-2 py-1 rounded font-bold" style={{ backgroundColor: '#f97316' + '18', color: '#f97316' }}>
+            🍅{tmStats.total}颗 ≈ {tmStats.total * 25}分钟
+          </span>
+        </div>
+      </div>
+
+      {/* KR List */}
+      <div className="space-y-3">
+        {okr.keyResults.map((kr: KeyResult, krIdx: number) => {
+          const krPct = Math.round(krProgress(kr) * 100);
+          const krColor = krPct >= 100 ? '#22c55e' : swatch;
+          const krTm = krTomatoStats(kr);
+          const isKRExpanded = expandedKR.has(kr.id);
+          return (
+            <div key={kr.id} className="rounded-xl overflow-hidden" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+              <button onClick={() => toggleKR(kr.id)} className="w-full text-left px-4 py-3 flex items-center gap-2 hover:opacity-90 transition-opacity">
+                <span className="text-[10px]" style={{ color: krColor }}>{isKRExpanded ? '▾' : '▸'}</span>
+                <span className="text-xs font-bold" style={{ color: krColor }}>KR{krIdx + 1}</span>
+                <span className="flex-1 text-sm" style={{ color: s.text1 }}>{kr.description}</span>
+                <span className="text-xs font-bold" style={{ color: krColor }}>{krPct}%</span>
+                <span className="text-[11px]" style={{ color: s.textMuted }}>🍅{krTm.done}/{krTm.total} ≈ {krTm.total * 25}min</span>
+                <span onClick={e => { e.stopPropagation(); removeKR(okr.id, kr.id); }}
+                      className="text-xs opacity-30 hover:opacity-80" style={{ color: s.textMuted }}>✕</span>
+              </button>
+              {isKRExpanded && (
+                <div className="px-4 pb-3 space-y-2" style={{ borderLeft: `3px solid ${krColor}`, marginLeft: 16 }}>
+                  {kr.tasks.map((task: Task) => {
+                    const taskDone = task.tomatoes.filter(tm => tm.completed).length;
+                    const isTaskExpanded = expandedTask.has(task.id);
+                    return (
+                      <div key={task.id} className="rounded-lg overflow-hidden" style={{ border: `1px solid ${s.divider}` }}>
+                        <button onClick={() => toggleTask(task.id)} className="w-full text-left px-3 py-2 flex items-center gap-2 hover:opacity-90"
+                                style={{ backgroundColor: s.panelBg }}>
+                          <span className="text-[10px]" style={{ color: s.textMuted }}>{isTaskExpanded ? '▾' : '▸'}</span>
+                          <span className="text-sm" style={{ color: s.text1 }}>📋 {task.title}</span>
+                          <span className="ml-auto text-[11px]" style={{ color: s.textMuted }}>
+                            预估{task.estimatedTomatoes}🍅 · 完成{taskDone}🍅 · 需{task.estimatedTomatoes * 25}min
+                          </span>
+                          <span onClick={e => { e.stopPropagation(); removeTask(okr.id, kr.id, task.id); }}
+                                className="text-xs opacity-30 hover:opacity-80" style={{ color: s.textMuted }}>✕</span>
+                        </button>
+                        {isTaskExpanded && (
+                          <div className="px-3 pb-2 space-y-1" style={{ borderLeft: `2px solid ${s.divider}`, marginLeft: 12 }}>
+                            {task.tomatoes.map((tm: TomatoItem) => (
+                              <div key={tm.id} className="flex items-center gap-2 py-1.5 px-2 rounded"
+                                   style={{ backgroundColor: tm.completed ? s.cardBg : 'transparent' }}>
+                                <span className="text-sm" style={{ color: tm.completed ? '#22c55e' : s.textMuted }}>
+                                  {tm.completed ? '☑' : '☐'}
+                                </span>
+                                <span className={`flex-1 text-sm ${tm.completed ? 'line-through' : ''}`}
+                                      style={{ color: tm.completed ? s.textMuted : s.text2 }}>{tm.title}</span>
+                                <span className="text-[11px] whitespace-nowrap" style={{ color: s.textMuted }}>
+                                  {tm.completed ? '已完成 25min' : '25min/🍅'}
+                                </span>
+                                {!tm.completed && (
+                                  <button onClick={() => startTimer(okr.id, kr.id, task.id, tm.id, [okr.objective, kr.description, task.title, tm.title])}
+                                          className="text-xs px-2.5 py-1 rounded-lg font-medium flex items-center gap-1 hover:brightness-110"
+                                          style={{ backgroundColor: swatch, color: '#fff' }}>
+                                    ▶ 🍅
+                                  </button>
+                                )}
+                                {tm.completed && <span className="text-[11px]" style={{ color: '#22c55e' }}>✓</span>}
+                                <span onClick={() => removeTomato(okr.id, kr.id, task.id, tm.id)}
+                                      className="text-xs opacity-20 hover:opacity-70 cursor-pointer" style={{ color: s.textMuted }}>✕</span>
+                              </div>
+                            ))}
+                            {addTomato_Task === task.id ? (
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <input autoFocus value={newTomatoTitle} onChange={e => setNewTomatoTitle(e.target.value)}
+                                       onKeyDown={e => { if (e.key === 'Enter') addTomato(okr.id, kr.id, task.id); if (e.key === 'Escape') setAddTomato_Task(null); }}
+                                       placeholder="可执行动作描述" className="flex-1 rounded px-2 py-1 text-sm outline-none"
+                                       style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                                <span className="text-[11px] whitespace-nowrap" style={{ color: s.textMuted }}>25min</span>
+                                <button onClick={() => addTomato(okr.id, kr.id, task.id)} className="text-sm font-bold px-2" style={{ color: swatch }}>+</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => { setAddTomato_Task(task.id); setNewTomatoTitle(''); }}
+                                      className="text-xs hover:underline mt-1" style={{ color: swatch }}>+ 动作(1🍅=25min)</button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {addTask_KR === kr.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
+                             onKeyDown={e => { if (e.key === 'Enter') addTask(okr.id, kr.id); if (e.key === 'Escape') setAddTask_KR(null); }}
+                             placeholder="任务名" className="flex-1 rounded px-2 py-1 text-sm outline-none"
+                             style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                      <input value={newTaskEst} onChange={e => setNewTaskEst(e.target.value)}
+                             placeholder="🍅" className="w-12 rounded px-2 py-1 text-sm outline-none text-center"
+                             style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                      <span className="text-[10px] whitespace-nowrap" style={{ color: s.textMuted }}>min</span>
+                      <button onClick={() => addTask(okr.id, kr.id)} className="text-sm font-bold px-2" style={{ color: swatch }}>+</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => { setAddTask_KR(kr.id); setNewTaskTitle(''); setNewTaskEst('1'); }}
+                            className="text-xs hover:underline" style={{ color: swatch }}>+ 任务(需预估🍅数)</button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {addKR_O === okr.id ? (
+          <div className="flex items-center gap-2">
+            <input autoFocus value={newKRDesc} onChange={e => setNewKRDesc(e.target.value)}
+                   onKeyDown={e => { if (e.key === 'Enter') addKR(okr.id); if (e.key === 'Escape') setAddKR_O(null); }}
+                   placeholder="关键结果描述" className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
+                   style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+            <button onClick={() => addKR(okr.id)} disabled={!newKRDesc.trim()}
+                    className="text-sm font-bold disabled:opacity-30 px-2" style={{ color: swatch }}>+</button>
+          </div>
+        ) : (
+          <button onClick={() => { setAddKR_O(okr.id); setNewKRDesc(''); }}
+                  className="text-xs hover:underline" style={{ color: swatch }}>+ 关键结果</button>
+        )}
+      </div>
+
+      {/* Review */}
+      {reviewO === okr.id && (
+        <div className="rounded-xl p-4" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+          <div className="text-sm font-medium mb-2" style={{ color: s.text1 }}>复盘记录</div>
+          {okr.reviews.length > 0 && (
+            <div className="space-y-1 mb-2">
+              {okr.reviews.map((r: OKRReview) => (
+                <div key={r.id} className="text-sm px-3 py-1.5 rounded-lg" style={{ backgroundColor: s.panelBg }}>
+                  <span className="text-[11px]" style={{ color: s.textMuted }}>{r.date}</span>
+                  <span className="ml-2" style={{ color: s.text2 }}>{r.content}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <input type="text" value={reviewText} onChange={e => setReviewText(e.target.value)}
+                   onKeyDown={e => e.key === 'Enter' && addReview(okr.id)}
+                   placeholder="复盘记录..." className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
+                   style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+            <button onClick={() => addReview(okr.id)} disabled={!reviewText.trim()}
+                    className="text-sm font-bold disabled:opacity-30" style={{ color: swatch }}>↵</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Component ──
 export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
   const skin = SKINS.find(s => s.key === skinKey) || SKINS[0];
@@ -422,7 +675,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
       setOkrs(prev => prev.map(o => o.id !== ctx.okrId ? o : {
         ...o, keyResults: o.keyResults.map(kr => kr.id !== ctx.krId ? kr : {
           ...kr, tasks: kr.tasks.map(t => t.id !== ctx.taskId ? t : {
-            ...t, tomatoes: t.tomatoes.map(tm => tm.id === ctx.tomatoId ? { ...tm, completed: true, completedAt: Date.now() } : tm),
+            ...t, tomatoes: t.tomatoes.map((tm: TomatoItem) => tm.id === ctx.tomatoId ? { ...tm, completed: true, completedAt: Date.now() } : tm),
           }),
         }),
       }));
@@ -649,7 +902,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
             <div className="space-y-6">
               <p className="text-sm text-gray-500 mb-4">对标不同人生选择，看清内心真正向往的人生。</p>
               <div className="flex flex-wrap gap-2">
-                {['all', ...Array.from(new Set(EPITAPH_REFS.map(r => r.type)))].map(type => (
+                {['all', ...Array.from(new Set(EPITAPH_REFS.map(r => r.type)))].map((type: string) => (
                   <button key={type} onClick={() => setEpitaphFilter(type)}
                           className="px-3 py-1 rounded-full text-xs font-medium transition-all"
                           style={{ backgroundColor: epitaphFilter === type ? '#444' : '#1a1a1a', color: epitaphFilter === type ? '#fff' : '#666', border: '1px solid ' + (epitaphFilter === type ? '#555' : '#2a2a2a') }}>
@@ -657,7 +910,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                   </button>
                 ))}
               </div>
-              {Array.from(new Set(EPITAPH_REFS.filter(r => epitaphFilter === 'all' || r.type === epitaphFilter).map(r => r.type))).map(type => (
+              {Array.from(new Set(EPITAPH_REFS.filter(r => epitaphFilter === 'all' || r.type === epitaphFilter).map(r => r.type))).map((type: string) => (
                 <div key={type}>
                   <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{type}</div>
                   <div className="space-y-2">
@@ -930,222 +1183,34 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
             <span className="text-5xl mb-3">👈</span>
             <p>选择左侧OKR查看详情</p>
           </div>
-        ) : (() => {
-          const okr = selectedOKR;
-          const pct = Math.round(okrProgress(okr) * 100);
-          const color = statusColor(okr.status, swatch);
-          const tmStats = okrTomatoStats(okr);
-          return (
-            <div className="p-6 space-y-5">
-              {/* O Header */}
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <button onClick={() => cycleStatus(okr.id)} className="text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer flex-shrink-0"
-                          style={{ backgroundColor: color + '18', color }}>
-                    {STATUS_CFG[okr.status].icon} {STATUS_CFG[okr.status].label}
-                  </button>
-                  {editingO === okr.id ? (
-                    <input autoFocus value={editOText} onChange={e => setEditOText(e.target.value)}
-                           onBlur={() => saveObjective(okr.id)}
-                           onKeyDown={e => { if (e.key === 'Enter') saveObjective(okr.id); if (e.key === 'Escape') setEditingO(null); }}
-                           className="flex-1 text-lg font-bold outline-none rounded-lg px-2 py-1"
-                           style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                  ) : (
-                    <h2 className="flex-1 text-lg font-bold cursor-pointer hover:opacity-80" style={{ color: s.text1 }}
-                        onClick={() => { setEditingO(okr.id); setEditOText(okr.objective); }}>
-                      O：{okr.objective}
-                    </h2>
-                  )}
-                  <span className="text-2xl font-bold flex-shrink-0" style={{ color }}>{pct}%</span>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => setReviewO(reviewO === okr.id ? null : okr.id)}
-                            className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: s.textMuted }}>复盘</button>
-                    <button onClick={() => deleteOKR(okr.id)}
-                            className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: '#ef4444' }}>删除</button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">{pb(pct, 8, color)}</div>
-                  <span className="text-sm whitespace-nowrap" style={{ color: s.textMuted }}>🍅 {tmStats.done}/{tmStats.total}</span>
-                </div>
-              </div>
-
-              {/* Flow chain visualization */}
-              <div className="rounded-xl p-4" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
-                <div className="text-xs font-medium mb-3" style={{ color: s.textMuted }}>
-                  目标拆解链路：O → KR → 任务 → 动作(番茄) → 时间
-                </div>
-                <div className="flex items-center gap-2 flex-wrap text-xs">
-                  <span className="px-2 py-1 rounded font-bold" style={{ backgroundColor: color + '18', color }}>O 目标</span>
-                  <span style={{ color: s.textMuted }}>→</span>
-                  <span className="px-2 py-1 rounded" style={{ backgroundColor: swatch + '12', color: swatch }}>KR{okr.keyResults.length}</span>
-                  <span style={{ color: s.textMuted }}>→</span>
-                  <span className="px-2 py-1 rounded" style={{ backgroundColor: s.panelBg, color: s.text2 }}>
-                    任务{okr.keyResults.reduce((s, kr) => s + kr.tasks.length, 0)}
-                  </span>
-                  <span style={{ color: s.textMuted }}>→</span>
-                  <span className="px-2 py-1 rounded" style={{ backgroundColor: s.panelBg, color: s.text2 }}>
-                    动作{okr.keyResults.reduce((s, kr) => s + kr.tasks.reduce((s2, t) => s2 + t.tomatoes.length, 0), 0)}
-                  </span>
-                  <span style={{ color: s.textMuted }}>→</span>
-                  <span className="px-2 py-1 rounded font-bold" style={{ backgroundColor: '#f97316' + '18', color: '#f97316' }}>
-                    🍅{tmStats.total}颗 ≈ {tmStats.total * 25}分钟
-                  </span>
-                </div>
-              </div>
-
-              {/* KR List */}
-              <div className="space-y-3">
-                {okr.keyResults.map((kr, krIdx) => {
-                  const krPct = Math.round(krProgress(kr) * 100);
-                  const krColor = krPct >= 100 ? '#22c55e' : swatch;
-                  const krTm = krTomatoStats(kr);
-                  const isKRExpanded = expandedKR.has(kr.id);
-                  return (
-                    <div key={kr.id} className="rounded-xl overflow-hidden" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
-                      {/* KR Header */}
-                      <button onClick={() => toggleKR(kr.id)} className="w-full text-left px-4 py-3 flex items-center gap-2 hover:opacity-90 transition-opacity">
-                        <span className="text-[10px]" style={{ color: krColor }}>{isKRExpanded ? '▾' : '▸'}</span>
-                        <span className="text-xs font-bold" style={{ color: krColor }}>KR{krIdx + 1}</span>
-                        <span className="flex-1 text-sm" style={{ color: s.text1 }}>{kr.description}</span>
-                        <span className="text-xs font-bold" style={{ color: krColor }}>{krPct}%</span>
-                        <span className="text-[11px]" style={{ color: s.textMuted }}>🍅{krTm.done}/{krTm.total} ≈ {krTm.total * 25}min</span>
-                        <span onClick={e => { e.stopPropagation(); removeKR(okr.id, kr.id); }}
-                              className="text-xs opacity-30 hover:opacity-80" style={{ color: s.textMuted }}>✕</span>
-                      </button>
-
-                      {/* KR expanded: Tasks */}
-                      {isKRExpanded && (
-                        <div className="px-4 pb-3 space-y-2" style={{ borderLeft: `3px solid ${krColor}`, marginLeft: 16 }}>
-                          {kr.tasks.map(task => {
-                            const taskDone = task.tomatoes.filter(tm => tm.completed).length;
-                            const isTaskExpanded = expandedTask.has(task.id);
-                            return (
-                              <div key={task.id} className="rounded-lg overflow-hidden" style={{ border: `1px solid ${s.divider}` }}>
-                                {/* Task Header */}
-                                <button onClick={() => toggleTask(task.id)} className="w-full text-left px-3 py-2 flex items-center gap-2 hover:opacity-90"
-                                        style={{ backgroundColor: s.panelBg }}>
-                                  <span className="text-[10px]" style={{ color: s.textMuted }}>{isTaskExpanded ? '▾' : '▸'}</span>
-                                  <span className="text-sm" style={{ color: s.text1 }}>📋 {task.title}</span>
-                                  <span className="ml-auto text-[11px]" style={{ color: s.textMuted }}>
-                                    预估{task.estimatedTomatoes}🍅 · 完成{taskDone}🍅 · 需{task.estimatedTomatoes * 25}min
-                                  </span>
-                                  <span onClick={e => { e.stopPropagation(); removeTask(okr.id, kr.id, task.id); }}
-                                        className="text-xs opacity-30 hover:opacity-80" style={{ color: s.textMuted }}>✕</span>
-                                </button>
-
-                                {/* Task expanded: Tomatoes (executable actions with time) */}
-                                {isTaskExpanded && (
-                                  <div className="px-3 pb-2 space-y-1" style={{ borderLeft: `2px solid ${s.divider}`, marginLeft: 12 }}>
-                                    {task.tomatoes.map(tm => (
-                                      <div key={tm.id} className="flex items-center gap-2 py-1.5 px-2 rounded"
-                                           style={{ backgroundColor: tm.completed ? s.cardBg : 'transparent' }}>
-                                        <span className="text-sm" style={{ color: tm.completed ? '#22c55e' : s.textMuted }}>
-                                          {tm.completed ? '☑' : '☐'}
-                                        </span>
-                                        <span className={`flex-1 text-sm ${tm.completed ? 'line-through' : ''}`}
-                                              style={{ color: tm.completed ? s.textMuted : s.text2 }}>{tm.title}</span>
-                                        <span className="text-[11px] whitespace-nowrap" style={{ color: s.textMuted }}>
-                                          {tm.completed ? '已完成 25min' : '25min/🍅'}
-                                        </span>
-                                        {!tm.completed && (
-                                          <button onClick={() => startTimer(okr.id, kr.id, task.id, tm.id, [okr.objective, kr.description, task.title, tm.title])}
-                                                  className="text-xs px-2.5 py-1 rounded-lg font-medium flex items-center gap-1 hover:brightness-110"
-                                                  style={{ backgroundColor: swatch, color: '#fff' }}>
-                                            ▶ 🍅
-                                          </button>
-                                        )}
-                                        {tm.completed && <span className="text-[11px]" style={{ color: '#22c55e' }}>✓</span>}
-                                        <span onClick={() => removeTomato(okr.id, kr.id, task.id, tm.id)}
-                                              className="text-xs opacity-20 hover:opacity-70 cursor-pointer" style={{ color: s.textMuted }}>✕</span>
-                                      </div>
-                                    ))}
-                                    {/* Add tomato (action) */}
-                                    {addTomato_Task === task.id ? (
-                                      <div className="flex items-center gap-1.5 mt-1">
-                                        <input autoFocus value={newTomatoTitle} onChange={e => setNewTomatoTitle(e.target.value)}
-                                               onKeyDown={e => { if (e.key === 'Enter') addTomato(okr.id, kr.id, task.id); if (e.key === 'Escape') setAddTomato_Task(null); }}
-                                               placeholder="可执行动作描述" className="flex-1 rounded px-2 py-1 text-sm outline-none"
-                                               style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                                        <span className="text-[11px] whitespace-nowrap" style={{ color: s.textMuted }}>25min</span>
-                                        <button onClick={() => addTomato(okr.id, kr.id, task.id)} className="text-sm font-bold px-2" style={{ color: swatch }}>+</button>
-                                      </div>
-                                    ) : (
-                                      <button onClick={() => { setAddTomato_Task(task.id); setNewTomatoTitle(''); }}
-                                              className="text-xs hover:underline mt-1" style={{ color: swatch }}>+ 动作(1🍅=25min)</button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-
-                          {/* Add task */}
-                          {addTask_KR === kr.id ? (
-                            <div className="flex items-center gap-1.5">
-                              <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
-                                     onKeyDown={e => { if (e.key === 'Enter') addTask(okr.id, kr.id); if (e.key === 'Escape') setAddTask_KR(null); }}
-                                     placeholder="任务名" className="flex-1 rounded px-2 py-1 text-sm outline-none"
-                                     style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                              <input value={newTaskEst} onChange={e => setNewTaskEst(e.target.value)}
-                                     placeholder="🍅" className="w-12 rounded px-2 py-1 text-sm outline-none text-center"
-                                     style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                              <span className="text-[10px] whitespace-nowrap" style={{ color: s.textMuted }}>min</span>
-                              <button onClick={() => addTask(okr.id, kr.id)} className="text-sm font-bold px-2" style={{ color: swatch }}>+</button>
-                            </div>
-                          ) : (
-                            <button onClick={() => { setAddTask_KR(kr.id); setNewTaskTitle(''); setNewTaskEst('1'); }}
-                                    className="text-xs hover:underline" style={{ color: swatch }}>+ 任务(需预估🍅数)</button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Add KR */}
-                {addKR_O === okr.id ? (
-                  <div className="flex items-center gap-2">
-                    <input autoFocus value={newKRDesc} onChange={e => setNewKRDesc(e.target.value)}
-                           onKeyDown={e => { if (e.key === 'Enter') addKR(okr.id); if (e.key === 'Escape') setAddKR_O(null); }}
-                           placeholder="关键结果描述" className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
-                           style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                    <button onClick={() => addKR(okr.id)} disabled={!newKRDesc.trim()}
-                            className="text-sm font-bold disabled:opacity-30 px-2" style={{ color: swatch }}>+</button>
-                  </div>
-                ) : (
-                  <button onClick={() => { setAddKR_O(okr.id); setNewKRDesc(''); }}
-                          className="text-xs hover:underline" style={{ color: swatch }}>+ 关键结果</button>
-                )}
-              </div>
-
-              {/* Review */}
-              {reviewO === okr.id && (
-                <div className="rounded-xl p-4" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
-                  <div className="text-sm font-medium mb-2" style={{ color: s.text1 }}>复盘记录</div>
-                  {okr.reviews.length > 0 && (
-                    <div className="space-y-1 mb-2">
-                      {okr.reviews.map(r => (
-                        <div key={r.id} className="text-sm px-3 py-1.5 rounded-lg" style={{ backgroundColor: s.panelBg }}>
-                          <span className="text-[11px]" style={{ color: s.textMuted }}>{r.date}</span>
-                          <span className="ml-2" style={{ color: s.text2 }}>{r.content}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <input type="text" value={reviewText} onChange={e => setReviewText(e.target.value)}
-                           onKeyDown={e => e.key === 'Enter' && addReview(okr.id)}
-                           placeholder="复盘记录..." className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
-                           style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                    <button onClick={() => addReview(okr.id)} disabled={!reviewText.trim()}
-                            className="text-sm font-bold disabled:opacity-30" style={{ color: swatch }}>↵</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        ) : (
+          <OKRDetailPanel
+            okr={selectedOKR}
+            s={s}
+            swatch={swatch}
+            okrProgress={okrProgress}
+            krProgress={krProgress}
+            statusColor={statusColor}
+            okrTomatoStats={okrTomatoStats}
+            krTomatoStats={krTomatoStats}
+            pb={pb}
+            STATUS_CFG={STATUS_CFG}
+            editingO={editingO} editOText={editOText} setEditOText={setEditOText}
+            saveObjective={saveObjective} setEditingO={setEditingO}
+            reviewO={reviewO} setReviewO={setReviewO}
+            deleteOKR={deleteOKR}
+            cycleStatus={cycleStatus}
+            expandedKR={expandedKR} toggleKR={toggleKR}
+            expandedTask={expandedTask} toggleTask={toggleTask}
+            removeKR={removeKR} removeTask={removeTask} removeTomato={removeTomato}
+            startTimer={startTimer}
+            addKR={addKR} addTask={addTask} addTomato={addTomato} addReview={addReview}
+            addKR_O={addKR_O} setAddKR_O={setAddKR_O} newKRDesc={newKRDesc} setNewKRDesc={setNewKRDesc}
+            addTask_KR={addTask_KR} setAddTask_KR={setAddTask_KR} newTaskTitle={newTaskTitle} setNewTaskTitle={setNewTaskTitle} newTaskEst={newTaskEst} setNewTaskEst={setNewTaskEst}
+            addTomato_Task={addTomato_Task} setAddTomato_Task={setAddTomato_Task} newTomatoTitle={newTomatoTitle} setNewTomatoTitle={setNewTomatoTitle}
+            reviewText={reviewText} setReviewText={setReviewText}
+          />
+        )}
       </div>
       </div>
 
