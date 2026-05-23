@@ -173,9 +173,10 @@ function useVoiceRecognition(onResult: (text: string) => void, context?: string)
 }
 
 // ── Component ──
-export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
+export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey }: LifeCalendarProps) {
   const skin = SKINS.find(s => s.key === skinKey) || SKINS[0];
   const swatch = skin.swatch || '#6558c1';
+  const currentYear = new Date().getFullYear();
 
   const [goals, setGoals] = useState<GoalNode[]>([]);
   const [period, setPeriod] = useState<PeriodType>(() => { const m = new Date().getMonth(); if (m < 3) return 'Q1'; if (m < 6) return 'Q2'; if (m < 9) return 'Q3'; return 'Q4'; });
@@ -404,13 +405,18 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-bold tracking-wide text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>人生旅途</h2>
-                <div className="flex items-center gap-1 mt-2">
-                  {(['annual', 'Q1', 'Q2', 'Q3', 'Q4'] as PeriodType[]).map(p => (
-                    <button key={p} onClick={() => setPeriod(p)} className="px-2 py-0.5 rounded text-xs font-medium transition-all"
-                            style={{ backgroundColor: period === p ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)', color: period === p ? '#fff' : 'rgba(255,255,255,0.7)' }}>
-                      {p === 'annual' ? '年度' : p}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2 mt-2 text-xs text-white/70">
+                  <span>出生年份</span>
+                  <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}
+                    className="w-16 px-1.5 py-0.5 rounded text-center text-xs border focus:outline-none bg-white/20 text-white border-white/20" />
+                  <span className="text-white/40">|</span>
+                  <span>当前 {currentYear - birthYear} 岁</span>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex-1 h-1 rounded-full overflow-hidden bg-white/15">
+                    <div className="h-full rounded-full transition-all bg-white/40" style={{ width: `${Math.min(((currentYear - birthYear) / 80) * 100, 100)}%` }} />
+                  </div>
+                  <span className="text-[10px] text-white/60">{currentYear - birthYear}/80</span>
                 </div>
               </div>
               <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/20 text-white/50 hover:text-white transition-colors"
@@ -421,6 +427,17 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Period selector row */}
+        <div className="flex-shrink-0 px-5 py-2 flex items-center gap-2 border-b" style={{ borderColor: s.divider, backgroundColor: s.cardBg }}>
+          {(['annual', 'Q1', 'Q2', 'Q3', 'Q4'] as PeriodType[]).map(p => (
+            <button key={p} onClick={() => setPeriod(p)}
+                    className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
+                    style={{ backgroundColor: period === p ? swatch : s.panelBg, color: period === p ? '#fff' : s.text2, border: `1px solid ${period === p ? swatch : s.divider}` }}>
+              {p === 'annual' ? '年度' : p}
+            </button>
+          ))}
         </div>
 
         {/* Stats row */}
