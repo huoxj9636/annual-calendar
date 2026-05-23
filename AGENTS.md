@@ -27,7 +27,7 @@
 │   │   ├── year-calendar.tsx   # 年历核心组件 (Client Component)
 │   │   ├── day-view.tsx        # 日视图侧边栏 (日程/备忘Tab切换)
 │   │   ├── monthly-review.tsx  # 月度复盘页面 (满意度/热力图/趋势)
-│   │   ├── life-calendar.tsx   # 人生旅途面板 (OKR+番茄闭环, 墓志铭·以终为终, 左右分栏)
+│   │   ├── life-calendar.tsx   # 人生旅途侧边栏 (9阶段交互式行动模板)
 │   │   └── ui/                 # Shadcn UI 组件库
 │   ├── lib/
 │   │   ├── lunar.ts            # 农历计算工具 (lunar-javascript 封装)
@@ -51,7 +51,7 @@
 5. **满意度勾选**: 过去天数自动 ✓，点击切换 ✓↔✗，状态存储在 localStorage
 6. **日视图侧边栏**: 点击日期右侧滑出，日程/备忘Tab切换，语音识别智能分流，事件并列布局
 7. **月度复盘页面**: 下滑翻页进入，自动定位当前月，满意度/热力图/趋势分析
-8. **人生旅途面板**: 全屏覆盖层，左右分栏布局(左480px OKR列表 + 右flex-1 OKR详情)，OKR+番茄闭环(O→KR→Task→Tomato 4层)，墓志铭·以终为终系统(暗井动画+5维度拆解)，25min番茄计时器
+8. **人生旅途侧边栏**: 左侧箭头滑出，9阶段交互式行动模板，可勾选行动项，可添加到日历计划
 
 ## 关键数据流
 
@@ -61,12 +61,6 @@
 - 待办事项: `localStorage['dayview-todos-{year}-{month}-{day}']`
 - 备忘录: `localStorage['calendar-notes-{year}']`
 - 人生旅途进度: `localStorage['life-calendar-progress']` — 嵌套对象 `{stageKey: {catKey: {actionId: {done, addedToCalendar}}}}`
-- OKR数据: `localStorage['okr-data']` — JSON 格式 OKR[] (含4层: O→KR→Task→Tomato)
-- 墓志铭数据: `localStorage['okr-epitaph']` — JSON 格式 { oneLiner, career, character, relation, works }
-- 终局维度: `localStorage['okr-dimensions']` — JSON 格式 Record<string, string>
-- 动画已看标记: `localStorage['okr-anim-seen']` — '1' 表示已看过暗井动画
-- 每日番茄目标: `localStorage['okr-daily-goal']` — 数字字符串
-- 每日番茄完成: `localStorage['okr-daily-done-{date}']` — 数字字符串
 - 12 周区块: `getTwelveWeekBlocks(year)` — 返回 4 个 block，每 block 84 天
 
 ## 包管理规范
@@ -84,12 +78,6 @@
 
 - 动态内容（当天标记、勾选状态）使用 `mounted` 状态守卫，仅在客户端挂载后渲染
 - 禁止在 JSX 渲染逻辑中直接使用 `new Date()`
-
-### Babel 解析陷阱
-
-- **严禁在 JSX 中使用 IIFE 模式** `(() => { ... })()` — Babel 无法解析，会导致 "Unterminated JSX contents" 运行时错误
-- 替代方案：提取为子组件、使用三元运算符、使用变量预计算
-- ts-check/lint 可能通过但 Babel 仍会失败，必须检查 console.log 确认无运行时错误
 
 ### UI 设计与组件规范
 

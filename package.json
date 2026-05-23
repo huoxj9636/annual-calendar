@@ -15,6 +15,7 @@
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "coze-coding-dev-sdk": "^0.7.21",
     "lucide-react": "^0.468.0",
     "lunar-javascript": "^1.7.7",
     "next": "16.1.1",
@@ -31,7 +32,6 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "coze-coding-dev-sdk": "^0.7.21",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "langsmith": "^0.6.1",
