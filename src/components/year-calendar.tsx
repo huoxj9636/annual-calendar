@@ -1643,8 +1643,10 @@ export default function YearCalendar() {
       {/* 人生日历侧边栏 - 渲染在最外层以覆盖整个页面 */}
       {showLifeCalendar && (
         <LifeCalendar
+          birthYear={birthYear}
+          setBirthYear={setBirthYear}
           onClose={() => setShowLifeCalendar(false)}
-          skin={skin}
+          skinKey={skinKey}
         />
       )}
 
