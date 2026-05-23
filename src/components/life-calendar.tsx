@@ -486,22 +486,11 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
           const node = selectedGoal;
           const pct = Math.round(nodeProgress(node) * 100);
           const root = selectedRoot;
-          const labels = root ? getPathLabels([root], node.id) : [node.title];
           return (
             <div className="p-6 space-y-5">
-              {/* Breadcrumb */}
-              <div className="text-xs flex items-center gap-1 flex-wrap" style={{ color: s.textMuted }}>
-                {labels.map((l, i) => (
-                  <span key={i} className="flex items-center gap-1">
-                    {i > 0 && <span>→</span>}
-                    <span className={i === labels.length - 1 ? 'font-bold' : ''} style={{ color: i === labels.length - 1 ? s.text1 : s.textMuted }}>{l}</span>
-                  </span>
-                ))}
-              </div>
-
               {/* Node header */}
               <div>
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-3">
                   {editingId === node.id ? (
                     <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                            onBlur={() => saveTitle(node.id)}
@@ -515,10 +504,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                     </h2>
                   )}
                   <span className="text-2xl font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">{pb(pct, 8, swatch)}</div>
-                  <span className="text-sm whitespace-nowrap" style={{ color: s.textMuted }}>{node.children.length}个子项</span>
                   <button onClick={() => setShowReview(!showReview)}
                           className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: s.textMuted }}>复盘</button>
                   <button onClick={() => deleteGoal(node.id)}
