@@ -185,6 +185,8 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const [period, setPeriod] = useState<PeriodType>(() => { const m = new Date().getMonth(); if (m < 3) return 'Q1'; if (m < 6) return 'Q2'; if (m < 9) return 'Q3'; return 'Q4'; });
   const [mounted, setMounted] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const toggleExpand = (id: string) => setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   // Inline inputs
   const [newTitle, setNewTitle] = useState('');
@@ -334,67 +336,71 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     );
   };
 
-  // Render right detail: children list of selected node
-  const renderDetailChildren = (node: GoalNode, depth: number = 0): React.ReactNode => {
-    if (node.children.length === 0 && depth === 0) return null;
+  // Render right detail: tree view of selected node's children
+  const renderDetailTree = (node: GoalNode, depth: number = 0): React.ReactNode => {
+    const isLeaf = node.children.length === 0;
+    const pct = Math.round(nodeProgress(node) * 100);
+    const isExpanded = expandedIds.has(node.id);
     return (
-      <div>
-        {node.children.map((child) => {
-          const pct = Math.round(nodeProgress(child) * 100);
-          const isLeaf = child.children.length === 0;
-          return (
-            <div key={child.id}>
-              <div className="flex items-center gap-2 py-2 group" style={{ borderBottom: `1px solid ${s.divider}` }}>
-                {isLeaf ? (
-                  <button onClick={() => toggleLeaf(child.id)} className="text-sm flex-shrink-0"
-                          style={{ color: child.status === 'completed' ? '#22c55e' : s.textMuted }}>
-                    {child.status === 'completed' ? '☑' : '☐'}
-                  </button>
-                ) : (
-                  <button onClick={() => { setSelectedId(child.id); setAddInputParentId(null); }}
-                          className="text-sm flex-shrink-0 font-bold" style={{ color: swatch }}>▸</button>
-                )}
-                {editingId === child.id ? (
-                  <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
-                         onBlur={() => saveTitle(child.id)}
-                         onKeyDown={e => { if (e.key === 'Enter') saveTitle(child.id); if (e.key === 'Escape') setEditingId(null); }}
-                         className="flex-1 text-sm outline-none rounded px-2 py-0.5"
-                         style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                ) : (
-                  <span className={`flex-1 text-sm cursor-pointer ${child.status === 'completed' ? 'line-through' : ''}`}
-                        style={{ color: child.status === 'completed' ? s.textMuted : s.text1 }}
-                        onClick={() => { setEditingId(child.id); setEditText(child.title); }}>
-                    {child.title}
-                  </span>
-                )}
-                <span className="text-[11px] font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
-                {!isLeaf && <span className="text-[10px] flex-shrink-0" style={{ color: s.textMuted }}>{child.children.length}项</span>}
-                <button onClick={() => deleteGoal(child.id)}
-                        className="text-[11px] opacity-0 group-hover:opacity-60 hover:!opacity-100 flex-shrink-0 transition-opacity" style={{ color: '#ef4444' }}>✕</button>
-              </div>
-              {/* Nested children */}
-              {child.children.length > 0 && (
-                <div style={{ paddingLeft: 20, borderLeft: `2px solid ${s.divider}`, marginLeft: 8 }}>
-                  {renderDetailChildren(child, depth + 1)}
-                  {/* Add sub-item inline */}
-                  <div className="flex items-center gap-2 py-1.5 group" style={{ borderBottom: `1px solid ${s.divider}` }}>
-                    <span className="text-xs flex-shrink-0" style={{ color: s.textMuted }}>+</span>
-                    <input type="text" value={addInputParentId === child.id ? newChild : ''}
-                           onChange={e => { setAddInputParentId(child.id); setNewChild(e.target.value); }}
-                           onFocus={() => setAddInputParentId(child.id)}
-                           onKeyDown={e => { if (e.key === 'Enter' && newChild.trim()) { addChild(child.id); } }}
-                           placeholder="添加子项..."
-                           className="flex-1 text-xs outline-none bg-transparent"
-                           style={{ color: s.text1 }} />
-                    {addInputParentId === child.id && newChild.trim() && (
-                      <button onClick={() => addChild(child.id)} className="text-[10px] font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
-                    )}
-                  </div>
-                </div>
+      <div key={node.id} className={depth > 0 ? 'ml-3' : ''} style={{ borderLeft: depth > 0 ? `1px dashed ${s.divider}` : 'none', paddingLeft: depth > 0 ? 8 : 0 }}>
+        <div className="flex items-center gap-1.5 py-1.5 group cursor-pointer"
+             onClick={() => { if (!isLeaf) toggleExpand(node.id); }}>
+          {/* Expand/collapse toggle */}
+          {!isLeaf ? (
+            <span className="text-[10px] flex-shrink-0 transition-transform duration-200" style={{ color: s.textMuted, transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+          ) : (
+            <span className="w-[10px] flex-shrink-0" /> /* spacer for leaf */
+          )}
+          {/* Leaf checkbox */}
+          {isLeaf && (
+            <button onClick={e => { e.stopPropagation(); toggleLeaf(node.id); }} className="flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors"
+                    style={{ borderColor: node.status === 'completed' ? '#22c55e' : s.divider, backgroundColor: node.status === 'completed' ? '#22c55e' : 'transparent' }}>
+              {node.status === 'completed' && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+            </button>
+          )}
+          {/* Title: click to edit */}
+          {editingId === node.id ? (
+            <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
+                   onBlur={() => saveTitle(node.id)}
+                   onKeyDown={e => { if (e.key === 'Enter') saveTitle(node.id); if (e.key === 'Escape') setEditingId(null); }}
+                   className="flex-1 text-sm outline-none rounded px-1.5 py-0.5"
+                   style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+          ) : (
+            <span className={`flex-1 text-sm truncate ${node.status === 'completed' && isLeaf ? 'line-through' : ''}`}
+                  style={{ color: node.status === 'completed' && isLeaf ? s.textMuted : s.text1 }}
+                  onClick={e => { e.stopPropagation(); setEditingId(node.id); setEditText(node.title); }}>
+              {node.title}
+            </span>
+          )}
+          {/* Progress */}
+          <span className="text-[10px] font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
+          {/* Delete */}
+          <button onClick={e => { e.stopPropagation(); deleteGoal(node.id); }}
+                  className="text-[10px] opacity-0 group-hover:opacity-60 hover:!opacity-100 flex-shrink-0 transition-opacity" style={{ color: '#ef4444' }}>✕</button>
+        </div>
+        {/* Expanded children */}
+        {isExpanded && !isLeaf && (
+          <div>
+            {node.children.map(c => renderDetailTree(c, depth + 1))}
+            {/* Add child inline */}
+            <div className="flex items-center gap-1.5 py-1 ml-3" style={{ paddingLeft: 8, borderLeft: `1px dashed ${s.divider}` }}>
+              <span className="text-[10px] flex-shrink-0" style={{ color: swatch }}>+</span>
+              <input type="text" value={addInputParentId === node.id ? newChild : ''}
+                     onChange={e => { setAddInputParentId(node.id); setNewChild(e.target.value); }}
+                     onFocus={() => setAddInputParentId(node.id)}
+                     onKeyDown={e => { if (e.key === 'Enter' && newChild.trim()) { addChild(node.id); } }}
+                     placeholder="添加子项..."
+                     className="flex-1 text-xs outline-none bg-transparent py-0.5"
+                     style={{ color: s.text1 }} />
+              {addInputParentId === node.id && newChild.trim() && (
+                <button onClick={() => addChild(node.id)} className="text-[10px] font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
               )}
+              <button onClick={e => { e.stopPropagation(); voiceChild.start(); }}
+                      className={`text-xs flex-shrink-0 transition-colors ${voiceChild.phase !== 'idle' ? 'animate-pulse' : ''}`}
+                      style={{ color: voiceChild.phase !== 'idle' ? swatch : s.textMuted }}>🎤</button>
             </div>
-          );
-        })}
+          </div>
+        )}
       </div>
     );
   };
@@ -567,8 +573,8 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                 )}
               </div>
 
-              {/* Children list */}
-              {renderDetailChildren(node)}
+              {/* Children tree */}
+              {renderDetailTree(node)}
 
               {/* Review */}
               {showReview && (
