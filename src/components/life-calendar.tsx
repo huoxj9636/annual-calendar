@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { SkinTheme } from '@/lib/skins';
 
-// ═══════════════ Types ═══════════════
+// ─── Types ───
 type OKRStatus = 'active' | 'completed' | 'abandoned' | 'delayed';
 
 interface TomatoItem {
@@ -34,476 +34,440 @@ interface OKRReview {
 
 interface OKR {
   id: string;
-  objective: string;
+  title: string;
   status: OKRStatus;
+  cycle: string;
   keyResults: KeyResult[];
   reviews: OKRReview[];
   createdAt: number;
 }
 
-interface EpitaphData {
-  oneLiner: string;
-  evaluation: { career: string; character: string; relationship: string };
-  works: [string, string, string];
-  dimensions: Record<string, string>;
+interface EpitaphRef {
+  type: string;
+  epitaph: string;
+  summary: string;
 }
 
-// ═══════════════ Constants ═══════════════
-const STORAGE_KEY = 'okr-data';
-const EPITAPH_KEY = 'epitaph-data';
-const ANIM_SEEN_KEY = 'epitaph-anim-seen';
-
-const STATUS_CFG: Record<OKRStatus, { label: string; color: string }> = {
-  active: { label: '进行中', color: '#3b82f6' },
-  completed: { label: '已完成', color: '#22c55e' },
-  abandoned: { label: '已放弃', color: '#9ca3af' },
-  delayed: { label: '已延期', color: '#f59e0b' },
+// ─── Constants ───
+const STATUS_CFG: Record<OKRStatus, { icon: string; label: string }> = {
+  active: { icon: '🔵', label: '进行中' },
+  completed: { icon: '🟢', label: '已完成' },
+  abandoned: { icon: '⚫', label: '已放弃' },
+  delayed: { icon: '🟠', label: '已延期' },
 };
 
-const CYCLES = ['年度', 'Q1', 'Q2', 'Q3', 'Q4'] as const;
-
-const EPITAPH_REFS: { type: string; epitaph: string; summary: string }[] = [
-  { type: '实干成就', epitaph: '他建造了不倒的大厦', summary: '一生致力于创造持久价值，用实干证明了自己的存在' },
-  { type: '实干成就', epitaph: '她让荒漠变成了绿洲', summary: '从无到有，用双手改变现实' },
-  { type: '学术探索', epitaph: '他追问了世界的本源', summary: '为真理执着一生，留下了深邃的思想遗产' },
-  { type: '学术探索', epitaph: '她照亮了未知的领域', summary: '在知识的边界上开疆拓土' },
-  { type: '家庭温暖', epitaph: '他让每个家人都感到安心', summary: '平凡却伟大，用温暖撑起了一片天' },
-  { type: '家庭温暖', epitaph: '她的餐桌永远为你留着位置', summary: '用最朴素的爱，编织了最坚实的纽带' },
-  { type: '自由行者', epitaph: '他走过的路比任何人都要远', summary: '不羁的灵魂，用脚步丈量了世界的宽度' },
-  { type: '自由行者', epitaph: '她活在每一刻的热爱里', summary: '拒绝平庸，活出了自己定义的人生' },
-  { type: '商业创造', epitaph: '他改变了千万人的生活方式', summary: '从洞察到行动，创造商业价值也创造社会价值' },
-  { type: '商业创造', epitaph: '她证明了商业可以既有利润又有温度', summary: '在利益与理想之间找到了平衡' },
-  { type: '碌碌无为', epitaph: '这里躺着一个从未真正活过的人', summary: '一生随波逐流，从未为自己做出过选择' },
-  { type: '碌碌无为', epitaph: '他总是说明天开始', summary: '永远在等待，却从未出发' },
+const EPITAPH_REFS: EpitaphRef[] = [
+  { type: '实干成就', epitaph: '他用一生建造了不朽的工程', summary: '专注实业，创造可见成果' },
+  { type: '实干成就', epitaph: '她让荒漠变成了绿洲', summary: '实干改变世界' },
+  { type: '学术探索', epitaph: '他的思想照亮了后人的路', summary: '追求真理，传播知识' },
+  { type: '学术探索', epitaph: '她用一生解答了人类未知的难题', summary: '探索未知，拓展认知' },
+  { type: '家庭温暖', epitaph: '她的爱让每个家人都成为更好的人', summary: '以爱为中心，温暖身边人' },
+  { type: '家庭温暖', epitaph: '他是家人永远的港湾', summary: '守护家庭，传承温暖' },
+  { type: '自由行者', epitaph: '他走过的每一步都是自由的证明', summary: '活出自我，不受束缚' },
+  { type: '自由行者', epitaph: '她用一生证明了人生可以不一样', summary: '勇敢做自己' },
+  { type: '商业创造', epitaph: '他创造了改变千万人的产品', summary: '商业创新，服务大众' },
+  { type: '商业创造', epitaph: '她从零开始建立了一个帝国', summary: '创业精神，永不放弃' },
+  { type: '碌碌无为', epitaph: '他来了，他活着，他走了——无人记得', summary: '随波逐流，未曾思考' },
+  { type: '碌碌无为', epitaph: '她一生都在等待，等到最后也没开始', summary: '拖延犹豫，从未行动' },
 ];
-
-const DIMENSIONS = ['事业价值', '财富自由', '健康精力', '亲密关系', '自我成长'];
 
 const ANIM_STEPS = [
-  { text: '你出生了，世界没有问你愿不愿意', delay: 0 },
-  { text: '上学，因为大家都上学', delay: 3000 },
-  { text: '毕业，找了份还算稳定的工作', delay: 6000 },
-  { text: '每天为生存奔波，却说不清为了什么', delay: 9000 },
-  { text: '被生活推着走，来不及停下来想一想', delay: 12000 },
-  { text: '中年了，一切好像都定了，又好像什么都没定', delay: 15000 },
-  { text: '回首来路，满是不甘和遗憾', delay: 18000 },
-  { text: '最后，墓碑上什么也没写', delay: 21000 },
-  { text: '如果这是你的结局——你甘心吗？', delay: 24000 },
+  '你出生了',
+  '你上了学，和其他人一样',
+  '你毕业了，找了一份差不多的工作',
+  '你开始为生存奔波',
+  '你被生活推着走，来不及思考',
+  '你到了中年，开始迷茫',
+  '你回首过去，充满遗憾',
+  '你的墓碑上没有字',
+  '如果这是你的结局，你甘心吗？',
 ];
 
-// ═══════════════ Utils ═══════════════
-const uid = () => Math.random().toString(36).slice(2, 9);
+const TOMATO_MINUTES = 25;
 
-function loadOKRs(cycle: string): OKR[] {
-  if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(`${STORAGE_KEY}-${cycle}`) || '[]') as OKR[]; }
-  catch { return []; }
+// ─── Helpers ───
+function uid(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
-function saveOKRs(cycle: string, data: OKR[]) {
-  localStorage.setItem(`${STORAGE_KEY}-${cycle}`, JSON.stringify(data));
-}
-function loadEpitaph(): EpitaphData | null {
-  if (typeof window === 'undefined') return null;
-  try { const d = localStorage.getItem(EPITAPH_KEY); return d ? JSON.parse(d) : null; }
-  catch { return null; }
-}
-function saveEpitaph(d: EpitaphData) { localStorage.setItem(EPITAPH_KEY, JSON.stringify(d)); }
 
-function tomatoStatsFor(okr: OKR) {
-  let total = 0, done = 0;
-  for (const kr of okr.keyResults) {
-    for (const t of kr.tasks) {
-      total += t.estimatedTomatoes;
+function okrProgress(okr: OKR): number {
+  if (!okr.keyResults.length) return 0;
+  const krAvg = okr.keyResults.reduce((a: number, kr: KeyResult) => {
+    const allTm = kr.tasks.reduce((a2: number, t: Task) => a2 + t.tomatoes.length, 0);
+    const doneTm = kr.tasks.reduce((a2: number, t: Task) => a2 + t.tomatoes.filter(tm => tm.completed).length, 0);
+    return a + (allTm ? doneTm / allTm : 0);
+  }, 0);
+  return Math.round((krAvg / okr.keyResults.length) * 100);
+}
+
+function okrTomatoStats(okr: OKR) {
+  let total = 0;
+  let done = 0;
+  let est = 0;
+  okr.keyResults.forEach((kr: KeyResult) => {
+    kr.tasks.forEach((t: Task) => {
+      est += t.estimatedTomatoes;
+      total += t.tomatoes.length;
       done += t.tomatoes.filter((tm: TomatoItem) => tm.completed).length;
-    }
-  }
-  return { total, done, pct: total > 0 ? Math.round(done / total * 100) : 0 };
-}
-
-function cycleOkrs(cycle: string): OKR[] {
-  return (loadOKRs(cycle) as OKR[]).map((o) => ({
-    ...o,
-    status: (o.status || 'active') as OKRStatus,
-    keyResults: Array.isArray(o.keyResults) ? o.keyResults.map((kr) => ({
-      ...kr,
-      tasks: Array.isArray(kr.tasks) ? kr.tasks.map((t) => ({
-        ...t,
-        estimatedTomatoes: Number(t.estimatedTomatoes || 1),
-        tomatoes: Array.isArray(t.tomatoes) ? t.tomatoes.map((tm) => ({
-          ...tm,
-          completed: Boolean(tm.completed),
-        })) : [],
-      })) : [],
-    })) : [],
-    reviews: Array.isArray(o.reviews) ? o.reviews : [],
-  }));
-}
-
-// ═══════════════ Component ═══════════════
-export default function LifeCalendar({ skin, onClose }: { skin: SkinTheme; onClose: () => void }) {
-  // Alias skin properties for convenient access in JSX
-  const c = {
-    bodyBg: skin.bodyBg, panelBg: skin.panelBg, cardBg: skin.cardBg, cardHover: skin.cardHover,
-    text1: skin.textPrimary, text2: skin.textSecondary, text3: skin.textMuted,
-    divider: skin.divider, progressTrack: skin.progressTrack, progressFill: skin.progressFill,
-    swatch: skin.swatch, headerFrom: skin.headerFrom, headerTo: skin.headerTo,
-  };
-  const swatch = skin.swatch;
-  const [mounted, setMounted] = useState(false);
-  const [cycle, setCycle] = useState<string>('年度');
-  const [okrs, setOkrs] = useState<OKR[]>([]);
-  const [epitaph, setEpitaph] = useState<EpitaphData | null>(null);
-  const [showEpitaphOverlay, setShowEpitaphOverlay] = useState(false);
-  const [showAnim, setShowAnim] = useState(false);
-  const [animStep, setAnimStep] = useState(-1);
-  const [newOkr, setNewOkr] = useState('');
-  const [expandedKR, setExpandedKR] = useState<Set<string>>(new Set());
-  const [expandedTask, setExpandedTask] = useState<Set<string>>(new Set());
-  const [epitaphTab, setEpitaphTab] = useState<'refs' | 'write' | 'deduce'>('write');
-  const [epitaphFilter, setEpitaphFilter] = useState('all');
-  const [editingOkr, setEditingOkr] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editingKr, setEditingKr] = useState<string | null>(null);
-  const [editKrDesc, setEditKrDesc] = useState('');
-  const [newKr, setNewKr] = useState<Record<string, string>>({});
-  const [newTask, setNewTask] = useState<Record<string, string>>({});
-  const [newTomato, setNewTomato] = useState<Record<string, string>>({});
-  const [taskEst, setTaskEst] = useState<Record<string, string>>({});
-  const [reviewText, setReviewText] = useState<Record<string, string>>({});
-  const [timerActive, setTimerActive] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(25 * 60);
-  const [timerPaused, setTimerPaused] = useState(false);
-  const [timerCtx, setTimerCtx] = useState<{ okrId: string; krId: string; taskId: string; tomatoId: string; labels: string[] } | null>(null);
-  const [timerNote, setTimerNote] = useState('');
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [dailyTarget, setDailyTarget] = useState(8);
-  const [dailyDone, setDailyDone] = useState(0);
-  const [dailyInterrupts, setDailyInterrupts] = useState(0);
-  const [epitaphForm, setEpitaphForm] = useState<EpitaphData>({
-    oneLiner: '', evaluation: { career: '', character: '', relationship: '' },
-    works: ['', '', ''], dimensions: {},
+    });
   });
+  return { total, done, est };
+}
+
+// ─── Component ───
+export default function LifeCalendar({ skin, onClose }: { skin: SkinTheme; onClose: () => void }) {
+  const c = skin; // shorthand for colors
+
+  // State
+  const [okrs, setOkrs] = useState<OKR[]>([]);
+  const [cycle, setCycle] = useState('2026');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [showEpitaph, setShowEpitaph] = useState(false);
+  const [showAnimation, setShowAnimation] = useState(false);
+  const [epitaphTab, setEpitaphTab] = useState<'ref' | 'write' | 'derive'>('ref');
+  const [epitaphData, setEpitaphData] = useState({ oneLiner: '', career: '', character: '', relation: '', works: ['', '', ''] });
+  const [epitaphFilter, setEpitaphFilter] = useState('全部');
+  const [dimensions, setDimensions] = useState<Record<string, string>>({});
+  const [newKr, setNewKr] = useState('');
+  const [newTask, setNewTask] = useState<{ krId: string; title: string; est: number } | null>(null);
+  const [newTm, setNewTm] = useState<{ taskId: string; title: string } | null>(null);
+  const [animStep, setAnimStep] = useState(0);
+  const [timerOn, setTimerOn] = useState(false);
+  const [timerSec, setTimerSec] = useState(TOMATO_MINUTES * 60);
+  const [timerPaused, setTimerPaused] = useState(false);
+  const [timerCtx, setTimerCtx] = useState<{ okrTitle: string; krDesc: string; taskTitle: string; tmTitle: string } | null>(null);
+  const [timerNote, setTimerNote] = useState('');
+  const [editingKr, setEditingKr] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<string | null>(null);
+  const [dailyGoal, setDailyGoal] = useState(8);
+  const [dailyDone, setDailyDone] = useState(0);
+  const [interruptions, setInterruptions] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  // Refs
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Derived
+  const cycleOkrs = okrs.filter((o: OKR) => o.cycle === cycle);
+  const selectedOkr = cycleOkrs.find((o: OKR) => o.id === selectedId) || null;
+  const totalEst = cycleOkrs.reduce((a: number, o: OKR) => a + okrTomatoStats(o).est, 0);
+  const totalDone = cycleOkrs.reduce((a: number, o: OKR) => a + okrTomatoStats(o).done, 0);
+  const globalPct = totalEst ? Math.round((totalDone / totalEst) * 100) : 0;
 
   // Mount
   useEffect(() => { setMounted(true); }, []);
+
+  // Load data
   useEffect(() => {
     if (!mounted) return;
-    setOkrs(cycleOkrs(cycle));
-    setEpitaph(loadEpitaph());
-    const seen = localStorage.getItem(ANIM_SEEN_KEY);
-    if (!seen) { setShowAnim(true); setAnimStep(0); }
-    const dt = localStorage.getItem('tomato-daily-target');
-    if (dt) setDailyTarget(Number(dt));
+    try {
+      const raw = localStorage.getItem('okr-data');
+      if (raw) setOkrs(JSON.parse(raw) as OKR[]);
+      const ea = localStorage.getItem('okr-epitaph');
+      if (ea) setEpitaphData(JSON.parse(ea));
+      const dim = localStorage.getItem('okr-dimensions');
+      if (dim) setDimensions(JSON.parse(dim));
+      const seen = localStorage.getItem('okr-anim-seen');
+      if (!seen) setShowAnimation(true);
+      const dg = localStorage.getItem('okr-daily-goal');
+      if (dg) setDailyGoal(parseInt(dg));
+      const dd = localStorage.getItem('okr-daily-done-' + new Date().toDateString());
+      if (dd) setDailyDone(parseInt(dd));
+    } catch { /* ignore */ }
   }, [mounted]);
+
+  // Save OKRs
+  useEffect(() => {
+    if (!mounted || !okrs.length) return;
+    localStorage.setItem('okr-data', JSON.stringify(okrs));
+  }, [okrs, mounted]);
+
+  // Save epitaph
   useEffect(() => {
     if (!mounted) return;
-    setOkrs(cycleOkrs(cycle));
-  }, [cycle, mounted]);
-  useEffect(() => {
-    if (!mounted || okrs.length === 0) return;
-    saveOKRs(cycle, okrs);
-  }, [okrs, cycle, mounted]);
-  useEffect(() => {
-    if (mounted) localStorage.setItem('tomato-daily-target', String(dailyTarget));
-  }, [dailyTarget, mounted]);
+    localStorage.setItem('okr-epitaph', JSON.stringify(epitaphData));
+  }, [epitaphData, mounted]);
 
   // Animation
   useEffect(() => {
-    if (animStep < 0 || animStep >= ANIM_STEPS.length) return;
-    const t = setTimeout(() => setAnimStep(animStep + 1), 3000);
+    if (!showAnimation) return;
+    if (animStep >= ANIM_STEPS.length) return;
+    const t = setTimeout(() => setAnimStep(s => s + 1), 2200);
     return () => clearTimeout(t);
-  }, [animStep]);
+  }, [showAnimation, animStep]);
 
   // Timer
   useEffect(() => {
-    if (!timerActive || timerPaused) { if (timerRef.current) clearInterval(timerRef.current); return; }
+    if (!timerOn || timerPaused) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
     timerRef.current = setInterval(() => {
-      setTimerSeconds(prev => {
-        if (prev <= 1) {
+      setTimerSec(s => {
+        if (s <= 1) {
           if (timerRef.current) clearInterval(timerRef.current);
-          setTimerActive(false);
-          // Mark tomato complete
+          setTimerOn(false);
+          // Auto-complete tomato
           if (timerCtx) {
-            setOkrs(prev => prev.map(o => {
-              if (o.id !== timerCtx.okrId) return o;
-              return { ...o, keyResults: o.keyResults.map(kr => {
-                if (kr.id !== timerCtx.krId) return kr;
-                return { ...kr, tasks: kr.tasks.map(t => {
-                  if (t.id !== timerCtx.taskId) return t;
-                  return { ...t, tomatoes: t.tomatoes.map(tm => {
-                    if (tm.id !== timerCtx.tomatoId) return tm;
-                    return { ...tm, completed: true, completedAt: Date.now() };
-                  })};
-                })};
-              })};
+            setOkrs(prev => prev.map((o: OKR) => {
+              if (o.id !== selectedId) return o;
+              return { ...o, keyResults: o.keyResults.map((kr: KeyResult) => ({
+                ...kr, tasks: kr.tasks.map((t: Task) => ({
+                  ...t, tomatoes: t.tomatoes.map((tm: TomatoItem) =>
+                    tm.title === timerCtx.tmTitle ? { ...tm, completed: true, completedAt: Date.now() } : tm
+                  )
+                }))
+              }))};
             }));
             setDailyDone(d => d + 1);
           }
-          try { new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH+Jj4+FfHJ1fIeNkI6GfXR1fYiOkI2Fe3J0fIiOkI2Fe3J0fA==').play(); } catch {}
+          try { new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH+Jj4+FfHJ1gIeNkI6KfXR0gIiOkI2JfXV0gIiOkI2JfXV0gIiOkI2JfXV1gIiOkI2JfXV1gA==').play(); } catch { /* */ }
           return 0;
         }
-        return prev - 1;
+        return s - 1;
       });
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [timerActive, timerPaused, timerCtx]);
+  }, [timerOn, timerPaused, timerCtx, selectedId]);
 
-  // ═══════ Actions ═══════
+  // Save daily done
+  useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem('okr-daily-done-' + new Date().toDateString(), dailyDone.toString());
+  }, [dailyDone, mounted]);
+
+  // ─── Handlers ───
   const addOKR = useCallback(() => {
-    if (!newOkr.trim()) return;
-    setOkrs(prev => [...prev, { id: uid(), objective: newOkr.trim(), status: 'active', keyResults: [], reviews: [], createdAt: Date.now() }]);
-    setNewOkr('');
-  }, [newOkr]);
+    if (!newTitle.trim()) return;
+    const o: OKR = { id: uid(), title: newTitle.trim(), status: 'active', cycle, keyResults: [], reviews: [], createdAt: Date.now() };
+    setOkrs(prev => [...prev, o]);
+    setNewTitle('');
+    setSelectedId(o.id);
+  }, [newTitle, cycle]);
 
-  const cycleStatus = useCallback((okrId: string) => {
+  const cycleStatus = useCallback((id: string) => {
     const order: OKRStatus[] = ['active', 'completed', 'abandoned', 'delayed'];
-    setOkrs(prev => prev.map(o => o.id === okrId ? { ...o, status: order[(order.indexOf(o.status) + 1) % 4] } : o));
+    setOkrs(prev => prev.map((o: OKR) => o.id === id ? { ...o, status: order[(order.indexOf(o.status) + 1) % 4] } : o));
   }, []);
-
-  const deleteOKR = useCallback((okrId: string) => {
-    setOkrs(prev => prev.filter(o => o.id !== okrId));
-  }, []);
-
-  const saveEditTitle = useCallback((okrId: string) => {
-    if (!editTitle.trim()) return;
-    setOkrs(prev => prev.map(o => o.id === okrId ? { ...o, objective: editTitle.trim() } : o));
-    setEditingOkr(null);
-  }, [editTitle]);
 
   const addKR = useCallback((okrId: string) => {
-    const desc = newKr[okrId]?.trim();
-    if (!desc) return;
-    setOkrs(prev => prev.map(o => o.id === okrId ? { ...o, keyResults: [...o.keyResults, { id: uid(), description: desc, tasks: [] }] } : o));
-    setNewKr(prev => ({ ...prev, [okrId]: '' }));
+    if (!newKr.trim()) return;
+    const kr: KeyResult = { id: uid(), description: newKr.trim(), tasks: [] };
+    setOkrs(prev => prev.map((o: OKR) => o.id === okrId ? { ...o, keyResults: [...o.keyResults, kr] } : o));
+    setNewKr('');
   }, [newKr]);
 
-  const saveEditKr = useCallback((krId: string, okrId: string) => {
-    if (!editKrDesc.trim()) return;
-    setOkrs(prev => prev.map(o => o.id === okrId ? { ...o, keyResults: o.keyResults.map(kr => kr.id === krId ? { ...kr, description: editKrDesc.trim() } : kr) } : o));
-    setEditingKr(null);
-  }, [editKrDesc]);
-
   const addTask = useCallback((okrId: string, krId: string) => {
-    const title = newTask[krId]?.trim();
-    if (!title) return;
-    const est = Number(taskEst[krId] || 1);
-    setOkrs(prev => prev.map(o => o.id === okrId ? { ...o, keyResults: o.keyResults.map(kr => kr.id === krId ? { ...kr, tasks: [...kr.tasks, { id: uid(), title, estimatedTomatoes: est, tomatoes: [] }] } : kr) } : o));
-    setNewTask(prev => ({ ...prev, [krId]: '' }));
-    setTaskEst(prev => ({ ...prev, [krId]: '' }));
-  }, [newTask, taskEst]);
+    if (!newTask || !newTask.title.trim()) return;
+    const task: Task = { id: uid(), title: newTask.title.trim(), estimatedTomatoes: newTask.est || 1, tomatoes: [] };
+    setOkrs(prev => prev.map((o: OKR) => o.id === okrId ? {
+      ...o, keyResults: o.keyResults.map((kr: KeyResult) => kr.id === krId ? { ...kr, tasks: [...kr.tasks, task] } : kr)
+    } : o));
+    setNewTask(null);
+  }, [newTask]);
 
   const addTomato = useCallback((okrId: string, krId: string, taskId: string) => {
-    const title = newTomato[taskId]?.trim();
-    if (!title) return;
-    setOkrs(prev => prev.map(o => o.id === okrId ? { ...o, keyResults: o.keyResults.map(kr => kr.id === krId ? { ...kr, tasks: kr.tasks.map(t => t.id === taskId ? { ...t, tomatoes: [...t.tomatoes, { id: uid(), title, completed: false }] } : t) } : kr) } : o));
-    setNewTomato(prev => ({ ...prev, [taskId]: '' }));
-  }, [newTomato]);
+    if (!newTm || !newTm.title.trim()) return;
+    const tm: TomatoItem = { id: uid(), title: newTm.title.trim(), completed: false };
+    setOkrs(prev => prev.map((o: OKR) => o.id === okrId ? {
+      ...o, keyResults: o.keyResults.map((kr: KeyResult) => kr.id === krId ? {
+        ...kr, tasks: kr.tasks.map((t: Task) => t.id === taskId ? { ...t, tomatoes: [...t.tomatoes, tm] } : t)
+      } : kr)
+    } : o));
+    setNewTm(null);
+  }, [newTm]);
 
-  const startTomato = useCallback((okr: OKR, kr: KeyResult, task: Task, tm: TomatoItem) => {
-    setTimerCtx({ okrId: okr.id, krId: kr.id, taskId: task.id, tomatoId: tm.id, labels: [okr.objective, kr.description, task.title, tm.title] });
-    setTimerSeconds(25 * 60);
+  const toggleTomato = useCallback((okrId: string, krId: string, taskId: string, tmId: string) => {
+    setOkrs(prev => prev.map((o: OKR) => o.id === okrId ? {
+      ...o, keyResults: o.keyResults.map((kr: KeyResult) => kr.id === krId ? {
+        ...kr, tasks: kr.tasks.map((t: Task) => t.id === taskId ? {
+          ...t, tomatoes: t.tomatoes.map((tm: TomatoItem) => tm.id === tmId ? {
+            ...tm, completed: !tm.completed, completedAt: !tm.completed ? Date.now() : undefined
+          } : tm)
+        } : t)
+      } : kr)
+    } : o));
+  }, []);
+
+  const deleteTomato = useCallback((okrId: string, krId: string, taskId: string, tmId: string) => {
+    setOkrs(prev => prev.map((o: OKR) => o.id === okrId ? {
+      ...o, keyResults: o.keyResults.map((kr: KeyResult) => kr.id === krId ? {
+        ...kr, tasks: kr.tasks.map((t: Task) => t.id === taskId ? {
+          ...t, tomatoes: t.tomatoes.filter((tm: TomatoItem) => tm.id !== tmId)
+        } : t)
+      } : kr)
+    } : o));
+  }, []);
+
+  const startTomatoTimer = useCallback((okrTitle: string, krDesc: string, taskTitle: string, tmTitle: string) => {
+    setTimerCtx({ okrTitle, krDesc, taskTitle, tmTitle });
+    setTimerSec(TOMATO_MINUTES * 60);
+    setTimerOn(true);
     setTimerPaused(false);
-    setTimerActive(true);
     setTimerNote('');
   }, []);
 
-  const toggleTomato = useCallback((okrId: string, krId: string, taskId: string, tomatoId: string) => {
-    setOkrs(prev => prev.map(o => o.id === okrId ? { ...o, keyResults: o.keyResults.map(kr => kr.id === krId ? { ...kr, tasks: kr.tasks.map(t => t.id === taskId ? { ...t, tomatoes: t.tomatoes.map(tm => tm.id === tomatoId ? { ...tm, completed: !tm.completed, completedAt: tm.completed ? undefined : Date.now() } : tm) } : t) } : kr) } : o));
-  }, []);
-
-  const deleteTomato = useCallback((okrId: string, krId: string, taskId: string, tomatoId: string) => {
-    setOkrs(prev => prev.map(o => o.id === okrId ? { ...o, keyResults: o.keyResults.map(kr => kr.id === krId ? { ...kr, tasks: kr.tasks.map(t => t.id === taskId ? { ...t, tomatoes: t.tomatoes.filter(tm => tm.id !== tomatoId) } : t) } : kr) } : o));
-  }, []);
-
-  const addReview = useCallback((okrId: string) => {
-    const text = reviewText[okrId]?.trim();
-    if (!text) return;
-    setOkrs(prev => prev.map(o => o.id === okrId ? { ...o, reviews: [...o.reviews, { id: uid(), content: text, createdAt: Date.now() }] } : o));
-    setReviewText(prev => ({ ...prev, [okrId]: '' }));
-  }, [reviewText]);
-
-  const toggleKR = (id: string) => setExpandedKR(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const toggleTask = (id: string) => setExpandedTask(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-
-  // Generate OKRs from epitaph dimensions
   const generateFromEpitaph = useCallback(() => {
-    if (!epitaph) return;
-    const newOkrs: OKR[] = DIMENSIONS.filter(d => epitaph.dimensions[d]?.trim()).map(d => ({
-      id: uid(), objective: epitaph.dimensions[d], status: 'active' as OKRStatus, keyResults: [], reviews: [], createdAt: Date.now(),
-    }));
-    setOkrs(prev => [...prev, ...newOkrs]);
-    setShowEpitaphOverlay(false);
-  }, [epitaph]);
+    const dims: Record<string, string> = {
+      '事业价值': epitaphData.career || '打造核心能力，创造不可替代的价值',
+      '财富自由': '建立多元收入，实现财务独立',
+      '健康精力': '保持精力充沛，支撑长期目标',
+      '亲密关系': epitaphData.relation || '建立深度关系，成为可信赖的人',
+      '自我成长': epitaphData.character || '持续学习进化，成为更好的自己',
+    };
+    setDimensions(dims);
+    Object.entries(dims).forEach(([title, desc]) => {
+      const o: OKR = { id: uid(), title: `O: ${title}`, status: 'active', cycle, keyResults: [{ id: uid(), description: desc, tasks: [] }], reviews: [], createdAt: Date.now() };
+      setOkrs(prev => [...prev, o]);
+    });
+    setEpitaphTab('derive');
+  }, [epitaphData, cycle]);
 
-  // Save epitaph
-  const saveEpitaphForm = useCallback(() => {
-    saveEpitaph(epitaphForm);
-    setEpitaph(epitaphForm);
-    setShowEpitaphOverlay(false);
-  }, [epitaphForm]);
+  // ─── Color helpers ───
+  const statusColor = (status: OKRStatus) => {
+    if (status === 'active') return c.swatch;
+    if (status === 'completed') return '#22c55e';
+    if (status === 'delayed') return '#f59e0b';
+    return '#94a3b8';
+  };
 
-  // Global stats
-  const globalStats = okrs.reduce((acc: { totalOkrs: number; totalEst: number; totalDone: number }, o: OKR) => {
-    const ts = tomatoStatsFor(o);
-    return { totalOkrs: acc.totalOkrs + 1, totalEst: acc.totalEst + ts.total, totalDone: acc.totalDone + ts.done };
-  }, { totalOkrs: 0, totalEst: 0, totalDone: 0 });
-  const globalPct = globalStats.totalEst > 0 ? Math.round(globalStats.totalDone / globalStats.totalEst * 100) : 0;
+  const pb = (pct: number, color?: string) => `${pct}% ${color || c.swatch}`;
 
   if (!mounted) return null;
 
-  // ═══════════════ Render ═══════════════
+  // ─── Render ───
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: c.bodyBg }}>
-      {/* ═══ Life Animation Overlay ═══ */}
-      {showAnim && animStep < ANIM_STEPS.length && (
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: c.bodyBg, color: c.textPrimary }}>
+
+      {/* ═══ Animation Overlay ═══ */}
+      {showAnimation && (
         <div className="fixed inset-0 z-[60] flex" style={{ background: '#000' }}>
-          {/* Left: Text */}
-          <div className="w-1/2 flex flex-col justify-center items-end pr-12">
-            {ANIM_STEPS.slice(0, animStep + 1).map((step, i) => (
-              <div key={i} className="mb-6 max-w-md text-right transition-opacity duration-1000"
-                style={{ opacity: i < animStep ? 0.3 : 1, color: i === ANIM_STEPS.length - 1 && animStep === ANIM_STEPS.length - 1 ? '#ef4444' : '#fff', fontSize: i === animStep ? '1.25rem' : '1rem', fontWeight: i === animStep ? 600 : 400 }}>
-                {step.text}
+          {/* Left: PPT-style text */}
+          <div className="flex-1 flex flex-col justify-center items-center px-12">
+            {ANIM_STEPS.map((step, i) => (
+              <div key={i} className="mb-4 transition-all duration-700" style={{
+                opacity: i < animStep ? 0.3 : i === animStep ? 1 : 0.05,
+                fontSize: i === ANIM_STEPS.length - 1 ? '1.5rem' : '1.1rem',
+                fontWeight: i === ANIM_STEPS.length - 1 ? 700 : 400,
+                color: i === ANIM_STEPS.length - 1 ? '#ef4444' : '#fff',
+                transform: i === animStep ? 'scale(1.05)' : 'scale(1)',
+              }}>
+                {step}
               </div>
             ))}
+            {animStep >= ANIM_STEPS.length && (
+              <button className="mt-8 px-6 py-3 rounded-lg text-white font-bold" style={{ background: '#ef4444' }} onClick={() => { setShowAnimation(false); localStorage.setItem('okr-anim-seen', '1'); }}>
+                我不甘心，我要改变
+              </button>
+            )}
           </div>
-          {/* Right: Ladder & light */}
-          <div className="w-1/2 relative">
-            {/* Light hole */}
-            <div className="absolute top-8 right-12 w-24 h-24 rounded-full"
-              style={{ background: 'radial-gradient(circle, rgba(135,206,235,0.8) 0%, rgba(135,206,235,0.3) 40%, transparent 70%)' }} />
+          {/* Right: Ladder + Light */}
+          <div className="flex-1 relative">
+            {/* Light opening */}
+            <div className="absolute top-4 right-12 w-28 h-28 rounded-full" style={{ background: 'radial-gradient(circle, rgba(200,220,255,0.9) 0%, rgba(150,180,220,0.4) 40%, transparent 70%)' }} />
+            <div className="absolute top-16 right-16 w-20 h-20 rounded-full overflow-hidden" style={{ background: 'linear-gradient(180deg, #87CEEB 0%, #B0E0E6 100%)' }}>
+              <div className="absolute top-3 left-2 w-8 h-4 rounded-full" style={{ background: 'rgba(255,255,255,0.7)' }} />
+              <div className="absolute top-5 right-3 w-6 h-3 rounded-full" style={{ background: 'rgba(255,255,255,0.5)' }} />
+            </div>
             {/* Ladder */}
-            <div className="absolute top-28 right-[5.5rem] w-8" style={{ height: '70vh' }}>
-              <div className="absolute inset-0" style={{ borderLeft: '3px solid rgba(139,119,101,0.6)', borderRight: '3px solid rgba(139,119,101,0.6)' }} />
-              {[...Array(14)].map((_, i) => (
-                <div key={i} className="absolute w-full" style={{ top: `${i * 7 + 3}%`, height: 2, background: `rgba(139,119,101,${0.7 - i * 0.04})` }} />
-              ))}
-            </div>
+            <div className="absolute bottom-0 right-24" style={{ width: '3px', height: '85%', background: 'linear-gradient(to top, #3a2a1a 0%, #8B7355 50%, #A0926B 80%, rgba(160,146,107,0.2) 100%)' }} />
+            <div className="absolute bottom-0 right-36" style={{ width: '3px', height: '85%', background: 'linear-gradient(to top, #3a2a1a 0%, #8B7355 50%, #A0926B 80%, rgba(160,146,107,0.2) 100%)' }} />
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="absolute" style={{
+                right: '24px', width: '48px', height: '3px',
+                bottom: `${10 + i * 10}%`,
+                background: `linear-gradient(to right, rgba(139,115,85,${0.2 + i * 0.1}), rgba(160,146,107,${0.3 + i * 0.08}))`,
+              }} />
+            ))}
             {/* Light beam */}
-            <div className="absolute top-32 right-16 w-32 opacity-20"
-              style={{ height: '60vh', background: 'linear-gradient(to bottom, rgba(135,206,235,0.3), transparent)' }} />
+            <div className="absolute top-28 right-20" style={{
+              width: '120px', height: '60vh',
+              background: 'linear-gradient(180deg, rgba(200,220,255,0.12) 0%, transparent 100%)',
+              clipPath: 'polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%)',
+            }} />
           </div>
-          {/* Skip button */}
-          <button onClick={() => { setShowAnim(false); localStorage.setItem(ANIM_SEEN_KEY, '1'); }}
-            className="absolute bottom-8 right-8 text-white/40 hover:text-white/70 text-sm">跳过 →</button>
-          {/* Final CTA */}
-          {animStep >= ANIM_STEPS.length && (
-            <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.9)' }}>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white mb-6">如果这是你的结局——你甘心吗？</div>
-                <button onClick={() => { setShowAnim(false); localStorage.setItem(ANIM_SEEN_KEY, '1'); setShowEpitaphOverlay(true); }}
-                  className="px-8 py-3 rounded-lg text-white font-semibold" style={{ background: '#ef4444' }}>
-                  我不甘心，我要改变
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {/* ═══ Epitaph Overlay ═══ */}
-      {showEpitaphOverlay && (
-        <div className="fixed inset-0 z-[55] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.95)' }}>
-          <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl p-8" style={{ background: '#111', color: '#e5e5e5' }}>
+      {showEpitaph && (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.85)' }} onClick={() => setShowEpitaph(false)}>
+          <div className="w-[640px] max-h-[80vh] overflow-y-auto rounded-xl p-6" style={{ background: '#1a1a1a', color: '#e5e5e5' }} onClick={e => e.stopPropagation()}>
             {/* Tabs */}
-            <div className="flex gap-4 mb-6 border-b border-white/10 pb-3">
-              {(['refs', 'write', 'deduce'] as const).map(tab => (
-                <button key={tab} onClick={() => setEpitaphTab(tab)}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  style={{ background: epitaphTab === tab ? '#fff' : 'transparent', color: epitaphTab === tab ? '#000' : '#999' }}>
-                  {tab === 'refs' ? '参考库' : tab === 'write' ? '我的墓志铭' : '终局倒推'}
+            <div className="flex gap-3 mb-5">
+              {(['ref', 'write', 'derive'] as const).map(tab => (
+                <button key={tab} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: epitaphTab === tab ? '#fff' : '#333', color: epitaphTab === tab ? '#000' : '#999' }} onClick={() => setEpitaphTab(tab)}>
+                  {tab === 'ref' ? '参考库' : tab === 'write' ? '我的墓志铭' : '终局倒推'}
                 </button>
               ))}
-              <div className="flex-1" />
-              <button onClick={() => setShowEpitaphOverlay(false)} className="text-white/40 hover:text-white text-xl">✕</button>
             </div>
 
-            {/* Refs Tab */}
-            {epitaphTab === 'refs' && (
+            {/* Tab: Reference */}
+            {epitaphTab === 'ref' && (
               <div>
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {['all', ...new Set(EPITAPH_REFS.map(r => r.type))].map(type => (
-                    <button key={type} onClick={() => setEpitaphFilter(type)}
-                      className="px-3 py-1 rounded-full text-xs"
-                      style={{ background: epitaphFilter === type ? '#fff' : '#333', color: epitaphFilter === type ? '#000' : '#aaa' }}>
-                      {type === 'all' ? '全部' : type}
-                    </button>
+                  {['全部', ...new Set(EPITAPH_REFS.map(r => r.type))].map(t => (
+                    <button key={t} className="px-3 py-1 rounded text-xs" style={{ background: epitaphFilter === t ? '#fff' : '#333', color: epitaphFilter === t ? '#000' : '#999' }} onClick={() => setEpitaphFilter(t)}>{t}</button>
                   ))}
                 </div>
-                <div className="space-y-4">
-                  {EPITAPH_REFS.filter(r => epitaphFilter === 'all' || r.type === epitaphFilter).map((r, i) => (
-                    <div key={i} className="p-4 rounded-xl" style={{ background: '#1a1a1a', borderLeft: '3px solid #555' }}>
+                <div className="space-y-3">
+                  {EPITAPH_REFS.filter(r => epitaphFilter === '全部' || r.type === epitaphFilter).map((r, i) => (
+                    <div key={i} className="p-3 rounded-lg" style={{ background: '#262626' }}>
                       <div className="text-xs mb-1" style={{ color: '#888' }}>{r.type}</div>
-                      <div className="font-semibold mb-1" style={{ color: '#e5e5e5' }}>&ldquo;{r.epitaph}&rdquo;</div>
-                      <div className="text-sm" style={{ color: '#999' }}>{r.summary}</div>
+                      <div className="font-medium mb-1">「{r.epitaph}」</div>
+                      <div className="text-sm" style={{ color: '#aaa' }}>{r.summary}</div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Write Tab */}
+            {/* Tab: Write */}
             {epitaphTab === 'write' && (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#ccc' }}>我的墓志铭一句话</label>
-                  <input value={epitaphForm.oneLiner} onChange={e => setEpitaphForm(prev => ({ ...prev, oneLiner: e.target.value }))}
-                    placeholder="例如：成为一个创造价值、内心坚定、留下成果的实干者"
-                    className="w-full px-4 py-3 rounded-lg text-white placeholder:text-white/30 outline-none"
-                    style={{ background: '#1a1a1a', border: '1px solid #333' }} />
+                  <label className="block text-sm mb-1" style={{ color: '#aaa' }}>我的墓志铭（刻在墓碑上的最终评价）</label>
+                  <input className="w-full p-3 rounded-lg text-sm" style={{ background: '#262626', border: '1px solid #444', color: '#fff' }} placeholder="例：成为一个创造价值、内心坚定、留下成果的实干者" value={epitaphData.oneLiner} onChange={e => setEpitaphData({ ...epitaphData, oneLiner: e.target.value })} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#ccc' }}>别人如何评价我</label>
-                  {(['career', 'character', 'relationship'] as const).map((key, i) => (
-                    <input key={key} value={epitaphForm.evaluation[key]} onChange={e => setEpitaphForm(prev => ({ ...prev, evaluation: { ...prev.evaluation, [key]: e.target.value } }))}
-                      placeholder={['事业：他创造了不可替代的价值', '品格：他是一个言出必行的人', '关系：他让身边的人都变得更好'][i]}
-                      className="w-full px-4 py-2 rounded-lg text-white placeholder:text-white/20 outline-none mb-2 text-sm"
-                      style={{ background: '#1a1a1a', border: '1px solid #333' }} />
+                  <label className="block text-sm mb-1" style={{ color: '#aaa' }}>事业上别人如何评价我</label>
+                  <input className="w-full p-3 rounded-lg text-sm" style={{ background: '#262626', border: '1px solid #444', color: '#fff' }} placeholder="例：他创造了改变行业的产品" value={epitaphData.career} onChange={e => setEpitaphData({ ...epitaphData, career: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1" style={{ color: '#aaa' }}>品格上别人如何评价我</label>
+                  <input className="w-full p-3 rounded-lg text-sm" style={{ background: '#262626', border: '1px solid #444', color: '#fff' }} placeholder="例：他是一个内心坚定、值得信赖的人" value={epitaphData.character} onChange={e => setEpitaphData({ ...epitaphData, character: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1" style={{ color: '#aaa' }}>关系上别人如何评价我</label>
+                  <input className="w-full p-3 rounded-lg text-sm" style={{ background: '#262626', border: '1px solid #444', color: '#fff' }} placeholder="例：他是家人永远的港湾" value={epitaphData.relation} onChange={e => setEpitaphData({ ...epitaphData, relation: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1" style={{ color: '#aaa' }}>我最想留下的3件作品/成果</label>
+                  {epitaphData.works.map((w, i) => (
+                    <input key={i} className="w-full p-2 rounded-lg text-sm mb-2" style={{ background: '#262626', border: '1px solid #444', color: '#fff' }} placeholder={`作品${i + 1}`} value={w} onChange={e => { const nw = [...epitaphData.works]; nw[i] = e.target.value; setEpitaphData({ ...epitaphData, works: nw }); }} />
                   ))}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#ccc' }}>最想留下的 3 件作品/成果</label>
-                  {([0, 1, 2] as const).map(i => (
-                    <input key={i} value={epitaphForm.works[i]} onChange={e => setEpitaphForm(prev => ({ ...prev, works: prev.works.map((w, j) => j === i ? e.target.value : w) as [string, string, string] }))}
-                      placeholder={`${i + 1}. `}
-                      className="w-full px-4 py-2 rounded-lg text-white placeholder:text-white/20 outline-none mb-2 text-sm"
-                      style={{ background: '#1a1a1a', border: '1px solid #333' }} />
-                  ))}
-                </div>
-                <button onClick={saveEpitaphForm} className="w-full py-3 rounded-lg font-semibold text-black" style={{ background: '#fff' }}>
-                  保存墓志铭
-                </button>
               </div>
             )}
 
-            {/* Deduce Tab */}
-            {epitaphTab === 'deduce' && (
+            {/* Tab: Derive */}
+            {epitaphTab === 'derive' && (
               <div className="space-y-4">
-                <div className="text-sm" style={{ color: '#888' }}>从墓志铭拆解人生维度，反向生成OKR</div>
-                <button onClick={() => {
-                  if (!epitaph) return;
-                  const works = epitaph.works.filter(w => w.trim());
-                  setEpitaphForm(prev => ({
-                    ...prev,
-                    dimensions: DIMENSIONS.reduce((acc: Record<string, string>, d: string, i: number) => {
-                      acc[d] = works[i] || epitaph.oneLiner;
-                      return acc;
-                    }, {}),
-                  }));
-                }} className="px-4 py-2 rounded-lg text-sm" style={{ background: '#333', color: '#fff' }}>
-                  ⚡ 自动从墓志铭拆解到五大维度
+                <button className="w-full p-3 rounded-lg text-sm font-medium" style={{ background: '#2563eb', color: '#fff' }} onClick={generateFromEpitaph}>
+                  ⚡ 自动从墓志铭拆解到五大维度并生成OKR
                 </button>
-                {DIMENSIONS.map(d => (
-                  <div key={d}>
-                    <label className="block text-xs font-medium mb-1" style={{ color: '#888' }}>{d}</label>
-                    <input value={epitaphForm.dimensions[d] || ''} onChange={e => setEpitaphForm(prev => ({ ...prev, dimensions: { ...prev.dimensions, [d]: e.target.value } }))}
-                      placeholder={`${d}的目标…`}
-                      className="w-full px-3 py-2 rounded-lg text-white text-sm placeholder:text-white/20 outline-none"
-                      style={{ background: '#1a1a1a', border: '1px solid #333' }} />
-                  </div>
-                ))}
-                <button onClick={generateFromEpitaph} className="w-full py-3 rounded-lg font-semibold text-black" style={{ background: '#22c55e' }}>
-                  生成 OKR →
-                </button>
+                <div className="space-y-2">
+                  {Object.entries(dimensions).map(([k, v]) => (
+                    <div key={k} className="p-3 rounded-lg" style={{ background: '#262626' }}>
+                      <div className="font-medium text-sm">{k}</div>
+                      <div className="text-xs mt-1" style={{ color: '#aaa' }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                {Object.keys(dimensions).length === 0 && (
+                  <div className="text-sm text-center py-4" style={{ color: '#666' }}>先撰写墓志铭，再点击上方按钮自动拆解</div>
+                )}
               </div>
             )}
           </div>
@@ -511,273 +475,247 @@ export default function LifeCalendar({ skin, onClose }: { skin: SkinTheme; onClo
       )}
 
       {/* ═══ Timer Modal ═══ */}
-      {timerActive && timerCtx && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.9)' }}>
+      {timerOn && (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.9)' }}>
           <div className="text-center">
-            <div className="text-xs mb-4 max-w-[300px] truncate mx-auto" style={{ color: '#888' }}>
-              {timerCtx.labels.join(' → ')}
+            {timerCtx && (
+              <div className="text-sm mb-6" style={{ color: '#888' }}>
+                {timerCtx.okrTitle} → {timerCtx.krDesc} → {timerCtx.taskTitle} → {timerCtx.tmTitle}
+              </div>
+            )}
+            <div className="text-6xl font-bold mb-4 tabular-nums" style={{ color: timerPaused ? '#666' : '#fff' }}>
+              {String(Math.floor(timerSec / 60)).padStart(2, '0')}:{String(timerSec % 60).padStart(2, '0')}
             </div>
-            <div className="text-6xl font-bold mb-2 tabular-nums" style={{ color: timerPaused ? '#666' : '#fff' }}>
-              {String(Math.floor(timerSeconds / 60)).padStart(2, '0')}:{String(timerSeconds % 60).padStart(2, '0')}
+            <div className="text-sm mb-6" style={{ color: '#666' }}>
+              {timerPaused ? '已暂停' : '专注中'} · {TOMATO_MINUTES}min/🍅
             </div>
-            <div className="text-sm mb-6" style={{ color: '#888' }}>{timerPaused ? '已暂停' : '专注中'}</div>
             <div className="flex gap-3 justify-center mb-6">
-              <button onClick={() => setTimerPaused(p => !p)}
-                className="px-6 py-2 rounded-lg font-medium" style={{ background: '#f59e0b', color: '#fff' }}>
+              <button className="px-5 py-2 rounded-lg font-medium" style={{ background: '#f59e0b', color: '#fff' }} onClick={() => setTimerPaused(!timerPaused)}>
                 {timerPaused ? '继续' : '暂停'}
               </button>
-              <button onClick={() => { setTimerActive(false); setDailyInterrupts(d => d + 1); }}
-                className="px-6 py-2 rounded-lg font-medium" style={{ background: '#ef4444', color: '#fff' }}>
+              <button className="px-5 py-2 rounded-lg font-medium" style={{ background: '#ef4444', color: '#fff' }} onClick={() => { setTimerOn(false); setInterruptions(n => n + 1); }}>
                 放弃本次番茄
               </button>
             </div>
-            <input value={timerNote} onChange={e => setTimerNote(e.target.value)}
-              placeholder="记录本次番茄的卡点…"
-              className="w-64 px-3 py-2 rounded-lg text-sm text-white placeholder:text-white/30 outline-none mx-auto block"
-              style={{ background: '#222', border: '1px solid #444' }} />
+            <input className="w-64 p-2 rounded text-sm text-center" style={{ background: '#1a1a1a', border: '1px solid #333', color: '#ccc' }} placeholder="记录卡点或中断原因..." value={timerNote} onChange={e => setTimerNote(e.target.value)} />
           </div>
         </div>
       )}
 
-      {/* ═══ Main Content ═══ */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Top bar */}
-        <div className="flex items-center gap-3 px-6 py-3 shrink-0 flex-wrap" style={{ background: c.panelBg, borderBottom: `1px solid ${c.divider}` }}>
-          <select value={cycle} onChange={e => setCycle(e.target.value)}
-            className="px-3 py-1.5 rounded-lg text-sm outline-none" style={{ background: c.cardBg, color: c.text1, border: `1px solid ${c.divider}` }}>
-            {CYCLES.map(c => <option key={c} value={c}>{new Date().getFullYear()} {c}</option>)}
+      {/* ═══ Main Workspace ═══ */}
+      {/* Top Bar */}
+      <div className="flex items-center justify-between px-4 py-2 shrink-0" style={{ background: c.panelBg, borderBottom: `1px solid ${c.divider}` }}>
+        <div className="flex items-center gap-3">
+          <select className="px-2 py-1 rounded text-sm" style={{ background: c.cardBg, color: c.textPrimary, border: `1px solid ${c.divider}` }} value={cycle} onChange={e => { setCycle(e.target.value); setSelectedId(null); }}>
+            <option value="2026">2026 全年</option>
+            <option value="2026-Q1">2026 Q1</option>
+            <option value="2026-Q2">2026 Q2</option>
+            <option value="2026-Q3">2026 Q3</option>
+            <option value="2026-Q4">2026 Q4</option>
           </select>
-          <div className="flex gap-4 text-xs" style={{ color: c.text2 }}>
-            <span>总OKR <b style={{ color: swatch }}>{globalStats.totalOkrs}</b></span>
-            <span>总预估 🍅 <b style={{ color: swatch }}>{globalStats.totalEst}</b></span>
-            <span>已完成 🍅 <b style={{ color: swatch }}>{globalStats.totalDone}</b></span>
-            <span>整体进度 <b style={{ color: swatch }}>{globalPct}%</b></span>
-          </div>
-          <div className="flex-1" />
-          <button onClick={() => setShowEpitaphOverlay(true)}
-            className="px-4 py-1.5 rounded-lg text-sm font-medium" style={{ background: '#111', color: '#e5e5e5' }}>
-            终局·墓志铭
-          </button>
-          <button onClick={addOKR} className="px-4 py-1.5 rounded-lg text-sm font-medium text-white" style={{ background: swatch }}>
-            + 新增OKR
-          </button>
-          <button onClick={onClose} className="ml-2 text-lg" style={{ color: c.text2 }}>✕</button>
-        </div>
-
-        {/* Epitaph banner */}
-        {epitaph?.oneLiner && (
-          <div className="px-6 py-2 text-sm" style={{ background: '#000', color: '#e5e5e5' }}>
-            我的墓志铭：<span className="font-semibold" style={{ color: '#fff' }}>{epitaph.oneLiner}</span>
-          </div>
-        )}
-
-        {/* New OKR inline input */}
-        <div className="px-6 py-2 shrink-0" style={{ background: c.bodyBg }}>
-          <div className="flex gap-2">
-            <input value={newOkr} onChange={e => setNewOkr(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addOKR()}
-              placeholder="输入目标，回车创建…"
-              className="flex-1 px-4 py-2 rounded-lg text-sm outline-none"
-              style={{ background: c.cardBg, color: c.text1, border: `1px solid ${c.divider}` }} />
+          <div className="flex gap-4 text-xs" style={{ color: c.textSecondary }}>
+            <span>总OKR <b style={{ color: c.swatch }}>{cycleOkrs.length}</b></span>
+            <span>预估 <b style={{ color: c.swatch }}>🍅{totalEst}</b></span>
+            <span>完成 <b style={{ color: '#22c55e' }}>🍅{totalDone}</b></span>
+            <span>进度 <b style={{ color: c.swatch }}>{globalPct}%</b></span>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <button className="px-3 py-1 rounded text-xs font-medium" style={{ background: '#000', color: '#fff' }} onClick={() => setShowEpitaph(true)}>终局·墓志铭</button>
+          <button className="px-3 py-1 rounded text-xs font-medium" style={{ background: c.swatch, color: '#fff' }} onClick={() => { const o: OKR = { id: uid(), title: '', status: 'active', cycle, keyResults: [], reviews: [], createdAt: Date.now() }; setOkrs(prev => [...prev, o]); setSelectedId(o.id); }}>+ 新增OKR</button>
+          <button className="px-2 py-1 rounded text-sm" style={{ color: c.textSecondary }} onClick={onClose}>✕</button>
+        </div>
+      </div>
 
-        {/* OKR Card List */}
-        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-4" style={{ background: c.bodyBg }}>
-          {okrs.length === 0 && (
-            <div className="text-center py-16" style={{ color: c.text3 }}>
-              <div className="text-lg mb-2">还没有目标</div>
-              <div className="text-sm">输入目标回车创建，或从<span className="cursor-pointer underline" style={{ color: swatch }} onClick={() => setShowEpitaphOverlay(true)}>墓志铭生成</span></div>
+      {/* Epitaph Banner */}
+      {epitaphData.oneLiner && (
+        <div className="px-4 py-2 text-center text-sm font-medium shrink-0" style={{ background: '#000', color: '#fff' }}>
+          我的墓志铭：{epitaphData.oneLiner}
+        </div>
+      )}
+
+      {/* Left-Right Layout */}
+      <div className="flex flex-1 min-h-0">
+        {/* ─── Left Panel: OKR List ─── */}
+        <div className="w-[480px] shrink-0 flex flex-col border-r" style={{ background: c.panelBg, borderColor: c.divider }}>
+          {/* Header with gradient */}
+          <div className="shrink-0 px-5 pt-5 pb-4" style={{ background: `linear-gradient(135deg, ${c.headerFrom}, ${c.headerTo})` }}>
+            <h2 className="text-lg font-bold mb-2" style={{ color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>人生旅途</h2>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>以终为始 · OKR + 番茄闭环</p>
+          </div>
+
+          {/* New OKR Input */}
+          <div className="px-4 py-2 shrink-0" style={{ borderBottom: `1px solid ${c.divider}` }}>
+            <input className="w-full p-2 rounded text-sm" style={{ background: c.cardBg, color: c.textPrimary, border: `1px solid ${c.divider}` }} placeholder="+ 输入目标，回车创建" value={newTitle} onChange={e => setNewTitle(e.target.value)} onKeyDown={e => e.key === 'Enter' && addOKR()} />
+          </div>
+
+          {/* OKR List */}
+          <div className="flex-1 overflow-y-auto px-3 py-2">
+            {cycleOkrs.length === 0 && (
+              <div className="text-center py-8" style={{ color: c.textMuted }}>
+                <div className="text-sm mb-2">暂无OKR</div>
+                <button className="text-xs underline" style={{ color: c.swatch }} onClick={() => setShowEpitaph(true)}>或从墓志铭生成 →</button>
+              </div>
+            )}
+            {cycleOkrs.map((okr: OKR) => {
+              const stats = okrTomatoStats(okr);
+              const pct = okrProgress(okr);
+              const sc = statusColor(okr.status);
+              return (
+                <div key={okr.id} className="mb-2 p-3 rounded-lg cursor-pointer" style={{ background: selectedId === okr.id ? c.cardHover : c.cardBg, borderLeft: `3px solid ${sc}` }} onClick={() => setSelectedId(okr.id)}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs">{STATUS_CFG[okr.status].icon}</span>
+                    <span className="text-sm font-medium flex-1 truncate">{okr.title || '未命名目标'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full" style={{ background: c.progressTrack }}>
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: sc }} />
+                    </div>
+                    <span className="text-xs font-medium" style={{ color: sc }}>{pct}%</span>
+                  </div>
+                  <div className="text-xs mt-1" style={{ color: c.textMuted }}>🍅 {stats.done}/{stats.est} · {stats.done * TOMATO_MINUTES}min</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Daily Stats */}
+          <div className="px-4 py-2 shrink-0 flex items-center justify-between text-xs" style={{ borderTop: `1px solid ${c.divider}`, color: c.textSecondary }}>
+            <span>今日 🍅 {dailyDone}/{dailyGoal}</span>
+            <span>中断 {interruptions}</span>
+            <div className="flex gap-1">
+              <button onClick={() => setDailyGoal(g => Math.max(1, g - 1))}>-</button>
+              <button onClick={() => setDailyGoal(g => g + 1)}>+</button>
             </div>
-          )}
+          </div>
+        </div>
 
-          {okrs.map(okr => {
-            const stats = tomatoStatsFor(okr);
-            const scfg = STATUS_CFG[okr.status];
-            return (
-              <div key={okr.id} className="rounded-xl overflow-hidden" style={{ background: c.cardBg, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                {/* O Header */}
-                <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: `1px solid ${c.divider}` }}>
-                  <button onClick={() => cycleStatus(okr.id)} className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-                    style={{ background: scfg.color + '20', color: scfg.color }}>
-                    {scfg.label}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    {editingOkr === okr.id ? (
-                      <input value={editTitle} onChange={e => setEditTitle(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && saveEditTitle(okr.id)}
-                        onBlur={() => saveEditTitle(okr.id)}
-                        className="w-full px-2 py-0.5 rounded text-sm outline-none"
-                        style={{ background: c.bodyBg, color: c.text1 }} autoFocus />
-                    ) : (
-                      <span className="font-semibold text-sm cursor-pointer" style={{ color: c.text1 }}
-                        onClick={() => { setEditingOkr(okr.id); setEditTitle(okr.objective); }}>
-                        O: {okr.objective}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-sm font-bold shrink-0" style={{ color: swatch }}>{stats.pct}%</span>
-                  <span className="text-xs shrink-0" style={{ color: c.text3 }}>🍅{stats.done}/{stats.total}</span>
-                  <button onClick={() => deleteOKR(okr.id)} className="text-xs px-2 shrink-0" style={{ color: c.text3 }}>🗑</button>
+        {/* ─── Right Panel: OKR Detail ─── */}
+        <div className="flex-1 overflow-y-auto" style={{ background: c.bodyBg }}>
+          {!selectedOkr ? (
+            <div className="flex items-center justify-center h-full" style={{ color: c.textMuted }}>
+              <div className="text-center">
+                <div className="text-4xl mb-3">🎯</div>
+                <div className="text-sm">选择左侧OKR查看详情</div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 space-y-5">
+              {/* O Header */}
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <button className="text-lg" onClick={() => cycleStatus(selectedOkr.id)} title="点击切换状态">{STATUS_CFG[selectedOkr.status].icon}</button>
+                  <h3 className="text-lg font-bold flex-1">{selectedOkr.title || '未命名目标'}</h3>
+                  <span className="text-lg font-bold" style={{ color: statusColor(selectedOkr.status) }}>{okrProgress(selectedOkr)}%</span>
                 </div>
-
-                {/* KR List */}
-                <div className="px-5 py-3 space-y-3">
-                  {okr.keyResults.map((kr, krIdx) => {
-                    const krTotal = kr.tasks.reduce((a: number, t: Task) => a + t.estimatedTomatoes, 0);
-                    const krDone = kr.tasks.reduce((a: number, t: Task) => a + t.tomatoes.filter((tm: TomatoItem) => tm.completed).length, 0);
-                    const krPct = krTotal > 0 ? Math.round(krDone / krTotal * 100) : 0;
-                    const isKROpen = expandedKR.has(kr.id);
-                    return (
-                      <div key={kr.id} className="border-l-3 pl-3" style={{ borderLeftColor: c.text3 }}>
-                        {/* KR Header */}
-                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleKR(kr.id)}>
-                          <span className="text-xs" style={{ color: c.text3 }}>{isKROpen ? '▾' : '▸'}</span>
-                          {editingKr === kr.id ? (
-                            <input value={editKrDesc} onChange={e => setEditKrDesc(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') saveEditKr(kr.id, okr.id); }}
-                              onBlur={() => saveEditKr(kr.id, okr.id)}
-                              className="flex-1 px-2 py-0.5 rounded text-xs outline-none"
-                              style={{ background: c.bodyBg, color: c.text1 }} autoFocus onClick={e => e.stopPropagation()} />
-                          ) : (
-                            <span className="text-xs font-medium flex-1" style={{ color: c.text2 }}
-                              onClick={e => { e.stopPropagation(); setEditingKr(kr.id); setEditKrDesc(kr.description); }}>
-                              KR{krIdx + 1}: {kr.description}
-                            </span>
-                          )}
-                          <span className="text-xs shrink-0" style={{ color: c.text3 }}>
-                            进度{krPct}% | 总🍅{krTotal} / 已完成{krDone}
-                          </span>
-                        </div>
-
-                        {/* KR Progress bar */}
-                        <div className="mt-1 h-1 rounded-full" style={{ background: c.progressTrack }}>
-                          <div className="h-full rounded-full transition-all" style={{ width: `${krPct}%`, background: swatch }} />
-                        </div>
-
-                        {/* Tasks */}
-                        {isKROpen && (
-                          <div className="mt-2 space-y-2 ml-4">
-                            {kr.tasks.map(task => {
-                              const taskDone = task.tomatoes.filter((tm: TomatoItem) => tm.completed).length;
-                              const isTaskOpen = expandedTask.has(task.id);
-                              return (
-                                <div key={task.id} className="border-l-2 pl-3" style={{ borderLeftColor: c.divider }}>
-                                  <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleTask(task.id)}>
-                                    <span className="text-xs" style={{ color: c.text3 }}>{isTaskOpen ? '▾' : '▸'}</span>
-                                    <span className="text-xs" style={{ color: c.text2 }}>
-                                      任务: {task.title} | 预估{task.estimatedTomatoes}🍅 | 已完成{taskDone}🍅
-                                    </span>
-                                  </div>
-                                  {isTaskOpen && (
-                                    <div className="mt-1 space-y-1 ml-4">
-                                      {task.tomatoes.map((tm: TomatoItem) => (
-                                        <div key={tm.id} className="flex items-center gap-2 py-1 px-2 rounded text-xs"
-                                          style={{ background: tm.completed ? c.cardHover : 'transparent' }}>
-                                          <button onClick={() => toggleTomato(okr.id, kr.id, task.id, tm.id)}
-                                            className="shrink-0" style={{ color: tm.completed ? '#22c55e' : c.text3 }}>
-                                            {tm.completed ? '☑' : '☐'}
-                                          </button>
-                                          <span className="flex-1" style={{ color: tm.completed ? c.text3 : c.text2, textDecoration: tm.completed ? 'line-through' : 'none' }}>
-                                            {tm.title} <span style={{ color: c.text3 }}>· 25min/🍅</span>
-                                          </span>
-                                          {!tm.completed ? (
-                                            <button onClick={() => startTomato(okr, kr, task, tm)}
-                                              className="px-2 py-0.5 rounded text-xs font-medium shrink-0"
-                                              style={{ background: '#22c55e', color: '#fff' }}>
-                                              ▶ 🍅
-                                            </button>
-                                          ) : (
-                                            <span className="text-xs shrink-0" style={{ color: '#22c55e' }}>已完成 25min</span>
-                                          )}
-                                          <button onClick={() => deleteTomato(okr.id, kr.id, task.id, tm.id)}
-                                            className="text-xs shrink-0 opacity-40 hover:opacity-100" style={{ color: c.text3 }}>×</button>
-                                        </div>
-                                      ))}
-                                      {/* Add tomato inline */}
-                                      <div className="flex gap-1 mt-1">
-                                        <input value={newTomato[task.id] || ''} onChange={e => setNewTomato(prev => ({ ...prev, [task.id]: e.target.value }))}
-                                          onKeyDown={e => { if (e.key === 'Enter') addTomato(okr.id, kr.id, task.id); }}
-                                          placeholder="+ 动作(1🍅=25min)"
-                                          className="flex-1 px-2 py-1 rounded text-xs outline-none"
-                                          style={{ background: c.bodyBg, color: c.text1, border: `1px solid ${c.divider}` }} />
-                                        <button onClick={() => addTomato(okr.id, kr.id, task.id)}
-                                          className="px-2 py-1 rounded text-xs" style={{ background: swatch + '20', color: swatch }}>+</button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                            {/* Add task inline */}
-                            <div className="flex gap-1 mt-1">
-                              <input value={newTask[kr.id] || ''} onChange={e => setNewTask(prev => ({ ...prev, [kr.id]: e.target.value }))}
-                                placeholder="+ 任务名称"
-                                className="flex-1 px-2 py-1 rounded text-xs outline-none"
-                                style={{ background: c.bodyBg, color: c.text1, border: `1px solid ${c.divider}` }} />
-                              <input value={taskEst[kr.id] || ''} onChange={e => setTaskEst(prev => ({ ...prev, [kr.id]: e.target.value }))}
-                                placeholder="🍅数"
-                                className="w-14 px-2 py-1 rounded text-xs outline-none"
-                                style={{ background: c.bodyBg, color: c.text1, border: `1px solid ${c.divider}` }} />
-                              <button onClick={() => addTask(okr.id, kr.id)}
-                                className="px-2 py-1 rounded text-xs" style={{ background: swatch + '20', color: swatch }}>+</button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* Add KR inline */}
-                  <div className="flex gap-1">
-                    <input value={newKr[okr.id] || ''} onChange={e => setNewKr(prev => ({ ...prev, [okr.id]: e.target.value }))}
-                      onKeyDown={e => { if (e.key === 'Enter') addKR(okr.id); }}
-                      placeholder="+ 关键结果(KR)"
-                      className="flex-1 px-2 py-1 rounded text-xs outline-none"
-                      style={{ background: c.bodyBg, color: c.text1, border: `1px solid ${c.divider}` }} />
-                    <button onClick={() => addKR(okr.id)}
-                      className="px-2 py-1 rounded text-xs" style={{ background: swatch + '20', color: swatch }}>+</button>
-                  </div>
+                <div className="h-2 rounded-full mb-2" style={{ background: c.progressTrack }}>
+                  <div className="h-full rounded-full transition-all" style={{ width: `${okrProgress(selectedOkr)}%`, background: statusColor(selectedOkr.status) }} />
                 </div>
-
-                {/* Reviews */}
-                {okr.reviews.length > 0 && (
-                  <div className="px-5 py-2" style={{ borderTop: `1px solid ${c.divider}` }}>
-                    <div className="text-xs font-medium mb-1" style={{ color: c.text3 }}>复盘</div>
-                    {okr.reviews.map(r => (
-                      <div key={r.id} className="text-xs mb-1" style={{ color: c.text2 }}>· {r.content}</div>
-                    ))}
-                  </div>
-                )}
-                <div className="px-5 pb-3 flex gap-2">
-                  <input value={reviewText[okr.id] || ''} onChange={e => setReviewText(prev => ({ ...prev, [okr.id]: e.target.value }))}
-                    onKeyDown={e => { if (e.key === 'Enter') addReview(okr.id); }}
-                    placeholder="+ 复盘记录…"
-                    className="flex-1 px-3 py-1.5 rounded text-xs outline-none"
-                    style={{ background: c.bodyBg, color: c.text1, border: `1px solid ${c.divider}` }} />
-                  <button onClick={() => addReview(okr.id)}
-                    className="px-3 py-1.5 rounded text-xs" style={{ background: swatch + '20', color: swatch }}>记</button>
+                <div className="text-xs" style={{ color: c.textMuted }}>
+                  🍅 {okrTomatoStats(selectedOkr).done}/{okrTomatoStats(selectedOkr).est} ≈ {okrTomatoStats(selectedOkr).done * TOMATO_MINUTES}min
                 </div>
               </div>
-            );
-          })}
-        </div>
 
-        {/* Bottom daily bar */}
-        <div className="flex items-center gap-4 px-6 py-2 text-xs shrink-0"
-          style={{ background: c.panelBg, borderTop: `1px solid ${c.divider}`, color: c.text2 }}>
-          <span>今日已完成：<b style={{ color: swatch }}>{dailyDone} 🍅</b></span>
-          <span>今日计划：
-            <button onClick={() => setDailyTarget(d => Math.max(1, d - 1))} style={{ color: c.text3 }}>-</button>
-            <b style={{ color: swatch }}> {dailyTarget} </b>
-            <button onClick={() => setDailyTarget(d => d + 1)} style={{ color: c.text3 }}>+</button> 🍅
-          </span>
-          <span>中断次数：<b style={{ color: '#f59e0b' }}>{dailyInterrupts}</b></span>
-          {timerActive && (
-            <span className="ml-auto font-mono" style={{ color: swatch }}>
-              🍅 {String(Math.floor(timerSeconds / 60)).padStart(2, '0')}:{String(timerSeconds % 60).padStart(2, '0')}
-              {timerPaused && '(暂停)'}
-            </span>
+              {/* KR Section */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm font-medium">关键结果 (KR)</span>
+                  <div className="flex-1 h-px" style={{ background: c.divider }} />
+                </div>
+
+                {selectedOkr.keyResults.map((kr: KeyResult) => {
+                  const krDone = kr.tasks.reduce((a: number, t: Task) => a + t.tomatoes.filter((tm: TomatoItem) => tm.completed).length, 0);
+                  const krTotal = kr.tasks.reduce((a: number, t: Task) => a + t.tomatoes.length, 0);
+                  const krEst = kr.tasks.reduce((a: number, t: Task) => a + t.estimatedTomatoes, 0);
+                  const krPct = krTotal ? Math.round((krDone / krTotal) * 100) : 0;
+
+                  return (
+                    <div key={kr.id} className="mb-4 p-4 rounded-lg" style={{ background: c.cardBg, borderLeft: `3px solid ${c.swatch}` }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">KR: {kr.description}</span>
+                        <span className="text-xs" style={{ color: c.textMuted }}>进度{krPct}% | 🍅{krDone}/{krEst}</span>
+                      </div>
+
+                      {/* Tasks */}
+                      {kr.tasks.map((task: Task) => {
+                        const taskDone = task.tomatoes.filter((tm: TomatoItem) => tm.completed).length;
+                        return (
+                          <div key={task.id} className="ml-3 mb-3 p-3 rounded" style={{ background: c.bodyBg }}>
+                            <div className="text-sm mb-2">
+                              任务: {task.title} | 预估{task.estimatedTomatoes}🍅 | 完成{taskDone}🍅 | {taskDone * TOMATO_MINUTES}min
+                            </div>
+                            {/* Tomato items */}
+                            {task.tomatoes.map((tm: TomatoItem) => (
+                              <div key={tm.id} className="flex items-center gap-2 ml-3 py-1 text-sm">
+                                <span className="cursor-pointer" onClick={() => toggleTomato(selectedOkr.id, kr.id, task.id, tm.id)}>
+                                  {tm.completed ? '☑' : '☐'}
+                                </span>
+                                <span className={tm.completed ? 'line-through' : ''} style={{ color: tm.completed ? c.textMuted : c.textPrimary }}>{tm.title}</span>
+                                <span className="text-xs" style={{ color: c.textMuted }}>25min/🍅</span>
+                                {!tm.completed && (
+                                  <button className="px-2 py-0.5 rounded text-xs font-medium ml-auto" style={{ background: '#22c55e', color: '#fff' }} onClick={() => startTomatoTimer(selectedOkr.title, kr.description, task.title, tm.title)}>
+                                    ▶ 🍅
+                                  </button>
+                                )}
+                                {tm.completed && <span className="text-xs ml-auto" style={{ color: '#22c55e' }}>已完成 {TOMATO_MINUTES}min</span>}
+                                <button className="text-xs opacity-40 hover:opacity-100" onClick={() => deleteTomato(selectedOkr.id, kr.id, task.id, tm.id)}>×</button>
+                              </div>
+                            ))}
+                            {/* Add tomato */}
+                            {newTm && newTm.taskId === task.id ? (
+                              <div className="ml-3 mt-1 flex gap-1">
+                                <input className="flex-1 p-1 rounded text-xs" style={{ background: c.cardBg, color: c.textPrimary, border: `1px solid ${c.divider}` }} placeholder="动作名称 (1🍅=25min)" value={newTm.title} onChange={e => setNewTm({ ...newTm, title: e.target.value })} onKeyDown={e => e.key === 'Enter' && addTomato(selectedOkr.id, kr.id, task.id)} autoFocus />
+                                <button className="text-xs px-2" style={{ color: c.swatch }} onClick={() => addTomato(selectedOkr.id, kr.id, task.id)}>✓</button>
+                                <button className="text-xs px-2" style={{ color: c.textMuted }} onClick={() => setNewTm(null)}>✕</button>
+                              </div>
+                            ) : (
+                              <button className="ml-3 mt-1 text-xs" style={{ color: c.swatch }} onClick={() => setNewTm({ taskId: task.id, title: '' })}>+ 动作(1🍅=25min)</button>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Add task */}
+                      {newTask && newTask.krId === kr.id ? (
+                        <div className="ml-3 flex gap-1">
+                          <input className="flex-1 p-1 rounded text-xs" style={{ background: c.bodyBg, color: c.textPrimary, border: `1px solid ${c.divider}` }} placeholder="任务名称" value={newTask.title} onChange={e => setNewTask({ ...newTask, title: e.target.value })} onKeyDown={e => e.key === 'Enter' && addTask(selectedOkr.id, kr.id)} autoFocus />
+                          <input className="w-12 p-1 rounded text-xs text-center" style={{ background: c.bodyBg, color: c.textPrimary, border: `1px solid ${c.divider}` }} placeholder="🍅数" type="number" min={1} value={newTask.est || ''} onChange={e => setNewTask({ ...newTask, est: parseInt(e.target.value) || 1 })} />
+                          <button className="text-xs px-2" style={{ color: c.swatch }} onClick={() => addTask(selectedOkr.id, kr.id)}>✓</button>
+                          <button className="text-xs px-2" style={{ color: c.textMuted }} onClick={() => setNewTask(null)}>✕</button>
+                        </div>
+                      ) : (
+                        <button className="ml-3 text-xs" style={{ color: c.swatch }} onClick={() => setNewTask({ krId: kr.id, title: '', est: 1 })}>+ 任务(需预估🍅数)</button>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Add KR */}
+                {editingKr === selectedOkr.id ? (
+                  <div className="flex gap-1">
+                    <input className="flex-1 p-2 rounded text-sm" style={{ background: c.cardBg, color: c.textPrimary, border: `1px solid ${c.divider}` }} placeholder="关键结果描述" value={newKr} onChange={e => setNewKr(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKR(selectedOkr.id)} autoFocus />
+                    <button className="px-3 py-2 rounded text-sm" style={{ background: c.swatch, color: '#fff' }} onClick={() => addKR(selectedOkr.id)}>✓</button>
+                    <button className="px-3 py-2 rounded text-sm" style={{ color: c.textMuted }} onClick={() => setEditingKr(null)}>✕</button>
+                  </div>
+                ) : (
+                  <button className="text-sm" style={{ color: c.swatch }} onClick={() => setEditingKr(selectedOkr.id)}>+ 添加关键结果(KR)</button>
+                )}
+              </div>
+
+              {/* Review Section */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm font-medium">复盘记录</span>
+                  <div className="flex-1 h-px" style={{ background: c.divider }} />
+                </div>
+                {selectedOkr.reviews.map((r: OKRReview) => (
+                  <div key={r.id} className="mb-2 p-2 rounded text-sm" style={{ background: c.cardBg }}>
+                    <span className="text-xs" style={{ color: c.textMuted }}>{new Date(r.createdAt).toLocaleDateString()}</span>
+                    <div>{r.content}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
