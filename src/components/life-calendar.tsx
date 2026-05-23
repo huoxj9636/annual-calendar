@@ -54,9 +54,9 @@ type PeriodType = 'annual' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
 // ── Epitaph Data types ──
 interface EpitaphData {
-  oneLiner: string;          // 墓志铭一句话
-  evaluation: { career: string; character: string; relationship: string }; // 别人如何评价
-  threeWorks: [string, string, string]; // 三件作品/成果
+  oneLiner: string;
+  evaluation: { career: string; character: string; relationship: string };
+  threeWorks: [string, string, string];
   updatedAt: number;
 }
 
@@ -91,7 +91,7 @@ const EPITAPH_REFS: EpitaphRef[] = [
 
 const LIFE_DIMENSIONS = ['事业价值', '财富自由', '健康精力', '亲密关系', '自我成长'] as const;
 
-// Life animation script
+// Life animation script - PPT style, one line at a time
 const LIFE_SCRIPT = [
   { text: '出生', sub: '一声啼哭，来到这个世界' },
   { text: '上学', sub: '随大流，按部就班' },
@@ -108,7 +108,7 @@ function genId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-// ── Progress auto-calc ──
+// ── Progress auto-calc (bottom-up: tomato → task → KR → O) ──
 function taskProgress(t: Task): number {
   if (t.estimatedTomatoes <= 0) return 0;
   return Math.min(t.tomatoes.filter(tm => tm.completed).length / t.estimatedTomatoes, 1);
@@ -187,6 +187,100 @@ function migrateOKRs(raw: any[]): OKR[] {
   })) as OKR[];
 }
 
+// ═══════════════════════════════════════════════════
+// DARK WELL ANIMATION COMPONENT
+// Black abyss with ladder leading to light opening
+// ═══════════════════════════════════════════════════
+function DarkWellAnimation({ step, onSkip }: { step: number; onSkip: () => void }) {
+  const currentStep = LIFE_SCRIPT[step];
+  const isLast = step === LIFE_SCRIPT.length - 1;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex overflow-hidden"
+         style={{ background: 'linear-gradient(180deg, #050508 0%, #0a0a10 40%, #080810 100%)' }}>
+
+      {/* Light from above - subtle glow at top right */}
+      <div className="absolute top-0 right-[18%] w-[200px] h-[200px] rounded-full opacity-60"
+           style={{ background: 'radial-gradient(ellipse at center, rgba(120,160,220,0.15) 0%, rgba(80,120,180,0.08) 40%, transparent 70%)' }} />
+
+      {/* The opening at the top - circular light */}
+      <div className="absolute top-[-60px] right-[16%] w-[140px] h-[140px] rounded-full"
+           style={{
+             background: 'radial-gradient(ellipse at center, rgba(180,210,255,0.25) 0%, rgba(120,160,220,0.12) 35%, rgba(60,90,140,0.05) 60%, transparent 80%)',
+             boxShadow: '0 0 80px 30px rgba(140,180,240,0.08), 0 0 200px 60px rgba(100,140,200,0.04)',
+           }} />
+
+      {/* Ladder - on the right side */}
+      <div className="absolute right-[20%] bottom-[5%]" style={{ width: '40px', height: '78%' }}>
+        {/* Left rail */}
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full"
+             style={{ background: 'linear-gradient(180deg, rgba(180,170,155,0.35) 0%, rgba(140,130,115,0.15) 50%, rgba(100,90,75,0.08) 100%)' }} />
+        {/* Right rail */}
+        <div className="absolute right-0 top-0 bottom-0 w-[3px] rounded-full"
+             style={{ background: 'linear-gradient(180deg, rgba(180,170,155,0.35) 0%, rgba(140,130,115,0.15) 50%, rgba(100,90,75,0.08) 100%)' }} />
+        {/* Rungs */}
+        {Array.from({ length: 12 }, (_, i) => {
+          const y = 6 + i * 7.5;
+          const opacity = Math.max(0.06, 0.3 - i * 0.02);
+          return (
+            <div key={i} className="absolute left-0 right-0 h-[2px] rounded-full"
+                 style={{ top: `${y}%`, background: `rgba(180,170,155,${opacity})` }} />
+          );
+        })}
+      </div>
+
+      {/* Faint light beam from opening down to ladder */}
+      <div className="absolute top-[80px] right-[14%] w-[120px]"
+           style={{ height: '60%', background: 'linear-gradient(180deg, rgba(140,180,240,0.04) 0%, transparent 100%)', transform: 'skewX(-5deg)' }} />
+
+      {/* ── LEFT SIDE: Text lines (PPT style) ── */}
+      <div className="absolute left-[10%] top-1/2 -translate-y-1/2 w-[45%]">
+        {/* Already shown lines */}
+        <div className="space-y-5 mb-5">
+          {LIFE_SCRIPT.slice(0, step).map((s, i) => (
+            <div key={i} className="flex items-baseline gap-4 opacity-30 transition-opacity duration-500">
+              <span className="text-sm text-gray-600 font-mono w-6 flex-shrink-0 text-right">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                {s.text && <span className="text-gray-500 text-lg font-medium mr-3">{s.text}</span>}
+                <span className="text-gray-600 text-sm">{s.sub}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Current line - highlighted */}
+        {currentStep && (
+          <div className="flex items-baseline gap-4 animate-pulse"
+               style={{ animationDuration: '2s' }}>
+            <span className="text-sm font-mono w-6 flex-shrink-0 text-right"
+                  style={{ color: isLast ? '#ef4444' : 'rgba(180,200,240,0.7)' }}>
+              {String(step + 1).padStart(2, '0')}
+            </span>
+            <div>
+              {currentStep.text && (
+                <span className="text-2xl font-bold mr-3"
+                      style={{ color: isLast ? '#ef4444' : 'rgba(220,230,255,0.9)', textShadow: isLast ? '0 0 30px rgba(239,68,68,0.4)' : '0 0 20px rgba(180,200,240,0.15)' }}>
+                  {currentStep.text}
+                </span>
+              )}
+              <span className={`text-lg ${isLast ? 'text-red-400 font-bold' : 'text-gray-400'}`}
+                    style={isLast ? { textShadow: '0 0 25px rgba(239,68,68,0.3)' } : {}}>
+                {currentStep.sub}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Skip button */}
+      <button onClick={onSkip}
+              className="absolute bottom-6 right-6 text-sm text-gray-700 hover:text-gray-400 transition-colors">
+        跳过 →
+      </button>
+    </div>
+  );
+}
+
 // ── Component ──
 export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
   const skin = SKINS.find(s => s.key === skinKey) || SKINS[0];
@@ -232,7 +326,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
   const [showEpitaph, setShowEpitaph] = useState(false);
   const [epitaphSeen, setEpitaphSeen] = useState(false);
   const [epitaphData, setEpitaphData] = useState<EpitaphData | null>(null);
-  const [epitaphAnimStep, setEpitaphAnimStep] = useState(-1); // -1 = not playing
+  const [epitaphAnimStep, setEpitaphAnimStep] = useState(-1);
   const [epitaphTab, setEpitaphTab] = useState<'refs' | 'write' | 'deduce'>('refs');
   const [epitaphFilter, setEpitaphFilter] = useState<string>('all');
   // Write form
@@ -276,7 +370,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
   // ── Epitaph animation ──
   useEffect(() => {
     if (epitaphAnimStep < 0 || epitaphAnimStep >= LIFE_SCRIPT.length) return;
-    const delay = epitaphAnimStep === LIFE_SCRIPT.length - 1 ? 4000 : 2200;
+    const delay = epitaphAnimStep === LIFE_SCRIPT.length - 1 ? 4500 : 2800;
     const tid = setTimeout(() => {
       if (epitaphAnimStep < LIFE_SCRIPT.length - 1) {
         setEpitaphAnimStep(prev => prev + 1);
@@ -443,25 +537,19 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
     localStorage.setItem('epitaph-data', JSON.stringify(data));
   }, [epOneLiner, epCareer, epCharacter, epRelationship, epWork1, epWork2, epWork3]);
 
-  // Auto-deduce 5 dimensions from epitaph content
   const autoDeduceDimensions = useCallback(() => {
     if (!epitaphData) return;
     const works = epitaphData.threeWorks.filter(Boolean);
     const { career, character, relationship } = epitaphData.evaluation;
     const newInputs: Record<string, string> = {};
-    // 事业价值: career evaluation + work-related works
     const careerWorks = works.filter(w => /产品|工具|公司|项目|业务|客户|团队|技术|平台|创业|职业|事业|行业|工作/.test(w));
     newInputs['事业价值'] = [career, ...careerWorks].filter(Boolean).join('；') || `在事业上实现${epitaphData.oneLiner.slice(0, 10)}的核心追求`;
-    // 财富自由: income/asset-related works
     const wealthWorks = works.filter(w => /收入|资产|投资|房|车|存款|财务|自由|百万|千万|亿/.test(w));
     newInputs['财富自由'] = wealthWorks.join('；') || '实现财务独立，不再为生存出售时间';
-    // 健康精力
     const healthWorks = works.filter(w => /运动|健康|体检|跑步|健身|养生|睡眠|精力/.test(w));
     newInputs['健康精力'] = healthWorks.join('；') || '保持充沛精力，支撑所有目标';
-    // 亲密关系
     const relWorks = works.filter(w => /家|陪伴|孩子|伴侣|父母|朋友|爱人|旅行|团聚/.test(w));
     newInputs['亲密关系'] = [relationship, ...relWorks].filter(Boolean).join('；') || '经营深度关系，不让爱缺席';
-    // 自我成长
     const growthWorks = works.filter(w => /学习|读书|写作|技能|成长|语言|学历|知识/.test(w));
     newInputs['自我成长'] = [character, ...growthWorks].filter(Boolean).join('；') || '持续成长，成为更好的自己';
     setDimInputs(newInputs);
@@ -523,50 +611,10 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
   );
 
   // ═══════════════════════════════════════════════════
-  // EPITAPH ANIMATION OVERLAY
+  // EPITAPH ANIMATION OVERLAY - Dark Well Style
   // ═══════════════════════════════════════════════════
   if (epitaphAnimStep >= 0) {
-    const step = LIFE_SCRIPT[epitaphAnimStep];
-    const isLast = epitaphAnimStep === LIFE_SCRIPT.length - 1;
-    return (
-      <div className="fixed inset-0 z-[70] flex items-center justify-center"
-           style={{ background: 'linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%)' }}>
-        {/* Vignette */}
-        <div className="absolute inset-0" style={{ boxShadow: 'inset 0 0 150px rgba(0,0,0,0.8)' }} />
-
-        {/* Timeline dots on the left */}
-        <div className="absolute left-[15%] top-1/2 -translate-y-1/2 flex flex-col gap-4">
-          {LIFE_SCRIPT.map((_, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="w-2.5 h-2.5 rounded-full transition-all duration-700"
-                   style={{ backgroundColor: i <= epitaphAnimStep ? (isLast && i === epitaphAnimStep ? '#ef4444' : '#fff') : '#333', boxShadow: i === epitaphAnimStep ? '0 0 8px rgba(255,255,255,0.4)' : 'none' }} />
-              {i < LIFE_SCRIPT.length - 1 && (
-                <div className="w-px h-4" style={{ backgroundColor: i < epitaphAnimStep ? '#555' : '#222' }} />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Center text */}
-        <div className="relative z-10 text-center animate-fadeIn">
-          {step.text && (
-            <div className="text-5xl font-bold text-white mb-4" style={{ textShadow: '0 0 30px rgba(255,255,255,0.15)' }}>
-              {step.text}
-            </div>
-          )}
-          <div className={`text-lg ${isLast ? 'text-red-400 text-xl font-medium' : 'text-gray-400'}`}
-               style={{ textShadow: isLast ? '0 0 20px rgba(239,68,68,0.3)' : 'none' }}>
-            {step.sub}
-          </div>
-        </div>
-
-        {/* Skip button */}
-        <button onClick={skipAnimation}
-                className="absolute bottom-8 right-8 text-sm text-gray-600 hover:text-gray-300 transition-colors">
-          跳过 →
-        </button>
-      </div>
-    );
+    return <DarkWellAnimation step={epitaphAnimStep} onSkip={skipAnimation} />;
   }
 
   // ═══════════════════════════════════════════════════
@@ -600,7 +648,6 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
           {epitaphTab === 'refs' && (
             <div className="space-y-6">
               <p className="text-sm text-gray-500 mb-4">对标不同人生选择，看清内心真正向往的人生。</p>
-              {/* Filter tags */}
               <div className="flex flex-wrap gap-2">
                 {['all', ...Array.from(new Set(EPITAPH_REFS.map(r => r.type)))].map(type => (
                   <button key={type} onClick={() => setEpitaphFilter(type)}
@@ -631,7 +678,6 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
             <div className="max-w-2xl mx-auto space-y-6">
               <p className="text-sm text-gray-500">写下你希望刻在墓碑上的话，从终点倒推当下。</p>
 
-              {/* One liner */}
               <div>
                 <label className="text-xs text-gray-400 block mb-1.5">我的墓志铭一句话</label>
                 <input value={epOneLiner} onChange={e => setEpOneLiner(e.target.value)} placeholder="例：这里躺着一个有趣的人，一辈子做了3款改变普通人效率的工具"
@@ -639,7 +685,6 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                        style={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }} />
               </div>
 
-              {/* Evaluation */}
               <div>
                 <label className="text-xs text-gray-400 block mb-1.5">我希望在最后一天，别人如何评价我</label>
                 <div className="space-y-2">
@@ -658,7 +703,6 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                 </div>
               </div>
 
-              {/* Three works */}
               <div>
                 <label className="text-xs text-gray-400 block mb-1.5">我这一生最想留下的 3 件作品 / 成果</label>
                 <div className="space-y-2">
@@ -709,20 +753,17 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                 </div>
               ) : (
                 <>
-                  {/* Epitaph reminder */}
                   <div className="rounded-lg p-4 text-center" style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
                     <div className="text-xs text-gray-500 mb-1">你的墓志铭</div>
                     <div className="text-white text-lg italic">&quot;{epitaphData.oneLiner}&quot;</div>
                   </div>
 
-                  {/* Auto-deduce button */}
                   <button onClick={autoDeduceDimensions}
                           className="w-full py-2.5 rounded-lg text-white text-sm font-medium hover:brightness-110 transition-all"
                           style={{ background: 'linear-gradient(135deg, #333 0%, #444 100%)', border: '1px solid #555' }}>
                     ⚡ 自动从墓志铭拆解到五大维度
                   </button>
 
-                  {/* 5 dimensions */}
                   <div className="space-y-3">
                     {LIFE_DIMENSIONS.map(dim => (
                       <div key={dim} className="rounded-lg p-4" style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
@@ -803,8 +844,6 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
             </div>
           </div>
         </div>
-
-
 
         {/* Stats row */}
         <div className="flex-shrink-0 px-5 py-2 flex items-center gap-4 text-xs border-b" style={{ borderColor: s.divider, backgroundColor: s.cardBg }}>
@@ -931,6 +970,30 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                 </div>
               </div>
 
+              {/* Flow chain visualization */}
+              <div className="rounded-xl p-4" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+                <div className="text-xs font-medium mb-3" style={{ color: s.textMuted }}>
+                  目标拆解链路：O → KR → 任务 → 动作(番茄) → 时间
+                </div>
+                <div className="flex items-center gap-2 flex-wrap text-xs">
+                  <span className="px-2 py-1 rounded font-bold" style={{ backgroundColor: color + '18', color }}>O 目标</span>
+                  <span style={{ color: s.textMuted }}>→</span>
+                  <span className="px-2 py-1 rounded" style={{ backgroundColor: swatch + '12', color: swatch }}>KR{okr.keyResults.length}</span>
+                  <span style={{ color: s.textMuted }}>→</span>
+                  <span className="px-2 py-1 rounded" style={{ backgroundColor: s.panelBg, color: s.text2 }}>
+                    任务{okr.keyResults.reduce((s, kr) => s + kr.tasks.length, 0)}
+                  </span>
+                  <span style={{ color: s.textMuted }}>→</span>
+                  <span className="px-2 py-1 rounded" style={{ backgroundColor: s.panelBg, color: s.text2 }}>
+                    动作{okr.keyResults.reduce((s, kr) => s + kr.tasks.reduce((s2, t) => s2 + t.tomatoes.length, 0), 0)}
+                  </span>
+                  <span style={{ color: s.textMuted }}>→</span>
+                  <span className="px-2 py-1 rounded font-bold" style={{ backgroundColor: '#f97316' + '18', color: '#f97316' }}>
+                    🍅{tmStats.total}颗 ≈ {tmStats.total * 25}分钟
+                  </span>
+                </div>
+              </div>
+
               {/* KR List */}
               <div className="space-y-3">
                 {okr.keyResults.map((kr, krIdx) => {
@@ -946,7 +1009,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                         <span className="text-xs font-bold" style={{ color: krColor }}>KR{krIdx + 1}</span>
                         <span className="flex-1 text-sm" style={{ color: s.text1 }}>{kr.description}</span>
                         <span className="text-xs font-bold" style={{ color: krColor }}>{krPct}%</span>
-                        <span className="text-[11px]" style={{ color: s.textMuted }}>🍅{krTm.done}/{krTm.total}</span>
+                        <span className="text-[11px]" style={{ color: s.textMuted }}>🍅{krTm.done}/{krTm.total} ≈ {krTm.total * 25}min</span>
                         <span onClick={e => { e.stopPropagation(); removeKR(okr.id, kr.id); }}
                               className="text-xs opacity-30 hover:opacity-80" style={{ color: s.textMuted }}>✕</span>
                       </button>
@@ -964,22 +1027,27 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                                         style={{ backgroundColor: s.panelBg }}>
                                   <span className="text-[10px]" style={{ color: s.textMuted }}>{isTaskExpanded ? '▾' : '▸'}</span>
                                   <span className="text-sm" style={{ color: s.text1 }}>📋 {task.title}</span>
-                                  <span className="ml-auto text-[11px]" style={{ color: s.textMuted }}>预估{task.estimatedTomatoes}🍅 · 完成{taskDone}🍅</span>
+                                  <span className="ml-auto text-[11px]" style={{ color: s.textMuted }}>
+                                    预估{task.estimatedTomatoes}🍅 · 完成{taskDone}🍅 · 需{task.estimatedTomatoes * 25}min
+                                  </span>
                                   <span onClick={e => { e.stopPropagation(); removeTask(okr.id, kr.id, task.id); }}
                                         className="text-xs opacity-30 hover:opacity-80" style={{ color: s.textMuted }}>✕</span>
                                 </button>
 
-                                {/* Task expanded: Tomatoes */}
+                                {/* Task expanded: Tomatoes (executable actions with time) */}
                                 {isTaskExpanded && (
                                   <div className="px-3 pb-2 space-y-1" style={{ borderLeft: `2px solid ${s.divider}`, marginLeft: 12 }}>
                                     {task.tomatoes.map(tm => (
-                                      <div key={tm.id} className="flex items-center gap-2 py-1 px-2 rounded"
+                                      <div key={tm.id} className="flex items-center gap-2 py-1.5 px-2 rounded"
                                            style={{ backgroundColor: tm.completed ? s.cardBg : 'transparent' }}>
                                         <span className="text-sm" style={{ color: tm.completed ? '#22c55e' : s.textMuted }}>
                                           {tm.completed ? '☑' : '☐'}
                                         </span>
                                         <span className={`flex-1 text-sm ${tm.completed ? 'line-through' : ''}`}
                                               style={{ color: tm.completed ? s.textMuted : s.text2 }}>{tm.title}</span>
+                                        <span className="text-[11px] whitespace-nowrap" style={{ color: s.textMuted }}>
+                                          {tm.completed ? '已完成 25min' : '25min/🍅'}
+                                        </span>
                                         {!tm.completed && (
                                           <button onClick={() => startTimer(okr.id, kr.id, task.id, tm.id, [okr.objective, kr.description, task.title, tm.title])}
                                                   className="text-xs px-2.5 py-1 rounded-lg font-medium flex items-center gap-1 hover:brightness-110"
@@ -987,23 +1055,24 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                                             ▶ 🍅
                                           </button>
                                         )}
-                                        {tm.completed && <span className="text-[11px]" style={{ color: '#22c55e' }}>已完成</span>}
+                                        {tm.completed && <span className="text-[11px]" style={{ color: '#22c55e' }}>✓</span>}
                                         <span onClick={() => removeTomato(okr.id, kr.id, task.id, tm.id)}
                                               className="text-xs opacity-20 hover:opacity-70 cursor-pointer" style={{ color: s.textMuted }}>✕</span>
                                       </div>
                                     ))}
-                                    {/* Add tomato */}
+                                    {/* Add tomato (action) */}
                                     {addTomato_Task === task.id ? (
                                       <div className="flex items-center gap-1.5 mt-1">
                                         <input autoFocus value={newTomatoTitle} onChange={e => setNewTomatoTitle(e.target.value)}
                                                onKeyDown={e => { if (e.key === 'Enter') addTomato(okr.id, kr.id, task.id); if (e.key === 'Escape') setAddTomato_Task(null); }}
-                                               placeholder="番茄内容" className="flex-1 rounded px-2 py-1 text-sm outline-none"
+                                               placeholder="可执行动作描述" className="flex-1 rounded px-2 py-1 text-sm outline-none"
                                                style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                                        <span className="text-[11px] whitespace-nowrap" style={{ color: s.textMuted }}>25min</span>
                                         <button onClick={() => addTomato(okr.id, kr.id, task.id)} className="text-sm font-bold px-2" style={{ color: swatch }}>+</button>
                                       </div>
                                     ) : (
                                       <button onClick={() => { setAddTomato_Task(task.id); setNewTomatoTitle(''); }}
-                                              className="text-xs hover:underline mt-1" style={{ color: swatch }}>+ 番茄</button>
+                                              className="text-xs hover:underline mt-1" style={{ color: swatch }}>+ 动作(1🍅=25min)</button>
                                     )}
                                   </div>
                                 )}
@@ -1021,11 +1090,12 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                               <input value={newTaskEst} onChange={e => setNewTaskEst(e.target.value)}
                                      placeholder="🍅" className="w-12 rounded px-2 py-1 text-sm outline-none text-center"
                                      style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                              <span className="text-[10px] whitespace-nowrap" style={{ color: s.textMuted }}>min</span>
                               <button onClick={() => addTask(okr.id, kr.id)} className="text-sm font-bold px-2" style={{ color: swatch }}>+</button>
                             </div>
                           ) : (
                             <button onClick={() => { setAddTask_KR(kr.id); setNewTaskTitle(''); setNewTaskEst('1'); }}
-                                    className="text-xs hover:underline" style={{ color: swatch }}>+ 任务</button>
+                                    className="text-xs hover:underline" style={{ color: swatch }}>+ 任务(需预估🍅数)</button>
                           )}
                         </div>
                       )}
@@ -1089,7 +1159,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
             <div className="text-6xl font-bold mb-2 tabular-nums" style={{ color: timerPaused ? s.textMuted : s.text1 }}>
               {fmtTime(secondsLeft)}
             </div>
-            <div className="text-sm mb-4" style={{ color: s.textMuted }}>专注模式</div>
+            <div className="text-sm mb-4" style={{ color: s.textMuted }}>专注模式 · 25分钟</div>
             <div className="mx-auto w-56 mb-6">{pb(Math.round(((25 * 60 - secondsLeft) / (25 * 60)) * 100), 8, swatch)}</div>
             <div className="flex gap-3 justify-center mb-4">
               <button onClick={() => setTimerPaused(!timerPaused)}
