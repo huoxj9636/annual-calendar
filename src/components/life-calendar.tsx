@@ -434,13 +434,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
           ))}
         </div>
 
-        {/* Stats row */}
-        <div className="flex-shrink-0 px-5 py-2 flex items-center gap-4 text-xs border-b" style={{ borderColor: s.divider, backgroundColor: s.cardBg }}>
-          <span style={{ color: s.textMuted }}>目标 <b style={{ color: s.text1 }}>{globalStats.totalOKRs}</b></span>
-          <span style={{ color: s.textMuted }}>子项 <b style={{ color: s.text1 }}>{globalStats.totalNodes}</b></span>
-          <span style={{ color: s.textMuted }}>已完成 <b style={{ color: '#22c55e' }}>{globalStats.doneNodes}</b></span>
-        </div>
-
         {/* Add goal inline */}
         <div className="flex-shrink-0 px-5 py-2 flex items-center gap-2 border-b" style={{ borderColor: s.divider }}>
           <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)}
@@ -473,10 +466,12 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
           ) : filteredGoals.map(g => renderLeftItem(g))}
         </div>
 
-        {/* Bottom: completion rate */}
-        <div className="flex-shrink-0 px-5 py-3 border-t flex items-center gap-3" style={{ borderColor: s.divider, backgroundColor: s.panelBg }}>
-          <div className="flex-1">{pb(globalStats.avgProgress, 6, swatch)}</div>
-          <span className="text-sm font-bold" style={{ color: globalStats.avgProgress > 0 ? swatch : s.textMuted }}>{globalStats.avgProgress}%</span>
+        {/* Bottom: 4 key stats */}
+        <div className="flex-shrink-0 px-5 py-3 border-t flex items-center gap-4 text-xs" style={{ borderColor: s.divider, backgroundColor: s.panelBg }}>
+          <span style={{ color: s.textMuted }}>目标 <b style={{ color: s.text1 }}>{globalStats.totalOKRs}</b></span>
+          <span style={{ color: s.textMuted }}>子项 <b style={{ color: s.text1 }}>{globalStats.totalNodes}</b></span>
+          <span style={{ color: s.textMuted }}>已完成 <b style={{ color: '#22c55e' }}>{globalStats.doneNodes}</b></span>
+          <span style={{ color: s.textMuted }}>完成率 <b style={{ color: globalStats.avgProgress > 0 ? swatch : s.textMuted }}>{globalStats.avgProgress}%</b></span>
         </div>
       </div>
 
