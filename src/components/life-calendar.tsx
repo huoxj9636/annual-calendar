@@ -24,33 +24,19 @@ interface GoalNode {
 
 type PeriodType = 'annual' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
-const STATUS_CYCLE: GoalNode['status'][] = ['not_started', 'in_progress', 'completed'];
-const STATUS_CFG: Record<GoalNode['status'], { label: string; icon: string }> = {
-  not_started: { label: '未开始', icon: '⚪' },
-  in_progress: { label: '进行中', icon: '🔵' },
-  completed: { label: '已完成', icon: '🟢' },
-};
-
 function genId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-function statusColor(status: GoalNode['status'], swatch: string): string {
-  switch (status) {
-    case 'completed': return '#22c55e';
-    case 'in_progress': return swatch;
-    default: return '#94a3b8';
-  }
-}
-
-// Recursively count nodes & completed
+// Recursively count leaf nodes & completed leaves
 function countNodes(n: GoalNode): { total: number; done: number } {
-  let total = 1, done = n.status === 'completed' ? 1 : 0;
+  if (n.children.length === 0) return { total: 1, done: n.status === 'completed' ? 1 : 0 };
+  let total = 0, done = 0;
   for (const c of n.children) { const s = countNodes(c); total += s.total; done += s.done; }
   return { total, done };
 }
 
-// Progress = completed children ratio (leaf level drives it)
+// Progress = completed leaf ratio
 function nodeProgress(n: GoalNode): number {
   if (n.children.length === 0) return n.status === 'completed' ? 1 : 0;
   return n.children.reduce((s, c) => s + nodeProgress(c), 0) / n.children.length;
@@ -91,12 +77,12 @@ function migrateGoals(raw: any[]): GoalNode[] {
   return raw.map((o: any) => ({
     id: o.id || genId(),
     title: o.objective || o.title || '',
-    status: STATUS_CYCLE.includes(o.status as GoalNode['status']) ? (o.status as GoalNode['status']) : 'not_started',
+    status: ['not_started', 'in_progress', 'completed'].includes(o.status) ? o.status : 'not_started',
     createdAt: o.createdAt || Date.now(),
     children: (o.keyResults || o.children || []).map((kr: any) => ({
       id: kr.id || genId(),
       title: kr.description || kr.title || '',
-      status: STATUS_CYCLE.includes(kr.status as GoalNode['status']) ? (kr.status as GoalNode['status']) : 'not_started',
+      status: ['not_started', 'in_progress', 'completed'].includes(kr.status) ? kr.status : 'not_started',
       createdAt: kr.createdAt || Date.now(),
       children: (kr.tasks || kr.children || []).map((t: any) => ({
         id: t.id || genId(),
@@ -253,10 +239,10 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     setNewChild('');
   }, [newChild]);
 
-  const cycleStatus = useCallback((id: string) => {
+  const toggleLeaf = useCallback((id: string) => {
     setGoals(prev => prev.map(r => updateNode(r, id, n => {
-      const i = STATUS_CYCLE.indexOf(n.status);
-      return { ...n, status: STATUS_CYCLE[(i + 1) % STATUS_CYCLE.length] };
+      if (n.children.length > 0) return n; // only leaf nodes
+      return { ...n, status: n.status === 'completed' ? 'not_started' : 'completed' };
     })));
   }, []);
 
@@ -299,28 +285,32 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   // Render tree node in left list (recursive, indented)
   const renderTreeNode = (node: GoalNode, depth: number = 0): React.ReactNode => {
     const pct = Math.round(nodeProgress(node) * 100);
-    const color = statusColor(node.status, swatch);
+    const isLeaf = node.children.length === 0;
     const isSelected = selectedId === node.id;
     return (
       <div key={node.id}>
         <div
           onClick={() => setSelectedId(node.id)}
-          className="px-4 py-2.5 cursor-pointer transition-all border-l-[3px] flex items-center gap-2"
+          className="py-2 cursor-pointer transition-all border-l-[3px] flex items-center gap-2"
           style={{
             paddingLeft: `${16 + depth * 16}px`,
+            paddingRight: '16px',
             backgroundColor: isSelected ? s.cardHover : 'transparent',
             borderLeftColor: isSelected ? swatch : 'transparent',
           }}
         >
-          <button
-            onClick={e => { e.stopPropagation(); cycleStatus(node.id); }}
-            className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
-            style={{ backgroundColor: color + '18', color }}
-          >
-            {STATUS_CFG[node.status].icon}
-          </button>
-          <span className="flex-1 text-sm truncate" style={{ color: s.text1 }}>{node.title}</span>
-          <span className="text-xs font-bold flex-shrink-0" style={{ color }}>{pct}%</span>
+          {isLeaf ? (
+            <button
+              onClick={e => { e.stopPropagation(); toggleLeaf(node.id); }}
+              className="text-sm flex-shrink-0 w-4 text-center"
+              style={{ color: node.status === 'completed' ? '#22c55e' : s.textMuted }}
+            >
+              {node.status === 'completed' ? '☑' : '☐'}
+            </button>
+          ) : null}
+          <span className={`flex-1 text-sm truncate ${node.status === 'completed' && isLeaf ? 'line-through' : ''}`}
+            style={{ color: node.status === 'completed' && isLeaf ? s.textMuted : s.text1 }}>{node.title}</span>
+          <span className="text-xs font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
         </div>
         {node.children.map(c => renderTreeNode(c, depth + 1))}
       </div>
@@ -334,15 +324,23 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       <div className="space-y-2">
         {node.children.map((child, idx) => {
           const pct = Math.round(nodeProgress(child) * 100);
-          const color = statusColor(child.status, swatch);
+          const isLeaf = child.children.length === 0;
           return (
             <div key={child.id} className="rounded-xl overflow-hidden" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
               <div className="px-4 py-3 flex items-center gap-2">
-                <button onClick={() => { setSelectedId(child.id); setAddInputParentId(null); }}
-                        className="text-xs font-bold px-2 py-0.5 rounded flex-shrink-0"
-                        style={{ backgroundColor: color + '18', color }}>
-                  {STATUS_CFG[child.status].icon}
-                </button>
+                {isLeaf ? (
+                  <button onClick={() => toggleLeaf(child.id)}
+                          className="text-sm flex-shrink-0"
+                          style={{ color: child.status === 'completed' ? '#22c55e' : s.textMuted }}>
+                    {child.status === 'completed' ? '☑' : '☐'}
+                  </button>
+                ) : (
+                  <button onClick={() => { setSelectedId(child.id); setAddInputParentId(null); }}
+                          className="text-sm flex-shrink-0 font-bold"
+                          style={{ color: swatch }}>
+                    ▸
+                  </button>
+                )}
                 {editingId === child.id ? (
                   <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                          onBlur={() => saveTitle(child.id)}
@@ -355,22 +353,21 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                     {child.title}
                   </span>
                 )}
-                <span className="text-xs font-bold" style={{ color }}>{pct}%</span>
-                <div className="w-16">{pb(pct, 4, color)}</div>
+                <span className="text-xs font-bold" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
+                <div className="w-16">{pb(pct, 4, swatch)}</div>
                 <span className="text-[11px]" style={{ color: s.textMuted }}>{child.children.length}项</span>
                 <button onClick={() => deleteGoal(child.id)}
                         className="text-xs opacity-30 hover:opacity-80 flex-shrink-0" style={{ color: '#ef4444' }}>✕</button>
               </div>
               {/* Show grandchildren inline if depth < 2 */}
               {child.children.length > 0 && depth < 2 && (
-                <div className="px-4 pb-2 space-y-1" style={{ borderLeft: `3px solid ${color}`, marginLeft: 24 }}>
+                <div className="px-4 pb-2 space-y-1" style={{ borderLeft: `3px solid ${swatch}`, marginLeft: 24 }}>
                   {child.children.map(gc => {
-                    const gcColor = statusColor(gc.status, swatch);
                     return (
                       <div key={gc.id} className="flex items-center gap-2 py-1 px-2 rounded"
                            style={{ backgroundColor: s.panelBg }}>
-                        <button onClick={() => cycleStatus(gc.id)}
-                                className="text-xs" style={{ color: gcColor }}>
+                        <button onClick={() => toggleLeaf(gc.id)}
+                                className="text-xs" style={{ color: gc.status === 'completed' ? '#22c55e' : s.textMuted }}>
                           {gc.status === 'completed' ? '☑' : '☐'}
                         </button>
                         <span className={`flex-1 text-sm ${gc.status === 'completed' ? 'line-through' : ''}`}
@@ -496,7 +493,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
         ) : (() => {
           const node = selectedGoal;
           const pct = Math.round(nodeProgress(node) * 100);
-          const color = statusColor(node.status, swatch);
           const root = selectedRoot;
           const labels = root ? getPathLabels([root], node.id) : [node.title];
           return (
@@ -514,10 +510,6 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               {/* Node header */}
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <button onClick={() => cycleStatus(node.id)} className="text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer flex-shrink-0"
-                          style={{ backgroundColor: color + '18', color }}>
-                    {STATUS_CFG[node.status].icon} {STATUS_CFG[node.status].label}
-                  </button>
                   {editingId === node.id ? (
                     <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                            onBlur={() => saveTitle(node.id)}
@@ -530,10 +522,10 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                       {node.title}
                     </h2>
                   )}
-                  <span className="text-2xl font-bold flex-shrink-0" style={{ color }}>{pct}%</span>
+                  <span className="text-2xl font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex-1">{pb(pct, 8, color)}</div>
+                  <div className="flex-1">{pb(pct, 8, swatch)}</div>
                   <span className="text-sm whitespace-nowrap" style={{ color: s.textMuted }}>{node.children.length}个子项</span>
                   <button onClick={() => setShowReview(!showReview)}
                           className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: s.textMuted }}>复盘</button>
