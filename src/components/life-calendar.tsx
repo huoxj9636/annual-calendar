@@ -122,8 +122,9 @@ function migrateGoals(raw: any[]): GoalNode[] {
 // ── Voice Recognition Hook ──
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SRInstance = any;
-function useVoiceRecognition(onResult: (text: string) => void) {
+function useVoiceRecognition(onResult: (text: string) => void, context?: string) {
   const [listening, setListening] = useState(false);
+  const [polishing, setPolishing] = useState(false);
   const recRef = useRef<SRInstance>(null);
 
   const start = useCallback(() => {
@@ -136,24 +137,39 @@ function useVoiceRecognition(onResult: (text: string) => void) {
     rec.continuous = false;
     rec.interimResults = false;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (e: any) => {
-      const t = e.results?.[0]?.[0]?.transcript || '';
-      if (t) onResult(t);
+    rec.onresult = async (e: any) => {
+      const raw = e.results?.[0]?.[0]?.transcript || '';
       setListening(false);
+      if (!raw) return;
+      // Polish via LLM
+      setPolishing(true);
+      try {
+        const res = await fetch('/api/polish-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: raw, context }),
+        });
+        const data = await res.json();
+        onResult(data.result || raw);
+      } catch {
+        onResult(raw);
+      } finally {
+        setPolishing(false);
+      }
     };
     rec.onerror = () => setListening(false);
     rec.onend = () => setListening(false);
     recRef.current = rec;
     rec.start();
     setListening(true);
-  }, [onResult]);
+  }, [onResult, context]);
 
   const stop = useCallback(() => {
     recRef.current?.stop();
     setListening(false);
   }, []);
 
-  return { listening, start, stop };
+  return { listening, polishing, start, stop };
 }
 
 // ── Component ──
@@ -194,9 +210,7 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
   // Voice for top input
   const voiceTop = useVoiceRecognition((text) => { setNewTitle(text); });
 
-  // Voice for child input
-  const voiceChild = useVoiceRecognition((text) => { setNewChild(text); });
-
+  // Voice for child input — pass parent title as context for better polish
   // Derived
   const filteredGoals = useMemo(() => goals.filter(o => o.period === periodKey || !o.period), [goals, periodKey]);
   const selectedGoal = useMemo(() => {
@@ -209,6 +223,9 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
     if (!selectedId) return null;
     return filteredGoals.find(r => findNode(r, selectedId)) || null;
   }, [filteredGoals, selectedId]);
+
+  // Voice for child input — pass parent title as context for better polish
+  const voiceChild = useVoiceRecognition((text) => { setNewChild(text); }, selectedGoal?.title);
 
   const globalStats = useMemo(() => {
     let total = 0, done = 0;
@@ -421,9 +438,10 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                  placeholder="输入目标，回车创建" className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
                  style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
           {/* Voice button */}
-          <button onClick={voiceTop.listening ? voiceTop.stop : voiceTop.start}
+          <button onClick={voiceTop.listening || voiceTop.polishing ? undefined : voiceTop.start}
                   className="w-8 h-8 flex items-center justify-center rounded-lg transition-all"
-                  style={{ backgroundColor: voiceTop.listening ? '#ef4444' : s.cardBg, border: `1px solid ${s.divider}`, color: voiceTop.listening ? '#fff' : s.textMuted }}>
+                  style={{ backgroundColor: voiceTop.polishing ? swatch : voiceTop.listening ? '#ef4444' : s.cardBg, border: `1px solid ${s.divider}`, color: voiceTop.listening || voiceTop.polishing ? '#fff' : s.textMuted }}
+                  disabled={voiceTop.polishing}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -434,9 +452,9 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
           <button onClick={addGoal} disabled={!newTitle.trim()} className="px-3 py-1.5 rounded-lg text-white text-xs font-bold disabled:opacity-40"
                   style={{ backgroundColor: swatch }}>+ 目标</button>
         </div>
-        {voiceTop.listening && (
-          <div className="flex-shrink-0 px-5 py-1.5 text-xs flex items-center gap-2" style={{ color: '#ef4444', backgroundColor: s.cardBg }}>
-            <span className="animate-pulse">●</span> 正在语音识别...
+        {(voiceTop.listening || voiceTop.polishing) && (
+          <div className="flex-shrink-0 px-5 py-1.5 text-xs flex items-center gap-2" style={{ color: voiceTop.polishing ? swatch : '#ef4444', backgroundColor: s.cardBg }}>
+            <span className="animate-pulse">●</span> {voiceTop.polishing ? 'AI润色中...' : '正在语音识别...'}
           </div>
         )}
 
@@ -518,9 +536,10 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                          placeholder="输入子项名称，回车添加" className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
                          style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
                   {/* Voice for child */}
-                  <button onClick={voiceChild.listening ? voiceChild.stop : voiceChild.start}
+                  <button onClick={voiceChild.listening || voiceChild.polishing ? undefined : voiceChild.start}
                           className="w-8 h-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
-                          style={{ backgroundColor: voiceChild.listening ? '#ef4444' : s.panelBg, border: `1px solid ${s.divider}`, color: voiceChild.listening ? '#fff' : s.textMuted }}>
+                          style={{ backgroundColor: voiceChild.polishing ? swatch : voiceChild.listening ? '#ef4444' : s.panelBg, border: `1px solid ${s.divider}`, color: voiceChild.listening || voiceChild.polishing ? '#fff' : s.textMuted }}
+                          disabled={voiceChild.polishing}>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -532,9 +551,9 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                           className="px-3 py-1.5 rounded-lg text-white text-xs font-bold disabled:opacity-40 flex-shrink-0"
                           style={{ backgroundColor: swatch }}>+ 添加</button>
                 </div>
-                {voiceChild.listening && (
-                  <div className="text-xs mt-1.5 flex items-center gap-2" style={{ color: '#ef4444' }}>
-                    <span className="animate-pulse">●</span> 正在语音识别...
+                {(voiceChild.listening || voiceChild.polishing) && (
+                  <div className="text-xs mt-1.5 flex items-center gap-2" style={{ color: voiceChild.polishing ? swatch : '#ef4444' }}>
+                    <span className="animate-pulse">●</span> {voiceChild.polishing ? 'AI润色中...' : '正在语音识别...'}
                   </div>
                 )}
               </div>
