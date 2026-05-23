@@ -11,50 +11,21 @@ interface LifeCalendarProps {
   skinKey?: string;
 }
 
-// ── Data types ──
-type OKRStatus = 'not_started' | 'in_progress' | 'completed';
-
-interface TomatoItem {
+// ── Tree data: every node is a Goal ──
+interface GoalNode {
   id: string;
   title: string;
-  completed: boolean;
-  completedAt?: number;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  estimatedTomatoes: number;
-  tomatoes: TomatoItem[];
-}
-
-interface KeyResult {
-  id: string;
-  description: string;
-  tasks: Task[];
-}
-
-interface OKRReview {
-  id: string;
-  date: string;
-  content: string;
-}
-
-interface OKR {
-  id: string;
-  objective: string;
-  status: OKRStatus;
-  period: string;
-  keyResults: KeyResult[];
-  reviews: OKRReview[];
+  status: 'not_started' | 'in_progress' | 'completed';
+  children: GoalNode[];
+  reviews: { id: string; date: string; content: string }[];
   createdAt: number;
+  period?: string;
 }
 
 type PeriodType = 'annual' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
-// ── Constants ──
-const STATUS_CYCLE: OKRStatus[] = ['not_started', 'in_progress', 'completed'];
-const STATUS_CFG: Record<OKRStatus, { label: string; icon: string }> = {
+const STATUS_CYCLE: GoalNode['status'][] = ['not_started', 'in_progress', 'completed'];
+const STATUS_CFG: Record<GoalNode['status'], { label: string; icon: string }> = {
   not_started: { label: '未开始', icon: '⚪' },
   in_progress: { label: '进行中', icon: '🔵' },
   completed: { label: '已完成', icon: '🟢' },
@@ -64,31 +35,7 @@ function genId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-// ── Progress auto-calc ──
-function taskProgress(t: Task): number {
-  if (t.estimatedTomatoes <= 0) return 0;
-  return Math.min(t.tomatoes.filter(tm => tm.completed).length / t.estimatedTomatoes, 1);
-}
-function krProgress(kr: KeyResult): number {
-  if (kr.tasks.length === 0) return 0;
-  return kr.tasks.reduce((s, t) => s + taskProgress(t), 0) / kr.tasks.length;
-}
-function okrProgress(okr: OKR): number {
-  if (okr.keyResults.length === 0) return 0;
-  return okr.keyResults.reduce((s, kr) => s + krProgress(kr), 0) / okr.keyResults.length;
-}
-function krTomatoStats(kr: KeyResult): { done: number; total: number } {
-  let done = 0, total = 0;
-  for (const t of kr.tasks) { total += t.estimatedTomatoes; done += t.tomatoes.filter(tm => tm.completed).length; }
-  return { done, total };
-}
-function okrTomatoStats(okr: OKR): { done: number; total: number } {
-  let done = 0, total = 0;
-  for (const kr of okr.keyResults) { const s = krTomatoStats(kr); done += s.done; total += s.total; }
-  return { done, total };
-}
-
-function statusColor(status: OKRStatus, swatch: string): string {
+function statusColor(status: GoalNode['status'], swatch: string): string {
   switch (status) {
     case 'completed': return '#22c55e';
     case 'in_progress': return swatch;
@@ -96,51 +43,117 @@ function statusColor(status: OKRStatus, swatch: string): string {
   }
 }
 
-function fmtTime(sec: number): string {
-  const m = Math.floor(sec / 60);
-  return String(m).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+// Recursively count nodes & completed
+function countNodes(n: GoalNode): { total: number; done: number } {
+  let total = 1, done = n.status === 'completed' ? 1 : 0;
+  for (const c of n.children) { const s = countNodes(c); total += s.total; done += s.done; }
+  return { total, done };
 }
 
-function playBeep() {
-  try {
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 800; gain.gain.value = 0.3;
-    osc.start(); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); osc.stop(ctx.currentTime + 0.5);
-  } catch { /* ignore */ }
+// Progress = completed children ratio (leaf level drives it)
+function nodeProgress(n: GoalNode): number {
+  if (n.children.length === 0) return n.status === 'completed' ? 1 : 0;
+  return n.children.reduce((s, c) => s + nodeProgress(c), 0) / n.children.length;
+}
+
+// Find node by id
+function findNode(root: GoalNode, id: string): GoalNode | null {
+  if (root.id === id) return root;
+  for (const c of root.children) { const f = findNode(c, id); if (f) return f; }
+  return null;
+}
+
+// Update node immutably
+function updateNode(root: GoalNode, id: string, fn: (n: GoalNode) => GoalNode): GoalNode {
+  if (root.id === id) return fn(root);
+  return { ...root, children: root.children.map(c => updateNode(c, id, fn)) };
+}
+
+// Remove node immutably (returns roots filtered)
+function removeNode(roots: GoalNode[], id: string): GoalNode[] {
+  return roots.filter(r => r.id !== id).map(r => ({
+    ...r, children: removeNode(r.children, id),
+  }));
+}
+
+// Get path labels from root to target
+function getPathLabels(roots: GoalNode[], targetId: string): string[] {
+  for (const r of roots) {
+    if (r.id === targetId) return [r.title];
+    const sub = getPathLabels(r.children, targetId);
+    if (sub.length > 0) return [r.title, ...sub];
+  }
+  return [];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function migrateOKRs(raw: any[]): OKR[] {
+function migrateGoals(raw: any[]): GoalNode[] {
   return raw.map((o: any) => ({
     id: o.id || genId(),
-    objective: o.objective || '',
-    status: STATUS_CYCLE.includes(o.status as OKRStatus) ? (o.status as OKRStatus) : 'not_started',
-    period: o.period || '',
+    title: o.objective || o.title || '',
+    status: STATUS_CYCLE.includes(o.status as GoalNode['status']) ? (o.status as GoalNode['status']) : 'not_started',
     createdAt: o.createdAt || Date.now(),
-    keyResults: (o.keyResults || []).map((kr: any) => ({
+    children: (o.keyResults || o.children || []).map((kr: any) => ({
       id: kr.id || genId(),
-      description: kr.description || '',
-      tasks: (kr.tasks || []).map((t: any) => ({
+      title: kr.description || kr.title || '',
+      status: STATUS_CYCLE.includes(kr.status as GoalNode['status']) ? (kr.status as GoalNode['status']) : 'not_started',
+      createdAt: kr.createdAt || Date.now(),
+      children: (kr.tasks || kr.children || []).map((t: any) => ({
         id: t.id || genId(),
         title: t.title || '',
-        estimatedTomatoes: typeof t.estimatedTomatoes === 'number' ? t.estimatedTomatoes : (typeof t.targetValue === 'number' ? t.targetValue : 1),
-        tomatoes: (t.tomatoes || []).map((tm: any) => ({
+        status: 'not_started' as const,
+        createdAt: t.createdAt || Date.now(),
+        children: (t.tomatoes || t.children || []).map((tm: any) => ({
           id: tm.id || genId(),
           title: tm.title || '',
-          completed: !!tm.completed,
-          completedAt: tm.completedAt as number | undefined,
+          status: (tm.completed ? 'completed' : 'not_started') as GoalNode['status'],
+          createdAt: tm.completedAt || Date.now(),
+          children: [] as GoalNode[],
+          reviews: [],
         })),
+        reviews: [],
       })),
+      reviews: (kr.reviews || []),
     })),
-    reviews: (o.reviews || []).map((r: any) => ({
-      id: r.id || genId(),
-      date: r.date || '',
-      content: r.content || '',
-    })),
-  })) as OKR[];
+    reviews: (o.reviews || []),
+  })) as GoalNode[];
+}
+
+// ── Voice Recognition Hook ──
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SRInstance = any;
+function useVoiceRecognition(onResult: (text: string) => void) {
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<SRInstance>(null);
+
+  const start = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = 'zh-CN';
+    rec.continuous = false;
+    rec.interimResults = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      const t = e.results?.[0]?.[0]?.transcript || '';
+      if (t) onResult(t);
+      setListening(false);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    recRef.current = rec;
+    rec.start();
+    setListening(true);
+  }, [onResult]);
+
+  const stop = useCallback(() => {
+    recRef.current?.stop();
+    setListening(false);
+  }, []);
+
+  return { listening, start, stop };
 }
 
 // ── Component ──
@@ -148,202 +161,105 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
   const skin = SKINS.find(s => s.key === skinKey) || SKINS[0];
   const swatch = skin.swatch || '#6558c1';
 
-  const [okrs, setOkrs] = useState<OKR[]>([]);
+  const [goals, setGoals] = useState<GoalNode[]>([]);
   const [period, setPeriod] = useState<PeriodType>(() => { const m = new Date().getMonth(); if (m < 3) return 'Q1'; if (m < 6) return 'Q2'; if (m < 9) return 'Q3'; return 'Q4'; });
   const [mounted, setMounted] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Inline editing
-  const [newO, setNewO] = useState('');
-  const [expandedKR, setExpandedKR] = useState<Set<string>>(new Set());
-  const [expandedTask, setExpandedTask] = useState<Set<string>>(new Set());
-  const [editingO, setEditingO] = useState<string | null>(null);
-  const [editOText, setEditOText] = useState('');
-  const [addKR_O, setAddKR_O] = useState<string | null>(null);
-  const [newKRDesc, setNewKRDesc] = useState('');
-  const [addTask_KR, setAddTask_KR] = useState<string | null>(null);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskEst, setNewTaskEst] = useState('1');
-  const [addTomato_Task, setAddTomato_Task] = useState<string | null>(null);
-  const [newTomatoTitle, setNewTomatoTitle] = useState('');
-  const [reviewO, setReviewO] = useState<string | null>(null);
+  // Inline inputs
+  const [newTitle, setNewTitle] = useState('');
+  const [newChild, setNewChild] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
   const [reviewText, setReviewText] = useState('');
+  const [showReview, setShowReview] = useState(false);
+  const [addInputParentId, setAddInputParentId] = useState<string | null>(null);
 
-  // Timer
-  const [timerActive, setTimerActive] = useState(false);
-  const [timerPaused, setTimerPaused] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(25 * 60);
-  const [timerDone, setTimerDone] = useState(false);
-  const [timerLabels, setTimerLabels] = useState<string[]>([]);
-  const [timerNote, setTimerNote] = useState('');
-  const activeCtx = useRef<{ okrId: string; krId: string; taskId: string; tomatoId: string } | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Daily
-  const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const [dailyTarget, setDailyTarget] = useState(8);
-  const [interruptions, setInterruptions] = useState(0);
+  const addInputRef = useRef<HTMLInputElement>(null);
 
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
   const periodLabel = period === 'annual' ? `${year}年度` : `${year} ${period}`;
 
-  // ── Load ──
+  // Load
   useEffect(() => {
     const saved = localStorage.getItem('okr-data');
-    if (saved) { try { setOkrs(migrateOKRs(JSON.parse(saved))); } catch { /* ignore */ } }
-    const dt = localStorage.getItem('tomato-daily-target');
-    if (dt) setDailyTarget(Number(dt) || 8);
-    const ir = localStorage.getItem(`tomato-interrupt-${todayKey}`);
-    if (ir) setInterruptions(Number(ir) || 0);
+    if (saved) { try { setGoals(migrateGoals(JSON.parse(saved))); } catch { /* ignore */ } }
     setMounted(true);
-  }, [todayKey]);
-
-  // ── Save ──
-  useEffect(() => { if (mounted) localStorage.setItem('okr-data', JSON.stringify(okrs)); }, [okrs, mounted]);
-  useEffect(() => { if (mounted) localStorage.setItem('tomato-daily-target', String(dailyTarget)); }, [dailyTarget, mounted]);
-  useEffect(() => { if (mounted) localStorage.setItem(`tomato-interrupt-${todayKey}`, String(interruptions)); }, [interruptions, mounted, todayKey]);
-
-  // ── Derived ──
-  const filteredOKRs = useMemo(() => okrs.filter(o => o.period === periodKey), [okrs, periodKey]);
-  const selectedOKR = useMemo(() => okrs.find(o => o.id === selectedId) || null, [okrs, selectedId]);
-
-  const globalStats = useMemo(() => {
-    let totalTomatoes = 0, doneTomatoes = 0;
-    for (const o of filteredOKRs) { const s = okrTomatoStats(o); totalTomatoes += s.total; doneTomatoes += s.done; }
-    const avg = filteredOKRs.length > 0
-      ? Math.round(filteredOKRs.reduce((s, o) => s + okrProgress(o), 0) / filteredOKRs.length * 100)
-      : 0;
-    return { totalOKRs: filteredOKRs.length, totalTomatoes, doneTomatoes, avgProgress: avg };
-  }, [filteredOKRs]);
-
-  const todayTomatoes = useMemo(() => {
-    let c = 0;
-    for (const o of okrs) for (const kr of o.keyResults) for (const t of kr.tasks) for (const tm of t.tomatoes) {
-      if (tm.completed && tm.completedAt && new Date(tm.completedAt).toISOString().slice(0, 10) === todayKey) c++;
-    }
-    return c;
-  }, [okrs, todayKey]);
-
-  // ── Timer ──
-  useEffect(() => {
-    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-    if (!timerActive || timerPaused) return;
-    intervalRef.current = setInterval(() => {
-      setSecondsLeft(prev => { if (prev <= 1) { clearInterval(intervalRef.current!); return 0; } return prev - 1; });
-    }, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [timerActive, timerPaused]);
-
-  useEffect(() => {
-    if (secondsLeft !== 0 || !timerActive) return;
-    const ctx = activeCtx.current;
-    if (ctx) {
-      setOkrs(prev => prev.map(o => o.id !== ctx.okrId ? o : {
-        ...o, keyResults: o.keyResults.map(kr => kr.id !== ctx.krId ? kr : {
-          ...kr, tasks: kr.tasks.map(t => t.id !== ctx.taskId ? t : {
-            ...t, tomatoes: t.tomatoes.map(tm => tm.id === ctx.tomatoId ? { ...tm, completed: true, completedAt: Date.now() } : tm),
-          }),
-        }),
-      }));
-      playBeep();
-    }
-    setTimerActive(false); setTimerDone(true); activeCtx.current = null;
-    setTimeout(() => setTimerDone(false), 2000);
-  }, [secondsLeft, timerActive]);
-
-  // ── Actions ──
-  const addOKR = useCallback(() => {
-    if (!newO.trim()) return;
-    const o: OKR = { id: genId(), objective: newO.trim(), status: 'in_progress', period: periodKey, keyResults: [], reviews: [], createdAt: Date.now() };
-    setOkrs(prev => [...prev, o]); setNewO('');
-    setSelectedId(o.id);
-  }, [newO, periodKey]);
-
-  const cycleStatus = useCallback((id: string) => {
-    setOkrs(prev => prev.map(o => { if (o.id !== id) return o; const i = STATUS_CYCLE.indexOf(o.status); return { ...o, status: STATUS_CYCLE[(i + 1) % STATUS_CYCLE.length] }; }));
   }, []);
 
-  const deleteOKR = useCallback((id: string) => {
-    setOkrs(prev => prev.filter(o => o.id !== id));
+  // Save
+  useEffect(() => { if (mounted) localStorage.setItem('okr-data', JSON.stringify(goals)); }, [goals, mounted]);
+
+  // Voice for top input
+  const voiceTop = useVoiceRecognition((text) => { setNewTitle(text); });
+
+  // Voice for child input
+  const voiceChild = useVoiceRecognition((text) => { setNewChild(text); });
+
+  // Derived
+  const filteredGoals = useMemo(() => goals.filter(o => o.period === periodKey || !o.period), [goals, periodKey]);
+  const selectedGoal = useMemo(() => {
+    if (!selectedId) return null;
+    for (const r of filteredGoals) { const f = findNode(r, selectedId); if (f) return f; }
+    return null;
+  }, [filteredGoals, selectedId]);
+  // Also find the root OKR that contains the selected goal
+  const selectedRoot = useMemo(() => {
+    if (!selectedId) return null;
+    return filteredGoals.find(r => findNode(r, selectedId)) || null;
+  }, [filteredGoals, selectedId]);
+
+  const globalStats = useMemo(() => {
+    let total = 0, done = 0;
+    for (const g of filteredGoals) { const s = countNodes(g); total += s.total; done += s.done; }
+    const avg = filteredGoals.length > 0
+      ? Math.round(filteredGoals.reduce((s, o) => s + nodeProgress(o), 0) / filteredGoals.length * 100)
+      : 0;
+    return { totalOKRs: filteredGoals.length, totalNodes: total, doneNodes: done, avgProgress: avg };
+  }, [filteredGoals]);
+
+  // Actions
+  const addGoal = useCallback(() => {
+    if (!newTitle.trim()) return;
+    const node: GoalNode = { id: genId(), title: newTitle.trim(), status: 'in_progress', children: [], reviews: [], createdAt: Date.now(), period: periodKey };
+    setGoals(prev => [...prev, node]);
+    setNewTitle('');
+    setSelectedId(node.id);
+  }, [newTitle, periodKey]);
+
+  const addChild = useCallback((parentId: string) => {
+    if (!newChild.trim()) return;
+    const child: GoalNode = { id: genId(), title: newChild.trim(), status: 'not_started', children: [], reviews: [], createdAt: Date.now() };
+    setGoals(prev => prev.map(r => updateNode(r, parentId, n => ({ ...n, children: [...n.children, child] }))));
+    setNewChild('');
+  }, [newChild]);
+
+  const cycleStatus = useCallback((id: string) => {
+    setGoals(prev => prev.map(r => updateNode(r, id, n => {
+      const i = STATUS_CYCLE.indexOf(n.status);
+      return { ...n, status: STATUS_CYCLE[(i + 1) % STATUS_CYCLE.length] };
+    })));
+  }, []);
+
+  const deleteGoal = useCallback((id: string) => {
+    setGoals(prev => removeNode(prev, id));
     setSelectedId(prev => prev === id ? null : prev);
   }, []);
 
-  const saveObjective = useCallback((id: string) => {
-    if (!editOText.trim()) { setEditingO(null); return; }
-    setOkrs(prev => prev.map(o => o.id === id ? { ...o, objective: editOText.trim() } : o)); setEditingO(null);
-  }, [editOText]);
+  const saveTitle = useCallback((id: string) => {
+    if (!editText.trim()) { setEditingId(null); return; }
+    setGoals(prev => prev.map(r => updateNode(r, id, n => ({ ...n, title: editText.trim() }))));
+    setEditingId(null);
+  }, [editText]);
 
-  const addKR = useCallback((okrId: string) => {
-    if (!newKRDesc.trim()) return;
-    setOkrs(prev => prev.map(o => o.id !== okrId ? o : {
-      ...o, keyResults: [...o.keyResults, { id: genId(), description: newKRDesc.trim(), tasks: [] }],
-    }));
-    setNewKRDesc('');
-  }, [newKRDesc]);
-
-  const removeKR = useCallback((okrId: string, krId: string) => {
-    setOkrs(prev => prev.map(o => o.id !== okrId ? o : { ...o, keyResults: o.keyResults.filter(kr => kr.id !== krId) }));
-  }, []);
-
-  const addTask = useCallback((okrId: string, krId: string) => {
-    if (!newTaskTitle.trim()) return;
-    const est = Number(newTaskEst) || 1;
-    setOkrs(prev => prev.map(o => o.id !== okrId ? o : {
-      ...o, keyResults: o.keyResults.map(kr => kr.id !== krId ? kr : {
-        ...kr, tasks: [...kr.tasks, { id: genId(), title: newTaskTitle.trim(), estimatedTomatoes: est, tomatoes: [] }],
-      }),
-    }));
-    setNewTaskTitle(''); setNewTaskEst('1');
-  }, [newTaskTitle, newTaskEst]);
-
-  const removeTask = useCallback((okrId: string, krId: string, taskId: string) => {
-    setOkrs(prev => prev.map(o => o.id !== okrId ? o : {
-      ...o, keyResults: o.keyResults.map(kr => kr.id !== krId ? kr : { ...kr, tasks: kr.tasks.filter(t => t.id !== taskId) }),
-    }));
-  }, []);
-
-  const addTomato = useCallback((okrId: string, krId: string, taskId: string) => {
-    if (!newTomatoTitle.trim()) return;
-    setOkrs(prev => prev.map(o => o.id !== okrId ? o : {
-      ...o, keyResults: o.keyResults.map(kr => kr.id !== krId ? kr : {
-        ...kr, tasks: kr.tasks.map(t => t.id !== taskId ? t : {
-          ...t, tomatoes: [...t.tomatoes, { id: genId(), title: newTomatoTitle.trim(), completed: false }],
-        }),
-      }),
-    }));
-    setNewTomatoTitle('');
-  }, [newTomatoTitle]);
-
-  const removeTomato = useCallback((okrId: string, krId: string, taskId: string, tomatoId: string) => {
-    setOkrs(prev => prev.map(o => o.id !== okrId ? o : {
-      ...o, keyResults: o.keyResults.map(kr => kr.id !== krId ? kr : {
-        ...kr, tasks: kr.tasks.map(t => t.id !== taskId ? t : { ...t, tomatoes: t.tomatoes.filter(tm => tm.id !== tomatoId) }),
-      }),
-    }));
-  }, []);
-
-  const startTimer = useCallback((okrId: string, krId: string, taskId: string, tomatoId: string, labels: string[]) => {
-    activeCtx.current = { okrId, krId, taskId, tomatoId };
-    setTimerLabels(labels);
-    setSecondsLeft(25 * 60); setTimerActive(true); setTimerPaused(false); setTimerNote('');
-  }, []);
-
-  const addReview = useCallback((okrId: string) => {
+  const addReview = useCallback((rootId: string) => {
     if (!reviewText.trim()) return;
-    setOkrs(prev => prev.map(o => o.id !== okrId ? o : {
-      ...o, reviews: [...o.reviews, { id: genId(), date: new Date().toISOString().slice(0, 10), content: reviewText.trim() }],
-    }));
+    setGoals(prev => prev.map(r => updateNode(r, rootId, n => ({
+      ...n, reviews: [...n.reviews, { id: genId(), date: new Date().toISOString().slice(0, 10), content: reviewText.trim() }],
+    }))));
     setReviewText('');
   }, [reviewText]);
-
-  const toggleKR = useCallback((krId: string) => {
-    setExpandedKR(prev => { const n = new Set(prev); n.has(krId) ? n.delete(krId) : n.add(krId); return n; });
-  }, []);
-
-  const toggleTask = useCallback((taskId: string) => {
-    setExpandedTask(prev => { const n = new Set(prev); n.has(taskId) ? n.delete(taskId) : n.add(taskId); return n; });
-  }, []);
 
   if (!mounted) return null;
 
@@ -362,10 +278,105 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
     </div>
   );
 
+  // Render tree node in left list (recursive, indented)
+  const renderTreeNode = (node: GoalNode, depth: number = 0): React.ReactNode => {
+    const pct = Math.round(nodeProgress(node) * 100);
+    const color = statusColor(node.status, swatch);
+    const isSelected = selectedId === node.id;
+    return (
+      <div key={node.id}>
+        <div
+          onClick={() => setSelectedId(node.id)}
+          className="px-4 py-2.5 cursor-pointer transition-all border-l-[3px] flex items-center gap-2"
+          style={{
+            paddingLeft: `${16 + depth * 16}px`,
+            backgroundColor: isSelected ? s.cardHover : 'transparent',
+            borderLeftColor: isSelected ? swatch : 'transparent',
+          }}
+        >
+          <button
+            onClick={e => { e.stopPropagation(); cycleStatus(node.id); }}
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+            style={{ backgroundColor: color + '18', color }}
+          >
+            {STATUS_CFG[node.status].icon}
+          </button>
+          <span className="flex-1 text-sm truncate" style={{ color: s.text1 }}>{node.title}</span>
+          <span className="text-xs font-bold flex-shrink-0" style={{ color }}>{pct}%</span>
+        </div>
+        {node.children.map(c => renderTreeNode(c, depth + 1))}
+      </div>
+    );
+  };
+
+  // Render right detail: children list of selected node
+  const renderDetailChildren = (node: GoalNode, depth: number = 0): React.ReactNode => {
+    if (node.children.length === 0 && depth === 0) return null;
+    return (
+      <div className="space-y-2">
+        {node.children.map((child, idx) => {
+          const pct = Math.round(nodeProgress(child) * 100);
+          const color = statusColor(child.status, swatch);
+          return (
+            <div key={child.id} className="rounded-xl overflow-hidden" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+              <div className="px-4 py-3 flex items-center gap-2">
+                <button onClick={() => { setSelectedId(child.id); setAddInputParentId(null); }}
+                        className="text-xs font-bold px-2 py-0.5 rounded flex-shrink-0"
+                        style={{ backgroundColor: color + '18', color }}>
+                  {STATUS_CFG[child.status].icon}
+                </button>
+                {editingId === child.id ? (
+                  <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
+                         onBlur={() => saveTitle(child.id)}
+                         onKeyDown={e => { if (e.key === 'Enter') saveTitle(child.id); if (e.key === 'Escape') setEditingId(null); }}
+                         className="flex-1 text-sm outline-none rounded px-2 py-1"
+                         style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                ) : (
+                  <span className="flex-1 text-sm cursor-pointer hover:opacity-80" style={{ color: s.text1 }}
+                        onClick={() => { setEditingId(child.id); setEditText(child.title); }}>
+                    {child.title}
+                  </span>
+                )}
+                <span className="text-xs font-bold" style={{ color }}>{pct}%</span>
+                <div className="w-16">{pb(pct, 4, color)}</div>
+                <span className="text-[11px]" style={{ color: s.textMuted }}>{child.children.length}项</span>
+                <button onClick={() => deleteGoal(child.id)}
+                        className="text-xs opacity-30 hover:opacity-80 flex-shrink-0" style={{ color: '#ef4444' }}>✕</button>
+              </div>
+              {/* Show grandchildren inline if depth < 2 */}
+              {child.children.length > 0 && depth < 2 && (
+                <div className="px-4 pb-2 space-y-1" style={{ borderLeft: `3px solid ${color}`, marginLeft: 24 }}>
+                  {child.children.map(gc => {
+                    const gcColor = statusColor(gc.status, swatch);
+                    return (
+                      <div key={gc.id} className="flex items-center gap-2 py-1 px-2 rounded"
+                           style={{ backgroundColor: s.panelBg }}>
+                        <button onClick={() => cycleStatus(gc.id)}
+                                className="text-xs" style={{ color: gcColor }}>
+                          {gc.status === 'completed' ? '☑' : '☐'}
+                        </button>
+                        <span className={`flex-1 text-sm ${gc.status === 'completed' ? 'line-through' : ''}`}
+                              style={{ color: gc.status === 'completed' ? s.textMuted : s.text2 }}>
+                          {gc.title}
+                        </span>
+                        <button onClick={() => deleteGoal(gc.id)}
+                                className="text-xs opacity-20 hover:opacity-70" style={{ color: '#ef4444' }}>✕</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex" style={{ backgroundColor: s.bg }}>
 
-      {/* ══════════ LEFT PANEL: OKR LIST ══════════ */}
+      {/* ══════════ LEFT PANEL ══════════ */}
       <div className="w-[480px] flex-shrink-0 flex flex-col border-r" style={{ backgroundColor: s.panelBg, borderColor: s.divider }}>
 
         {/* Header banner */}
@@ -397,251 +408,147 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
 
         {/* Stats row */}
         <div className="flex-shrink-0 px-5 py-2 flex items-center gap-4 text-xs border-b" style={{ borderColor: s.divider, backgroundColor: s.cardBg }}>
-          <span style={{ color: s.textMuted }}>OKR <b style={{ color: s.text1 }}>{globalStats.totalOKRs}</b></span>
-          <span style={{ color: s.textMuted }}>预估🍅 <b style={{ color: s.text1 }}>{globalStats.totalTomatoes}</b></span>
-          <span style={{ color: s.textMuted }}>已完成🍅 <b style={{ color: '#22c55e' }}>{globalStats.doneTomatoes}</b></span>
+          <span style={{ color: s.textMuted }}>目标 <b style={{ color: s.text1 }}>{globalStats.totalOKRs}</b></span>
+          <span style={{ color: s.textMuted }}>子项 <b style={{ color: s.text1 }}>{globalStats.totalNodes}</b></span>
+          <span style={{ color: s.textMuted }}>已完成 <b style={{ color: '#22c55e' }}>{globalStats.doneNodes}</b></span>
           <span style={{ color: s.textMuted }}>完成率 <b style={{ color: swatch }}>{globalStats.avgProgress}%</b></span>
         </div>
 
-        {/* Add OKR inline */}
+        {/* Add goal inline */}
         <div className="flex-shrink-0 px-5 py-2 flex items-center gap-2 border-b" style={{ borderColor: s.divider }}>
-          <input type="text" value={newO} onChange={e => setNewO(e.target.value)}
-                 onKeyDown={e => e.key === 'Enter' && addOKR()}
+          <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)}
+                 onKeyDown={e => e.key === 'Enter' && addGoal()}
                  placeholder="输入目标，回车创建" className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
                  style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-          <button onClick={addOKR} disabled={!newO.trim()} className="px-3 py-1.5 rounded-lg text-white text-xs font-bold disabled:opacity-40"
-                  style={{ backgroundColor: swatch }}>+ OKR</button>
+          {/* Voice button */}
+          <button onClick={voiceTop.listening ? voiceTop.stop : voiceTop.start}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg transition-all"
+                  style={{ backgroundColor: voiceTop.listening ? '#ef4444' : s.cardBg, border: `1px solid ${s.divider}`, color: voiceTop.listening ? '#fff' : s.textMuted }}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
+              <line x1="8" y1="23" x2="16" y2="23" />
+            </svg>
+          </button>
+          <button onClick={addGoal} disabled={!newTitle.trim()} className="px-3 py-1.5 rounded-lg text-white text-xs font-bold disabled:opacity-40"
+                  style={{ backgroundColor: swatch }}>+ 目标</button>
         </div>
+        {voiceTop.listening && (
+          <div className="flex-shrink-0 px-5 py-1.5 text-xs flex items-center gap-2" style={{ color: '#ef4444', backgroundColor: s.cardBg }}>
+            <span className="animate-pulse">●</span> 正在语音识别...
+          </div>
+        )}
 
-        {/* OKR list */}
+        {/* Goal tree list */}
         <div className="flex-1 overflow-y-auto">
-          {filteredOKRs.length === 0 ? (
+          {filteredGoals.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16" style={{ color: s.textMuted }}>
               <span className="text-4xl mb-2">🎯</span>
               <p className="text-sm">输入目标开始吧</p>
             </div>
-          ) : filteredOKRs.map(okr => {
-            const pct = Math.round(okrProgress(okr) * 100);
-            const color = statusColor(okr.status, swatch);
-            const tm = okrTomatoStats(okr);
-            const isSelected = selectedId === okr.id;
-            return (
-              <div key={okr.id}
-                   onClick={() => setSelectedId(okr.id)}
-                   className="px-5 py-3 cursor-pointer transition-all border-l-[3px]"
-                   style={{
-                     backgroundColor: isSelected ? s.cardHover : 'transparent',
-                     borderLeftColor: isSelected ? swatch : 'transparent',
-                   }}>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: color + '18', color }}>
-                    {STATUS_CFG[okr.status].icon}
-                  </span>
-                  <span className="flex-1 text-sm font-medium truncate" style={{ color: s.text1 }}>{okr.objective}</span>
-                  <span className="text-xs font-bold" style={{ color }}>{pct}%</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">{pb(pct, 4, color)}</div>
-                  <span className="text-[11px]" style={{ color: s.textMuted }}>🍅{tm.done}/{tm.total}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Bottom daily bar */}
-        <div className="flex-shrink-0 px-5 py-2 border-t flex items-center gap-3 text-xs" style={{ borderColor: s.divider, backgroundColor: s.cardBg }}>
-          <span style={{ color: s.text2 }}>今日：<b style={{ color: '#22c55e' }}>{todayTomatoes}</b>🍅</span>
-          <span style={{ color: s.text2 }}>计划：
-            <button onClick={() => setDailyTarget(p => Math.max(1, p - 1))} className="inline-flex items-center justify-center w-4 h-4 rounded text-[10px] mx-0.5"
-                    style={{ backgroundColor: s.panelBg, color: s.textMuted }}>−</button>
-            <b style={{ color: swatch }}>{dailyTarget}</b>
-            <button onClick={() => setDailyTarget(p => p + 1)} className="inline-flex items-center justify-center w-4 h-4 rounded text-[10px] mx-0.5"
-                    style={{ backgroundColor: s.panelBg, color: s.textMuted }}>+</button>
-            🍅
-          </span>
-          {interruptions > 0 && <span style={{ color: '#f97316' }}>中断{interruptions}</span>}
-          {timerActive && (
-            <button onClick={() => setTimerPaused(!timerPaused)} className="ml-auto text-xs px-2 py-0.5 rounded font-medium"
-                    style={{ backgroundColor: timerPaused ? swatch : s.panelBg, color: timerPaused ? '#fff' : s.text2 }}>
-              {timerPaused ? '▶' : '⏸'} {fmtTime(secondsLeft)}
-            </button>
-          )}
+          ) : filteredGoals.map(g => renderTreeNode(g))}
         </div>
       </div>
 
-      {/* ══════════ RIGHT PANEL: OKR DETAIL ══════════ */}
+      {/* ══════════ RIGHT PANEL: DETAIL ══════════ */}
       <div className="flex-1 overflow-y-auto">
-        {!selectedOKR ? (
+        {!selectedGoal ? (
           <div className="flex flex-col items-center justify-center h-full" style={{ color: s.textMuted }}>
             <span className="text-5xl mb-3">👈</span>
-            <p>选择左侧OKR查看详情</p>
+            <p>选择左侧目标查看详情</p>
           </div>
         ) : (() => {
-          const okr = selectedOKR;
-          const pct = Math.round(okrProgress(okr) * 100);
-          const color = statusColor(okr.status, swatch);
-          const tmStats = okrTomatoStats(okr);
+          const node = selectedGoal;
+          const pct = Math.round(nodeProgress(node) * 100);
+          const color = statusColor(node.status, swatch);
+          const root = selectedRoot;
+          const labels = root ? getPathLabels([root], node.id) : [node.title];
           return (
             <div className="p-6 space-y-5">
-              {/* O Header */}
+              {/* Breadcrumb */}
+              <div className="text-xs flex items-center gap-1 flex-wrap" style={{ color: s.textMuted }}>
+                {labels.map((l, i) => (
+                  <span key={i} className="flex items-center gap-1">
+                    {i > 0 && <span>→</span>}
+                    <span className={i === labels.length - 1 ? 'font-bold' : ''} style={{ color: i === labels.length - 1 ? s.text1 : s.textMuted }}>{l}</span>
+                  </span>
+                ))}
+              </div>
+
+              {/* Node header */}
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <button onClick={() => cycleStatus(okr.id)} className="text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer flex-shrink-0"
+                  <button onClick={() => cycleStatus(node.id)} className="text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer flex-shrink-0"
                           style={{ backgroundColor: color + '18', color }}>
-                    {STATUS_CFG[okr.status].icon} {STATUS_CFG[okr.status].label}
+                    {STATUS_CFG[node.status].icon} {STATUS_CFG[node.status].label}
                   </button>
-                  {editingO === okr.id ? (
-                    <input autoFocus value={editOText} onChange={e => setEditOText(e.target.value)}
-                           onBlur={() => saveObjective(okr.id)}
-                           onKeyDown={e => { if (e.key === 'Enter') saveObjective(okr.id); if (e.key === 'Escape') setEditingO(null); }}
+                  {editingId === node.id ? (
+                    <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
+                           onBlur={() => saveTitle(node.id)}
+                           onKeyDown={e => { if (e.key === 'Enter') saveTitle(node.id); if (e.key === 'Escape') setEditingId(null); }}
                            className="flex-1 text-lg font-bold outline-none rounded-lg px-2 py-1"
                            style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
                   ) : (
                     <h2 className="flex-1 text-lg font-bold cursor-pointer hover:opacity-80" style={{ color: s.text1 }}
-                        onClick={() => { setEditingO(okr.id); setEditOText(okr.objective); }}>
-                      O：{okr.objective}
+                        onClick={() => { setEditingId(node.id); setEditText(node.title); }}>
+                      {node.title}
                     </h2>
                   )}
                   <span className="text-2xl font-bold flex-shrink-0" style={{ color }}>{pct}%</span>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => setReviewO(reviewO === okr.id ? null : okr.id)}
-                            className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: s.textMuted }}>复盘</button>
-                    <button onClick={() => deleteOKR(okr.id)}
-                            className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: '#ef4444' }}>删除</button>
-                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex-1">{pb(pct, 8, color)}</div>
-                  <span className="text-sm whitespace-nowrap" style={{ color: s.textMuted }}>🍅 {tmStats.done}/{tmStats.total}</span>
+                  <span className="text-sm whitespace-nowrap" style={{ color: s.textMuted }}>{node.children.length}个子项</span>
+                  <button onClick={() => setShowReview(!showReview)}
+                          className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: s.textMuted }}>复盘</button>
+                  <button onClick={() => deleteGoal(node.id)}
+                          className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: '#ef4444' }}>删除</button>
                 </div>
               </div>
 
-              {/* KR List */}
-              <div className="space-y-3">
-                {okr.keyResults.map((kr, krIdx) => {
-                  const krPct = Math.round(krProgress(kr) * 100);
-                  const krColor = krPct >= 100 ? '#22c55e' : swatch;
-                  const krTm = krTomatoStats(kr);
-                  const isKRExpanded = expandedKR.has(kr.id);
-                  return (
-                    <div key={kr.id} className="rounded-xl overflow-hidden" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
-                      {/* KR Header */}
-                      <button onClick={() => toggleKR(kr.id)} className="w-full text-left px-4 py-3 flex items-center gap-2 hover:opacity-90 transition-opacity">
-                        <span className="text-[10px]" style={{ color: krColor }}>{isKRExpanded ? '▾' : '▸'}</span>
-                        <span className="text-xs font-bold" style={{ color: krColor }}>KR{krIdx + 1}</span>
-                        <span className="flex-1 text-sm" style={{ color: s.text1 }}>{kr.description}</span>
-                        <span className="text-xs font-bold" style={{ color: krColor }}>{krPct}%</span>
-                        <span className="text-[11px]" style={{ color: s.textMuted }}>🍅{krTm.done}/{krTm.total}</span>
-                        <span onClick={e => { e.stopPropagation(); removeKR(okr.id, kr.id); }}
-                              className="text-xs opacity-30 hover:opacity-80" style={{ color: s.textMuted }}>✕</span>
-                      </button>
-
-                      {/* KR expanded: Tasks */}
-                      {isKRExpanded && (
-                        <div className="px-4 pb-3 space-y-2" style={{ borderLeft: `3px solid ${krColor}`, marginLeft: 16 }}>
-                          {kr.tasks.map(task => {
-                            const taskDone = task.tomatoes.filter(tm => tm.completed).length;
-                            const isTaskExpanded = expandedTask.has(task.id);
-                            return (
-                              <div key={task.id} className="rounded-lg overflow-hidden" style={{ border: `1px solid ${s.divider}` }}>
-                                {/* Task Header */}
-                                <button onClick={() => toggleTask(task.id)} className="w-full text-left px-3 py-2 flex items-center gap-2 hover:opacity-90"
-                                        style={{ backgroundColor: s.panelBg }}>
-                                  <span className="text-[10px]" style={{ color: s.textMuted }}>{isTaskExpanded ? '▾' : '▸'}</span>
-                                  <span className="text-sm" style={{ color: s.text1 }}>📋 {task.title}</span>
-                                  <span className="ml-auto text-[11px]" style={{ color: s.textMuted }}>预估{task.estimatedTomatoes}🍅 · 完成{taskDone}🍅</span>
-                                  <span onClick={e => { e.stopPropagation(); removeTask(okr.id, kr.id, task.id); }}
-                                        className="text-xs opacity-30 hover:opacity-80" style={{ color: s.textMuted }}>✕</span>
-                                </button>
-
-                                {/* Task expanded: Tomatoes */}
-                                {isTaskExpanded && (
-                                  <div className="px-3 pb-2 space-y-1" style={{ borderLeft: `2px solid ${s.divider}`, marginLeft: 12 }}>
-                                    {task.tomatoes.map(tm => (
-                                      <div key={tm.id} className="flex items-center gap-2 py-1 px-2 rounded"
-                                           style={{ backgroundColor: tm.completed ? s.cardBg : 'transparent' }}>
-                                        <span className="text-sm" style={{ color: tm.completed ? '#22c55e' : s.textMuted }}>
-                                          {tm.completed ? '☑' : '☐'}
-                                        </span>
-                                        <span className={`flex-1 text-sm ${tm.completed ? 'line-through' : ''}`}
-                                              style={{ color: tm.completed ? s.textMuted : s.text2 }}>{tm.title}</span>
-                                        {!tm.completed && (
-                                          <button onClick={() => startTimer(okr.id, kr.id, task.id, tm.id, [okr.objective, kr.description, task.title, tm.title])}
-                                                  className="text-xs px-2.5 py-1 rounded-lg font-medium flex items-center gap-1 hover:brightness-110"
-                                                  style={{ backgroundColor: swatch, color: '#fff' }}>
-                                            ▶ 🍅
-                                          </button>
-                                        )}
-                                        {tm.completed && <span className="text-[11px]" style={{ color: '#22c55e' }}>已完成</span>}
-                                        <span onClick={() => removeTomato(okr.id, kr.id, task.id, tm.id)}
-                                              className="text-xs opacity-20 hover:opacity-70 cursor-pointer" style={{ color: s.textMuted }}>✕</span>
-                                      </div>
-                                    ))}
-                                    {/* Add tomato */}
-                                    {addTomato_Task === task.id ? (
-                                      <div className="flex items-center gap-1.5 mt-1">
-                                        <input autoFocus value={newTomatoTitle} onChange={e => setNewTomatoTitle(e.target.value)}
-                                               onKeyDown={e => { if (e.key === 'Enter') addTomato(okr.id, kr.id, task.id); if (e.key === 'Escape') setAddTomato_Task(null); }}
-                                               placeholder="番茄内容" className="flex-1 rounded px-2 py-1 text-sm outline-none"
-                                               style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                                        <button onClick={() => addTomato(okr.id, kr.id, task.id)} className="text-sm font-bold px-2" style={{ color: swatch }}>+</button>
-                                      </div>
-                                    ) : (
-                                      <button onClick={() => { setAddTomato_Task(task.id); setNewTomatoTitle(''); }}
-                                              className="text-xs hover:underline mt-1" style={{ color: swatch }}>+ 番茄</button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-
-                          {/* Add task */}
-                          {addTask_KR === kr.id ? (
-                            <div className="flex items-center gap-1.5">
-                              <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
-                                     onKeyDown={e => { if (e.key === 'Enter') addTask(okr.id, kr.id); if (e.key === 'Escape') setAddTask_KR(null); }}
-                                     placeholder="任务名" className="flex-1 rounded px-2 py-1 text-sm outline-none"
-                                     style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                              <input value={newTaskEst} onChange={e => setNewTaskEst(e.target.value)}
-                                     placeholder="🍅" className="w-12 rounded px-2 py-1 text-sm outline-none text-center"
-                                     style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                              <button onClick={() => addTask(okr.id, kr.id)} className="text-sm font-bold px-2" style={{ color: swatch }}>+</button>
-                            </div>
-                          ) : (
-                            <button onClick={() => { setAddTask_KR(kr.id); setNewTaskTitle(''); setNewTaskEst('1'); }}
-                                    className="text-xs hover:underline" style={{ color: swatch }}>+ 任务</button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Add KR */}
-                {addKR_O === okr.id ? (
-                  <div className="flex items-center gap-2">
-                    <input autoFocus value={newKRDesc} onChange={e => setNewKRDesc(e.target.value)}
-                           onKeyDown={e => { if (e.key === 'Enter') addKR(okr.id); if (e.key === 'Escape') setAddKR_O(null); }}
-                           placeholder="关键结果描述" className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
-                           style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                    <button onClick={() => addKR(okr.id)} disabled={!newKRDesc.trim()}
-                            className="text-sm font-bold disabled:opacity-30 px-2" style={{ color: swatch }}>+</button>
+              {/* Add child */}
+              <div className="rounded-xl p-4" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+                <div className="text-sm font-medium mb-2" style={{ color: s.text1 }}>
+                  添加子目标 / 执行步骤
+                </div>
+                <div className="flex items-center gap-2">
+                  <input ref={addInputRef} type="text" value={newChild} onChange={e => setNewChild(e.target.value)}
+                         onKeyDown={e => e.key === 'Enter' && addChild(node.id)}
+                         placeholder="输入子项名称，回车添加" className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
+                         style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                  {/* Voice for child */}
+                  <button onClick={voiceChild.listening ? voiceChild.stop : voiceChild.start}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
+                          style={{ backgroundColor: voiceChild.listening ? '#ef4444' : s.panelBg, border: `1px solid ${s.divider}`, color: voiceChild.listening ? '#fff' : s.textMuted }}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" y1="19" x2="12" y2="23" />
+                      <line x1="8" y1="23" x2="16" y2="23" />
+                    </svg>
+                  </button>
+                  <button onClick={() => addChild(node.id)} disabled={!newChild.trim()}
+                          className="px-3 py-1.5 rounded-lg text-white text-xs font-bold disabled:opacity-40 flex-shrink-0"
+                          style={{ backgroundColor: swatch }}>+ 添加</button>
+                </div>
+                {voiceChild.listening && (
+                  <div className="text-xs mt-1.5 flex items-center gap-2" style={{ color: '#ef4444' }}>
+                    <span className="animate-pulse">●</span> 正在语音识别...
                   </div>
-                ) : (
-                  <button onClick={() => { setAddKR_O(okr.id); setNewKRDesc(''); }}
-                          className="text-xs hover:underline" style={{ color: swatch }}>+ 关键结果</button>
                 )}
               </div>
 
+              {/* Children list */}
+              {renderDetailChildren(node)}
+
               {/* Review */}
-              {reviewO === okr.id && (
+              {showReview && (
                 <div className="rounded-xl p-4" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
                   <div className="text-sm font-medium mb-2" style={{ color: s.text1 }}>复盘记录</div>
-                  {okr.reviews.length > 0 && (
+                  {node.reviews.length > 0 && (
                     <div className="space-y-1 mb-2">
-                      {okr.reviews.map(r => (
+                      {node.reviews.map(r => (
                         <div key={r.id} className="text-sm px-3 py-1.5 rounded-lg" style={{ backgroundColor: s.panelBg }}>
                           <span className="text-[11px]" style={{ color: s.textMuted }}>{r.date}</span>
                           <span className="ml-2" style={{ color: s.text2 }}>{r.content}</span>
@@ -651,10 +558,10 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
                   )}
                   <div className="flex items-center gap-2">
                     <input type="text" value={reviewText} onChange={e => setReviewText(e.target.value)}
-                           onKeyDown={e => e.key === 'Enter' && addReview(okr.id)}
+                           onKeyDown={e => e.key === 'Enter' && addReview(node.id)}
                            placeholder="复盘记录..." className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
                            style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                    <button onClick={() => addReview(okr.id)} disabled={!reviewText.trim()}
+                    <button onClick={() => addReview(node.id)} disabled={!reviewText.trim()}
                             className="text-sm font-bold disabled:opacity-30" style={{ color: swatch }}>↵</button>
                   </div>
                 </div>
@@ -663,47 +570,6 @@ export default function LifeCalendar({ onClose, skinKey }: LifeCalendarProps) {
           );
         })()}
       </div>
-
-      {/* ══════ TIMER MODAL ══════ */}
-      {timerActive && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <div className="rounded-2xl p-8 text-center min-w-[360px] shadow-2xl" style={{ backgroundColor: s.panelBg, border: `2px solid ${swatch}` }}>
-            <div className="text-xs mb-4 max-w-[320px] mx-auto truncate" style={{ color: s.textMuted }}>
-              {timerLabels.join(' → ')}
-            </div>
-            <div className="text-6xl font-bold mb-2 tabular-nums" style={{ color: timerPaused ? s.textMuted : s.text1 }}>
-              {fmtTime(secondsLeft)}
-            </div>
-            <div className="text-sm mb-4" style={{ color: s.textMuted }}>专注模式</div>
-            <div className="mx-auto w-56 mb-6">{pb(Math.round(((25 * 60 - secondsLeft) / (25 * 60)) * 100), 8, swatch)}</div>
-            <div className="flex gap-3 justify-center mb-4">
-              <button onClick={() => setTimerPaused(!timerPaused)}
-                      className="px-6 py-2.5 rounded-xl text-white font-medium text-sm hover:brightness-110"
-                      style={{ backgroundColor: timerPaused ? swatch : '#f59e0b' }}>
-                {timerPaused ? '▶ 继续' : '⏸ 暂停'}
-              </button>
-              <button onClick={() => {
-                setTimerActive(false); setTimerPaused(false); activeCtx.current = null; setSecondsLeft(25 * 60);
-                setInterruptions(p => p + 1);
-              }} className="px-6 py-2.5 rounded-xl text-white font-medium text-sm hover:brightness-110"
-                      style={{ backgroundColor: '#ef4444' }}>
-                放弃本次番茄
-              </button>
-            </div>
-            <input type="text" value={timerNote} onChange={e => setTimerNote(e.target.value)}
-                   placeholder="记录卡点或中断原因..."
-                   className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                   style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-          </div>
-        </div>
-      )}
-
-      {/* Timer done flash */}
-      {timerDone && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none" style={{ backgroundColor: 'rgba(34,197,94,0.15)' }}>
-          <div className="text-4xl font-bold" style={{ color: '#22c55e' }}>🍅 完成!</div>
-        </div>
-      )}
     </div>
   );
 }
