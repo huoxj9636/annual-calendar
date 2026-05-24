@@ -11,15 +11,29 @@ interface LifeCalendarProps {
   skinKey?: string;
 }
 
-// ── Tree data: every node is a Goal ──
-interface GoalNode {
+// ── Fixed 3-layer OKR data model ──
+// O (Objective) → KR (Key Result) → Task
+interface OKRObjective {
   id: string;
   title: string;
-  status: 'not_started' | 'in_progress' | 'completed';
-  children: GoalNode[];
-  reviews: { id: string; date: string; content: string }[];
+  period: string; // e.g. "2026" or "2026-Q1"
+  children: OKRKeyResult[];
   createdAt: number;
-  period?: string;
+}
+
+interface OKRKeyResult {
+  id: string;
+  title: string;
+  targetValue: number;
+  children: OKRTask[];
+  createdAt: number;
+}
+
+interface OKRTask {
+  id: string;
+  title: string;
+  done: boolean;
+  createdAt: number;
 }
 
 type PeriodType = 'annual' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
@@ -28,81 +42,51 @@ function genId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-// Recursively count leaf nodes & completed leaves
-function countNodes(n: GoalNode): { total: number; done: number } {
-  if (n.children.length === 0) return { total: 1, done: n.status === 'completed' ? 1 : 0 };
-  let total = 0, done = 0;
-  for (const c of n.children) { const s = countNodes(c); total += s.total; done += s.done; }
-  return { total, done };
+// ── Progress calculations (auto) ──
+function krProgress(kr: OKRKeyResult): number {
+  if (kr.children.length === 0) return 0;
+  return kr.children.filter(t => t.done).length / kr.children.length;
 }
 
-// Progress = completed leaf ratio
-function nodeProgress(n: GoalNode): number {
-  if (n.children.length === 0) return n.status === 'completed' ? 1 : 0;
-  return n.children.reduce((s, c) => s + nodeProgress(c), 0) / n.children.length;
+function oProgress(o: OKRObjective): number {
+  if (o.children.length === 0) return 0;
+  return o.children.reduce((s, kr) => s + krProgress(kr), 0) / o.children.length;
 }
 
-// Find node by id
-function findNode(root: GoalNode, id: string): GoalNode | null {
-  if (root.id === id) return root;
-  for (const c of root.children) { const f = findNode(c, id); if (f) return f; }
-  return null;
+// ── Immutably update helpers ──
+function updateO(goals: OKRObjective[], oid: string, fn: (o: OKRObjective) => OKRObjective): OKRObjective[] {
+  return goals.map(o => o.id === oid ? fn(o) : o);
 }
 
-// Update node immutably
-function updateNode(root: GoalNode, id: string, fn: (n: GoalNode) => GoalNode): GoalNode {
-  if (root.id === id) return fn(root);
-  return { ...root, children: root.children.map(c => updateNode(c, id, fn)) };
+function updateKR(o: OKRObjective, krid: string, fn: (kr: OKRKeyResult) => OKRKeyResult): OKRObjective {
+  return { ...o, children: o.children.map(kr => kr.id === krid ? fn(kr) : kr) };
 }
 
-// Remove node immutably (returns roots filtered)
-function removeNode(roots: GoalNode[], id: string): GoalNode[] {
-  return roots.filter(r => r.id !== id).map(r => ({
-    ...r, children: removeNode(r.children, id),
-  }));
+function updateKRInGoals(goals: OKRObjective[], oid: string, krid: string, fn: (kr: OKRKeyResult) => OKRKeyResult): OKRObjective[] {
+  return updateO(goals, oid, o => updateKR(o, krid, fn));
 }
 
-// Get path labels from root to target
-function getPathLabels(roots: GoalNode[], targetId: string): string[] {
-  for (const r of roots) {
-    if (r.id === targetId) return [r.title];
-    const sub = getPathLabels(r.children, targetId);
-    if (sub.length > 0) return [r.title, ...sub];
-  }
-  return [];
-}
-
+// ── Migration from old GoalNode format ──
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function migrateGoals(raw: any[]): GoalNode[] {
+function migrateGoals(raw: any[]): OKRObjective[] {
   return raw.map((o: any) => ({
     id: o.id || genId(),
     title: o.objective || o.title || '',
-    status: ['not_started', 'in_progress', 'completed'].includes(o.status) ? o.status : 'not_started',
+    period: o.period || '',
     createdAt: o.createdAt || Date.now(),
     children: (o.keyResults || o.children || []).map((kr: any) => ({
       id: kr.id || genId(),
       title: kr.description || kr.title || '',
-      status: ['not_started', 'in_progress', 'completed'].includes(kr.status) ? kr.status : 'not_started',
+      targetValue: kr.targetValue || (kr.children || kr.tasks || []).length || 1,
       createdAt: kr.createdAt || Date.now(),
       children: (kr.tasks || kr.children || []).map((t: any) => ({
         id: t.id || genId(),
         title: t.title || '',
-        status: 'not_started' as const,
+        done: t.status === 'completed' || !!t.completed || false,
         createdAt: t.createdAt || Date.now(),
-        children: (t.tomatoes || t.children || []).map((tm: any) => ({
-          id: tm.id || genId(),
-          title: tm.title || '',
-          status: (tm.completed ? 'completed' : 'not_started') as GoalNode['status'],
-          createdAt: tm.completedAt || Date.now(),
-          children: [] as GoalNode[],
-          reviews: [],
-        })),
-        reviews: [],
       })),
-      reviews: (kr.reviews || []),
     })),
-    reviews: (o.reviews || []),
-  })) as GoalNode[];
+  }));
 }
 
 // ── Voice Recognition Hook ──
@@ -139,10 +123,8 @@ function useVoiceRecognition(onResult: (text: string) => void, context?: string)
       }
       const display = final || interim;
       if (display) setRawText(display);
-      // When we have a final result, move to recognized phase
       if (final) {
         setPhase('recognized');
-        // Polish via LLM
         setPhase('polishing');
         try {
           const res = await fetch('/api/polish-text', {
@@ -181,27 +163,23 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const swatch = skin.swatch || '#6558c1';
   const currentYear = new Date().getFullYear();
 
-  const [goals, setGoals] = useState<GoalNode[]>([]);
+  const [goals, setGoals] = useState<OKRObjective[]>([]);
   const [period, setPeriod] = useState<PeriodType>(() => { const m = new Date().getMonth(); if (m < 3) return 'Q1'; if (m < 6) return 'Q2'; if (m < 9) return 'Q3'; return 'Q4'; });
   const [mounted, setMounted] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const toggleExpand = (id: string) => setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const [selectedOId, setSelectedOId] = useState<string | null>(null);
 
   // Inline inputs
-  const [newTitle, setNewTitle] = useState('');
-  const [newChild, setNewChild] = useState('');
+  const [newOTitle, setNewOTitle] = useState('');
+  const [newKRTitle, setNewKRTitle] = useState('');
+  const [newTaskTitle, setNewTaskTitle] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
-  const [reviewText, setReviewText] = useState('');
-  const [showReview, setShowReview] = useState(false);
-  const [addInputParentId, setAddInputParentId] = useState<string | null>(null);
-
-  const addInputRef = useRef<HTMLInputElement>(null);
+  const [editingTargetValue, setEditingTargetValue] = useState<string | null>(null);
+  const [expandedKRs, setExpandedKRs] = useState<Set<string>>(new Set());
+  const toggleKRExpand = (krid: string) => setExpandedKRs(prev => { const n = new Set(prev); n.has(krid) ? n.delete(krid) : n.add(krid); return n; });
 
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
-  const periodLabel = period === 'annual' ? `${year}年度` : `${year} ${period}`;
 
   // Load
   useEffect(() => {
@@ -214,75 +192,95 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   useEffect(() => { if (mounted) localStorage.setItem('okr-data', JSON.stringify(goals)); }, [goals, mounted]);
 
   // Voice for top input
-  const voiceTop = useVoiceRecognition((text) => { setNewTitle(text); });
+  const voiceTop = useVoiceRecognition((text) => { setNewOTitle(text); });
 
-  // Voice for child input — pass parent title as context for better polish
-  // Derived
+  // Voice for KR input
+  const selectedO = useMemo(() => goals.find(o => o.id === selectedOId) || null, [goals, selectedOId]);
+  const voiceKR = useVoiceRecognition((text) => { setNewKRTitle(text); }, selectedO?.title);
+
+  // Voice for Task input
+  const voiceTask = useVoiceRecognition((text) => { setNewTaskTitle(text); });
+
+  // Filter goals by current period
   const filteredGoals = useMemo(() => goals.filter(o => o.period === periodKey || !o.period), [goals, periodKey]);
-  const selectedGoal = useMemo(() => {
-    if (!selectedId) return null;
-    for (const r of filteredGoals) { const f = findNode(r, selectedId); if (f) return f; }
-    return null;
-  }, [filteredGoals, selectedId]);
-  // Also find the root OKR that contains the selected goal
-  const selectedRoot = useMemo(() => {
-    if (!selectedId) return null;
-    return filteredGoals.find(r => findNode(r, selectedId)) || null;
-  }, [filteredGoals, selectedId]);
 
-  // Voice for child input — pass parent title as context for better polish
-  const voiceChild = useVoiceRecognition((text) => { setNewChild(text); }, selectedGoal?.title);
-
+  // Global stats
   const globalStats = useMemo(() => {
-    let total = 0, done = 0;
-    for (const g of filteredGoals) { const s = countNodes(g); total += s.total; done += s.done; }
-    const avg = filteredGoals.length > 0
-      ? Math.round(filteredGoals.reduce((s, o) => s + nodeProgress(o), 0) / filteredGoals.length * 100)
-      : 0;
-    return { totalOKRs: filteredGoals.length, totalNodes: total, doneNodes: done, avgProgress: avg };
+    let totalO = filteredGoals.length;
+    let totalKR = 0, totalTask = 0, doneTask = 0;
+    for (const o of filteredGoals) {
+      totalKR += o.children.length;
+      for (const kr of o.children) {
+        totalTask += kr.children.length;
+        doneTask += kr.children.filter(t => t.done).length;
+      }
+    }
+    const avg = totalO > 0 ? Math.round(filteredGoals.reduce((s, o) => s + oProgress(o), 0) / totalO * 100) : 0;
+    return { totalO, totalKR, totalTask, doneTask, avg };
   }, [filteredGoals]);
 
-  // Actions
-  const addGoal = useCallback(() => {
-    if (!newTitle.trim()) return;
-    const node: GoalNode = { id: genId(), title: newTitle.trim(), status: 'in_progress', children: [], reviews: [], createdAt: Date.now(), period: periodKey };
-    setGoals(prev => [...prev, node]);
-    setNewTitle('');
-    setSelectedId(node.id);
-  }, [newTitle, periodKey]);
+  // ── Actions ──
+  const addObjective = useCallback(() => {
+    if (!newOTitle.trim()) return;
+    const o: OKRObjective = { id: genId(), title: newOTitle.trim(), period: periodKey, children: [], createdAt: Date.now() };
+    setGoals(prev => [...prev, o]);
+    setNewOTitle('');
+    setSelectedOId(o.id);
+  }, [newOTitle, periodKey]);
 
-  const addChild = useCallback((parentId: string) => {
-    if (!newChild.trim()) return;
-    const child: GoalNode = { id: genId(), title: newChild.trim(), status: 'not_started', children: [], reviews: [], createdAt: Date.now() };
-    setGoals(prev => prev.map(r => updateNode(r, parentId, n => ({ ...n, children: [...n.children, child] }))));
-    setNewChild('');
-  }, [newChild]);
+  const addKR = useCallback((oid: string) => {
+    if (!newKRTitle.trim()) return;
+    const kr: OKRKeyResult = { id: genId(), title: newKRTitle.trim(), targetValue: 1, children: [], createdAt: Date.now() };
+    setGoals(prev => updateO(prev, oid, o => ({ ...o, children: [...o.children, kr] })));
+    setNewKRTitle('');
+    setExpandedKRs(prev => new Set(prev).add(kr.id));
+  }, [newKRTitle]);
 
-  const toggleLeaf = useCallback((id: string) => {
-    setGoals(prev => prev.map(r => updateNode(r, id, n => {
-      if (n.children.length > 0) return n; // only leaf nodes
-      return { ...n, status: n.status === 'completed' ? 'not_started' : 'completed' };
+  const addTask = useCallback((oid: string, krid: string) => {
+    if (!newTaskTitle.trim()) return;
+    const t: OKRTask = { id: genId(), title: newTaskTitle.trim(), done: false, createdAt: Date.now() };
+    setGoals(prev => updateKRInGoals(prev, oid, krid, kr => ({ ...kr, children: [...kr.children, t] })));
+    setNewTaskTitle('');
+  }, [newTaskTitle]);
+
+  const toggleTask = useCallback((oid: string, krid: string, tid: string) => {
+    setGoals(prev => updateKRInGoals(prev, oid, krid, kr => ({
+      ...kr, children: kr.children.map(t => t.id === tid ? { ...t, done: !t.done } : t),
     })));
   }, []);
 
-  const deleteGoal = useCallback((id: string) => {
-    setGoals(prev => removeNode(prev, id));
-    setSelectedId(prev => prev === id ? null : prev);
+  const deleteObjective = useCallback((oid: string) => {
+    setGoals(prev => prev.filter(o => o.id !== oid));
+    setSelectedOId(prev => prev === oid ? null : prev);
+  }, []);
+
+  const deleteKR = useCallback((oid: string, krid: string) => {
+    setGoals(prev => updateO(prev, oid, o => ({ ...o, children: o.children.filter(kr => kr.id !== krid) })));
+  }, []);
+
+  const deleteTask = useCallback((oid: string, krid: string, tid: string) => {
+    setGoals(prev => updateKRInGoals(prev, oid, krid, kr => ({ ...kr, children: kr.children.filter(t => t.id !== tid) })));
   }, []);
 
   const saveTitle = useCallback((id: string) => {
     if (!editText.trim()) { setEditingId(null); return; }
-    setGoals(prev => prev.map(r => updateNode(r, id, n => ({ ...n, title: editText.trim() }))));
+    setGoals(prev => prev.map(o => {
+      if (o.id === id) return { ...o, title: editText.trim() };
+      return { ...o, children: o.children.map(kr => {
+        if (kr.id === id) return { ...kr, title: editText.trim() };
+        return { ...kr, children: kr.children.map(t => t.id === id ? { ...t, title: editText.trim() } : t) };
+      })};
+    }));
     setEditingId(null);
   }, [editText]);
 
-  const addReview = useCallback((rootId: string) => {
-    if (!reviewText.trim()) return;
-    setGoals(prev => prev.map(r => updateNode(r, rootId, n => ({
-      ...n, reviews: [...n.reviews, { id: genId(), date: new Date().toISOString().slice(0, 10), content: reviewText.trim() }],
-    }))));
-    setReviewText('');
-  }, [reviewText]);
+  const saveTargetValue = useCallback((oid: string, krid: string) => {
+    if (!editingTargetValue) return;
+    const v = Number(editingTargetValue);
+    if (isNaN(v) || v < 1) { setEditingTargetValue(null); return; }
+    setGoals(prev => updateKRInGoals(prev, oid, krid, kr => ({ ...kr, targetValue: v })));
+    setEditingTargetValue(null);
+  }, [editingTargetValue]);
 
   if (!mounted) return null;
 
@@ -301,89 +299,11 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     </div>
   );
 
-  // Render tree node in left list (recursive, indented)
-  // Left panel: flat list of top-level goals only (no tree, no checkboxes)
-  const renderLeftItem = (node: GoalNode): React.ReactNode => {
-    const pct = Math.round(nodeProgress(node) * 100);
-    const isSelected = selectedId === node.id;
-    return (
-      <div key={node.id}
-        onClick={() => setSelectedId(node.id)}
-        className="py-2 cursor-pointer transition-all border-l-[3px] flex items-center gap-2"
-        style={{
-          paddingLeft: '16px',
-          paddingRight: '16px',
-          backgroundColor: isSelected ? s.cardHover : 'transparent',
-          borderLeftColor: isSelected ? swatch : 'transparent',
-        }}
-      >
-        <span className="flex-1 text-sm truncate" style={{ color: s.text1 }}>{node.title}</span>
-        <span className="text-xs font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
-      </div>
-    );
-  };
-
-  // Render right detail: tree view of selected node's children
-  const renderDetailTree = (node: GoalNode, depth: number = 0): React.ReactNode => {
-    const isLeaf = node.children.length === 0;
-    const pct = Math.round(nodeProgress(node) * 100);
-    const isExpanded = expandedIds.has(node.id);
-    return (
-      <div key={node.id} className={depth > 0 ? 'ml-3' : ''} style={{ borderLeft: depth > 0 ? `1px dashed ${s.divider}` : 'none', paddingLeft: depth > 0 ? 8 : 0 }}>
-        <div className="flex items-center gap-1.5 py-1.5 group cursor-pointer"
-             onClick={() => { if (!isLeaf) toggleExpand(node.id); }}>
-          {/* Expand/collapse toggle or spacer */}
-          {!isLeaf ? (
-            <span className="text-[10px] flex-shrink-0 transition-transform duration-200" style={{ color: s.textMuted, transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-          ) : (
-            <span className="w-[10px] flex-shrink-0" />
-          )}
-          {/* Title: click to edit */}
-          {editingId === node.id ? (
-            <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
-                   onBlur={() => saveTitle(node.id)}
-                   onKeyDown={e => { if (e.key === 'Enter') saveTitle(node.id); if (e.key === 'Escape') setEditingId(null); }}
-                   className="flex-1 text-sm outline-none rounded px-1.5 py-0.5"
-                   style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-          ) : (
-            <span className="flex-1 text-sm truncate"
-                  style={{ color: s.text1 }}
-                  onClick={e => { e.stopPropagation(); setEditingId(node.id); setEditText(node.title); }}>
-              {node.title}
-            </span>
-          )}
-          {/* Progress */}
-          <span className="text-[10px] font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
-          {/* Delete */}
-          <button onClick={e => { e.stopPropagation(); deleteGoal(node.id); }}
-                  className="text-[10px] opacity-0 group-hover:opacity-60 hover:!opacity-100 flex-shrink-0 transition-opacity" style={{ color: '#ef4444' }}>✕</button>
-        </div>
-        {/* Expanded children */}
-        {isExpanded && !isLeaf && (
-          <div>
-            {node.children.map(c => renderDetailTree(c, depth + 1))}
-            {/* Add child inline */}
-            <div className="flex items-center gap-1.5 py-1 ml-3" style={{ paddingLeft: 8, borderLeft: `1px dashed ${s.divider}` }}>
-              <span className="text-[10px] flex-shrink-0" style={{ color: swatch }}>+</span>
-              <input type="text" value={addInputParentId === node.id ? newChild : ''}
-                     onChange={e => { setAddInputParentId(node.id); setNewChild(e.target.value); }}
-                     onFocus={() => setAddInputParentId(node.id)}
-                     onKeyDown={e => { if (e.key === 'Enter' && newChild.trim()) { addChild(node.id); } }}
-                     placeholder="添加子项..."
-                     className="flex-1 text-xs outline-none bg-transparent py-0.5"
-                     style={{ color: s.text1 }} />
-              {addInputParentId === node.id && newChild.trim() && (
-                <button onClick={() => addChild(node.id)} className="text-[10px] font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
-              )}
-              <button onClick={e => { e.stopPropagation(); voiceChild.start(); }}
-                      className={`text-xs flex-shrink-0 transition-colors ${voiceChild.phase !== 'idle' ? 'animate-pulse' : ''}`}
-                      style={{ color: voiceChild.phase !== 'idle' ? swatch : s.textMuted }}>🎤</button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+  // Get the currently active voice (for modal)
+  const activeVoice = voiceTop.phase !== 'idle' ? voiceTop
+    : voiceKR.phase !== 'idle' ? voiceKR
+    : voiceTask.phase !== 'idle' ? voiceTask
+    : null;
 
   return (
     <div className="fixed inset-0 z-50 flex" style={{ backgroundColor: s.bg }}>
@@ -434,13 +354,12 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
           ))}
         </div>
 
-        {/* Add goal inline */}
+        {/* Add objective inline */}
         <div className="flex-shrink-0 px-5 py-2 flex items-center gap-2 border-b" style={{ borderColor: s.divider }}>
-          <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)}
-                 onKeyDown={e => e.key === 'Enter' && addGoal()}
+          <input type="text" value={newOTitle} onChange={e => setNewOTitle(e.target.value)}
+                 onKeyDown={e => e.key === 'Enter' && addObjective()}
                  placeholder="输入目标，回车创建" className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
                  style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-          {/* Voice button */}
           <button onClick={voiceTop.phase !== 'idle' ? undefined : voiceTop.start}
                   className="w-8 h-8 flex items-center justify-center rounded-lg transition-all"
                   style={{ backgroundColor: voiceTop.phase === 'listening' ? '#ef4444' : voiceTop.phase !== 'idle' ? swatch : s.cardBg, border: `1px solid ${s.divider}`, color: voiceTop.phase !== 'idle' ? '#fff' : s.textMuted }}
@@ -452,80 +371,86 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               <line x1="8" y1="23" x2="16" y2="23" />
             </svg>
           </button>
-          <button onClick={addGoal} disabled={!newTitle.trim()} className="px-3 py-1.5 rounded-lg text-white text-xs font-bold disabled:opacity-40"
+          <button onClick={addObjective} disabled={!newOTitle.trim()} className="px-3 py-1.5 rounded-lg text-white text-xs font-bold disabled:opacity-40"
                   style={{ backgroundColor: swatch }}>+ 目标</button>
         </div>
 
-        {/* Goal tree list */}
+        {/* Objective list (flat, top-level only) */}
         <div className="flex-1 overflow-y-auto">
           {filteredGoals.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16" style={{ color: s.textMuted }}>
               <span className="text-4xl mb-2">🎯</span>
               <p className="text-sm">输入目标开始吧</p>
             </div>
-          ) : filteredGoals.map(g => renderLeftItem(g))}
+          ) : filteredGoals.map(o => {
+            const pct = Math.round(oProgress(o) * 100);
+            const isSelected = selectedOId === o.id;
+            return (
+              <div key={o.id} onClick={() => setSelectedOId(o.id)}
+                className="py-2.5 cursor-pointer transition-all border-l-[3px] flex items-center gap-2"
+                style={{ paddingLeft: 16, paddingRight: 16, backgroundColor: isSelected ? s.cardHover : 'transparent', borderLeftColor: isSelected ? swatch : 'transparent' }}>
+                <span className="flex-1 text-sm truncate" style={{ color: s.text1 }}>{o.title}</span>
+                <span className="text-xs font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Bottom: 4 key stats */}
+        {/* Bottom stats */}
         <div className="flex-shrink-0 px-5 py-3 border-t flex items-center gap-4 text-xs" style={{ borderColor: s.divider, backgroundColor: s.panelBg }}>
-          <span style={{ color: s.textMuted }}>目标 <b style={{ color: s.text1 }}>{globalStats.totalOKRs}</b></span>
-          <span style={{ color: s.textMuted }}>子项 <b style={{ color: s.text1 }}>{globalStats.totalNodes}</b></span>
-          <span style={{ color: s.textMuted }}>已完成 <b style={{ color: '#22c55e' }}>{globalStats.doneNodes}</b></span>
-          <span style={{ color: s.textMuted }}>完成率 <b style={{ color: globalStats.avgProgress > 0 ? swatch : s.textMuted }}>{globalStats.avgProgress}%</b></span>
+          <span style={{ color: s.textMuted }}>目标 <b style={{ color: s.text1 }}>{globalStats.totalO}</b></span>
+          <span style={{ color: s.textMuted }}>KR <b style={{ color: s.text1 }}>{globalStats.totalKR}</b></span>
+          <span style={{ color: s.textMuted }}>已完成 <b style={{ color: '#22c55e' }}>{globalStats.doneTask}</b></span>
+          <span style={{ color: s.textMuted }}>完成率 <b style={{ color: globalStats.avg > 0 ? swatch : s.textMuted }}>{globalStats.avg}%</b></span>
         </div>
       </div>
 
       {/* ══════════ RIGHT PANEL: DETAIL ══════════ */}
       <div className="flex-1 overflow-y-auto">
-        {!selectedGoal ? (
+        {!selectedO ? (
           <div className="flex flex-col items-center justify-center h-full" style={{ color: s.textMuted }}>
             <span className="text-5xl mb-3">👈</span>
             <p>选择左侧目标查看详情</p>
           </div>
         ) : (() => {
-          const node = selectedGoal;
-          const pct = Math.round(nodeProgress(node) * 100);
-          const root = selectedRoot;
+          const o = selectedO;
+          const oPct = Math.round(oProgress(o) * 100);
           return (
             <div className="p-6 space-y-5">
-              {/* Node header */}
+
+              {/* ── O Header ── */}
               <div>
                 <div className="flex items-center gap-3">
-                  {editingId === node.id ? (
+                  {editingId === o.id ? (
                     <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
-                           onBlur={() => saveTitle(node.id)}
-                           onKeyDown={e => { if (e.key === 'Enter') saveTitle(node.id); if (e.key === 'Escape') setEditingId(null); }}
+                           onBlur={() => saveTitle(o.id)}
+                           onKeyDown={e => { if (e.key === 'Enter') saveTitle(o.id); if (e.key === 'Escape') setEditingId(null); }}
                            className="flex-1 text-lg font-bold outline-none rounded-lg px-2 py-1"
                            style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
                   ) : (
                     <h2 className="flex-1 text-lg font-bold cursor-pointer hover:opacity-80" style={{ color: s.text1 }}
-                        onClick={() => { setEditingId(node.id); setEditText(node.title); }}>
-                      {node.title}
+                        onClick={() => { setEditingId(o.id); setEditText(o.title); }}>
+                      {o.title}
                     </h2>
                   )}
-                  <span className="text-2xl font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
-                  <button onClick={() => setShowReview(!showReview)}
-                          className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: s.textMuted }}>复盘</button>
-                  <button onClick={() => deleteGoal(node.id)}
+                  <span className="text-2xl font-bold flex-shrink-0" style={{ color: oPct > 0 ? swatch : s.textMuted }}>{oPct}%</span>
+                  <button onClick={() => deleteObjective(o.id)}
                           className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: '#ef4444' }}>删除</button>
                 </div>
+                <div className="mt-1 text-xs" style={{ color: s.textMuted }}>{o.children.length} 个关键结果</div>
               </div>
 
-              {/* Add child - simple inline */}
+              {/* ── Add KR inline ── */}
               <div className="flex items-center gap-2 py-2" style={{ borderBottom: `1px solid ${s.divider}` }}>
-                <span className="text-sm flex-shrink-0 font-bold" style={{ color: swatch }}>+</span>
-                <input ref={addInputRef} type="text" value={addInputParentId === node.id ? newChild : ''}
-                       onChange={e => { setAddInputParentId(node.id); setNewChild(e.target.value); }}
-                       onFocus={() => setAddInputParentId(node.id)}
-                       onKeyDown={e => e.key === 'Enter' && addChild(node.id)}
-                       placeholder="添加子目标 / 执行步骤..."
-                       className="flex-1 text-sm outline-none bg-transparent"
+                <span className="text-sm font-bold flex-shrink-0" style={{ color: swatch }}>+ KR</span>
+                <input type="text" value={newKRTitle} onChange={e => setNewKRTitle(e.target.value)}
+                       onKeyDown={e => e.key === 'Enter' && addKR(o.id)}
+                       placeholder="添加关键结果..." className="flex-1 text-sm outline-none bg-transparent"
                        style={{ color: s.text1 }} />
-                {/* Voice for child */}
-                <button onClick={voiceChild.phase !== 'idle' ? undefined : voiceChild.start}
+                <button onClick={voiceKR.phase !== 'idle' ? undefined : voiceKR.start}
                         className="w-7 h-7 flex items-center justify-center rounded transition-all flex-shrink-0"
-                        style={{ backgroundColor: voiceChild.phase === 'listening' ? '#ef4444' : voiceChild.phase !== 'idle' ? swatch : 'transparent', color: voiceChild.phase !== 'idle' ? '#fff' : s.textMuted }}
-                        disabled={voiceChild.phase !== 'idle'}>
+                        style={{ color: voiceKR.phase !== 'idle' ? swatch : s.textMuted }}
+                        disabled={voiceKR.phase !== 'idle'}>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -533,53 +458,129 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                     <line x1="8" y1="23" x2="16" y2="23" />
                   </svg>
                 </button>
-                {addInputParentId === node.id && newChild.trim() && (
-                  <button onClick={() => addChild(node.id)} className="text-xs font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
+                {newKRTitle.trim() && (
+                  <button onClick={() => addKR(o.id)} className="text-xs font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
                 )}
               </div>
 
-              {/* Children tree */}
-              {renderDetailTree(node)}
-
-              {/* Review */}
-              {showReview && (
-                <div className="rounded-xl p-4" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
-                  <div className="text-sm font-medium mb-2" style={{ color: s.text1 }}>复盘记录</div>
-                  {node.reviews.length > 0 && (
-                    <div className="space-y-1 mb-2">
-                      {node.reviews.map(r => (
-                        <div key={r.id} className="text-sm px-3 py-1.5 rounded-lg" style={{ backgroundColor: s.panelBg }}>
-                          <span className="text-[11px]" style={{ color: s.textMuted }}>{r.date}</span>
-                          <span className="ml-2" style={{ color: s.text2 }}>{r.content}</span>
-                        </div>
-                      ))}
+              {/* ── KR List ── */}
+              {o.children.map(kr => {
+                const krPct = Math.round(krProgress(kr) * 100);
+                const isExpanded = expandedKRs.has(kr.id);
+                const doneTasks = kr.children.filter(t => t.done).length;
+                return (
+                  <div key={kr.id} className="rounded-xl" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+                    {/* KR header */}
+                    <div className="flex items-center gap-2 px-4 py-3 cursor-pointer"
+                         onClick={() => toggleKRExpand(kr.id)}>
+                      <span className="text-[10px] flex-shrink-0 transition-transform duration-200" style={{ color: s.textMuted, transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                      {editingId === kr.id ? (
+                        <input autoFocus value={editText} onClick={e => e.stopPropagation()} onChange={e => setEditText(e.target.value)}
+                               onBlur={() => saveTitle(kr.id)}
+                               onKeyDown={e => { if (e.key === 'Enter') saveTitle(kr.id); if (e.key === 'Escape') setEditingId(null); }}
+                               className="flex-1 text-sm font-medium outline-none rounded px-1.5 py-0.5"
+                               style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                      ) : (
+                        <span className="flex-1 text-sm font-medium truncate" style={{ color: s.text1 }}
+                              onClick={e => { e.stopPropagation(); setEditingId(kr.id); setEditText(kr.title); }}>
+                          {kr.title}
+                        </span>
+                      )}
+                      {/* Target value */}
+                      {editingTargetValue === kr.id ? (
+                        <input autoFocus type="number" min={1} value={editingTargetValue}
+                               onClick={e => e.stopPropagation()}
+                               onChange={e => setEditingTargetValue(e.target.value)}
+                               onBlur={() => saveTargetValue(o.id, kr.id)}
+                               onKeyDown={e => { if (e.key === 'Enter') saveTargetValue(o.id, kr.id); if (e.key === 'Escape') setEditingTargetValue(null); }}
+                               className="w-10 text-center text-xs outline-none rounded px-1 py-0.5"
+                               style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                      ) : (
+                        <span className="text-[10px] flex-shrink-0 cursor-pointer" style={{ color: s.textMuted }}
+                              onClick={e => { e.stopPropagation(); setEditingTargetValue(kr.id); setEditingTargetValue(String(kr.targetValue)); }}>
+                          目标{kr.targetValue}
+                        </span>
+                      )}
+                      <span className="text-[10px] flex-shrink-0" style={{ color: s.textMuted }}>{doneTasks}/{kr.children.length}</span>
+                      <span className="text-xs font-bold flex-shrink-0" style={{ color: krPct > 0 ? swatch : s.textMuted }}>{krPct}%</span>
+                      <button onClick={e => { e.stopPropagation(); deleteKR(o.id, kr.id); }}
+                              className="text-[10px] opacity-0 hover:!opacity-100 flex-shrink-0 transition-opacity" style={{ color: '#ef4444' }}>✕</button>
                     </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <input type="text" value={reviewText} onChange={e => setReviewText(e.target.value)}
-                           onKeyDown={e => e.key === 'Enter' && addReview(node.id)}
-                           placeholder="复盘记录..." className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
-                           style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                    <button onClick={() => addReview(node.id)} disabled={!reviewText.trim()}
-                            className="text-sm font-bold disabled:opacity-30" style={{ color: swatch }}>↵</button>
+
+                    {/* KR progress bar */}
+                    <div className="px-4 pb-2">
+                      {pb(krPct, 4)}
+                    </div>
+
+                    {/* Expanded: Tasks */}
+                    {isExpanded && (
+                      <div className="px-4 pb-3 space-y-1">
+                        {/* Task list */}
+                        {kr.children.map(t => (
+                          <div key={t.id} className="flex items-center gap-2 py-1 group"
+                               style={{ borderBottom: `1px dashed ${s.divider}` }}>
+                            <button onClick={() => toggleTask(o.id, kr.id, t.id)}
+                                    className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center transition-all"
+                                    style={{ border: `1.5px solid ${t.done ? '#22c55e' : s.textMuted}`, backgroundColor: t.done ? '#22c55e' : 'transparent' }}>
+                              {t.done && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                            </button>
+                            {editingId === t.id ? (
+                              <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
+                                     onBlur={() => saveTitle(t.id)}
+                                     onKeyDown={e => { if (e.key === 'Enter') saveTitle(t.id); if (e.key === 'Escape') setEditingId(null); }}
+                                     className="flex-1 text-xs outline-none rounded px-1.5 py-0.5"
+                                     style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                            ) : (
+                              <span className={`flex-1 text-xs ${t.done ? 'line-through' : ''}`} style={{ color: t.done ? s.textMuted : s.text2 }}
+                                    onClick={() => { setEditingId(t.id); setEditText(t.title); }}>{t.title}</span>
+                            )}
+                            <button onClick={() => deleteTask(o.id, kr.id, t.id)}
+                                    className="text-[10px] opacity-0 group-hover:opacity-60 hover:!opacity-100 flex-shrink-0 transition-opacity" style={{ color: '#ef4444' }}>✕</button>
+                          </div>
+                        ))}
+
+                        {/* Add task inline */}
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="text-[10px] flex-shrink-0" style={{ color: swatch }}>+ 任务</span>
+                          <input type="text" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
+                                 onKeyDown={e => e.key === 'Enter' && addTask(o.id, kr.id)}
+                                 placeholder="添加任务..." className="flex-1 text-xs outline-none bg-transparent"
+                                 style={{ color: s.text1 }} />
+                          <button onClick={voiceTask.phase !== 'idle' ? undefined : voiceTask.start}
+                                  className="flex-shrink-0 text-xs transition-colors"
+                                  style={{ color: voiceTask.phase !== 'idle' ? swatch : s.textMuted }}
+                                  disabled={voiceTask.phase !== 'idle'}>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                              <line x1="12" y1="19" x2="12" y2="23" />
+                              <line x1="8" y1="23" x2="16" y2="23" />
+                            </svg>
+                          </button>
+                          {newTaskTitle.trim() && (
+                            <button onClick={() => addTask(o.id, kr.id)} className="text-[10px] font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })}
+
             </div>
           );
         })()}
       </div>
 
-      {/* Voice recognition modal */}
-      {(voiceTop.phase !== 'idle' || voiceChild.phase !== 'idle') && (() => {
-        const v = voiceTop.phase !== 'idle' ? voiceTop : voiceChild;
+      {/* ══════════ Voice recognition modal ══════════ */}
+      {activeVoice && (() => {
+        const v = activeVoice;
         return (
           <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
             <div className="rounded-2xl p-6 w-[360px] shadow-2xl" style={{ backgroundColor: s.panelBg }}>
-              {/* Listening phase */}
+              {/* Listening */}
               {v.phase === 'listening' && (
                 <div className="text-center">
-                  {/* Sound wave animation */}
                   <div className="flex items-center justify-center gap-1 h-12 mb-4">
                     {[0,1,2,3,4,5,6,7,8].map(i => (
                       <div key={i} className="w-1.5 rounded-full animate-pulse" style={{
@@ -600,7 +601,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                   <button onClick={v.stop} className="mt-4 px-4 py-1.5 rounded-lg text-xs" style={{ backgroundColor: s.cardBg, color: s.text2, border: `1px solid ${s.divider}` }}>取消</button>
                 </div>
               )}
-              {/* Recognized → Polishing transition */}
+              {/* Polishing */}
               {(v.phase === 'recognized' || v.phase === 'polishing') && (
                 <div>
                   <div className="text-xs mb-2" style={{ color: s.textMuted }}>语音识别结果</div>
