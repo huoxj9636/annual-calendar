@@ -22,12 +22,13 @@ interface DailyReviewProps {
 }
 
 interface ReviewData {
-  achievements: string;
-  regrets: string;
-  insights: string;
-  tomorrowFocus: string;
-  gratitude: string;
-  mood: number;
+  completed: string;
+  goodThings: string;
+  problems: string;
+  mood: string;
+  reflections: string;
+  tomorrowTodo: string;
+  moodScore: number;
   energy: number;
   updatedAt: string;
 }
@@ -40,7 +41,7 @@ function getStorageKey(year: number, month: number, day: number) {
 }
 
 function loadReview(year: number, month: number, day: number): ReviewData {
-  if (typeof window === 'undefined') return { achievements: '', regrets: '', insights: '', tomorrowFocus: '', gratitude: '', mood: 3, energy: 3, updatedAt: '' };
+  if (typeof window === 'undefined') return { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
   try {
     const raw = localStorage.getItem(getStorageKey(year, month, day));
     if (raw) {
@@ -50,18 +51,19 @@ function loadReview(year: number, month: number, day: number): ReviewData {
         return v || '';
       };
       return {
-        achievements: migrate(parsed.achievements),
-        regrets: migrate(parsed.regrets),
-        insights: migrate(parsed.insights),
-        tomorrowFocus: migrate(parsed.tomorrowFocus),
-        gratitude: migrate(parsed.gratitude),
-        mood: parsed.mood ?? 3,
+        completed: migrate(parsed.completed ?? parsed.achievements),
+        goodThings: migrate(parsed.goodThings ?? parsed.gratitude),
+        problems: migrate(parsed.problems ?? parsed.regrets),
+        mood: parsed.mood ?? '',
+        reflections: migrate(parsed.reflections ?? parsed.insights),
+        tomorrowTodo: migrate(parsed.tomorrowTodo ?? parsed.tomorrowFocus),
+        moodScore: parsed.moodScore ?? parsed.mood ?? 3,
         energy: parsed.energy ?? 3,
         updatedAt: parsed.updatedAt ?? '',
       };
     }
   } catch {}
-  return { achievements: '', regrets: '', insights: '', tomorrowFocus: '', gratitude: '', mood: 3, energy: 3, updatedAt: '' };
+  return { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
 }
 
 function saveReview(year: number, month: number, day: number, data: ReviewData) {
@@ -71,7 +73,7 @@ function saveReview(year: number, month: number, day: number, data: ReviewData) 
 }
 
 export default function DailyReview({ year, month, day, skin, events, todos, onClose }: DailyReviewProps) {
-  const [review, setReview] = useState<ReviewData>({ achievements: '', regrets: '', insights: '', tomorrowFocus: '', gratitude: '', mood: 3, energy: 3, updatedAt: '' });
+  const [review, setReview] = useState<ReviewData>({ completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' });
   const [mounted, setMounted] = useState(false);
   const [autoFilling, setAutoFilling] = useState(false);
 
@@ -124,11 +126,12 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       // Parse the 5 sections from AI response
       const sections: Record<string, string> = {};
       const sectionMap: Record<string, keyof ReviewData> = {
-        '今日亮点': 'achievements',
-        '今日反思': 'regrets',
-        '今日收获': 'insights',
-        '明日行动': 'tomorrowFocus',
-        '今日感恩': 'gratitude',
+        '今天完成了什么': 'completed',
+        '美好或值得关注的事': 'goodThings',
+        '突发问题': 'problems',
+        '今天心情如何': 'mood',
+        '感想或总结': 'reflections',
+        '明日待办': 'tomorrowTodo',
       };
 
       let currentKey = '';
@@ -190,9 +193,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
          onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-[960px] max-h-[60vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
+      <div className="w-[1100px] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: skin.cellBorder }}>
+        <div className="flex items-center justify-between px-6 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
           <div className="flex items-center gap-3">
             <div>
               <div className="text-lg font-bold" style={{ color: skin.textPrimary }}>{dateStr} 复盘</div>
@@ -218,86 +221,68 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {/* Mood & Energy */}
-          <div className="flex gap-3 mb-4">
-            <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
-              <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>心情</div>
-              <div className="flex gap-1">
-                {[1,2,3,4,5].map(v => (
-                  <button key={v} onClick={() => updateField('mood', v)}
-                    className="flex-1 py-1 text-xs rounded-md transition-all font-medium"
-                    style={review.mood >= v
-                      ? { backgroundColor: skin.swatch, color: '#fff' }
-                      : { backgroundColor: skin.cardHover, color: skin.textMuted }
-                    }
-                  >{MOOD_LABELS[v]}</button>
-                ))}
-              </div>
-            </div>
-            <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
-              <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>精力</div>
-              <div className="flex gap-1">
-                {[1,2,3,4,5].map(v => (
-                  <button key={v} onClick={() => updateField('energy', v)}
-                    className="flex-1 py-1 text-xs rounded-md transition-all font-medium"
-                    style={review.energy >= v
-                      ? { backgroundColor: skin.swatch, color: '#fff' }
-                      : { backgroundColor: skin.cardHover, color: skin.textMuted }
-                    }
-                  >{ENERGY_LABELS[v]}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* 2-column grid: 5 sections */}
-          <div className="grid grid-cols-2 gap-3">
+        <div className="px-6 py-3">
+          {/* 3-column grid: 6 sections in 2 rows */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
             <ReviewSection
-              title="今日亮点"
-              icon="★"
-              value={review.achievements}
-              onChange={v => updateField('achievements', v)}
+              title="今天完成了什么？"
+              icon="✓"
+              value={review.completed}
+              onChange={v => updateField('completed', v)}
               skin={skin}
-              placeholder="记下今天值得骄傲的事..."
+              placeholder="列出今天完成的事项..."
               loading={autoFilling}
+              compact
             />
             <ReviewSection
-              title="今日反思"
-              icon="△"
-              value={review.regrets}
-              onChange={v => updateField('regrets', v)}
+              title="今天发生了哪些美好或值得关注的事？"
+              icon="✦"
+              value={review.goodThings}
+              onChange={v => updateField('goodThings', v)}
               skin={skin}
-              placeholder="哪里做得不好？为什么？..."
+              placeholder="值得记录的好事..."
               loading={autoFilling}
+              compact
             />
             <ReviewSection
-              title="今日收获"
+              title="今天遇到了哪些突发问题？"
+              icon="⚠"
+              value={review.problems}
+              onChange={v => updateField('problems', v)}
+              skin={skin}
+              placeholder="遇到的意外或困难..."
+              loading={autoFilling}
+              compact
+            />
+            <ReviewSection
+              title="今天心情如何？"
+              icon="☺"
+              value={review.mood}
+              onChange={v => updateField('mood', v)}
+              skin={skin}
+              placeholder="简单描述心情..."
+              loading={autoFilling}
+              compact
+            />
+            <ReviewSection
+              title="今天有哪些感想或总结？"
               icon="◎"
-              value={review.insights}
-              onChange={v => updateField('insights', v)}
+              value={review.reflections}
+              onChange={v => updateField('reflections', v)}
               skin={skin}
-              placeholder="今天学到了什么？意识到了什么？..."
+              placeholder="今天的思考..."
               loading={autoFilling}
+              compact
             />
             <ReviewSection
-              title="明日行动"
+              title="明日待办？"
               icon="→"
-              value={review.tomorrowFocus}
-              onChange={v => updateField('tomorrowFocus', v)}
+              value={review.tomorrowTodo}
+              onChange={v => updateField('tomorrowTodo', v)}
               skin={skin}
-              placeholder="明天最需要完成的事..."
+              placeholder="明天要做的事..."
               loading={autoFilling}
-            />
-            <ReviewSection
-              title="今日感恩"
-              icon="♥"
-              value={review.gratitude}
-              onChange={v => updateField('gratitude', v)}
-              skin={skin}
-              placeholder="今天有什么值得感恩的人或事..."
-              fullSpan
-              loading={autoFilling}
+              compact
             />
           </div>
         </div>
@@ -307,14 +292,15 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 }
 
 /* Review Section Component - Single textarea with auto-numbering */
-function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullSpan, loading }: {
+function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWidth, compact, loading }: {
   title: string;
   icon: string;
   value: string;
   onChange: (value: string) => void;
   skin: DailyReviewProps['skin'];
   placeholder: string;
-  fullSpan?: boolean;
+  fullWidth?: boolean;
+  compact?: boolean;
   loading?: boolean;
 }) {
   const displayValue = value;
@@ -372,7 +358,7 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullSp
   };
 
   return (
-    <div className={`rounded-xl p-3 flex flex-col relative ${fullSpan ? 'col-span-2' : ''}`} style={{ backgroundColor: skin.cardBg }}>
+    <div className={`rounded-xl p-3 flex flex-col relative ${fullWidth ? 'col-span-2' : ''}`} style={{ backgroundColor: skin.cardBg }}>
       <div className="flex items-center gap-1.5 mb-2">
         <span className="text-sm" style={{ color: skin.swatch }}>{icon}</span>
         <span className="text-xs font-bold" style={{ color: skin.textPrimary }}>{title}</span>
@@ -389,7 +375,7 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullSp
         placeholder={placeholder}
         rows={6}
         className="w-full bg-transparent text-xs leading-relaxed outline-none border border-transparent rounded-lg p-2 resize-none transition-colors"
-        style={{ color: skin.textPrimary, minHeight: fullSpan ? '80px' : '120px' }}
+        style={{ color: skin.textPrimary, minHeight: fullWidth ? '80px' : '120px' }}
       />
     </div>
   );
