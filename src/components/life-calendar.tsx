@@ -157,6 +157,109 @@ function useVoiceRecognition(onResult: (text: string) => void, context?: string)
   return { phase, rawText, polishedText, start, stop };
 }
 
+// ── OKR Templates ──
+interface OKRTemplate {
+  name: string;
+  desc: string;
+  objectives: { title: string; krs: { title: string; target?: string }[] }[];
+}
+
+const OKR_TEMPLATES: OKRTemplate[] = [
+  {
+    name: '职场进阶',
+    desc: '适合想要在职业上突破的职场人',
+    objectives: [
+      { title: '提升专业影响力', krs: [
+        { title: '完成2个高质量项目交付', target: '2个' },
+        { title: '在行业论坛发表3篇专业文章', target: '3篇' },
+        { title: '获得1次晋升或加薪', target: '1次' },
+      ]},
+      { title: '构建核心技能体系', krs: [
+        { title: '掌握1项新专业技能并取得认证', target: '1项' },
+        { title: '每月完成1本专业书籍阅读', target: '12本' },
+      ]},
+    ],
+  },
+  {
+    name: '创业启动',
+    desc: '适合从0到1启动创业项目',
+    objectives: [
+      { title: '验证商业模式', krs: [
+        { title: '完成50次用户深度访谈', target: '50次' },
+        { title: '获得首批10个付费客户', target: '10个' },
+        { title: 'MVP上线并收集100条用户反馈', target: '100条' },
+      ]},
+      { title: '搭建基础团队', krs: [
+        { title: '招聘2名核心成员', target: '2人' },
+        { title: '建立周例会和OKR复盘机制', target: '1套' },
+      ]},
+    ],
+  },
+  {
+    name: '销售突破',
+    desc: '适合需要业绩突破的销售人员',
+    objectives: [
+      { title: '达成年度销售目标', krs: [
+        { title: '每月新增5家意向客户', target: '5家/月' },
+        { title: '客户签约率达到30%', target: '30%' },
+        { title: '老客户复购率达到40%', target: '40%' },
+      ]},
+      { title: '打造高效销售体系', krs: [
+        { title: '建立标准化客户跟进流程', target: '1套' },
+        { title: '完成2次客户上门演示', target: '2次' },
+      ]},
+    ],
+  },
+  {
+    name: '个人成长',
+    desc: '适合全面提升自我的人生规划',
+    objectives: [
+      { title: '优化身心健康', krs: [
+        { title: '每周运动3次以上', target: '3次/周' },
+        { title: '每日6:30前起床', target: '300天' },
+        { title: '完成1次半程马拉松', target: '1次' },
+      ]},
+      { title: '持续学习成长', krs: [
+        { title: '每月读2本书', target: '24本' },
+        { title: '学习1项新技能并实践', target: '1项' },
+      ]},
+      { title: '经营重要关系', krs: [
+        { title: '每周与家人深度交流1次', target: '1次/周' },
+        { title: '每月组织1次朋友聚会', target: '1次/月' },
+      ]},
+    ],
+  },
+  {
+    name: '技术深耕',
+    desc: '适合技术人员突破技术瓶颈',
+    objectives: [
+      { title: '技术深度突破', krs: [
+        { title: '完成1个开源项目并获50颗星', target: '50星' },
+        { title: '在技术大会做1次分享', target: '1次' },
+        { title: '精通1个新技术栈', target: '1个' },
+      ]},
+      { title: '技术影响力建设', krs: [
+        { title: '发布12篇高质量技术博客', target: '12篇' },
+        { title: '参与2个开源项目贡献', target: '2个' },
+      ]},
+    ],
+  },
+  {
+    name: '自由职业',
+    desc: '适合转向自由职业或副业变现',
+    objectives: [
+      { title: '建立稳定收入来源', krs: [
+        { title: '获得5个长期合作客户', target: '5个' },
+        { title: '月收入达到目标金额', target: '目标金额' },
+      ]},
+      { title: '打造个人品牌', krs: [
+        { title: '社交媒体粉丝增长到5000', target: '5000' },
+        { title: '发布1个付费课程或产品', target: '1个' },
+      ]},
+    ],
+  },
+];
+
 // ── Component ──
 export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey }: LifeCalendarProps) {
   const skin = SKINS.find(s => s.key === skinKey) || SKINS[0];
@@ -190,11 +293,33 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     setMounted(true);
   }, []);
 
+  // Apply template
+  const applyTemplate = (tpl: OKRTemplate) => {
+    const uid = () => Math.random().toString(36).slice(2, 10);
+    const newGoals: OKRObjective[] = tpl.objectives.map(o => ({
+      id: uid(),
+      title: o.title,
+      period: period,
+      createdAt: Date.now(),
+      children: o.krs.map(kr => ({
+        id: uid(),
+        title: kr.title,
+        targetValue: 0,
+        createdAt: Date.now(),
+        children: [],
+      })),
+    }));
+    setGoals(prev => [...prev, ...newGoals]);
+  };
+
   // Save
   useEffect(() => { if (mounted) localStorage.setItem('okr-data', JSON.stringify(goals)); }, [goals, mounted]);
 
   // Voice for top input
   const voiceTop = useVoiceRecognition((text) => { setNewOTitle(text); });
+
+  // Template panel
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // Voice for KR input
   const selectedO = useMemo(() => goals.find(o => o.id === selectedOId) || null, [goals, selectedOId]);
@@ -329,6 +454,10 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                     className="w-16 px-1.5 py-0.5 rounded text-center text-xs border focus:outline-none bg-white/20 text-white border-white/20" />
                   <span className="text-white/40">|</span>
                   <span>当前 {currentYear - birthYear} 岁</span>
+                  <button onClick={() => setShowTemplates(true)}
+                    className="px-2 py-0.5 rounded-full text-[10px] bg-white/20 text-white/80 hover:bg-white/30 hover:text-white transition-colors border border-white/10">
+                    模板
+                  </button>
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <div className="flex-1 h-1 rounded-full overflow-hidden bg-white/15">
@@ -645,6 +774,50 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
           </div>
         );
       })()}
+
+      {/* ══════════ OKR TEMPLATE PANEL ══════════ */}
+      {showTemplates && (
+        <div className="fixed inset-0 z-[60] flex" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="m-auto w-full max-w-2xl max-h-[80vh] rounded-2xl shadow-2xl flex flex-col" style={{ backgroundColor: s.panelBg }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: s.divider }}>
+              <h3 className="text-lg font-bold" style={{ color: s.text1 }}>OKR 模板库</h3>
+              <button onClick={() => setShowTemplates(false)} className="w-7 h-7 flex items-center justify-center rounded-full hover:opacity-80" style={{ backgroundColor: s.cardBg, color: s.text2 }}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            {/* Templates */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              {OKR_TEMPLATES.map((tpl, ti) => (
+                <div key={ti} className="rounded-xl p-4" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="text-sm font-bold" style={{ color: s.text1 }}>{tpl.name}</div>
+                      <div className="text-xs mt-0.5" style={{ color: s.textMuted }}>{tpl.desc}</div>
+                    </div>
+                    <button onClick={() => { applyTemplate(tpl); setShowTemplates(false); }}
+                      className="px-3 py-1 rounded-lg text-xs font-medium shrink-0 ml-3" style={{ backgroundColor: swatch, color: '#fff' }}>
+                      应用
+                    </button>
+                  </div>
+                  <div className="space-y-1.5 mt-3">
+                    {tpl.objectives.map((o, oi) => (
+                      <div key={oi} className="text-xs" style={{ color: s.text2 }}>
+                        <span className="font-medium" style={{ color: swatch }}>O{oi + 1}</span>：{o.title}
+                        {o.krs.map((kr, ki) => (
+                          <div key={ki} className="ml-4" style={{ color: s.textMuted }}>
+                            <span style={{ color: swatch }}>KR{ki + 1}</span>：{kr.title}{kr.target ? `（目标：${kr.target}）` : ''}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
