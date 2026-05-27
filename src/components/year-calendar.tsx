@@ -120,12 +120,8 @@ export default function YearCalendar() {
 
     return () => clearInterval(timer);
   }, [mounted]);
-  const [moduleVisibility, setModuleVisibility] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = typeof window !== 'undefined' ? localStorage.getItem('calendar-module-visibility') : null;
-      if (saved) return { timeline: true, dida: true, longterm: true, bilibili: true, insight: true, track: true, review: true, ...JSON.parse(saved) };
-    } catch { /* ignore */ }
-    return { timeline: true, dida: true, longterm: true, bilibili: true, insight: true, track: true, review: true };
+  const [moduleVisibility, setModuleVisibility] = useState<Record<string, boolean>>({
+    timeline: true, dida: true, longterm: true, bilibili: true, insight: true, track: true, review: true,
   });
   const [moduleLinks, setModuleLinks] = useState<Record<string, string>>({
     timeline: '',
@@ -184,11 +180,58 @@ export default function YearCalendar() {
 
   // Load data from API on mount
   useEffect(() => {
-    setMounted(true);
     const now = new Date();
     setTodayStr(
       `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
     );
+
+    // Load UI preferences from localStorage synchronously before mounting
+    try {
+      const savedSkin = localStorage.getItem('life-calendar-skin');
+      if (savedSkin && SKINS.find(s => s.key === savedSkin)) setSkinKey(savedSkin);
+
+      const savedMotto = localStorage.getItem('calendar-motto');
+      if (savedMotto) setMotto(savedMotto);
+
+      const savedLinks = localStorage.getItem('calendar-module-links');
+      if (savedLinks) {
+        try { setModuleLinks(prev => ({ ...prev, ...JSON.parse(savedLinks) })); } catch { /* ignore */ }
+      }
+
+      const savedVisibility = localStorage.getItem('calendar-module-visibility');
+      if (savedVisibility) {
+        try { setModuleVisibility(prev => ({ ...prev, ...JSON.parse(savedVisibility) })); } catch { /* ignore */ }
+      }
+
+      const savedNames = localStorage.getItem('calendar-module-names');
+      if (savedNames) {
+        try { setModuleNames(prev => ({ ...prev, ...JSON.parse(savedNames) })); } catch { /* ignore */ }
+      }
+
+      const savedOrder = localStorage.getItem('calendar-module-order');
+      if (savedOrder) {
+        try {
+          const parsed = JSON.parse(savedOrder) as string[];
+          const allKeys = Object.keys(defaultModuleNames);
+          const validOrder = parsed.filter(k => allKeys.includes(k));
+          const missing = allKeys.filter(k => !validOrder.includes(k));
+          setModuleOrder([...validOrder, ...missing]);
+        } catch { /* ignore */ }
+      }
+
+      const savedDrawing = localStorage.getItem(`calendar-drawing-${year}`);
+      if (savedDrawing) {
+        try {
+          const data = JSON.parse(savedDrawing);
+          setDrawingHasStrokes(data.strokes && data.strokes.length > 0);
+        } catch { /* ignore */ }
+      }
+    } catch { /* ignore */ }
+
+    // Now set mounted - all localStorage values are already in state
+    setMounted(true);
+
+    // Load data from DB asynchronously
     (async () => {
       try {
         // Load overrides from DB
@@ -209,45 +252,6 @@ export default function YearCalendar() {
             setNotes(notesData);
             notesLoadedRef.current = true;
           }
-        }
-      } catch { /* ignore */ }
-
-      // Load UI preferences from localStorage (device-specific)
-      try {
-        const savedSkin = localStorage.getItem('life-calendar-skin');
-        if (savedSkin && SKINS.find(s => s.key === savedSkin)) setSkinKey(savedSkin);
-
-        const savedMotto = localStorage.getItem('calendar-motto');
-        if (savedMotto) setMotto(savedMotto);
-
-
-        const savedLinks = localStorage.getItem('calendar-module-links');
-        if (savedLinks) {
-          try { setModuleLinks(prev => ({ ...prev, ...JSON.parse(savedLinks) })); } catch { /* ignore */ }
-        }
-
-        const savedNames = localStorage.getItem('calendar-module-names');
-        if (savedNames) {
-          try { setModuleNames(prev => ({ ...prev, ...JSON.parse(savedNames) })); } catch { /* ignore */ }
-        }
-
-        const savedOrder = localStorage.getItem('calendar-module-order');
-        if (savedOrder) {
-          try {
-            const parsed = JSON.parse(savedOrder) as string[];
-            const allKeys = Object.keys(defaultModuleNames);
-            const validOrder = parsed.filter(k => allKeys.includes(k));
-            const missing = allKeys.filter(k => !validOrder.includes(k));
-            setModuleOrder([...validOrder, ...missing]);
-          } catch { /* ignore */ }
-        }
-
-        const savedDrawing = localStorage.getItem(`calendar-drawing-${year}`);
-        if (savedDrawing) {
-          try {
-            const data = JSON.parse(savedDrawing);
-            setDrawingHasStrokes(data.strokes && data.strokes.length > 0);
-          } catch { /* ignore */ }
         }
       } catch { /* ignore */ }
     })();
@@ -679,7 +683,7 @@ export default function YearCalendar() {
               onClick={() => { setMottoDraft(motto); setEditingMotto(true); }}
               title="点击修改标语"
             >
-              {motto}
+              {mounted ? motto : '年度计划'}
             </span>
           </div>
 
@@ -815,7 +819,7 @@ export default function YearCalendar() {
 
         {/* Calendar / Task toggle sidebar */}
         <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10">
-          {moduleOrder.filter(k => moduleVisibility[k as keyof typeof moduleVisibility]).map((key, idx, arr) => {
+          {mounted && moduleOrder.filter(k => moduleVisibility[k as keyof typeof moduleVisibility]).map((key, idx, arr) => {
             const mk = key as 'timeline' | 'dida' | 'longterm' | 'bilibili' | 'insight' | 'track';
             const divider = idx > 0 ? <div key={`${key}-div`} className="w-6" style={{ borderTop: `1px solid ${skin.swatch}40`, margin: '12px auto 12px auto' }} /> : null;
             const btnStyle: React.CSSProperties = { backgroundColor: skin.swatch, color: '#ffffff', boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)` };
