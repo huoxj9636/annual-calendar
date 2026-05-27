@@ -37,11 +37,34 @@ const MOOD_LABELS = ['', '疲惫', '低落', '一般', '不错', '很棒'];
 const ENERGY_LABELS = ['', '枯竭', '低迷', '正常', '充沛', '满格'];
 
 async function loadReview(year: number, month: number, day: number): Promise<ReviewData> {
+  const defaultData: ReviewData = { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
   try {
     const res = await fetch(`/api/daily-review?year=${year}&month=${month}&day=${day}`);
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      const hasDBData = data.completed || data.goodThings || data.problems || data.mood || data.reflections || data.tomorrowTodo;
+      if (hasDBData) return data;
+      // Migrate from localStorage if DB is empty
+      try {
+        const lsKey = `daily-review-${year}-${month}-${day}`;
+        const lsData = localStorage.getItem(lsKey);
+        if (lsData) {
+          const parsed = JSON.parse(lsData) as ReviewData;
+          const hasLSData = parsed.completed || parsed.goodThings || parsed.problems || parsed.mood || parsed.reflections || parsed.tomorrowTodo;
+          if (hasLSData) {
+            await fetch('/api/daily-review', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ year, month, day, ...parsed }),
+            });
+            localStorage.removeItem(lsKey);
+            return parsed;
+          }
+        }
+      } catch { /* ignore */ }
+    }
   } catch {}
-  return { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
+  return defaultData;
 }
 
 async function saveReview(year: number, month: number, day: number, data: ReviewData) {

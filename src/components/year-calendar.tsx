@@ -231,7 +231,7 @@ export default function YearCalendar() {
     // Now set mounted - all localStorage values are already in state
     setMounted(true);
 
-    // Load data from DB asynchronously
+    // Load data from DB asynchronously (with localStorage migration)
     (async () => {
       try {
         // Load overrides from DB
@@ -241,6 +241,24 @@ export default function YearCalendar() {
           if (Object.keys(overridesData).length > 0) {
             setOverrides(overridesData);
             overridesLoadedRef.current = true;
+          } else {
+            // Migrate from localStorage if DB is empty
+            try {
+              const lsData = localStorage.getItem(`calendar-overrides-${year}`);
+              if (lsData) {
+                const lsOverrides = JSON.parse(lsData);
+                if (typeof lsOverrides === 'object' && Object.keys(lsOverrides).length > 0) {
+                  setOverrides(lsOverrides);
+                  overridesLoadedRef.current = true;
+                  await fetch('/api/calendar-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'overrides', year, data: lsOverrides }),
+                  });
+                  localStorage.removeItem(`calendar-overrides-${year}`);
+                }
+              }
+            } catch { /* ignore */ }
           }
         }
 
@@ -251,6 +269,24 @@ export default function YearCalendar() {
           if (Object.keys(notesData).length > 0) {
             setNotes(notesData);
             notesLoadedRef.current = true;
+          } else {
+            // Migrate from localStorage if DB is empty
+            try {
+              const lsData = localStorage.getItem(`calendar-notes-${year}`);
+              if (lsData) {
+                const lsNotes = JSON.parse(lsData);
+                if (typeof lsNotes === 'object' && Object.keys(lsNotes).length > 0) {
+                  setNotes(lsNotes);
+                  notesLoadedRef.current = true;
+                  await fetch('/api/calendar-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'notes', year, data: lsNotes }),
+                  });
+                  localStorage.removeItem(`calendar-notes-${year}`);
+                }
+              }
+            } catch { /* ignore */ }
           }
         }
       } catch { /* ignore */ }

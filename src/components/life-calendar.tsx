@@ -290,7 +290,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
 
-  // Load from API
+  // Load from API (with localStorage migration)
   useEffect(() => {
     (async () => {
       try {
@@ -301,6 +301,36 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
             const parsed = migrateGoals(data.goals);
             setGoals(parsed);
             setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
+          } else {
+            // Migrate from localStorage if DB is empty
+            try {
+              const lsData = localStorage.getItem('life-calendar-progress');
+              if (lsData) {
+                const lsParsed = JSON.parse(lsData);
+                if (lsParsed && Object.keys(lsParsed).length > 0) {
+                  // Life calendar progress is stored differently - skip complex migration
+                  // Just load any OKR data if present
+                }
+              }
+              const lsOKR = localStorage.getItem('life-calendar-okr');
+              if (lsOKR) {
+                const okrData = JSON.parse(lsOKR);
+                if (okrData && (Array.isArray(okrData) || okrData.objectives)) {
+                  const goals = Array.isArray(okrData) ? okrData : okrData.objectives || [];
+                  const parsed = migrateGoals(goals);
+                  if (parsed.length > 0) {
+                    setGoals(parsed);
+                    setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
+                    await fetch('/api/okr', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ goals: parsed }),
+                    });
+                    localStorage.removeItem('life-calendar-okr');
+                  }
+                }
+              }
+            } catch { /* ignore */ }
           }
         }
       } catch { /* ignore */ }

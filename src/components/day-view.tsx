@@ -154,13 +154,44 @@ export default function DayView({ year, month, day, onClose, embedded, skin: ski
         const res = await fetch(`/api/day-data?year=${year}&month=${month}&day=${day}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.events) setEvents(data.events);
-          if (data.todos) setTodos(data.todos);
-          if (data.note) setNoteText(data.note);
+          const hasDBData = (data.events && data.events.length > 0) || (data.todos && data.todos.length > 0) || data.note;
+          if (hasDBData) {
+            if (data.events) setEvents(data.events);
+            if (data.todos) setTodos(data.todos);
+            if (data.note) setNoteText(data.note);
+          } else {
+            // Migrate from localStorage if DB is empty
+            try {
+              const lsEvents = localStorage.getItem(storageKey);
+              const lsTodos = localStorage.getItem(todoKey);
+              const lsNote = localStorage.getItem(noteKey);
+              const migratedEvents = lsEvents ? JSON.parse(lsEvents) : [];
+              const migratedTodos = lsTodos ? JSON.parse(lsTodos) : [];
+              const migratedNote = lsNote || '';
+              const hasLSData = migratedEvents.length > 0 || migratedTodos.length > 0 || migratedNote;
+              if (hasLSData) {
+                if (migratedEvents.length > 0) {
+                  setEvents(migratedEvents);
+                  fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'events', year, month, day, data: migratedEvents }) }).catch(() => {});
+                  localStorage.removeItem(storageKey);
+                }
+                if (migratedTodos.length > 0) {
+                  setTodos(migratedTodos);
+                  fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'todos', year, month, day, data: migratedTodos }) }).catch(() => {});
+                  localStorage.removeItem(todoKey);
+                }
+                if (migratedNote) {
+                  setNoteText(migratedNote);
+                  fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'note', year, month, day, data: migratedNote }) }).catch(() => {});
+                  localStorage.removeItem(noteKey);
+                }
+              }
+            } catch { /* ignore */ }
+          }
         }
       } catch { /* empty */ }
     })();
-  }, [storageKey, todoKey, noteKey, year]);
+  }, [storageKey, todoKey, noteKey, year, month, day]);
 
   const saveEvents = useCallback((evts: TimeEvent[]) => {
     setEvents(evts);

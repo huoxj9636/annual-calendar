@@ -94,17 +94,37 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
       hasStrokes: strokes.length > 0,
     }), [drawingEnabled, tool, penColor, overlayVisible, strokes.length, handleUndo, handleClear]);
 
-    // Load strokes from API
+    // Load strokes from API (with localStorage migration)
     useEffect(() => {
       (async () => {
         try {
           const yearMatch = storageKey.match(/(\d{4})/);
           if (yearMatch) {
-            const res = await fetch(`/api/calendar-data?type=drawing&year=${yearMatch[1]}`);
+            const year = yearMatch[1];
+            const res = await fetch(`/api/calendar-data?type=drawing&year=${year}`);
             if (res.ok) {
               const data = await res.json();
-              if (data.strokes && Array.isArray(data.strokes)) {
+              if (data.strokes && Array.isArray(data.strokes) && data.strokes.length > 0) {
                 setStrokes(data.strokes);
+              } else {
+                // No data in DB — try migrating from localStorage
+                try {
+                  const lsData = localStorage.getItem(storageKey);
+                  if (lsData) {
+                    const lsStrokes = JSON.parse(lsData);
+                    if (Array.isArray(lsStrokes) && lsStrokes.length > 0) {
+                      setStrokes(lsStrokes);
+                      // Migrate to DB
+                      await fetch('/api/calendar-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'drawing', year: Number(year), data: lsStrokes }),
+                      });
+                      // Remove from localStorage after successful migration
+                      localStorage.removeItem(storageKey);
+                    }
+                  }
+                } catch { /* ignore localStorage errors */ }
               }
             }
           }
