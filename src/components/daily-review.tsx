@@ -332,7 +332,7 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWi
   };
 
   const handleFocus = (e: React.FocusEvent<HTMLTextAreaElement>) => {
-    if (!value.trim()) {
+    if (!String(value).trim()) {
       onChange('1. ');
       const el = e.currentTarget;
       requestAnimationFrame(() => {
