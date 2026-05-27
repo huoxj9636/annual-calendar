@@ -83,34 +83,7 @@ async function clearReview(year: number, month: number, day: number) {
   } catch {}
 }
 
-interface SRLike extends EventTarget {
-  lang: string;
-  interimResults: boolean;
-  continuous: boolean;
-  start: () => void;
-  abort: () => void;
-  onresult: ((event: SREventLike) => void) | null;
-  onerror: (() => void) | null;
-  onend: (() => void) | null;
-}
-
-interface SREventLike {
-  results: {
-    length: number;
-    [index: number]: {
-      isFinal: boolean;
-      [index: number]: { transcript: string };
-    };
-  };
-}
-
-function createRecognition(): SRLike | null {
-  const SR = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
-  if (!SR) return null;
-  return new (SR as new () => SRLike)();
-}
-
-type VoicePhase = 'idle' | 'recording' | 'polishing' | 'done';
+type VoicePhase = 'idle' | 'recording' | 'transcribing' | 'polishing' | 'done';
 
 export default function DailyReview({ year, month, day, skin, events, todos, onClose }: DailyReviewProps) {
   const [review, setReview] = useState<ReviewData>({ completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' });
@@ -118,13 +91,13 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 
   const [copied, setCopied] = useState(false);
 
-  // Voice recording state
+  // Voice recording state — MediaRecorder based
   const [voicePhase, setVoicePhase] = useState<VoicePhase>('idle');
-  const [liveText, setLiveText] = useState('');
   const [recSeconds, setRecSeconds] = useState(0);
   const [polishedPreview, setPolishedPreview] = useState('');
-  const recognitionRef = useRef<SRLike | null>(null);
-  const finalTextRef = useRef('');
+  const [transcribedText, setTranscribedText] = useState('');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -136,62 +109,51 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (recognitionRef.current) {
-        try { recognitionRef.current.abort(); } catch {}
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try { mediaRecorderRef.current.stop(); } catch {}
       }
     };
   }, []);
 
-  const startVoiceRecording = useCallback(() => {
-    const rec = createRecognition();
-    if (!rec) { alert('当前浏览器不支持语音识别，请使用 Chrome 浏览器'); return; }
+  const startVoiceRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/webm')
+            ? 'audio/webm'
+            : 'audio/mp4',
+      });
 
-    rec.lang = 'zh-CN';
-    rec.continuous = true;
-    rec.interimResults = true;
+      chunksRef.current = [];
+      setRecSeconds(0);
+      setPolishedPreview('');
+      setTranscribedText('');
+      setVoicePhase('recording');
 
-    finalTextRef.current = '';
-    setLiveText('');
-    setRecSeconds(0);
-    setPolishedPreview('');
-    setVoicePhase('recording');
-
-    rec.onresult = (event: SREventLike) => {
-      let interim = '';
-      let final = '';
-      for (let i = 0; i < event.results.length; i++) {
-        const r = event.results[i];
-        if (r.isFinal) {
-          final += r[0].transcript;
-        } else {
-          interim += r[0].transcript;
+      mediaRecorder.ondataavailable = (e: BlobEvent) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
         }
-      }
-      if (final) finalTextRef.current = final;
-      setLiveText(finalTextRef.current + (interim ? (finalTextRef.current ? '\n' : '') + interim : ''));
-    };
+      };
 
-    rec.onerror = () => {
-      // Auto-restart on error (e.g., no speech detected)
-      if (finalTextRef.current !== '__STOPPED__') {
-        try { rec.start(); } catch {}
-      }
-    };
+      mediaRecorder.onstop = () => {
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(t => t.stop());
+      };
 
-    rec.onend = () => {
-      // Auto-restart unless we manually stopped
-      if (finalTextRef.current !== '__STOPPED__') {
-        try { rec.start(); } catch {}
-      }
-    };
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start(1000); // Collect data every second for reliability
 
-    recognitionRef.current = rec;
-    rec.start();
-
-    // Start timer
-    timerRef.current = setInterval(() => {
-      setRecSeconds(s => s + 1);
-    }, 1000);
+      // Start timer
+      timerRef.current = setInterval(() => {
+        setRecSeconds(s => s + 1);
+      }, 1000);
+    } catch {
+      alert('无法访问麦克风，请检查浏览器权限设置');
+      setVoicePhase('idle');
+    }
   }, []);
 
   /** Parse SSE stream from LLM API, return accumulated plain text */
@@ -226,26 +188,58 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   };
 
   const stopVoiceRecording = useCallback(async () => {
-    if (recognitionRef.current) {
-      finalTextRef.current = '__STOPPED__';
-      try { recognitionRef.current.abort(); } catch {}
-      recognitionRef.current = null;
+    // Stop recording
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
     }
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
 
-    const spokenText = liveText.trim();
-    if (!spokenText) {
+    // Wait a moment for final data
+    await new Promise(r => setTimeout(r, 300));
+
+    const chunks = chunksRef.current;
+    if (!chunks.length) {
       setVoicePhase('idle');
       return;
     }
 
-    setVoicePhase('polishing');
-    setPolishedPreview('');
+    // Phase 1: ASR — send audio to backend for professional speech recognition
+    setVoicePhase('transcribing');
 
     try {
+      const mimeType = chunks[0].type || 'audio/webm';
+      const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+      const audioBlob = new Blob(chunks, { type: mimeType });
+
+      const formData = new FormData();
+      formData.append('audio', audioBlob, `recording.${ext}`);
+
+      const asrRes = await fetch('/api/asr', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!asrRes.ok) {
+        const errData = await asrRes.json().catch(() => ({}));
+        throw new Error((errData as { error?: string }).error || 'ASR failed');
+      }
+
+      const asrData = await asrRes.json();
+      const spokenText = (asrData as { text?: string }).text?.trim();
+      if (!spokenText) {
+        setVoicePhase('idle');
+        return;
+      }
+
+      setTranscribedText(spokenText);
+
+      // Phase 2: AI polishing
+      setVoicePhase('polishing');
+      setPolishedPreview('');
+
       const res = await fetch('/api/auto-fill-review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -337,7 +331,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     } catch {
       setVoicePhase('idle');
     }
-  }, [year, month, day, liveText]);
+  }, [year, month, day]);
 
   const updateField = useCallback((field: keyof ReviewData, value: string | number) => {
     setReview(prev => {
@@ -476,20 +470,28 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <span className="text-xl font-bold" style={{ color: skin.textPrimary }}>正在录音</span>
                 </div>
                 {/* Timer */}
-                <div className="text-4xl font-bold mb-6 tabular-nums" style={{ color: skin.swatch }}>
+                <div className="text-4xl font-bold mb-4 tabular-nums" style={{ color: skin.swatch }}>
                   {fmtTime(recSeconds)}
                 </div>
-                {/* Live text */}
-                <div className="w-full rounded-xl p-4 mb-6 max-h-[300px] overflow-y-auto" style={{ backgroundColor: skin.cardBg }}>
-                  <div className="text-xs mb-2" style={{ color: skin.textMuted }}>实时转写：</div>
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: skin.textPrimary }}>
-                    {liveText || '等待语音...'}
-                  </div>
+                {/* Tips */}
+                <div className="text-sm mb-6" style={{ color: skin.textMuted }}>
+                  点击停止后将自动识别语音内容
                 </div>
                 <button onClick={stopVoiceRecording}
                   className="px-8 py-3 rounded-xl text-white font-bold text-sm transition-all"
                   style={{ backgroundColor: '#ef4444' }}
                 >⏹ 停止录音</button>
+              </>
+            )}
+            {voicePhase === 'transcribing' && (
+              <>
+                <div className="flex items-center gap-2 mb-6">
+                  <span className="animate-spin text-xl">⟳</span>
+                  <span className="text-xl font-bold" style={{ color: skin.swatch }}>语音识别中</span>
+                </div>
+                <div className="text-sm" style={{ color: skin.textMuted }}>
+                  正在使用专业语音识别引擎转写...
+                </div>
               </>
             )}
             {voicePhase === 'polishing' && (
@@ -498,13 +500,15 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <span className="animate-spin text-xl">⟳</span>
                   <span className="text-xl font-bold" style={{ color: skin.swatch }}>AI 润色中</span>
                 </div>
-                {/* Original text */}
-                <div className="w-full rounded-xl p-3 mb-3" style={{ backgroundColor: skin.cardBg }}>
-                  <div className="text-[10px] mb-1" style={{ color: skin.textMuted }}>原始语音：</div>
-                  <div className="text-xs leading-relaxed whitespace-pre-wrap line-through opacity-50" style={{ color: skin.textMuted }}>
-                    {liveText.slice(0, 200)}{liveText.length > 200 ? '...' : ''}
+                {/* Original transcribed text */}
+                {transcribedText && (
+                  <div className="w-full rounded-xl p-3 mb-3" style={{ backgroundColor: skin.cardBg }}>
+                    <div className="text-[10px] mb-1" style={{ color: skin.textMuted }}>语音识别结果：</div>
+                    <div className="text-xs leading-relaxed whitespace-pre-wrap line-through opacity-50" style={{ color: skin.textMuted }}>
+                      {transcribedText.slice(0, 200)}{transcribedText.length > 200 ? '...' : ''}
+                    </div>
                   </div>
-                </div>
+                )}
                 {/* Polished text streaming */}
                 <div className="w-full rounded-xl p-3 border-2 border-dashed min-h-[150px] max-h-[250px] overflow-y-auto"
                   style={{ borderColor: skin.swatch + '30', backgroundColor: skin.swatch + '08' }}>
