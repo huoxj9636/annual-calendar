@@ -250,26 +250,23 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
             <div className="text-lg font-bold" style={{ color: skin.textPrimary }}>{dateStr} 复盘</div>
             <div className="text-[10px] font-medium tracking-wider" style={{ color: skin.textMuted }}>DAILY REVIEW</div>
           </div>
-          {autoFilling && (
+          {autoFilling ? (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}>
               <span className="animate-spin">⟳</span>
-              AI 正在根据OKR自动填充...
+              AI 填充中...
             </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {!autoFilling && (
+          ) : (
             <button onClick={() => autoFillReview(review)}
               className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
               style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
             >AI 重新填充</button>
           )}
-          <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
-            style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = skin.swatch, e.currentTarget.style.color = '#fff')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = skin.cardHover, e.currentTarget.style.color = skin.textMuted)}
-          >✕</button>
         </div>
+        <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+          style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
+          onMouseEnter={e => (e.currentTarget.style.backgroundColor = skin.swatch, e.currentTarget.style.color = '#fff')}
+          onMouseLeave={e => (e.currentTarget.style.backgroundColor = skin.cardHover, e.currentTarget.style.color = skin.textMuted)}
+        >✕</button>
       </div>
 
       {/* Content - Left/Right Layout */}
