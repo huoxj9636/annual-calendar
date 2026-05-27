@@ -283,6 +283,9 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const [expandedKRs, setExpandedKRs] = useState<Set<string>>(new Set());
   const toggleKRExpand = (krid: string) => setExpandedKRs(prev => { const n = new Set(prev); n.has(krid) ? n.delete(krid) : n.add(krid); return n; });
 
+  // Delete confirmation
+  const [confirmDelete, setConfirmDelete] = useState<{ type: 'O' | 'KR' | 'Task'; name: string; onConfirm: () => void } | null>(null);
+
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
 
@@ -378,17 +381,26 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     })));
   }, []);
 
-  const deleteObjective = useCallback((oid: string) => {
-    setGoals(prev => prev.filter(o => o.id !== oid));
-    setSelectedOId(prev => prev === oid ? null : prev);
+  const deleteObjective = useCallback((oid: string, name: string) => {
+    setConfirmDelete({ type: 'O', name, onConfirm: () => {
+      setGoals(prev => prev.filter(o => o.id !== oid));
+      setSelectedOId(prev => prev === oid ? null : prev);
+      setConfirmDelete(null);
+    }});
   }, []);
 
-  const deleteKR = useCallback((oid: string, krid: string) => {
-    setGoals(prev => updateO(prev, oid, o => ({ ...o, children: o.children.filter(kr => kr.id !== krid) })));
+  const deleteKR = useCallback((oid: string, krid: string, name: string) => {
+    setConfirmDelete({ type: 'KR', name, onConfirm: () => {
+      setGoals(prev => updateO(prev, oid, o => ({ ...o, children: o.children.filter(kr => kr.id !== krid) })));
+      setConfirmDelete(null);
+    }});
   }, []);
 
-  const deleteTask = useCallback((oid: string, krid: string, tid: string) => {
-    setGoals(prev => updateKRInGoals(prev, oid, krid, kr => ({ ...kr, children: kr.children.filter(t => t.id !== tid) })));
+  const deleteTask = useCallback((oid: string, krid: string, tid: string, name: string) => {
+    setConfirmDelete({ type: 'Task', name, onConfirm: () => {
+      setGoals(prev => updateKRInGoals(prev, oid, krid, kr => ({ ...kr, children: kr.children.filter(t => t.id !== tid) })));
+      setConfirmDelete(null);
+    }});
   }, []);
 
   const saveTitle = useCallback((id: string) => {
@@ -567,7 +579,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                     </h2>
                   )}
                   <span className="text-2xl font-bold flex-shrink-0" style={{ color: oPct > 0 ? swatch : s.textMuted }}>{oPct}%</span>
-                  <button onClick={() => deleteObjective(o.id)}
+                  <button onClick={() => deleteObjective(o.id, o.title)}
                           className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: '#ef4444' }}>删除</button>
                 </div>
                 <div className="mt-1 text-xs" style={{ color: s.textMuted }}>{o.children.length} 个关键结果</div>
@@ -636,7 +648,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                       )}
                       <span className="text-[10px] flex-shrink-0" style={{ color: s.textMuted }}>{doneTasks}/{kr.children.length}</span>
                       <span className="text-xs font-bold flex-shrink-0" style={{ color: krPct > 0 ? swatch : s.textMuted }}>{krPct}%</span>
-                      <button onClick={e => { e.stopPropagation(); deleteKR(o.id, kr.id); }}
+                      <button onClick={e => { e.stopPropagation(); deleteKR(o.id, kr.id, kr.title); }}
                               className="text-[10px] opacity-0 hover:!opacity-100 flex-shrink-0 transition-opacity" style={{ color: '#ef4444' }}>✕</button>
                     </div>
 
@@ -667,7 +679,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                               <span className={`flex-1 text-xs ${t.done ? 'line-through' : ''}`} style={{ color: t.done ? s.textMuted : s.text2 }}
                                     onClick={() => { setEditingId(t.id); setEditText(t.title); }}>{t.title}</span>
                             )}
-                            <button onClick={() => deleteTask(o.id, kr.id, t.id)}
+                            <button onClick={() => deleteTask(o.id, kr.id, t.id, t.title)}
                                     className="text-[10px] opacity-0 group-hover:opacity-60 hover:!opacity-100 flex-shrink-0 transition-opacity" style={{ color: '#ef4444' }}>✕</button>
                           </div>
                         ))}
@@ -814,6 +826,40 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ Delete confirmation ══════════ */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="rounded-2xl p-6 w-[340px] shadow-2xl" style={{ backgroundColor: s.panelBg }}>
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: '#fef2f2' }}>
+                <svg className="w-6 h-6" style={{ color: '#ef4444' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div className="text-base font-bold mb-1" style={{ color: s.text1 }}>确认删除？</div>
+              <div className="text-sm" style={{ color: s.textMuted }}>
+                {confirmDelete.type === 'O' && '将删除目标及其所有KR和任务'}
+                {confirmDelete.type === 'KR' && '将删除该关键结果及其所有任务'}
+                {confirmDelete.type === 'Task' && '将删除该任务'}
+              </div>
+              <div className="mt-2 text-sm font-medium truncate px-4" style={{ color: s.text1 }}>
+                「{confirmDelete.name}」
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: s.cardBg, color: s.text2 }}>
+                取消
+              </button>
+              <button onClick={confirmDelete.onConfirm}
+                className="flex-1 py-2 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: '#ef4444' }}>
+                删除
+              </button>
             </div>
           </div>
         </div>
