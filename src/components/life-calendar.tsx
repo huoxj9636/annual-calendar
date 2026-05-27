@@ -362,10 +362,12 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
             const parsed = migrateGoals(data.objectives);
             setGoals(parsed);
             setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
+            if (parsed.length > 0 && !selectedOId) setSelectedOId(parsed[0].id);
           } else if (data.goals) {
             const parsed = migrateGoals(data.goals);
             setGoals(parsed);
             setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
+            if (parsed.length > 0 && !selectedOId) setSelectedOId(parsed[0].id);
           } else {
             // Migrate from localStorage if DB is empty
             try {
@@ -386,6 +388,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                   if (parsed.length > 0) {
                     setGoals(parsed);
                     setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
+                    setSelectedOId(parsed[0].id);
                     await fetch('/api/okr', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
