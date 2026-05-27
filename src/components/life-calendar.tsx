@@ -293,7 +293,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   // Load
   useEffect(() => {
     const saved = localStorage.getItem('okr-data');
-    if (saved) { try { setGoals(migrateGoals(JSON.parse(saved))); } catch { /* ignore */ } }
+    if (saved) { try { const parsed = migrateGoals(JSON.parse(saved)); setGoals(parsed); setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id)))); } catch { /* ignore */ } }
     setMounted(true);
   }, []);
 
@@ -427,6 +427,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     setGoals(prev => updateO(prev, aiDecompose.objectiveId, o => ({
       ...o, children: [...o.children, ...newKRs],
     })));
+    setExpandedKRs(prev => new Set([...prev, ...newKRs.map(kr => kr.id)]));
     setAiDecompose({ loading: false, objectiveTitle: '', result: null, objectiveId: '' });
   }, [aiDecompose]);
 
