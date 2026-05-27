@@ -92,7 +92,7 @@ type VoicePhase = 'idle' | 'recording' | 'polishing' | 'done';
 export default function DailyReview({ year, month, day, skin, events, todos, onClose }: DailyReviewProps) {
   const [review, setReview] = useState<ReviewData>({ completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' });
   const [mounted, setMounted] = useState(false);
-  const [autoFilling, setAutoFilling] = useState(false);
+
   const [copied, setCopied] = useState(false);
 
   // Voice recording state
@@ -300,91 +300,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     }
   }, [year, month, day, liveText]);
 
-  const autoFillReview = useCallback(async (currentReview: ReviewData) => {
-    setAutoFilling(true);
-    try {
-      let okrData = { objectives: [] as { title: string; period: string; children: { title: string; targetValue: number; children: { title: string; done: boolean }[] }[] }[] };
-      try {
-        const res = await fetch('/api/okr');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.goals?.objectives) okrData = data.goals;
-          else if (Array.isArray(data.goals)) okrData = { objectives: data.goals };
-        }
-      } catch {}
-
-      const dayEvents = events.map(e => `${String(e.startHour).padStart(2,'0')}:${String(e.startMin).padStart(2,'0')}-${String(e.endHour).padStart(2,'0')}:${String(e.endMin).padStart(2,'0')} ${e.title}`);
-      const doneTodos = todos.filter(t => t.done).map(t => t.text);
-      const pendingTodos = todos.filter(t => !t.done).map(t => t.text);
-
-      const res = await fetch('/api/auto-fill-review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: `${year}年${month}月${day}日`,
-          okrData,
-          events: dayEvents,
-          doneTodos,
-          pendingTodos,
-        }),
-      });
-
-      if (!res.ok || !res.body) return;
-
-      const text = await parseSSEStream(res.body.getReader());
-
-      const sections: Record<string, string> = {};
-      const sectionMap: Record<string, keyof ReviewData> = {
-        '今天完成了什么': 'completed',
-        '美好或值得关注的事': 'goodThings',
-        '突发问题': 'problems',
-        '今天心情如何': 'mood',
-        '感想或总结': 'reflections',
-        '明日待办': 'tomorrowTodo',
-      };
-
-      let currentKey = '';
-      let currentLines: string[] = [];
-
-      for (const line of text.split('\n')) {
-        const trimmed = line.trim();
-        let found = false;
-        for (const [label, field] of Object.entries(sectionMap)) {
-          if (trimmed.includes('【' + label + '】') || trimmed === label || trimmed === label + '：' || trimmed === label + ':') {
-            if (currentKey && currentLines.length > 0) {
-              sections[currentKey] = currentLines.join('\n');
-            }
-            currentKey = field;
-            currentLines = [];
-            found = true;
-            break;
-          }
-        }
-        if (!found && currentKey && trimmed) {
-          currentLines.push(trimmed);
-        }
-      }
-      if (currentKey && currentLines.length > 0) {
-        sections[currentKey] = currentLines.join('\n');
-      }
-
-      setReview(prev => {
-        const next = { ...prev };
-        for (const [field, value] of Object.entries(sections)) {
-          if (field in next) {
-            (next as Record<string, unknown>)[field] = value;
-          }
-        }
-        saveReview(year, month, day, next);
-        return next;
-      });
-    } catch {
-      // Silent fail
-    } finally {
-      setAutoFilling(false);
-    }
-  }, [year, month, day, events, todos]);
-
   const updateField = useCallback((field: keyof ReviewData, value: string | number) => {
     setReview(prev => {
       const next = { ...prev, [field]: value };
@@ -409,15 +324,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               <div className="text-lg font-bold" style={{ color: skin.textPrimary }}>{dateStr} 复盘</div>
               <div className="text-[10px] font-medium tracking-wider" style={{ color: skin.textMuted }}>DAILY REVIEW</div>
             </div>
-            {autoFilling && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}>
-                <span className="animate-spin">⟳</span>
-                AI 填充中...
-              </div>
-            )}
-            {!autoFilling && (
-              <>
-                <button onClick={startVoiceRecording}
+            <>
+              <button onClick={startVoiceRecording}
                   className="text-xs px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
                   style={{ backgroundColor: '#ef444415', color: '#ef4444' }}
                 >🎙️ 语音复盘</button>
@@ -439,10 +347,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
                   style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
                 >{copied ? '✓ 已复制' : '📋 复制'}</button>
-                <button onClick={() => autoFillReview(review)}
-                  className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
-                  style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
-                >AI 重新填充</button>
                 <button onClick={async () => {
                   const empty = { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
                   setReview(empty);
@@ -452,7 +356,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
                 >🗑️ 清空</button>
               </>
-            )}
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
             style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
@@ -471,7 +374,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('completed', v)}
               skin={skin}
               placeholder="列出今天完成的事项..."
-              loading={autoFilling}
               compact
             />
             <ReviewSection
@@ -481,7 +383,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('goodThings', v)}
               skin={skin}
               placeholder="值得记录的好事..."
-              loading={autoFilling}
               compact
             />
             <ReviewSection
@@ -491,7 +392,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('problems', v)}
               skin={skin}
               placeholder="遇到的意外或困难..."
-              loading={autoFilling}
               compact
             />
             <ReviewSection
@@ -501,7 +401,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('mood', v)}
               skin={skin}
               placeholder="简单描述心情..."
-              loading={autoFilling}
               compact
             />
             <ReviewSection
@@ -511,7 +410,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('reflections', v)}
               skin={skin}
               placeholder="今天的思考..."
-              loading={autoFilling}
               compact
             />
             <ReviewSection
@@ -521,7 +419,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('tomorrowTodo', v)}
               skin={skin}
               placeholder="明天要做的事..."
-              loading={autoFilling}
               compact
             />
           </div>
@@ -593,7 +490,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 }
 
 /* Review Section Component */
-function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWidth, compact, loading }: {
+function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWidth, compact }: {
   title: string;
   icon: string;
   value: string;
@@ -602,7 +499,6 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWi
   placeholder: string;
   fullWidth?: boolean;
   compact?: boolean;
-  loading?: boolean;
 }) {
   const displayValue = value;
 
@@ -663,9 +559,6 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWi
       <div className="flex items-center gap-1.5 mb-2">
         <span className="text-sm" style={{ color: skin.swatch }}>{icon}</span>
         <span className="text-sm font-bold" style={{ color: skin.textPrimary }}>{title}</span>
-        {loading && (
-          <span className="ml-auto text-[10px] animate-pulse" style={{ color: skin.swatch }}>AI填充中...</span>
-        )}
       </div>
       <textarea
         value={displayValue}
