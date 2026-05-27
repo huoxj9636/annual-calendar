@@ -210,7 +210,7 @@ export default function YearCalendar() {
       // Load module visibility
       const savedVisibility = localStorage.getItem('calendar-module-visibility');
       if (savedVisibility) {
-        try { setModuleVisibility(JSON.parse(savedVisibility)); } catch { /* ignore */ }
+        try { setModuleVisibility(prev => ({ ...prev, ...JSON.parse(savedVisibility) })); } catch { /* ignore */ }
       }
 
       // Load module links
@@ -227,8 +227,11 @@ export default function YearCalendar() {
       const savedOrder = localStorage.getItem('calendar-module-order');
       if (savedOrder) {
         try {
-          const order = JSON.parse(savedOrder) as string[];
-          if (order.length === defaultModuleOrder.length) setModuleOrder(order);
+          const parsed = JSON.parse(savedOrder) as string[];
+          const allKeys = Object.keys(defaultModuleNames);
+          const validOrder = parsed.filter(k => allKeys.includes(k));
+          const missing = allKeys.filter(k => !validOrder.includes(k));
+          setModuleOrder([...validOrder, ...missing]);
         } catch { /* ignore */ }
       }
 
