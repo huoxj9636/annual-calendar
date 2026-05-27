@@ -297,7 +297,11 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
         const res = await fetch('/api/okr');
         if (res.ok) {
           const data = await res.json();
-          if (data.goals) {
+          if (data.objectives) {
+            const parsed = migrateGoals(data.objectives);
+            setGoals(parsed);
+            setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
+          } else if (data.goals) {
             const parsed = migrateGoals(data.goals);
             setGoals(parsed);
             setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
@@ -324,7 +328,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                     await fetch('/api/okr', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ goals: parsed }),
+                      body: JSON.stringify({ objectives: parsed }),
                     });
                     localStorage.removeItem('life-calendar-okr');
                   }
@@ -358,7 +362,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   };
 
   // Save via API
-  useEffect(() => { if (mounted) fetch('/api/okr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ goals }) }).catch(() => {}); }, [goals, mounted]);
+  useEffect(() => { if (mounted) fetch('/api/okr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ objectives: goals }) }).catch(() => {}); }, [goals, mounted]);
 
   // Voice for top input
   const voiceTop = useVoiceRecognition((text) => { setNewOTitle(text); });

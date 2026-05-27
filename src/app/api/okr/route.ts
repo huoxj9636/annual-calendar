@@ -38,10 +38,10 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { objectives } = body as {
     objectives: {
-      id: string; title: string; period: string; createdAt?: string;
+      id: string; title: string; period: string; createdAt?: string | number;
       children: {
-        id: string; title: string; targetValue: number; createdAt?: string;
-        children: { id: string; title: string; done: boolean }[];
+        id: string; title: string; targetValue: number; createdAt?: string | number;
+        children: { id: string; title: string; done: boolean; createdAt?: string | number }[];
       }[];
     }[];
   };
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
         id: o.id,
         title: o.title,
         period: o.period,
-        created_at: o.createdAt || new Date().toISOString(),
+        created_at: typeof o.createdAt === 'number' ? new Date(o.createdAt).toISOString() : (o.createdAt || new Date().toISOString()),
       }, { onConflict: 'id' });
 
     if (oErr) console.error('[OKR upsert O]', oErr.message);
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
           objective_id: o.id,
           title: kr.title,
           target_value: kr.targetValue ?? 1,
-          created_at: kr.createdAt || new Date().toISOString(),
+          created_at: typeof kr.createdAt === 'number' ? new Date(kr.createdAt).toISOString() : (kr.createdAt || new Date().toISOString()),
         }, { onConflict: 'id' });
 
       if (krErr) console.error('[OKR upsert KR]', krErr.message);
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
             key_result_id: kr.id,
             title: t.title,
             done: t.done ?? false,
-            created_at: new Date().toISOString(),
+            created_at: typeof t.createdAt === 'number' ? new Date(t.createdAt).toISOString() : (t.createdAt || new Date().toISOString()),
           }, { onConflict: 'id' });
 
         if (tErr) console.error('[OKR upsert Task]', tErr.message);
