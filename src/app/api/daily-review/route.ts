@@ -69,24 +69,9 @@ export async function POST(request: NextRequest) {
     updated_at: new Date().toISOString(),
   };
 
-  // Check if record exists
-  const { data: existing } = await client
+  const { error } = await client
     .from('daily_reviews')
-    .select('id')
-    .eq('year', year)
-    .eq('month', month)
-    .eq('day', day)
-    .maybeSingle();
-
-  let error;
-  if (existing) {
-    ({ error } = await client
-      .from('daily_reviews')
-      .update(row)
-      .eq('id', (existing as { id: string }).id));
-  } else {
-    ({ error } = await client.from('daily_reviews').insert(row));
-  }
+    .upsert(row, { onConflict: 'year,month,day' });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });

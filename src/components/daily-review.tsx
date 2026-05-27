@@ -268,15 +268,36 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         setPolishedPreview(partial);
       });
 
-      // Parse sections and fill review
-      const sectionMap: Record<string, keyof ReviewData> = {
-        '今天完成了什么': 'completed',
-        '美好或值得关注的事': 'goodThings',
-        '突发问题': 'problems',
-        '今天心情如何': 'mood',
-        '感想或总结': 'reflections',
-        '明日待办': 'tomorrowTodo',
-      };
+      // Parse sections and fill review — use flexible matching for section headers
+      const sectionEntries: Array<{ keywords: string[]; field: keyof ReviewData }> = [
+        { keywords: ['完成了什么'], field: 'completed' },
+        { keywords: ['美好', '值得关注'], field: 'goodThings' },
+        { keywords: ['突发问题', '遇到.*问题', '困难'], field: 'problems' },
+        { keywords: ['心情'], field: 'mood' },
+        { keywords: ['感想', '总结'], field: 'reflections' },
+        { keywords: ['明日待办', '明天.*计划', '明天.*安排'], field: 'tomorrowTodo' },
+      ];
+
+      function matchSection(trimmed: string): keyof ReviewData | '' {
+        // Match 【...】 format
+        const bracketMatch = trimmed.match(/【(.+?)】/);
+        if (bracketMatch) {
+          const content = bracketMatch[1];
+          for (const entry of sectionEntries) {
+            if (entry.keywords.every(kw => new RegExp(kw).test(content))) {
+              return entry.field;
+            }
+          }
+        }
+        // Match plain text like "今天完成了什么："
+        const plainMatch = trimmed.replace(/[：:]/g, '');
+        for (const entry of sectionEntries) {
+          if (entry.keywords.every(kw => new RegExp(kw).test(plainMatch))) {
+            return entry.field;
+          }
+        }
+        return '';
+      }
 
       const sections: Record<string, string> = {};
       let currentKey = '';
@@ -284,19 +305,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 
       for (const line of text.split('\n')) {
         const trimmed = line.trim();
-        let found = false;
-        for (const [label, field] of Object.entries(sectionMap)) {
-          if (trimmed.includes('【' + label + '】') || trimmed === label || trimmed === label + '：' || trimmed === label + ':') {
-            if (currentKey && currentLines.length > 0) {
-              sections[currentKey] = currentLines.join('\n');
-            }
-            currentKey = field;
-            currentLines = [];
-            found = true;
-            break;
+        const matched = matchSection(trimmed);
+        if (matched) {
+          if (currentKey && currentLines.length > 0) {
+            sections[currentKey] = currentLines.join('\n');
           }
-        }
-        if (!found && currentKey && trimmed) {
+          currentKey = matched;
+          currentLines = [];
+        } else if (currentKey && trimmed) {
           currentLines.push(trimmed);
         }
       }
