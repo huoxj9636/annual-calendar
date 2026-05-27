@@ -298,7 +298,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         const next = { ...prev };
         for (const [field, value] of Object.entries(sections)) {
           if (field in next) {
-            (next as Record<string, unknown>)[field] = value;
+            const existing = String((next as Record<string, unknown>)[field] || '').trim();
+            (next as Record<string, unknown>)[field] = existing ? existing + '\n' + value : value;
           }
         }
         saveReview(year, month, day, next);
