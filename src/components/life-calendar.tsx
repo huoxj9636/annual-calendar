@@ -500,7 +500,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
           <div className="relative z-10">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-bold tracking-wide text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>人生旅途</h2>
+                <h2 className="text-xl font-bold tracking-wide text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>人生旅途 · OKR</h2>
                 <div className="flex items-center gap-2 mt-2 text-xs text-white/70">
                   <span>出生年份</span>
                   <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}
