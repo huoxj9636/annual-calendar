@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   // outputFileTracingRoot: path.resolve(__dirname, '../../'),  // Uncomment and add 'import path from "path"' if needed
   /* config options here */
   allowedDevOrigins: ['*.dev.coze.site'],
-  serverExternalPackages: ['coze-coding-dev-sdk', 'langsmith', '@langchain/core', '@langchain/openai'],
+  serverExternalPackages: ['coze-coding-dev-sdk', 'langsmith', '@langchain/core', '@langchain/openai', '@supabase/supabase-js'],
   images: {
     remotePatterns: [
       {
