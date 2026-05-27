@@ -800,10 +800,10 @@ export default function YearCalendar() {
         </button>
 
         {/* Calendar / Task toggle sidebar */}
-        <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10" style={{ gap: '12px' }}>
+        <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10">
           {moduleOrder.filter(k => moduleVisibility[k as keyof typeof moduleVisibility]).map((key, idx, arr) => {
             const mk = key as 'timeline' | 'dida' | 'longterm' | 'bilibili' | 'insight' | 'track';
-            const divider = idx > 0 ? <div key={`${key}-div`} className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} /> : null;
+            const divider = idx > 0 ? <div key={`${key}-div`} className="w-6" style={{ borderTop: `1px solid ${skin.swatch}40`, margin: '2px auto 4px auto' }} /> : null;
             const btnStyle: React.CSSProperties = { backgroundColor: skin.swatch, color: '#ffffff', boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)` };
             const labelStyle: React.CSSProperties = { color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' };
 
@@ -867,7 +867,7 @@ export default function YearCalendar() {
               }
             };
 
-            return <div key={mk}>
+            return <div key={mk} className="flex flex-col items-center mb-3">
               {divider}
               <button onClick={handleClick} onMouseDown={(e) => e.preventDefault()}
                 className="group flex flex-col items-center gap-1 cursor-pointer" title={getModuleName(mk)}>
