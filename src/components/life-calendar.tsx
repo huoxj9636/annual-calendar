@@ -626,7 +626,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                     {aiDecompose.loading && aiDecompose.objectiveId === o.id ? 'AI拆解中...' : 'AI 拆解'}
                   </button>
                   <button onClick={() => deleteObjective(o.id, o.title)}
-                          className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: '#ef4444' }}>删除</button>
+                          className="text-sm px-3 py-1.5 rounded hover:opacity-70" style={{ color: '#ef4444', backgroundColor: '#ef444412', border: '1px solid #ef444430' }}>删除</button>
                 </div>
                 <div className="mt-1 text-xs" style={{ color: s.textMuted }}>{o.children.length} 个关键结果</div>
               </div>
@@ -695,7 +695,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                       <span className="text-[10px] flex-shrink-0" style={{ color: s.textMuted }}>{doneTasks}/{kr.children.length}</span>
                       <span className="text-xs font-bold flex-shrink-0" style={{ color: krPct > 0 ? swatch : s.textMuted }}>{krPct}%</span>
                       <button onClick={e => { e.stopPropagation(); deleteKR(o.id, kr.id, kr.title); }}
-                              className="text-[10px] opacity-0 hover:!opacity-100 flex-shrink-0 transition-opacity" style={{ color: '#ef4444' }}>✕</button>
+                              className="text-sm px-2 py-1 rounded flex-shrink-0 hover:opacity-70" style={{ color: '#ef4444', backgroundColor: '#ef444412', border: '1px solid #ef444430' }}>删除</button>
                     </div>
 
                     {/* KR progress bar */}
@@ -726,7 +726,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                                     onClick={() => { setEditingId(t.id); setEditText(t.title); }}>{t.title}</span>
                             )}
                             <button onClick={() => deleteTask(o.id, kr.id, t.id, t.title)}
-                                    className="text-[10px] opacity-0 group-hover:opacity-60 hover:!opacity-100 flex-shrink-0 transition-opacity" style={{ color: '#ef4444' }}>✕</button>
+                                    className="text-sm px-2 py-1 rounded flex-shrink-0 hover:opacity-70" style={{ color: '#ef4444', backgroundColor: '#ef444412', border: '1px solid #ef444430' }}>删除</button>
                           </div>
                         ))}
 
