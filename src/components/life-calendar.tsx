@@ -386,14 +386,14 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               <span className="text-4xl mb-2">🎯</span>
               <p className="text-sm">输入目标开始吧</p>
             </div>
-          ) : filteredGoals.map(o => {
+          ) : filteredGoals.map((o, oi) => {
             const pct = Math.round(oProgress(o) * 100);
             const isSelected = selectedOId === o.id;
             return (
               <div key={o.id} onClick={() => setSelectedOId(o.id)}
                 className="py-2.5 cursor-pointer transition-all border-l-[3px] flex items-center gap-2"
                 style={{ paddingLeft: 16, paddingRight: 16, backgroundColor: isSelected ? s.cardHover : 'transparent', borderLeftColor: isSelected ? swatch : 'transparent' }}>
-                <span className="flex-1 text-sm truncate" style={{ color: s.text1 }}>{o.title}</span>
+                <span className="flex-1 text-sm truncate" style={{ color: s.text1 }}><span style={{ color: swatch, fontWeight: 600 }}>O{oi + 1}：</span>{o.title}</span>
                 <span className="text-xs font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
               </div>
             );
@@ -434,7 +434,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                   ) : (
                     <h2 className="flex-1 text-lg font-bold cursor-pointer hover:opacity-80" style={{ color: s.text1 }}
                         onClick={() => { setEditingId(o.id); setEditText(o.title); }}>
-                      {o.title}
+                      <span style={{ color: swatch }}>O{goals.findIndex(g => g.id === o.id) + 1}：</span>{o.title}
                     </h2>
                   )}
                   <span className="text-2xl font-bold flex-shrink-0" style={{ color: oPct > 0 ? swatch : s.textMuted }}>{oPct}%</span>
@@ -468,7 +468,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
               </div>
 
               {/* ── KR List ── */}
-              {o.children.map(kr => {
+              {o.children.map((kr, kri) => {
                 const krPct = Math.round(krProgress(kr) * 100);
                 const isExpanded = expandedKRs.has(kr.id);
                 const doneTasks = kr.children.filter(t => t.done).length;
@@ -487,7 +487,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                       ) : (
                         <span className="flex-1 text-sm font-medium truncate" style={{ color: s.text1 }}
                               onClick={e => { e.stopPropagation(); setEditingId(kr.id); setEditText(kr.title); }}>
-                          {kr.title}
+                          <span style={{ color: swatch, fontWeight: 600 }}>KR{kri + 1}：</span>{kr.title}
                         </span>
                       )}
                       {/* Target value */}
