@@ -36,40 +36,28 @@ interface ReviewData {
 const MOOD_LABELS = ['', '疲惫', '低落', '一般', '不错', '很棒'];
 const ENERGY_LABELS = ['', '枯竭', '低迷', '正常', '充沛', '满格'];
 
-function getStorageKey(year: number, month: number, day: number) {
-  return `daily-review-${year}-${month}-${day}`;
-}
-
-function loadReview(year: number, month: number, day: number): ReviewData {
-  if (typeof window === 'undefined') return { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
+async function loadReview(year: number, month: number, day: number): Promise<ReviewData> {
   try {
-    const raw = localStorage.getItem(getStorageKey(year, month, day));
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const migrate = (v: string[] | string | undefined): string => {
-        if (Array.isArray(v)) return v.filter(s => s.trim()).join('\n');
-        return v || '';
-      };
-      return {
-        completed: migrate(parsed.completed ?? parsed.achievements),
-        goodThings: migrate(parsed.goodThings ?? parsed.gratitude),
-        problems: migrate(parsed.problems ?? parsed.regrets),
-        mood: typeof parsed.mood === 'string' ? parsed.mood : '',
-        reflections: migrate(parsed.reflections ?? parsed.insights),
-        tomorrowTodo: migrate(parsed.tomorrowTodo ?? parsed.tomorrowFocus),
-        moodScore: parsed.moodScore ?? (typeof parsed.mood === 'number' ? parsed.mood : 3),
-        energy: parsed.energy ?? 3,
-        updatedAt: parsed.updatedAt ?? '',
-      };
-    }
+    const res = await fetch(`/api/daily-review?year=${year}&month=${month}&day=${day}`);
+    if (res.ok) return await res.json();
   } catch {}
   return { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
 }
 
-function saveReview(year: number, month: number, day: number, data: ReviewData) {
-  if (typeof window === 'undefined') return;
-  data.updatedAt = new Date().toISOString();
-  localStorage.setItem(getStorageKey(year, month, day), JSON.stringify(data));
+async function saveReview(year: number, month: number, day: number, data: ReviewData) {
+  try {
+    await fetch('/api/daily-review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ year, month, day, ...data }),
+    });
+  } catch {}
+}
+
+async function clearReview(year: number, month: number, day: number) {
+  try {
+    await fetch(`/api/daily-review?year=${year}&month=${month}&day=${day}`, { method: 'DELETE' });
+  } catch {}
 }
 
 interface SRLike extends EventTarget {
@@ -118,8 +106,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 
   useEffect(() => {
     setMounted(true);
-    const loaded = loadReview(year, month, day);
-    setReview(loaded);
+    loadReview(year, month, day).then(setReview);
   }, [year, month, day]);
 
   // Cleanup on unmount
@@ -318,10 +305,11 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     try {
       let okrData = { objectives: [] as { title: string; period: string; children: { title: string; targetValue: number; children: { title: string; done: boolean }[] }[] }[] };
       try {
-        const raw = localStorage.getItem('okr-data');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed.objectives) okrData = parsed;
+        const res = await fetch('/api/okr');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.goals?.objectives) okrData = data.goals;
+          else if (Array.isArray(data.goals)) okrData = { objectives: data.goals };
         }
       } catch {}
 
@@ -455,10 +443,10 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
                   style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
                 >AI 重新填充</button>
-                <button onClick={() => {
+                <button onClick={async () => {
                   const empty = { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
                   setReview(empty);
-                  saveReview(year, month, day, empty);
+                  await clearReview(year, month, day);
                 }}
                   className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
                   style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}

@@ -107,16 +107,26 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
 
   useEffect(() => {
     if (!mounted) return;
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) setEvents(parsed); }
-      else setEvents([]);
-    } catch { setEvents([]); }
+    (async () => {
+      try {
+        const res = await fetch(`/api/day-data?year=${navYear}&month=${navMonth}&day=${navDay}`);
+        if (res.ok) {
+          const data = await res.json();
+          setEvents(Array.isArray(data.events) ? data.events : []);
+        } else {
+          setEvents([]);
+        }
+      } catch { setEvents([]); }
+    })();
   }, [storageKey, mounted]);
 
   useEffect(() => {
     if (!mounted) return;
-    localStorage.setItem(storageKey, JSON.stringify(events));
+    fetch('/api/day-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'events', year: navYear, month: navMonth, day: navDay, data: events }),
+    }).catch(() => {});
   }, [events, storageKey, mounted]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);

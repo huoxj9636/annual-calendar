@@ -48,6 +48,7 @@ export default function YearCalendar() {
   const [popupSize, setPopupSize] = useState({ w: 400, h: 320 });
   const [noteDraft, setNoteDraft] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [monthReviewData, setMonthReviewData] = useState<Record<string, string>>({});
   const [reviewLeft, setReviewLeft] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('panel-left-review');
@@ -183,111 +184,125 @@ export default function YearCalendar() {
     return () => window.removeEventListener('resize', calculateHeight);
   }, [mounted]);
 
-  // Load data from localStorage on mount
+  // Load data from API on mount
   useEffect(() => {
     setMounted(true);
     const now = new Date();
     setTodayStr(
       `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
     );
-    try {
-      const savedOverrides = localStorage.getItem(`calendar-overrides-${year}`);
-      if (savedOverrides) setOverrides(JSON.parse(savedOverrides));
-      else setOverrides({});
+    (async () => {
+      try {
+        // Load overrides from DB
+        const overridesRes = await fetch(`/api/calendar-data?type=overrides&year=${year}`);
+        if (overridesRes.ok) {
+          const overridesData = await overridesRes.json();
+          if (Object.keys(overridesData).length > 0) {
+            setOverrides(overridesData);
+            overridesLoadedRef.current = true;
+          }
+        }
 
-      const savedNotes = localStorage.getItem(`calendar-notes-${year}`);
-      if (savedNotes) setNotes(JSON.parse(savedNotes));
-      else setNotes({});
+        // Load notes from DB
+        const notesRes = await fetch(`/api/calendar-data?type=notes&year=${year}`);
+        if (notesRes.ok) {
+          const notesData = await notesRes.json();
+          if (Object.keys(notesData).length > 0) {
+            setNotes(notesData);
+            notesLoadedRef.current = true;
+          }
+        }
+      } catch { /* ignore */ }
 
-      // Load skin preference
-      const savedSkin = localStorage.getItem('life-calendar-skin');
-      if (savedSkin && SKINS.find(s => s.key === savedSkin)) setSkinKey(savedSkin);
+      // Load UI preferences from localStorage (device-specific)
+      try {
+        const savedSkin = localStorage.getItem('life-calendar-skin');
+        if (savedSkin && SKINS.find(s => s.key === savedSkin)) setSkinKey(savedSkin);
 
-      // Load motto
-      const savedMotto = localStorage.getItem('calendar-motto');
-      if (savedMotto) setMotto(savedMotto);
+        const savedMotto = localStorage.getItem('calendar-motto');
+        if (savedMotto) setMotto(savedMotto);
 
-      // Load module visibility
-      const savedVisibility = localStorage.getItem('calendar-module-visibility');
-      if (savedVisibility) {
-        try { setModuleVisibility(prev => ({ ...prev, ...JSON.parse(savedVisibility) })); } catch { /* ignore */ }
-      }
+        const savedVisibility = localStorage.getItem('calendar-module-visibility');
+        if (savedVisibility) {
+          try { setModuleVisibility(prev => ({ ...prev, ...JSON.parse(savedVisibility) })); } catch { /* ignore */ }
+        }
 
-      // Load module links
-      const savedLinks = localStorage.getItem('calendar-module-links');
-      if (savedLinks) {
-        try { setModuleLinks(prev => ({ ...prev, ...JSON.parse(savedLinks) })); } catch { /* ignore */ }
-      }
+        const savedLinks = localStorage.getItem('calendar-module-links');
+        if (savedLinks) {
+          try { setModuleLinks(prev => ({ ...prev, ...JSON.parse(savedLinks) })); } catch { /* ignore */ }
+        }
 
-      const savedNames = localStorage.getItem('calendar-module-names');
-      if (savedNames) {
-        try { setModuleNames(prev => ({ ...prev, ...JSON.parse(savedNames) })); } catch { /* ignore */ }
-      }
+        const savedNames = localStorage.getItem('calendar-module-names');
+        if (savedNames) {
+          try { setModuleNames(prev => ({ ...prev, ...JSON.parse(savedNames) })); } catch { /* ignore */ }
+        }
 
-      const savedOrder = localStorage.getItem('calendar-module-order');
-      if (savedOrder) {
-        try {
-          const parsed = JSON.parse(savedOrder) as string[];
-          const allKeys = Object.keys(defaultModuleNames);
-          const validOrder = parsed.filter(k => allKeys.includes(k));
-          const missing = allKeys.filter(k => !validOrder.includes(k));
-          setModuleOrder([...validOrder, ...missing]);
-        } catch { /* ignore */ }
-      }
+        const savedOrder = localStorage.getItem('calendar-module-order');
+        if (savedOrder) {
+          try {
+            const parsed = JSON.parse(savedOrder) as string[];
+            const allKeys = Object.keys(defaultModuleNames);
+            const validOrder = parsed.filter(k => allKeys.includes(k));
+            const missing = allKeys.filter(k => !validOrder.includes(k));
+            setModuleOrder([...validOrder, ...missing]);
+          } catch { /* ignore */ }
+        }
 
-      // Check if drawing has strokes
-      const savedDrawing = localStorage.getItem(`calendar-drawing-${year}`);
-      if (savedDrawing) {
-        try {
-          const data = JSON.parse(savedDrawing);
-          setDrawingHasStrokes(data.strokes && data.strokes.length > 0);
-        } catch { /* ignore */ }
-      }
-    } catch {
-      setOverrides({});
-      setNotes({});
-    }
+        const savedDrawing = localStorage.getItem(`calendar-drawing-${year}`);
+        if (savedDrawing) {
+          try {
+            const data = JSON.parse(savedDrawing);
+            setDrawingHasStrokes(data.strokes && data.strokes.length > 0);
+          } catch { /* ignore */ }
+        }
+      } catch { /* ignore */ }
+    })();
   }, [year]);
 
-  // Save overrides to localStorage (skip first render after mount to avoid overwriting with empty {})
+  // Save overrides to DB (skip first render after mount to avoid overwriting with empty {})
   const overridesLoadedRef = useRef(false);
   useEffect(() => {
     if (!mounted) return;
     if (!overridesLoadedRef.current) {
-      // Only start saving once overrides have been loaded from localStorage
-      if (Object.keys(overrides).length > 0 || localStorage.getItem(`calendar-overrides-${year}`)) {
+      if (Object.keys(overrides).length > 0) {
         overridesLoadedRef.current = true;
       } else {
-        return; // Skip saving on first render before data is loaded
+        return;
       }
     }
-    try {
-      localStorage.setItem(
-        `calendar-overrides-${year}`,
-        JSON.stringify(overrides),
-      );
-    } catch {
-      // Ignore
-    }
+    fetch('/api/calendar-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'overrides', year, data: overrides }),
+    }).catch(() => {});
   }, [overrides, year, mounted]);
 
-  // Save notes to localStorage
+  // Save notes to DB
   const notesLoadedRef = useRef(false);
   useEffect(() => {
     if (!mounted) return;
     if (!notesLoadedRef.current) {
-      if (Object.keys(notes).length > 0 || localStorage.getItem(`calendar-notes-${year}`)) {
+      if (Object.keys(notes).length > 0) {
         notesLoadedRef.current = true;
       } else {
         return;
       }
     }
-    try {
-      localStorage.setItem(`calendar-notes-${year}`, JSON.stringify(notes));
-    } catch {
-      // Ignore
-    }
+    fetch('/api/calendar-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'notes', year, data: notes }),
+    }).catch(() => {});
   }, [notes, year, mounted]);
+
+  // Load month review data when selectedMonth changes
+  useEffect(() => {
+    if (selectedMonth === null) return;
+    fetch(`/api/calendar-data?type=month-review&year=${year}&month=${selectedMonth}`)
+      .then(res => res.ok ? res.json() : {})
+      .then(data => setMonthReviewData(data))
+      .catch(() => {});
+  }, [selectedMonth, year]);
 
   // Save module visibility to localStorage
   useEffect(() => {
@@ -962,26 +977,7 @@ export default function YearCalendar() {
                   const weekendBg = cell.isWeekend ? monthColor.bg : undefined;
                   const noteKey = `${year}-${cell.month}-${cell.day}`;
                   const hasNote = mounted && notes[noteKey];
-                  const hasDayViewData = mounted && (() => {
-                    try {
-                      const evts = localStorage.getItem(`dayview-events-${year}-${cell.month}-${cell.day}`);
-                      const todos = localStorage.getItem(`dayview-todos-${year}-${cell.month}-${cell.day}`);
-                      const hasEvts = evts && JSON.parse(evts).length > 0;
-                      const hasTodos = todos && JSON.parse(todos).length > 0;
-                      return hasEvts || hasTodos;
-                    } catch { return false; }
-                  })();
-                  // Also check day-view memo text stored in calendar-notes-${year}
-                  const hasDayViewMemo = mounted && (() => {
-                    try {
-                      const raw = localStorage.getItem(`calendar-notes-${year}`);
-                      if (!raw) return false;
-                      const parsed = JSON.parse(raw);
-                      const memoKey = `${year}-${cell.month}-${cell.day}`;
-                      return !!parsed[memoKey] && parsed[memoKey].trim().length > 0;
-                    } catch { return false; }
-                  })();
-                  const hasAnyNote = hasNote || hasDayViewData || hasDayViewMemo;
+                  const hasAnyNote = hasNote;
                   const cellDateStr = `${year}-${String(cell.month).padStart(2, '0')}-${String(cell.day).padStart(2, '0')}`;
                   const isPast = mounted && (() => {
                     if (!todayStr) return false;
@@ -1181,18 +1177,8 @@ export default function YearCalendar() {
               month={dailyReviewMonth}
               day={dailyReviewDay}
               skin={skin}
-              events={(() => {
-                try {
-                const raw = localStorage.getItem(`dayview-events-${year}-${dailyReviewMonth}-${dailyReviewDay}`);
-                return raw ? JSON.parse(raw) : [];
-                } catch { return []; }
-              })()}
-              todos={(() => {
-                try {
-                const raw = localStorage.getItem(`dayview-todos-${year}-${dailyReviewMonth}-${dailyReviewDay}`);
-                return raw ? JSON.parse(raw) : [];
-                } catch { return []; }
-              })()}
+              events={[]}
+              todos={[]}
               onClose={() => setDailyReviewOpen(false)}
             />
           )}
@@ -1255,9 +1241,6 @@ export default function YearCalendar() {
                 const isCurrentYear = year === today.getFullYear();
                 const isCurrentMonth = isCurrentYear && selectedMonth === today.getMonth() + 1;
                 const effectiveDays = isCurrentMonth ? today.getDate() : daysInMonth;
-                const storageKey = `calendar-overrides-${year}`;
-                let overrides: Record<string, string> = {};
-                try { overrides = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { /* empty */ }
                 let satisfied = 0;
                 let crossed = 0;
                 for (let d = 1; d <= effectiveDays; d++) {
@@ -1296,8 +1279,7 @@ export default function YearCalendar() {
                 { key: 'reflect', label: '反思改进', icon: '💡', color: '#f59e0b', placeholder: '有什么可以改进？' },
                 { key: 'plan', label: '下月计划', icon: '🚀', color: '#3b82f6', placeholder: '下个月有什么计划？' },
               ] as const).map((section) => {
-                const storageKey = `month-review-${section.key}-${year}-${selectedMonth}`;
-                const savedValue = (() => { try { return localStorage.getItem(storageKey) || ''; } catch { return ''; } })();
+                const savedValue = monthReviewData[section.key] || '';
                 return (
                   <div key={section.key} className="group">
                     <div className="flex items-center gap-2 mb-2">
@@ -1310,7 +1292,13 @@ export default function YearCalendar() {
                       className="w-full bg-gray-50/60 rounded-2xl px-5 py-4 text-sm text-gray-700 resize-none focus:outline-none focus:bg-gray-50 transition-all placeholder:text-gray-300 leading-relaxed min-h-[160px]"
                       placeholder={section.placeholder}
                       defaultValue={savedValue}
-                      onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => { try { localStorage.setItem(storageKey, e.target.value); } catch { /* empty */ } }}
+                      onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => {
+                        fetch('/api/calendar-data', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ type: 'month-review', year, month: selectedMonth, sectionKey: section.key, data: e.target.value }),
+                        }).catch(() => {});
+                      }}
                     />
                   </div>
                 );

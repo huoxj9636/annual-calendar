@@ -65,39 +65,60 @@ export default function TrackPanel({ year, skin, onClose }: Omit<TrackPanelProps
   // Load planned events for selected day
   useEffect(() => {
     if (!mounted) return;
-    try {
-      const raw = localStorage.getItem(`dayview-events-${year}-${selectedMonth}-${selectedDay}`);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setPlannedEvents(Array.isArray(parsed) ? parsed : []);
-      } else {
+    (async () => {
+      try {
+        const res = await fetch(`/api/day-data?year=${year}&month=${selectedMonth}&day=${selectedDay}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPlannedEvents(Array.isArray(data.events) ? data.events : []);
+        } else {
+          setPlannedEvents([]);
+        }
+      } catch {
         setPlannedEvents([]);
       }
-    } catch {
-      setPlannedEvents([]);
-    }
+    })();
   }, [year, selectedMonth, selectedDay, mounted]);
 
   // Load actual times
   useEffect(() => {
     if (!mounted) return;
-    try {
-      const raw = localStorage.getItem(`track-actual-${year}-${selectedMonth}-${selectedDay}`);
-      if (raw) {
-        setActualTimes(JSON.parse(raw));
-      } else {
+    (async () => {
+      try {
+        const res = await fetch(`/api/calendar-data?type=drawing&year=${year}`);
+        // We use a simple key-value store approach - store actual times in calendar_notes
+        // For now, load from a dedicated API
+        const key = `track-actual-${year}-${selectedMonth}-${selectedDay}`;
+        const noteRes = await fetch(`/api/calendar-data?type=notes&year=${year}`);
+        if (noteRes.ok) {
+          const notes = await noteRes.json();
+          if (notes[key]) setActualTimes(JSON.parse(notes[key]));
+          else setActualTimes({});
+        } else {
+          setActualTimes({});
+        }
+      } catch {
         setActualTimes({});
       }
-    } catch {
-      setActualTimes({});
-    }
+    })();
   }, [year, selectedMonth, selectedDay, mounted]);
 
   // Save actual times
-  const saveActualTimes = useCallback((times: Record<string, ActualTime>) => {
+  const saveActualTimes = useCallback(async (times: Record<string, ActualTime>) => {
     if (!mounted) return;
     setActualTimes(times);
-    localStorage.setItem(`track-actual-${year}-${selectedMonth}-${selectedDay}`, JSON.stringify(times));
+    try {
+      // Store track actual times as a note entry
+      const key = `track-actual-${year}-${selectedMonth}-${selectedDay}`;
+      const noteRes = await fetch(`/api/calendar-data?type=notes&year=${year}`);
+      const existingNotes = noteRes.ok ? await noteRes.json() : {};
+      existingNotes[key] = JSON.stringify(times);
+      await fetch('/api/calendar-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'notes', year, data: existingNotes }),
+      });
+    } catch { /* ignore */ }
   }, [year, selectedMonth, selectedDay, mounted]);
 
   const updateActualTime = (eventId: string, field: 'actualStart' | 'actualEnd', value: string) => {
@@ -160,9 +181,9 @@ export default function TrackPanel({ year, skin, onClose }: Omit<TrackPanelProps
       // Get satisfaction data for context
       let satisfactionInfo = '';
       try {
-        const overridesRaw = localStorage.getItem(`calendar-overrides-${year}`);
-        if (overridesRaw) {
-          const overrides = JSON.parse(overridesRaw);
+        const overridesRes = await fetch(`/api/calendar-data?type=overrides&year=${year}`);
+        if (overridesRes.ok) {
+          const overrides = await overridesRes.json();
           let satisfied = 0, crossed = 0;
           for (let d = 1; d <= daysInMonth; d++) {
             const key = `${year}-${selectedMonth}-${d}`;

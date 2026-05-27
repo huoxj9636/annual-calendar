@@ -290,11 +290,22 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
 
-  // Load
+  // Load from API
   useEffect(() => {
-    const saved = localStorage.getItem('okr-data');
-    if (saved) { try { const parsed = migrateGoals(JSON.parse(saved)); setGoals(parsed); setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id)))); } catch { /* ignore */ } }
-    setMounted(true);
+    (async () => {
+      try {
+        const res = await fetch('/api/okr');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.goals) {
+            const parsed = migrateGoals(data.goals);
+            setGoals(parsed);
+            setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
+          }
+        }
+      } catch { /* ignore */ }
+      setMounted(true);
+    })();
   }, []);
 
   // Apply template
@@ -316,8 +327,8 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     setGoals(prev => [...prev, ...newGoals]);
   };
 
-  // Save
-  useEffect(() => { if (mounted) localStorage.setItem('okr-data', JSON.stringify(goals)); }, [goals, mounted]);
+  // Save via API
+  useEffect(() => { if (mounted) fetch('/api/okr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ goals }) }).catch(() => {}); }, [goals, mounted]);
 
   // Voice for top input
   const voiceTop = useVoiceRecognition((text) => { setNewOTitle(text); });

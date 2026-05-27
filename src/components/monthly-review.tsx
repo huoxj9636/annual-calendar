@@ -69,65 +69,48 @@ export default function MonthlyReview({ year, skin: skinProp }: MonthlyReviewPro
     }
   }, [selectedMonth]);
 
-  const monthStats = useMemo<MonthStats[]>(() => {
+  // Load stats from API
+  const [monthStats, setMonthStats] = useState<MonthStats[]>([]);
+  const [overridesCache, setOverridesCache] = useState<Record<string, DayOverride>>({});
+  const [noteKeysCache, setNoteKeysCache] = useState<Set<string>>(new Set());
+  const [eventCountsCache, setEventCountsCache] = useState<Record<number, number>>({});
+  const [todoCountsCache, setTodoCountsCache] = useState<Record<number, { total: number; done: number }>>({});
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/month-stats?year=${year}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setOverridesCache(data.overrides || {});
+        setNoteKeysCache(new Set(data.noteKeys || []));
+        setEventCountsCache(data.eventCounts || {});
+        setTodoCountsCache(data.todoCounts || {});
+      } catch { /* ignore */ }
+    })();
+  }, [year]);
+
+  useEffect(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     const currentDay = now.getDate();
 
-    return Array.from({ length: 12 }, (_, i) => {
+    const stats: MonthStats[] = Array.from({ length: 12 }, (_, i) => {
       const month = i + 1;
       const totalDays = getDaysInMonth(year, month);
 
-      // Load overrides
-      let overrides: Record<string, DayOverride> = {};
-      try {
-        const raw = localStorage.getItem(`calendar-overrides-${year}`);
-        if (raw) overrides = JSON.parse(raw);
-      } catch { /* empty */ }
+      const scheduleDays = eventCountsCache[month] || 0;
+      const todoInfo = todoCountsCache[month] || { total: 0, done: 0 };
+      const todoTotal = todoInfo.total;
+      const todoDone = todoInfo.done;
 
-      // Load events
-      let scheduleDays = 0;
-      try {
-        for (let d = 1; d <= totalDays; d++) {
-          const key = `dayview-events-${year}-${month}-${d}`;
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            const events = JSON.parse(raw);
-            if (Array.isArray(events) && events.length > 0) scheduleDays++;
-          }
-        }
-      } catch { /* empty */ }
-
-      // Load todos
-      let todoTotal = 0;
-      let todoDone = 0;
-      try {
-        for (let d = 1; d <= totalDays; d++) {
-          const key = `dayview-todos-${year}-${month}-${d}`;
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            const todos = JSON.parse(raw);
-            if (Array.isArray(todos)) {
-              todoTotal += todos.length;
-              todoDone += todos.filter((t: { done?: boolean }) => t.done).length;
-            }
-          }
-        }
-      } catch { /* empty */ }
-
-      // Load memos
       let memoDays = 0;
-      try {
-        const rawNotes = localStorage.getItem(`calendar-notes-${year}`);
-        const notes: Record<string, string> = rawNotes ? JSON.parse(rawNotes) : {};
-        for (let d = 1; d <= totalDays; d++) {
-          const noteKey = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-          if (notes[noteKey] && notes[noteKey].trim()) memoDays++;
-        }
-      } catch { /* empty */ }
+      for (let d = 1; d <= totalDays; d++) {
+        const noteKey = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        if (noteKeysCache.has(noteKey)) memoDays++;
+      }
 
-      // Count overrides
       let checked = 0;
       let crossed = 0;
       let weekdayChecked = 0;
@@ -144,10 +127,10 @@ export default function MonthlyReview({ year, skin: skinProp }: MonthlyReviewPro
 
         if (isFuture) {
           heatMap.push('future');
-        } else if (overrides[key] === 'checked') {
+        } else if (overridesCache[key] === 'checked') {
           checked++;
           heatMap.push('checked');
-        } else if (overrides[key] === 'crossed') {
+        } else if (overridesCache[key] === 'crossed') {
           crossed++;
           heatMap.push('crossed');
         } else {
@@ -157,10 +140,10 @@ export default function MonthlyReview({ year, skin: skinProp }: MonthlyReviewPro
         const weekend = isWeekend(year, month, d);
         if (weekend) {
           weekendTotal++;
-          if (overrides[key] === 'checked') weekendChecked++;
+          if (overridesCache[key] === 'checked') weekendChecked++;
         } else {
           weekdayTotal++;
-          if (overrides[key] === 'checked') weekdayChecked++;
+          if (overridesCache[key] === 'checked') weekdayChecked++;
         }
       }
 
@@ -168,7 +151,6 @@ export default function MonthlyReview({ year, skin: skinProp }: MonthlyReviewPro
       const isPast = year < currentYear || (year === currentYear && month < currentMonth) ||
         (year === currentYear && month === currentMonth);
 
-      // Solar terms and festivals
       const solarTerms: string[] = [];
       const festivals: string[] = [];
       for (let d = 1; d <= totalDays; d++) {
@@ -200,7 +182,8 @@ export default function MonthlyReview({ year, skin: skinProp }: MonthlyReviewPro
         heatMap,
       };
     });
-  }, [year]);
+    setMonthStats(stats);
+  }, [year, overridesCache, noteKeysCache, eventCountsCache, todoCountsCache]);
 
   // Year average stats
   const yearAvg = useMemo(() => {

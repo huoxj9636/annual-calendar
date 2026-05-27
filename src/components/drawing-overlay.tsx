@@ -52,18 +52,32 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
       strokesRef.current = strokes;
     }, [strokes]);
 
+    const saveStrokes = useCallback((newStrokes: Stroke[]) => {
+      try {
+        // Extract year from storageKey like "calendar-drawing-2025"
+        const yearMatch = storageKey.match(/(\d{4})/);
+        if (yearMatch) {
+          fetch('/api/calendar-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'drawing', year: Number(yearMatch[1]), data: newStrokes }),
+          }).catch(() => {});
+        }
+      } catch { /* ignore */ }
+    }, [storageKey]);
+
     const handleUndo = useCallback(() => {
       setStrokes(prev => {
         const newStrokes = prev.slice(0, -1);
-        try { localStorage.setItem(storageKey, JSON.stringify(newStrokes)); } catch { /* ignore */ }
+        saveStrokes(newStrokes);
         return newStrokes;
       });
-    }, [storageKey]);
+    }, [saveStrokes]);
 
     const handleClear = useCallback(() => {
       setStrokes([]);
-      try { localStorage.setItem(storageKey, JSON.stringify([])); } catch { /* ignore */ }
-    }, [storageKey]);
+      saveStrokes([]);
+    }, [saveStrokes]);
 
     // Expose handle
     useImperativeHandle(ref, () => ({
@@ -80,15 +94,22 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
       hasStrokes: strokes.length > 0,
     }), [drawingEnabled, tool, penColor, overlayVisible, strokes.length, handleUndo, handleClear]);
 
-    // Load strokes from localStorage
+    // Load strokes from API
     useEffect(() => {
-      try {
-        const saved = localStorage.getItem(storageKey);
-        if (saved) {
-          const parsed = JSON.parse(saved) as Stroke[];
-          setStrokes(parsed);
-        }
-      } catch { /* ignore */ }
+      (async () => {
+        try {
+          const yearMatch = storageKey.match(/(\d{4})/);
+          if (yearMatch) {
+            const res = await fetch(`/api/calendar-data?type=drawing&year=${yearMatch[1]}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.strokes && Array.isArray(data.strokes)) {
+                setStrokes(data.strokes);
+              }
+            }
+          }
+        } catch { /* ignore */ }
+      })();
     }, [storageKey]);
 
     // Redraw function
@@ -192,7 +213,7 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
       if (!isDrawing || !currentStroke) return;
       const newStrokes = [...strokes, currentStroke];
       setStrokes(newStrokes);
-      try { localStorage.setItem(storageKey, JSON.stringify(newStrokes)); } catch { /* ignore */ }
+      saveStrokes(newStrokes);
       setCurrentStroke(null);
       setIsDrawing(false);
     };

@@ -149,40 +149,31 @@ export default function DayView({ year, month, day, onClose, embedded, skin: ski
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) setEvents(JSON.parse(stored));
-    } catch { /* empty */ }
-    try {
-      const storedTodos = localStorage.getItem(todoKey);
-      if (storedTodos) setTodos(JSON.parse(storedTodos));
-    } catch { /* empty */ }
-    try {
-      const notesRaw = localStorage.getItem(`calendar-notes-${year}`);
-      if (notesRaw) {
-        const parsed = JSON.parse(notesRaw);
-        setNoteText(parsed[noteKey] || '');
-      }
-    } catch { /* empty */ }
+    (async () => {
+      try {
+        const res = await fetch(`/api/day-data?year=${year}&month=${month}&day=${day}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.events) setEvents(data.events);
+          if (data.todos) setTodos(data.todos);
+          if (data.note) setNoteText(data.note);
+        }
+      } catch { /* empty */ }
+    })();
   }, [storageKey, todoKey, noteKey, year]);
 
   const saveEvents = useCallback((evts: TimeEvent[]) => {
     setEvents(evts);
-    try { localStorage.setItem(storageKey, JSON.stringify(evts)); } catch { /* empty */ }
+    fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'events', year, month, day, data: evts }) }).catch(() => {});
   }, [storageKey]);
 
   const saveTodos = useCallback((items: TodoItem[]) => {
     setTodos(items);
-    try { localStorage.setItem(todoKey, JSON.stringify(items)); } catch { /* empty */ }
-  }, [todoKey]);
+    fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'todos', year, month, day, data: items }) }).catch(() => {});
+  }, [storageKey]);
 
   const saveNote = useCallback(() => {
-    try {
-      const raw = localStorage.getItem(`calendar-notes-${year}`);
-      const existing = raw ? JSON.parse(raw) : {};
-      existing[noteKey] = noteText;
-      localStorage.setItem(`calendar-notes-${year}`, JSON.stringify(existing));
-    } catch { /* empty */ }
+    fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'note', year, month, day, data: noteText }) }).catch(() => {});
   }, [noteText, noteKey, year]);
 
   const addEvent = () => {

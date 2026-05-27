@@ -108,23 +108,23 @@ export default function InsightPanel({ year, month, day, skin, onClose }: Omit<I
     setInsight('');
 
     try {
-      // Gather user's data for this day
+      // Gather user's data for this day from API
       let events: unknown[] = [];
       let todos: unknown[] = [];
       let overrideStatus = '';
 
       try {
-        const evtsRaw = localStorage.getItem(`dayview-events-${year}-${month}-${day}`);
-        if (evtsRaw) events = JSON.parse(evtsRaw);
+        const res = await fetch(`/api/day-data?year=${year}&month=${month}&day=${day}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.events) events = data.events;
+          if (data.todos) todos = data.todos;
+        }
       } catch { /* empty */ }
       try {
-        const todosRaw = localStorage.getItem(`dayview-todos-${year}-${month}-${day}`);
-        if (todosRaw) todos = JSON.parse(todosRaw);
-      } catch { /* empty */ }
-      try {
-        const overridesRaw = localStorage.getItem(`calendar-overrides-${year}`);
-        if (overridesRaw) {
-          const overrides = JSON.parse(overridesRaw);
+        const overridesRes = await fetch(`/api/calendar-data?type=overrides&year=${year}`);
+        if (overridesRes.ok) {
+          const overrides = await overridesRes.json();
           overrideStatus = overrides[`${year}-${month}-${day}`] || '';
         }
       } catch { /* empty */ }
