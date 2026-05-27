@@ -139,11 +139,9 @@ export default function YearCalendar() {
   const [moduleNames, setModuleNames] = useState<Record<string, string>>(() => {
     try { return { ...defaultModuleNames, ...JSON.parse(typeof window !== 'undefined' ? localStorage.getItem('calendar-module-names') || '{}' : '{}') }; } catch { return defaultModuleNames; }
   });
-  const getModuleName = (key: string) => moduleNames[key] || defaultModuleNames[key] || key;
+  const getModuleName = (key: string) => (mounted ? (moduleNames[key] || defaultModuleNames[key]) : defaultModuleNames[key]) || key;
   const defaultModuleOrder = ['timeline', 'dida', 'longterm', 'bilibili', 'insight', 'track'];
-  const [moduleOrder, setModuleOrder] = useState<string[]>(() => {
-    try { const saved = JSON.parse(typeof window !== 'undefined' ? localStorage.getItem('calendar-module-order') || '[]' : '[]'); return saved.length === defaultModuleOrder.length ? saved : defaultModuleOrder; } catch { return defaultModuleOrder; }
-  });
+  const [moduleOrder, setModuleOrder] = useState<string[]>(defaultModuleOrder);
 
   // Real-time clock with centiseconds (2-digit)
   useEffect(() => {
@@ -222,6 +220,14 @@ export default function YearCalendar() {
       const savedNames = localStorage.getItem('calendar-module-names');
       if (savedNames) {
         try { setModuleNames(prev => ({ ...prev, ...JSON.parse(savedNames) })); } catch { /* ignore */ }
+      }
+
+      const savedOrder = localStorage.getItem('calendar-module-order');
+      if (savedOrder) {
+        try {
+          const order = JSON.parse(savedOrder) as string[];
+          if (order.length === defaultModuleOrder.length) setModuleOrder(order);
+        } catch { /* ignore */ }
       }
 
       // Check if drawing has strokes
