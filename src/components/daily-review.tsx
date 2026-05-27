@@ -455,6 +455,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
                   style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
                 >AI 重新填充</button>
+                <button onClick={() => {
+                  const empty = { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
+                  setReview(empty);
+                  saveReview(year, month, day, empty);
+                }}
+                  className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
+                  style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
+                >🗑️ 清空</button>
               </>
             )}
           </div>
