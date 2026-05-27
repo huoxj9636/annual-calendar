@@ -654,6 +654,18 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                 )}
               </div>
 
+              {/* ── KR expand/collapse all ── */}
+              {o.children.length > 0 && (
+                <div className="flex justify-end gap-2 mb-1">
+                  <button
+                    onClick={() => { const all = new Set(o.children.map(k => k.id)); setExpandedKRs(prev => new Set([...prev, ...all])); }}
+                    className="text-xs px-2 py-0.5 rounded" style={{ color: s.text2 }}>展开全部</button>
+                  <span style={{ color: s.divider }}>|</span>
+                  <button
+                    onClick={() => { const ids = new Set(o.children.map(k => k.id)); setExpandedKRs(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; }); }}
+                    className="text-xs px-2 py-0.5 rounded" style={{ color: s.text2 }}>收起全部</button>
+                </div>
+              )}
               {/* ── KR List ── */}
               {o.children.map((kr, kri) => {
                 const krPct = Math.round(krProgress(kr) * 100);
