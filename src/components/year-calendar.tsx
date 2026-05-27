@@ -90,6 +90,35 @@ export default function YearCalendar() {
   const [insightDay, setInsightDay] = useState(() => new Date().getDate());
   const [trackOpen, setTrackOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Auto-open daily review at 18:00
+  useEffect(() => {
+    if (!mounted) return;
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+    const shownKey = `daily-review-shown-${todayKey}`;
+    if (localStorage.getItem(shownKey)) return; // already shown today
+
+    const checkAndShow = () => {
+      const now = new Date();
+      if (now.getHours() >= 18) {
+        setDailyReviewMonth(now.getMonth() + 1);
+        setDailyReviewDay(now.getDate());
+        setDailyReviewOpen(true);
+        localStorage.setItem(shownKey, '1');
+      }
+    };
+
+    // If already past 18:00, show immediately
+    checkAndShow();
+
+    // Otherwise, check every minute
+    const timer = setInterval(() => {
+      checkAndShow();
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, [mounted]);
   const [moduleVisibility, setModuleVisibility] = useState<Record<string, boolean>>({
     timeline: true,
     dida: true,
