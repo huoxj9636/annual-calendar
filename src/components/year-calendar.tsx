@@ -126,7 +126,6 @@ export default function YearCalendar() {
     bilibili: true,
     insight: true,
     track: true,
-    review: true,
   });
   const [moduleLinks, setModuleLinks] = useState<Record<string, string>>({
     timeline: '',
@@ -135,14 +134,13 @@ export default function YearCalendar() {
     bilibili: 'https://www.bilibili.com',
     insight: '',
     track: '',
-    review: '',
   });
-  const defaultModuleNames: Record<string, string> = { timeline: '日程', dida: '滴答', longterm: '长程', bilibili: 'B站', insight: '洞察', track: '轨迹', review: '复盘' };
+  const defaultModuleNames: Record<string, string> = { timeline: '日程', dida: '滴答', longterm: '长程', bilibili: 'B站', insight: '洞察', track: '轨迹' };
   const [moduleNames, setModuleNames] = useState<Record<string, string>>(() => {
     try { return { ...defaultModuleNames, ...JSON.parse(typeof window !== 'undefined' ? localStorage.getItem('calendar-module-names') || '{}' : '{}') }; } catch { return defaultModuleNames; }
   });
   const getModuleName = (key: string) => (mounted ? (moduleNames[key] || defaultModuleNames[key]) : defaultModuleNames[key]) || key;
-  const defaultModuleOrder = ['timeline', 'dida', 'longterm', 'review', 'bilibili', 'insight', 'track'];
+  const defaultModuleOrder = ['timeline', 'dida', 'longterm', 'bilibili', 'insight', 'track'];
   const [moduleOrder, setModuleOrder] = useState<string[]>(defaultModuleOrder);
 
   // Real-time clock with centiseconds (2-digit)
@@ -804,7 +802,7 @@ export default function YearCalendar() {
         {/* Calendar / Task toggle sidebar */}
         <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10">
           {moduleOrder.filter(k => moduleVisibility[k as keyof typeof moduleVisibility]).map((key, idx, arr) => {
-            const mk = key as 'timeline' | 'dida' | 'longterm' | 'bilibili' | 'insight' | 'track' | 'review';
+            const mk = key as 'timeline' | 'dida' | 'longterm' | 'bilibili' | 'insight' | 'track';
             const divider = idx > 0 ? <div key={`${key}-div`} className="w-6" style={{ borderTop: `1px solid ${skin.swatch}40`, margin: '12px auto 12px auto' }} /> : null;
             const btnStyle: React.CSSProperties = { backgroundColor: skin.swatch, color: '#ffffff', boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)` };
             const labelStyle: React.CSSProperties = { color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' };
@@ -816,7 +814,6 @@ export default function YearCalendar() {
               bilibili: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z"/></svg>,
               insight: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>,
               track: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>,
-              review: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>,
             };
 
             const handleClick = (e: React.MouseEvent) => {
@@ -867,9 +864,6 @@ export default function YearCalendar() {
                   }
                 } else { if (scrollContainerRef.current) scrollContainerRef.current.style.overflowY = 'scroll'; }
                 setTrackOpen(opening);
-              } else if (mk === 'review') {
-                if (moduleLinks.review) { window.open(moduleLinks.review, '_blank'); return; }
-                setDailyReviewOpen(true);
               }
             };
 
