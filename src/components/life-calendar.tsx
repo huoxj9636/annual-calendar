@@ -267,7 +267,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const currentYear = new Date().getFullYear();
 
   const [goals, setGoals] = useState<OKRObjective[]>([]);
-  const [period, setPeriod] = useState<PeriodType>(() => { const m = new Date().getMonth(); if (m < 3) return 'Q1'; if (m < 6) return 'Q2'; if (m < 9) return 'Q3'; return 'Q4'; });
+  const [period, setPeriod] = useState<PeriodType>('annual');
   const [mounted, setMounted] = useState(false);
   const [selectedOId, setSelectedOId] = useState<string | null>(null);
 
