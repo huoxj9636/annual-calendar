@@ -83,7 +83,7 @@ async function clearReview(year: number, month: number, day: number) {
   } catch {}
 }
 
-type VoicePhase = 'idle' | 'recording' | 'transcribing' | 'polishing' | 'done';
+type VoicePhase = 'idle' | 'recording' | 'paused' | 'reviewing' | 'transcribing' | 'polishing' | 'done';
 
 export default function DailyReview({ year, month, day, skin, events, todos, onClose }: DailyReviewProps) {
   const [review, setReview] = useState<ReviewData>({ completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' });
@@ -96,9 +96,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const [recSeconds, setRecSeconds] = useState(0);
   const [polishedPreview, setPolishedPreview] = useState('');
   const [transcribedText, setTranscribedText] = useState('');
+  const [audioLevels, setAudioLevels] = useState<number[]>(new Array(40).fill(0));
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number>(0);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -109,15 +114,49 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         try { mediaRecorderRef.current.stop(); } catch {}
       }
+      streamRef.current?.getTracks().forEach(t => t.stop());
+      audioContextRef.current?.close().catch(() => {});
     };
+  }, []);
+
+  const startAudioVisualization = useCallback((stream: MediaStream) => {
+    const audioCtx = new AudioContext();
+    const source = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 128;
+    source.connect(analyser);
+    audioContextRef.current = audioCtx;
+    analyserRef.current = analyser;
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const update = () => {
+      analyser.getByteFrequencyData(dataArray);
+      const levels = Array.from(dataArray.slice(0, 40)).map(v => v / 255);
+      setAudioLevels(levels);
+      animFrameRef.current = requestAnimationFrame(update);
+    };
+    update();
+  }, []);
+
+  const stopAudioVisualization = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
+    }
+    audioContextRef.current?.close().catch(() => {});
+    audioContextRef.current = null;
+    analyserRef.current = null;
+    setAudioLevels(new Array(40).fill(0));
   }, []);
 
   const startVoiceRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
           ? 'audio/webm;codecs=opus'
@@ -138,13 +177,11 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         }
       };
 
-      mediaRecorder.onstop = () => {
-        // Stop all tracks to release microphone
-        stream.getTracks().forEach(t => t.stop());
-      };
-
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(1000); // Collect data every second for reliability
+      mediaRecorder.start(1000);
+
+      // Start audio visualization
+      startAudioVisualization(stream);
 
       // Start timer
       timerRef.current = setInterval(() => {
@@ -154,6 +191,53 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       alert('无法访问麦克风，请检查浏览器权限设置');
       setVoicePhase('idle');
     }
+  }, [startAudioVisualization]);
+
+  const pauseVoiceRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.pause();
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    stopAudioVisualization();
+    setVoicePhase('paused');
+  }, [stopAudioVisualization]);
+
+  const resumeVoiceRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
+      mediaRecorderRef.current.resume();
+    }
+    if (streamRef.current) {
+      startAudioVisualization(streamRef.current);
+    }
+    timerRef.current = setInterval(() => {
+      setRecSeconds(s => s + 1);
+    }, 1000);
+    setVoicePhase('recording');
+  }, [startAudioVisualization]);
+
+  const stopAndReview = useCallback(() => {
+    // Stop recording but keep chunks for review
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    stopAudioVisualization();
+    // Release microphone
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    setVoicePhase('reviewing');
+  }, [stopAudioVisualization]);
+
+  const discardRecording = useCallback(() => {
+    chunksRef.current = [];
+    mediaRecorderRef.current = null;
+    setVoicePhase('idle');
+    setRecSeconds(0);
   }, []);
 
   /** Parse SSE stream from LLM API, return accumulated plain text */
@@ -187,16 +271,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     return result;
   };
 
-  const stopVoiceRecording = useCallback(async () => {
-    // Stop recording
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-
+  const confirmAndTranscribe = useCallback(async () => {
     // Wait a moment for final data
     await new Promise(r => setTimeout(r, 300));
 
@@ -462,25 +537,83 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       {voicePhase !== 'idle' && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
           <div className="w-[640px] rounded-2xl shadow-2xl p-8 flex flex-col items-center" style={{ backgroundColor: skin.panelBg }}>
-            {voicePhase === 'recording' && (
+            {(voicePhase === 'recording' || voicePhase === 'paused') && (
               <>
                 {/* Recording indicator */}
-                <div className="flex items-center gap-3 mb-6">
-                  <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-xl font-bold" style={{ color: skin.textPrimary }}>正在录音</span>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className={`w-3 h-3 rounded-full ${voicePhase === 'recording' ? 'bg-red-500 animate-pulse' : 'bg-yellow-500'}`} />
+                  <span className="text-xl font-bold" style={{ color: skin.textPrimary }}>
+                    {voicePhase === 'recording' ? '正在录音' : '已暂停'}
+                  </span>
                 </div>
                 {/* Timer */}
                 <div className="text-4xl font-bold mb-4 tabular-nums" style={{ color: skin.swatch }}>
                   {fmtTime(recSeconds)}
                 </div>
-                {/* Tips */}
-                <div className="text-sm mb-6" style={{ color: skin.textMuted }}>
-                  点击停止后将自动识别语音内容
+                {/* Audio waveform visualization */}
+                <div className="flex items-center justify-center gap-[2px] h-16 mb-6 w-full px-4">
+                  {audioLevels.map((level, i) => (
+                    <div
+                      key={i}
+                      className="rounded-full transition-all duration-75"
+                      style={{
+                        width: '6px',
+                        height: `${Math.max(4, level * 56)}px`,
+                        backgroundColor: voicePhase === 'paused' ? skin.textMuted : skin.swatch,
+                        opacity: voicePhase === 'paused' ? 0.4 : 0.5 + level * 0.5,
+                      }}
+                    />
+                  ))}
                 </div>
-                <button onClick={stopVoiceRecording}
-                  className="px-8 py-3 rounded-xl text-white font-bold text-sm transition-all"
-                  style={{ backgroundColor: '#ef4444' }}
-                >⏹ 停止录音</button>
+                {/* Controls */}
+                <div className="flex items-center gap-4">
+                  {voicePhase === 'recording' ? (
+                    <>
+                      <button onClick={pauseVoiceRecording}
+                        className="px-6 py-2.5 rounded-xl font-bold text-sm transition-all border"
+                        style={{ borderColor: skin.swatch + '40', color: skin.swatch }}
+                      >⏸ 暂停</button>
+                      <button onClick={stopAndReview}
+                        className="px-6 py-2.5 rounded-xl text-white font-bold text-sm transition-all"
+                        style={{ backgroundColor: '#ef4444' }}
+                      >⏹ 结束</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={resumeVoiceRecording}
+                        className="px-6 py-2.5 rounded-xl font-bold text-sm transition-all border"
+                        style={{ borderColor: skin.swatch + '40', color: skin.swatch }}
+                      >▶ 继续</button>
+                      <button onClick={stopAndReview}
+                        className="px-6 py-2.5 rounded-xl text-white font-bold text-sm transition-all"
+                        style={{ backgroundColor: '#ef4444' }}
+                      >⏹ 结束</button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+            {voicePhase === 'reviewing' && (
+              <>
+                <div className="text-4xl mb-4">🎤</div>
+                <div className="text-lg font-bold mb-2" style={{ color: skin.textPrimary }}>
+                  录音完成 · {fmtTime(recSeconds)}
+                </div>
+                <div className="text-sm mb-8" style={{ color: skin.textMuted }}>
+                  是否采用这段录音进行语音识别？
+                </div>
+                <div className="flex items-center gap-6">
+                  <button onClick={discardRecording}
+                    className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold transition-all border-2"
+                    style={{ borderColor: '#ef444460', color: '#ef4444', backgroundColor: '#ef444410' }}
+                    title="弃用"
+                  >✕</button>
+                  <button onClick={confirmAndTranscribe}
+                    className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold transition-all border-2"
+                    style={{ borderColor: '#22c55e60', color: '#22c55e', backgroundColor: '#22c55e10' }}
+                    title="采用"
+                  >✓</button>
+                </div>
               </>
             )}
             {voicePhase === 'transcribing' && (
