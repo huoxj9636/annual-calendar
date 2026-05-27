@@ -67,7 +67,17 @@ export default function YearCalendar() {
   const scrollTimeout = useRef<ReturnType<typeof setTimeout>>(null);
   const timelineOpenRef = useRef(false);
   const [showLifeCalendar, setShowLifeCalendar] = useState(false);
-  const [birthYear, setBirthYear] = useState(1990);
+  const [birthYear, setBirthYear] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('calendar-birth-year');
+      if (saved) return Number(saved);
+    }
+    return 1990;
+  });
+  const handleSetBirthYear = (year: number) => {
+    setBirthYear(year);
+    localStorage.setItem('calendar-birth-year', String(year));
+  };
   const [skinKey, setSkinKey] = useState<string>(DEFAULT_SKIN);
   const [showSkinPicker, setShowSkinPicker] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -1567,7 +1577,7 @@ export default function YearCalendar() {
       {showLifeCalendar && (
         <LifeCalendar
           birthYear={birthYear}
-          setBirthYear={setBirthYear}
+          setBirthYear={handleSetBirthYear}
           onClose={() => setShowLifeCalendar(false)}
           skinKey={skinKey}
         />
