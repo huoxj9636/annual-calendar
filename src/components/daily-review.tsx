@@ -79,13 +79,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     setMounted(true);
     const loaded = loadReview(year, month, day);
     setReview(loaded);
-
-    // Auto-fill if all fields are empty
-    const isEmpty = !loaded.achievements && !loaded.regrets && !loaded.insights && !loaded.tomorrowFocus && !loaded.gratitude;
-    if (isEmpty) {
-      autoFillReview(loaded);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month, day]);
 
   const autoFillReview = useCallback(async (currentReview: ReviewData) => {
