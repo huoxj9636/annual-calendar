@@ -76,6 +76,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const [review, setReview] = useState<ReviewData>({ completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' });
   const [mounted, setMounted] = useState(false);
   const [autoFilling, setAutoFilling] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -207,10 +208,30 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 AI 填充中...
               </div>
             ) : (
+              <>
+              <button onClick={() => {
+                const fields = [
+                  { label: '一、今天完成了什么？', key: 'completed' as const },
+                  { label: '二、今天发生了哪些美好或值得关注的事？', key: 'beautiful' as const },
+                  { label: '三、今天遇到了哪些突发问题？', key: 'problems' as const },
+                  { label: '四、今天心情如何？', key: 'mood' as const },
+                  { label: '五、今天有哪些感想或总结？', key: 'reflections' as const },
+                  { label: '六、明日待办？', key: 'tomorrow' as const },
+                ];
+                const text = fields.map(f => `${f.label}\n${(review as unknown as Record<string, string | number | undefined>)[f.key] || '（未填写）'}`).join('\n\n');
+                navigator.clipboard.writeText(text).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }).catch(() => {});
+              }}
+                className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
+                style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
+              >{copied ? '✓ 已复制' : '📋 复制'}</button>
               <button onClick={() => autoFillReview(review)}
                 className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
                 style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
               >AI 重新填充</button>
+              </>
             )}
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
