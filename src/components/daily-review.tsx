@@ -54,10 +54,10 @@ function loadReview(year: number, month: number, day: number): ReviewData {
         completed: migrate(parsed.completed ?? parsed.achievements),
         goodThings: migrate(parsed.goodThings ?? parsed.gratitude),
         problems: migrate(parsed.problems ?? parsed.regrets),
-        mood: parsed.mood ?? '',
+        mood: typeof parsed.mood === 'string' ? parsed.mood : '',
         reflections: migrate(parsed.reflections ?? parsed.insights),
         tomorrowTodo: migrate(parsed.tomorrowTodo ?? parsed.tomorrowFocus),
-        moodScore: parsed.moodScore ?? parsed.mood ?? 3,
+        moodScore: parsed.moodScore ?? (typeof parsed.mood === 'number' ? parsed.mood : 3),
         energy: parsed.energy ?? 3,
         updatedAt: parsed.updatedAt ?? '',
       };
