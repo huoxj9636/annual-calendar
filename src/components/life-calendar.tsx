@@ -285,6 +285,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
 
   // Delete confirmation
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'O' | 'KR' | 'Task'; name: string; onConfirm: () => void } | null>(null);
+  const [aiDecompose, setAiDecompose] = useState<{ loading: boolean; objectiveTitle: string; result: { keyResults: { title: string; targetValue: number; tasks: string[] }[] } | null; objectiveId: string }>({ loading: false, objectiveTitle: '', result: null, objectiveId: '' });
 
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
@@ -388,6 +389,46 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       setConfirmDelete(null);
     }});
   }, []);
+
+  // AI decompose objective into KRs + Tasks
+  const decomposeOKR = useCallback(async (oid: string) => {
+    const obj = goals.find(o => o.id === oid);
+    if (!obj) return;
+    setAiDecompose({ loading: true, objectiveTitle: obj.title, result: null, objectiveId: oid });
+    try {
+      const res = await fetch('/api/ai-decompose-okr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ objective: obj.title, period: obj.period, age: birthYear ? new Date().getFullYear() - birthYear : undefined }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setAiDecompose(prev => ({ ...prev, loading: false, result: data }));
+    } catch {
+      setAiDecompose(prev => ({ ...prev, loading: false }));
+    }
+  }, [goals, birthYear]);
+
+  // Apply AI decomposed result
+  const applyDecompose = useCallback(() => {
+    if (!aiDecompose.result || !aiDecompose.objectiveId) return;
+    const newKRs: OKRKeyResult[] = aiDecompose.result.keyResults.map(kr => ({
+      id: crypto.randomUUID(),
+      title: kr.title,
+      targetValue: kr.targetValue,
+      createdAt: Date.now(),
+      children: kr.tasks.map(t => ({
+        id: crypto.randomUUID(),
+        title: t,
+        done: false,
+        createdAt: Date.now(),
+      })),
+    }));
+    setGoals(prev => updateO(prev, aiDecompose.objectiveId, o => ({
+      ...o, children: [...o.children, ...newKRs],
+    })));
+    setAiDecompose({ loading: false, objectiveTitle: '', result: null, objectiveId: '' });
+  }, [aiDecompose]);
 
   const deleteKR = useCallback((oid: string, krid: string, name: string) => {
     setConfirmDelete({ type: 'KR', name, onConfirm: () => {
@@ -579,6 +620,11 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                     </h2>
                   )}
                   <span className="text-2xl font-bold flex-shrink-0" style={{ color: oPct > 0 ? swatch : s.textMuted }}>{oPct}%</span>
+                  <button onClick={() => decomposeOKR(o.id)} disabled={aiDecompose.loading}
+                          className="text-xs px-2.5 py-1 rounded-lg font-medium flex-shrink-0 transition-all hover:opacity-80"
+                          style={{ backgroundColor: `${swatch}18`, color: swatch, border: `1px solid ${swatch}40` }}>
+                    {aiDecompose.loading && aiDecompose.objectiveId === o.id ? 'AI拆解中...' : 'AI 拆解'}
+                  </button>
                   <button onClick={() => deleteObjective(o.id, o.title)}
                           className="text-xs px-2 py-1 rounded hover:opacity-70" style={{ color: '#ef4444' }}>删除</button>
                 </div>
@@ -861,6 +907,72 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                 删除
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ AI Decompose Modal ══════════ */}
+      {(aiDecompose.loading || aiDecompose.result) && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="rounded-2xl shadow-2xl w-[560px] max-h-[80vh] flex flex-col" style={{ backgroundColor: s.panelBg }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0" style={{ borderColor: s.divider }}>
+              <div>
+                <h3 className="text-lg font-bold" style={{ color: s.text1 }}>AI 拆解目标</h3>
+                <div className="text-xs mt-0.5 truncate max-w-[400px]" style={{ color: s.textMuted }}>
+                  {aiDecompose.objectiveTitle}
+                </div>
+              </div>
+              <button onClick={() => setAiDecompose({ loading: false, objectiveTitle: '', result: null, objectiveId: '' })}
+                className="w-7 h-7 flex items-center justify-center rounded-full hover:opacity-80" style={{ backgroundColor: s.cardBg, color: s.text2 }}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {aiDecompose.loading ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-16">
+                <div className="relative w-16 h-16 mb-4">
+                  <div className="absolute inset-0 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: `${swatch}40`, borderTopColor: swatch }} />
+                </div>
+                <div className="text-base font-medium" style={{ color: s.text1 }}>AI 正在拆解目标...</div>
+                <div className="text-xs mt-1" style={{ color: s.textMuted }}>生成关键结果和可执行任务</div>
+              </div>
+            ) : aiDecompose.result ? (
+              <>
+                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                  {aiDecompose.result.keyResults.map((kr, ki) => (
+                    <div key={ki} className="rounded-xl p-4" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs font-bold shrink-0 mt-0.5" style={{ color: swatch }}>KR{ki + 1}</span>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium" style={{ color: s.text1 }}>{kr.title}</div>
+                          <div className="text-xs mt-0.5" style={{ color: s.textMuted }}>目标值：{kr.targetValue}</div>
+                          {kr.tasks.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {kr.tasks.map((t, ti) => (
+                                <div key={ti} className="text-xs flex items-center gap-1.5" style={{ color: s.text2 }}>
+                                  <span style={{ color: s.textMuted }}>•</span>{t}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-3 px-6 py-4 border-t flex-shrink-0" style={{ borderColor: s.divider }}>
+                  <button onClick={() => setAiDecompose({ loading: false, objectiveTitle: '', result: null, objectiveId: '' })}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: s.cardBg, color: s.text2 }}>
+                    取消
+                  </button>
+                  <button onClick={applyDecompose}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: swatch }}>
+                    确认添加
+                  </button>
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       )}
