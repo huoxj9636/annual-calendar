@@ -104,6 +104,30 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
+  // Drag state for voice modal
+  const [modalPos, setModalPos] = useState<{ x: number; y: number } | null>(null);
+  const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Drag handlers for voice modal
+  const onDragMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const modal = (e.currentTarget as HTMLElement).closest('[data-voice-modal]') as HTMLElement;
+    if (!modal) return;
+    const rect = modal.getBoundingClientRect();
+    dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    setIsDragging(true);
+  };
+  useEffect(() => {
+    if (!isDragging) return;
+    const onMove = (e: MouseEvent) => {
+      setModalPos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+    };
+    const onUp = () => setIsDragging(false);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, [isDragging]);
 
   useEffect(() => {
     setMounted(true);
@@ -190,6 +214,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     } catch {
       alert('无法访问麦克风，请检查浏览器权限设置');
       setVoicePhase('idle');
+      setModalPos(null);
     }
   }, [startAudioVisualization]);
 
@@ -278,6 +303,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     const chunks = chunksRef.current;
     if (!chunks.length) {
       setVoicePhase('idle');
+      setModalPos(null);
       return;
     }
 
@@ -306,6 +332,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       const spokenText = (asrData as { text?: string }).text?.trim();
       if (!spokenText) {
         setVoicePhase('idle');
+      setModalPos(null);
         return;
       }
 
@@ -330,6 +357,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 
       if (!res.ok || !res.body) {
         setVoicePhase('idle');
+      setModalPos(null);
         return;
       }
 
@@ -405,6 +433,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       setTimeout(() => setVoicePhase('idle'), 1200);
     } catch {
       setVoicePhase('idle');
+      setModalPos(null);
     }
   }, [year, month, day]);
 
@@ -533,10 +562,28 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         </div>
       </div>
 
-      {/* Voice Recording Modal */}
+      {/* Voice Recording Modal — draggable floating panel */}
       {voicePhase !== 'idle' && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <div className="w-[640px] rounded-2xl shadow-2xl p-8 flex flex-col items-center" style={{ backgroundColor: skin.panelBg }}>
+        <div
+          data-voice-modal
+          className="fixed z-[70] rounded-2xl shadow-2xl p-6 flex flex-col items-center select-none"
+          style={{
+            backgroundColor: skin.panelBg,
+            left: modalPos ? modalPos.x : '50%',
+            top: modalPos ? modalPos.y : '50%',
+            transform: modalPos ? 'none' : 'translate(-50%, -50%)',
+            minWidth: 420,
+            cursor: isDragging ? 'grabbing' : 'default',
+          }}
+        >
+            {/* Drag handle */}
+            <div
+              onMouseDown={onDragMouseDown}
+              className="w-full flex items-center justify-center mb-3 cursor-grab active:cursor-grabbing py-1"
+              style={{ touchAction: 'none' }}
+            >
+              <div className="w-10 h-1.5 rounded-full" style={{ backgroundColor: skin.textMuted + '40' }} />
+            </div>
             {(voicePhase === 'recording' || voicePhase === 'paused') && (
               <>
                 {/* Recording indicator */}
@@ -658,7 +705,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 <div className="text-lg font-bold" style={{ color: skin.swatch }}>复盘已填充完成</div>
               </div>
             )}
-          </div>
         </div>
       )}
     </div>
