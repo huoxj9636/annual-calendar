@@ -140,6 +140,10 @@ export default function YearCalendar() {
     try { return { ...defaultModuleNames, ...JSON.parse(typeof window !== 'undefined' ? localStorage.getItem('calendar-module-names') || '{}' : '{}') }; } catch { return defaultModuleNames; }
   });
   const getModuleName = (key: string) => moduleNames[key] || defaultModuleNames[key] || key;
+  const defaultModuleOrder = ['timeline', 'dida', 'longterm', 'bilibili', 'insight', 'track'];
+  const [moduleOrder, setModuleOrder] = useState<string[]>(() => {
+    try { const saved = JSON.parse(typeof window !== 'undefined' ? localStorage.getItem('calendar-module-order') || '[]' : '[]'); return saved.length === defaultModuleOrder.length ? saved : defaultModuleOrder; } catch { return defaultModuleOrder; }
+  });
 
   // Real-time clock with centiseconds (2-digit)
   useEffect(() => {
@@ -296,6 +300,13 @@ export default function YearCalendar() {
       localStorage.setItem('calendar-module-names', JSON.stringify(moduleNames));
     } catch { /* ignore */ }
   }, [moduleNames, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      localStorage.setItem('calendar-module-order', JSON.stringify(moduleOrder));
+    } catch { /* ignore */ }
+  }, [moduleOrder, mounted]);
 
   const saveNote = useCallback(() => {
     if (!notePopup) return;
@@ -784,254 +795,81 @@ export default function YearCalendar() {
 
         {/* Calendar / Task toggle sidebar */}
         <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10" style={{ gap: '12px' }}>
-          {/* Calendar / Schedule button */}
-          {moduleVisibility.timeline && (
-          <button
-            onClick={(e) => {
+          {moduleOrder.filter(k => moduleVisibility[k as keyof typeof moduleVisibility]).map((key, idx, arr) => {
+            const mk = key as 'timeline' | 'dida' | 'longterm' | 'bilibili' | 'insight' | 'track';
+            const divider = idx > 0 ? <div key={`${key}-div`} className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} /> : null;
+            const btnStyle: React.CSSProperties = { backgroundColor: skin.swatch, color: '#ffffff', boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)` };
+            const labelStyle: React.CSSProperties = { color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' };
+
+            const icons: Record<string, React.ReactNode> = {
+              timeline: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2.5" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>,
+              dida: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" /><path d="M8 12l3 3 5-6" /></svg>,
+              longterm: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12h20" /><path d="M12 2v20" /><circle cx="12" cy="12" r="3" /><path d="M12 5v2M12 17v2M5 12h2M17 12h2" /></svg>,
+              bilibili: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z"/></svg>,
+              insight: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>,
+              track: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>,
+            };
+
+            const handleClick = (e: React.MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
-              if (moduleLinks.timeline) { window.open(moduleLinks.timeline, '_blank'); return; }
-              const opening = !timelineOpen;
-              if (opening) {
-                setSelectedMonth(null);
-                setInsightOpen(false);
-                setTrackOpen(false);
-                isSnapping.current = false;
-                if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
-                if (scrollContainerRef.current) {
-                  const container = scrollContainerRef.current;
-                  const currentScroll = container.scrollTop;
-                  container.style.overflowY = 'hidden';
-                  container.style.scrollBehavior = 'auto';
-                  const pageH = container.clientHeight;
-                  const targetPage = Math.round(currentScroll / pageH) * pageH;
-                  container.scrollTop = targetPage;
+              if (mk === 'timeline') {
+                if (moduleLinks.timeline) { window.open(moduleLinks.timeline, '_blank'); return; }
+                const opening = !timelineOpen;
+                if (opening) {
+                  setSelectedMonth(null); setInsightOpen(false); setTrackOpen(false); isSnapping.current = false;
+                  if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+                  if (scrollContainerRef.current) {
+                    const container = scrollContainerRef.current;
+                    container.style.overflowY = 'hidden'; container.style.scrollBehavior = 'auto';
+                    container.scrollTop = Math.round(container.scrollTop / container.clientHeight) * container.clientHeight;
+                  }
                 }
+                timelineOpenRef.current = opening; setTimelineOpen(opening);
+                if (!opening && scrollContainerRef.current) scrollContainerRef.current.style.overflowY = 'scroll';
+              } else if (mk === 'dida') {
+                window.open(moduleLinks.dida || 'https://dida365.com/webapp/#q/all/timeline', '_blank');
+              } else if (mk === 'longterm') {
+                if (moduleLinks.longterm) { window.open(moduleLinks.longterm, '_blank'); return; }
+                setShowLifeCalendar(true);
+              } else if (mk === 'bilibili') {
+                window.open(moduleLinks.bilibili || 'https://www.bilibili.com', '_blank');
+              } else if (mk === 'insight') {
+                if (moduleLinks.insight) { window.open(moduleLinks.insight, '_blank'); return; }
+                const opening = !insightOpen;
+                if (opening) {
+                  setSelectedMonth(null); timelineOpenRef.current = false; setTimelineOpen(false); setTrackOpen(false);
+                  if (scrollContainerRef.current) {
+                    const container = scrollContainerRef.current;
+                    container.style.overflowY = 'hidden'; container.style.scrollBehavior = 'auto';
+                    container.scrollTop = Math.round(container.scrollTop / container.clientHeight) * container.clientHeight;
+                  }
+                } else { if (scrollContainerRef.current) scrollContainerRef.current.style.overflowY = 'scroll'; }
+                setInsightOpen(opening);
+              } else if (mk === 'track') {
+                if (moduleLinks.track) { window.open(moduleLinks.track, '_blank'); return; }
+                const opening = !trackOpen;
+                if (opening) {
+                  setSelectedMonth(null); timelineOpenRef.current = false; setTimelineOpen(false); setInsightOpen(false);
+                  if (scrollContainerRef.current) {
+                    const container = scrollContainerRef.current;
+                    container.style.overflowY = 'hidden'; container.style.scrollBehavior = 'auto';
+                    container.scrollTop = Math.round(container.scrollTop / container.clientHeight) * container.clientHeight;
+                  }
+                } else { if (scrollContainerRef.current) scrollContainerRef.current.style.overflowY = 'scroll'; }
+                setTrackOpen(opening);
               }
-              timelineOpenRef.current = opening;
-              setTimelineOpen(opening);
-              if (!opening && scrollContainerRef.current) {
-                scrollContainerRef.current.style.overflowY = 'scroll';
-              }
-            }}
-            onMouseDown={(e) => e.preventDefault()}
-            className="group flex flex-col items-center gap-1 cursor-pointer"
-            title="日程"
-          >
-            <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
-              style={{
-                backgroundColor: skin.swatch,
-                color: '#ffffff',
-                boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)`,
-              }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2.5" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
-            </span>
-            <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('timeline')}</span>
-          </button>
-          )}
+            };
 
-          {moduleVisibility.timeline && moduleVisibility.dida && (
-          <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
-          )}
-
-          {/* Dida (TickTick) - opens in new tab */}
-          {moduleVisibility.dida && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              window.open(moduleLinks.dida || 'https://dida365.com/webapp/#q/all/timeline', '_blank');
-            }}
-            onMouseDown={(e) => e.preventDefault()}
-            className="group flex flex-col items-center gap-1 cursor-pointer"
-            title="滴答清单"
-          >
-            <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
-              style={{
-                backgroundColor: skin.swatch,
-                color: '#ffffff',
-                boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)`,
-              }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
-                <path d="M8 12l3 3 5-6" />
-              </svg>
-            </span>
-            <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('dida')}</span>
-          </button>
-          )}
-
-          {moduleVisibility.dida && moduleVisibility.longterm && (
-          <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
-          )}
-
-          {/* Long-term (Life Calendar) button */}
-          {moduleVisibility.longterm && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (moduleLinks.longterm) { window.open(moduleLinks.longterm, '_blank'); return; }
-              setShowLifeCalendar(true);
-            }}
-            onMouseDown={(e) => e.preventDefault()}
-            className="group flex flex-col items-center gap-1 cursor-pointer"
-            title="长程规划"
-          >
-            <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
-              style={{
-                backgroundColor: skin.swatch,
-                color: '#ffffff',
-                boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)`,
-              }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2 12h20" />
-                <path d="M12 2v20" />
-                <circle cx="12" cy="12" r="3" />
-                <path d="M12 5v2M12 17v2M5 12h2M17 12h2" />
-              </svg>
-            </span>
-            <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('longterm')}</span>
-          </button>
-          )}
-
-          {moduleVisibility.longterm && moduleVisibility.bilibili && (
-          <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
-          )}
-
-          {/* Bilibili button */}
-          {moduleVisibility.bilibili && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              window.open(moduleLinks.bilibili || 'https://www.bilibili.com', '_blank');
-            }}
-            onMouseDown={(e) => e.preventDefault()}
-            className="group flex flex-col items-center gap-1 cursor-pointer"
-            title="B站"
-          >
-            <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
-              style={{
-                backgroundColor: skin.swatch,
-                color: '#ffffff',
-                boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)`,
-              }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z"/>
-              </svg>
-            </span>
-            <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('bilibili')}</span>
-          </button>
-          )}
-
-          {moduleVisibility.bilibili && moduleVisibility.insight && (
-          <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
-          )}
-
-          {/* Daily Insight button */}
-          {moduleVisibility.insight && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (moduleLinks.insight) { window.open(moduleLinks.insight, '_blank'); return; }
-              const opening = !insightOpen;
-              if (opening) {
-                setSelectedMonth(null);
-                timelineOpenRef.current = false;
-                setTimelineOpen(false);
-                setTrackOpen(false);
-                if (scrollContainerRef.current) {
-                  const container = scrollContainerRef.current;
-                  container.style.overflowY = 'hidden';
-                  container.style.scrollBehavior = 'auto';
-                  const currentScroll = container.scrollTop;
-                  const pageH = container.clientHeight;
-                  container.scrollTop = Math.round(currentScroll / pageH) * pageH;
-                }
-              } else {
-                if (scrollContainerRef.current) scrollContainerRef.current.style.overflowY = 'scroll';
-              }
-              setInsightOpen(opening);
-            }}
-            onMouseDown={(e) => e.preventDefault()}
-            className="group flex flex-col items-center gap-1 cursor-pointer"
-            title="洞察"
-          >
-            <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
-              style={{
-                backgroundColor: skin.swatch,
-                color: '#ffffff',
-                boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)`,
-              }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            </span>
-            <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('insight')}</span>
-          </button>
-          )}
-
-          {moduleVisibility.insight && moduleVisibility.track && (
-          <div className="w-6 my-0.5" style={{ borderTop: `1px solid ${skin.swatch}40` }} />
-          )}
-
-          {/* Track button */}
-          {moduleVisibility.track && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (moduleLinks.track) { window.open(moduleLinks.track, '_blank'); return; }
-              const opening = !trackOpen;
-              if (opening) {
-                setSelectedMonth(null);
-                timelineOpenRef.current = false;
-                setTimelineOpen(false);
-                setInsightOpen(false);
-                if (scrollContainerRef.current) {
-                  const container = scrollContainerRef.current;
-                  container.style.overflowY = 'hidden';
-                  container.style.scrollBehavior = 'auto';
-                  const currentScroll = container.scrollTop;
-                  const pageH = container.clientHeight;
-                  container.scrollTop = Math.round(currentScroll / pageH) * pageH;
-                }
-              } else {
-                if (scrollContainerRef.current) scrollContainerRef.current.style.overflowY = 'scroll';
-              }
-              setTrackOpen(opening);
-            }}
-            onMouseDown={(e) => e.preventDefault()}
-            className="group flex flex-col items-center gap-1 cursor-pointer"
-            title="轨迹"
-          >
-            <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
-              style={{
-                backgroundColor: skin.swatch,
-                color: '#ffffff',
-                boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)`,
-              }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-              </svg>
-            </span>
-            <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('track')}</span>
-          </button>
-          )}
+            return <div key={mk}>
+              {divider}
+              <button onClick={handleClick} onMouseDown={(e) => e.preventDefault()}
+                className="group flex flex-col items-center gap-1 cursor-pointer" title={getModuleName(mk)}>
+                <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110" style={btnStyle}>{icons[mk]}</span>
+                <span className="text-[12px] leading-none font-bold tracking-wide transition-colors" style={labelStyle}>{getModuleName(mk)}</span>
+              </button>
+            </div>;
+          })}
         </div>
 
         <div
@@ -1721,43 +1559,76 @@ export default function YearCalendar() {
               </button>
             </div>
 
-            {/* Module list — horizontal layout */}
+            {/* Module list — horizontal layout with reorder */}
             <div className="space-y-2">
-              {([
-                { key: 'timeline', label: '日程', icon: '📅' },
-                { key: 'dida', label: '滴答清单', icon: '✅' },
-                { key: 'longterm', label: '长程', icon: '🧭' },
-                { key: 'bilibili', label: 'B站', icon: '📺' },
-                { key: 'insight', label: '洞察', icon: '💡' },
-                { key: 'track', label: '轨迹', icon: '📊' },
-              ] as const).map(item => (
-                <div key={item.key}
-                  className="flex items-center gap-4 rounded-xl px-4 py-3 transition-all"
+              {moduleOrder.map((mkey, idx) => {
+                const moduleDefs: Record<string, { label: string; icon: string }> = {
+                  timeline: { label: '日程', icon: '📅' },
+                  dida: { label: '滴答清单', icon: '✅' },
+                  longterm: { label: '长程', icon: '🧭' },
+                  bilibili: { label: 'B站', icon: '📺' },
+                  insight: { label: '洞察', icon: '💡' },
+                  track: { label: '轨迹', icon: '📊' },
+                };
+                const def = moduleDefs[mkey];
+                if (!def) return null;
+                return (
+                <div key={mkey}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 transition-all"
                   style={{
-                    backgroundColor: moduleVisibility[item.key] ? `${skin.swatch}08` : 'rgba(0,0,0,0.03)',
-                    border: `1px solid ${moduleVisibility[item.key] ? `${skin.swatch}25` : 'transparent'}`,
+                    backgroundColor: moduleVisibility[mkey] ? `${skin.swatch}08` : 'rgba(0,0,0,0.03)',
+                    border: `1px solid ${moduleVisibility[mkey] ? `${skin.swatch}25` : 'transparent'}`,
                   }}>
+                  {/* Reorder arrows */}
+                  <div className="flex flex-col gap-0.5 flex-shrink-0">
+                    <button
+                      disabled={idx === 0}
+                      onClick={() => {
+                        setModuleOrder(prev => {
+                          const next = [...prev];
+                          [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                          return next;
+                        });
+                      }}
+                      className="w-5 h-4 rounded flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                      style={{ color: skin.textSecondary }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6" /></svg>
+                    </button>
+                    <button
+                      disabled={idx === moduleOrder.length - 1}
+                      onClick={() => {
+                        setModuleOrder(prev => {
+                          const next = [...prev];
+                          [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                          return next;
+                        });
+                      }}
+                      className="w-5 h-4 rounded flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                      style={{ color: skin.textSecondary }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                    </button>
+                  </div>
                   {/* Left: icon + label + switch */}
                   <div className="flex items-center gap-2.5 flex-shrink-0 w-[150px]">
-                    <span className="text-base">{item.icon}</span>
+                    <span className="text-base">{def.icon}</span>
                     <input
                       type="text"
-                      value={moduleNames[item.key] || item.label}
-                      onChange={(e) => setModuleNames(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      value={moduleNames[mkey] || def.label}
+                      onChange={(e) => setModuleNames(prev => ({ ...prev, [mkey]: e.target.value }))}
                       className="text-sm font-medium bg-transparent outline-none border-b border-transparent hover:border-dashed focus:border-solid min-w-[60px] max-w-[120px]"
                       style={{ color: skin.textPrimary, borderColor: undefined }}
                       onFocus={(e) => { e.target.style.borderColor = `${skin.swatch}60`; }}
                       onBlur={(e) => { e.target.style.borderColor = 'transparent'; }}
                     />
                     <button
-                      onClick={() => setModuleVisibility(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                      onClick={() => setModuleVisibility(prev => ({ ...prev, [mkey]: !prev[mkey] }))}
                       className="w-9 h-[22px] rounded-full relative transition-all cursor-pointer flex-shrink-0 ml-auto"
                       style={{
-                        backgroundColor: moduleVisibility[item.key] ? skin.swatch : '#d1d5db',
-                        boxShadow: moduleVisibility[item.key] ? `0 1px 6px ${skin.swatch}40` : 'none',
+                        backgroundColor: moduleVisibility[mkey] ? skin.swatch : '#d1d5db',
+                        boxShadow: moduleVisibility[mkey] ? `0 1px 6px ${skin.swatch}40` : 'none',
                       }}>
                       <span className="absolute top-[3px] w-4 h-4 bg-white rounded-full shadow-sm transition-all"
-                        style={{ left: moduleVisibility[item.key] ? '18px' : '3px' }} />
+                        style={{ left: moduleVisibility[mkey] ? '18px' : '3px' }} />
                     </button>
                   </div>
 
@@ -1770,18 +1641,18 @@ export default function YearCalendar() {
                     <input
                       type="url"
                       placeholder="填写链接则新标签页打开，留空用内置页面"
-                      value={moduleLinks[item.key] || ''}
-                      onChange={(e) => setModuleLinks(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      value={moduleLinks[mkey] || ''}
+                      onChange={(e) => setModuleLinks(prev => ({ ...prev, [mkey]: e.target.value }))}
                       className="flex-1 min-w-0 text-xs px-3 py-1.5 rounded-lg outline-none transition-all"
                       style={{
-                        backgroundColor: moduleLinks[item.key] ? `${skin.swatch}08` : 'rgba(0,0,0,0.04)',
+                        backgroundColor: moduleLinks[mkey] ? `${skin.swatch}08` : 'rgba(0,0,0,0.04)',
                         color: skin.textPrimary,
-                        border: `1px solid ${moduleLinks[item.key] ? `${skin.swatch}40` : 'transparent'}`,
+                        border: `1px solid ${moduleLinks[mkey] ? `${skin.swatch}40` : 'transparent'}`,
                       }}
                     />
-                    {moduleLinks[item.key] && (
+                    {moduleLinks[mkey] && (
                       <button
-                        onClick={() => setModuleLinks(prev => ({ ...prev, [item.key]: '' }))}
+                        onClick={() => setModuleLinks(prev => ({ ...prev, [mkey]: '' }))}
                         className="w-5 h-5 rounded flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer flex-shrink-0"
                         style={{ color: skin.textSecondary }}>
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -1789,7 +1660,8 @@ export default function YearCalendar() {
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
