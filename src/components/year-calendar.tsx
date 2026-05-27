@@ -120,14 +120,12 @@ export default function YearCalendar() {
 
     return () => clearInterval(timer);
   }, [mounted]);
-  const [moduleVisibility, setModuleVisibility] = useState<Record<string, boolean>>({
-    timeline: true,
-    dida: true,
-    longterm: true,
-    bilibili: true,
-    insight: true,
-    track: true,
-    review: true,
+  const [moduleVisibility, setModuleVisibility] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('calendar-module-visibility') : null;
+      if (saved) return { timeline: true, dida: true, longterm: true, bilibili: true, insight: true, track: true, review: true, ...JSON.parse(saved) };
+    } catch { /* ignore */ }
+    return { timeline: true, dida: true, longterm: true, bilibili: true, insight: true, track: true, review: true };
   });
   const [moduleLinks, setModuleLinks] = useState<Record<string, string>>({
     timeline: '',
@@ -222,10 +220,6 @@ export default function YearCalendar() {
         const savedMotto = localStorage.getItem('calendar-motto');
         if (savedMotto) setMotto(savedMotto);
 
-        const savedVisibility = localStorage.getItem('calendar-module-visibility');
-        if (savedVisibility) {
-          try { setModuleVisibility(prev => ({ ...prev, ...JSON.parse(savedVisibility) })); } catch { /* ignore */ }
-        }
 
         const savedLinks = localStorage.getItem('calendar-module-links');
         if (savedLinks) {
