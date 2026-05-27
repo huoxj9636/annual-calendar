@@ -171,7 +171,9 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   // Inline inputs
   const [newOTitle, setNewOTitle] = useState('');
   const [newKRTitle, setNewKRTitle] = useState('');
-  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [taskInputs, setTaskInputs] = useState<Record<string, string>>({});
+  const getTaskInput = (krid: string) => taskInputs[krid] || '';
+  const setTaskInput = (krid: string, val: string) => setTaskInputs(prev => ({ ...prev, [krid]: val }));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [editingTargetValue, setEditingTargetValue] = useState<string | null>(null);
@@ -198,8 +200,9 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const selectedO = useMemo(() => goals.find(o => o.id === selectedOId) || null, [goals, selectedOId]);
   const voiceKR = useVoiceRecognition((text) => { setNewKRTitle(text); }, selectedO?.title);
 
-  // Voice for Task input
-  const voiceTask = useVoiceRecognition((text) => { setNewTaskTitle(text); });
+  // Voice for Task input — activeKRId tracks which KR's input is active
+  const [activeKRId, setActiveKRId] = useState<string | null>(null);
+  const voiceTask = useVoiceRecognition((text) => { if (activeKRId) setTaskInput(activeKRId, text); });
 
   // Filter goals by current period
   const filteredGoals = useMemo(() => goals.filter(o => o.period === periodKey || !o.period), [goals, periodKey]);
@@ -237,11 +240,12 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   }, [newKRTitle]);
 
   const addTask = useCallback((oid: string, krid: string) => {
-    if (!newTaskTitle.trim()) return;
-    const t: OKRTask = { id: genId(), title: newTaskTitle.trim(), done: false, createdAt: Date.now() };
+    const title = (taskInputs[krid] || '').trim();
+    if (!title) return;
+    const t: OKRTask = { id: genId(), title, done: false, createdAt: Date.now() };
     setGoals(prev => updateKRInGoals(prev, oid, krid, kr => ({ ...kr, children: [...kr.children, t] })));
-    setNewTaskTitle('');
-  }, [newTaskTitle]);
+    setTaskInputs(prev => { const next = { ...prev }; delete next[krid]; return next; });
+  }, [taskInputs]);
 
   const toggleTask = useCallback((oid: string, krid: string, tid: string) => {
     setGoals(prev => updateKRInGoals(prev, oid, krid, kr => ({
@@ -542,11 +546,12 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                         {/* Add task inline */}
                         <div className="flex items-center gap-2 pt-1">
                           <span className="text-[10px] flex-shrink-0" style={{ color: swatch }}>+ 任务</span>
-                          <input type="text" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
+                          <input type="text" value={getTaskInput(kr.id)} onChange={e => setTaskInput(kr.id, e.target.value)}
+                                 onFocus={() => setActiveKRId(kr.id)}
                                  onKeyDown={e => e.key === 'Enter' && addTask(o.id, kr.id)}
                                  placeholder="添加任务..." className="flex-1 text-xs outline-none bg-transparent"
                                  style={{ color: s.text1 }} />
-                          <button onClick={voiceTask.phase !== 'idle' ? undefined : voiceTask.start}
+                          <button onClick={voiceTask.phase !== 'idle' ? undefined : () => { setActiveKRId(kr.id); voiceTask.start(); }}
                                   className="flex-shrink-0 text-xs transition-colors"
                                   style={{ color: voiceTask.phase !== 'idle' ? swatch : s.textMuted }}
                                   disabled={voiceTask.phase !== 'idle'}>
@@ -557,7 +562,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
                               <line x1="8" y1="23" x2="16" y2="23" />
                             </svg>
                           </button>
-                          {newTaskTitle.trim() && (
+                          {getTaskInput(kr.id).trim() && (
                             <button onClick={() => addTask(o.id, kr.id)} className="text-[10px] font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
                           )}
                         </div>
