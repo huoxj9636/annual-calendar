@@ -1583,6 +1583,7 @@ export default function YearCalendar() {
                   timeline: { label: '日程', icon: '📅' },
                   dida: { label: '滴答清单', icon: '✅' },
                   longterm: { label: '长程', icon: '🧭' },
+                  review: { label: '复盘', icon: '📝' },
                   bilibili: { label: 'B站', icon: '📺' },
                   insight: { label: '洞察', icon: '💡' },
                   track: { label: '轨迹', icon: '📊' },
