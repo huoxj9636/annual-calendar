@@ -361,7 +361,7 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWi
     <div className={`rounded-xl p-3 flex flex-col relative ${fullWidth ? 'col-span-2' : ''}`} style={{ backgroundColor: skin.cardBg }}>
       <div className="flex items-center gap-1.5 mb-2">
         <span className="text-sm" style={{ color: skin.swatch }}>{icon}</span>
-        <span className="text-xs font-bold" style={{ color: skin.textPrimary }}>{title}</span>
+        <span className="text-sm font-bold" style={{ color: skin.textPrimary }}>{title}</span>
         {loading && (
           <span className="ml-auto text-[10px] animate-pulse" style={{ color: skin.swatch }}>AI填充中...</span>
         )}
