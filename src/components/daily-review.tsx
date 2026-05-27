@@ -183,91 +183,44 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     });
   }, [year, month, day]);
 
-  const dayEvents = events.map(e => `${String(e.startHour).padStart(2,'0')}:${String(e.startMin).padStart(2,'0')}-${String(e.endHour).padStart(2,'0')}:${String(e.endMin).padStart(2,'0')} ${e.title}`);
-  const doneTodos = todos.filter(t => t.done).map(t => t.text);
-  const pendingTodos = todos.filter(t => !t.done).map(t => t.text);
-
-  // AI analysis
-  const [aiAnalysis, setAiAnalysis] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-
-  const runAiAnalysis = useCallback(async () => {
-    setAiLoading(true);
-    setAiAnalysis('');
-    try {
-      const toArray = (s: string) => s.split('\n').filter(l => l.trim());
-      const res = await fetch('/api/daily-review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: `${year}年${month}月${day}日`,
-          highlights: toArray(review.achievements),
-          reflections: toArray(review.regrets),
-          takeaways: toArray(review.insights),
-          nextActions: toArray(review.tomorrowFocus),
-          gratitude: toArray(review.gratitude),
-          mood: MOOD_LABELS[review.mood],
-          energy: ENERGY_LABELS[review.energy],
-          events: dayEvents,
-          doneTodos,
-          pendingTodos,
-        }),
-      });
-      if (!res.ok || !res.body) { setAiAnalysis('分析失败，请稍后重试'); return; }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let text = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        text += decoder.decode(value, { stream: true });
-        setAiAnalysis(text);
-      }
-    } catch {
-      setAiAnalysis('网络错误，请稍后重试');
-    } finally {
-      setAiLoading(false);
-    }
-  }, [year, month, day, review, dayEvents, doneTodos, pendingTodos]);
-
   if (!mounted) return null;
 
   const dateStr = `${month}月${day}日`;
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col" style={{ backgroundColor: skin.panelBg }}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
-        <div className="flex items-center gap-3">
-          <div>
-            <div className="text-lg font-bold" style={{ color: skin.textPrimary }}>{dateStr} 复盘</div>
-            <div className="text-[10px] font-medium tracking-wider" style={{ color: skin.textMuted }}>DAILY REVIEW</div>
-          </div>
-          {autoFilling ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}>
-              <span className="animate-spin">⟳</span>
-              AI 填充中...
+    <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+         onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-[640px] max-h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: skin.cellBorder }}>
+          <div className="flex items-center gap-3">
+            <div>
+              <div className="text-lg font-bold" style={{ color: skin.textPrimary }}>{dateStr} 复盘</div>
+              <div className="text-[10px] font-medium tracking-wider" style={{ color: skin.textMuted }}>DAILY REVIEW</div>
             </div>
-          ) : (
-            <button onClick={() => autoFillReview(review)}
-              className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
-              style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
-            >AI 重新填充</button>
-          )}
+            {autoFilling ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}>
+                <span className="animate-spin">⟳</span>
+                AI 填充中...
+              </div>
+            ) : (
+              <button onClick={() => autoFillReview(review)}
+                className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
+                style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
+              >AI 重新填充</button>
+            )}
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+            style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = skin.swatch; e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = skin.cardHover; e.currentTarget.style.color = skin.textMuted; }}
+          >✕</button>
         </div>
-        <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
-          style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = skin.swatch, e.currentTarget.style.color = '#fff')}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = skin.cardHover, e.currentTarget.style.color = skin.textMuted)}
-        >✕</button>
-      </div>
 
-      {/* Content - Left/Right Layout */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left: Form */}
-        <div className="flex-1 overflow-y-auto px-5 py-3 border-r" style={{ borderColor: skin.cellBorder }}>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           {/* Mood & Energy */}
-          <div className="flex gap-3 mb-3">
+          <div className="flex gap-3 mb-4">
             <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: skin.cardBg }}>
               <div className="text-xs font-medium mb-2" style={{ color: skin.textMuted }}>心情</div>
               <div className="flex gap-1">
@@ -298,7 +251,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
             </div>
           </div>
 
-          {/* 2-column grid: 5 sections (2+2+1) */}
+          {/* 2-column grid: 5 sections */}
           <div className="grid grid-cols-2 gap-3">
             <ReviewSection
               title="今日亮点"
@@ -346,37 +299,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               fullSpan
               loading={autoFilling}
             />
-          </div>
-        </div>
-
-        {/* Right: AI Review */}
-        <div className="w-[320px] flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm" style={{ color: skin.swatch }}>◈</span>
-              <span className="text-xs font-bold" style={{ color: skin.textPrimary }}>AI 点评</span>
-            </div>
-            {aiAnalysis && (
-              <button onClick={runAiAnalysis} disabled={aiLoading}
-                className="text-[10px] px-2 py-0.5 rounded-full font-medium transition-all"
-                style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
-              >重新分析</button>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto px-4 py-3">
-            {aiAnalysis === '' && !aiLoading ? (
-              <div className="flex flex-col items-center justify-center h-full gap-4">
-                <div className="text-xs" style={{ color: skin.textMuted }}>完成左侧复盘后</div>
-                <button onClick={runAiAnalysis}
-                  className="px-5 py-2 rounded-full text-xs font-medium text-white transition-all"
-                  style={{ backgroundColor: skin.swatch }}
-                >让AI帮你复盘今日</button>
-              </div>
-            ) : (
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: skin.textPrimary, fontFamily: 'inherit' }}>
-                {aiAnalysis}{aiLoading && <span className="animate-pulse">▌</span>}
-              </pre>
-            )}
           </div>
         </div>
       </div>
