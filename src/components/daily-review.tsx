@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface DailyReviewProps {
   year: number;
@@ -72,11 +72,49 @@ function saveReview(year: number, month: number, day: number, data: ReviewData) 
   localStorage.setItem(getStorageKey(year, month, day), JSON.stringify(data));
 }
 
+interface SRLike extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  start: () => void;
+  abort: () => void;
+  onresult: ((event: SREventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+}
+
+interface SREventLike {
+  results: {
+    length: number;
+    [index: number]: {
+      isFinal: boolean;
+      [index: number]: { transcript: string };
+    };
+  };
+}
+
+function createRecognition(): SRLike | null {
+  const SR = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+  if (!SR) return null;
+  return new (SR as new () => SRLike)();
+}
+
+type VoicePhase = 'idle' | 'recording' | 'polishing' | 'done';
+
 export default function DailyReview({ year, month, day, skin, events, todos, onClose }: DailyReviewProps) {
   const [review, setReview] = useState<ReviewData>({ completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' });
   const [mounted, setMounted] = useState(false);
   const [autoFilling, setAutoFilling] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Voice recording state
+  const [voicePhase, setVoicePhase] = useState<VoicePhase>('idle');
+  const [liveText, setLiveText] = useState('');
+  const [recSeconds, setRecSeconds] = useState(0);
+  const [polishedPreview, setPolishedPreview] = useState('');
+  const recognitionRef = useRef<SRLike | null>(null);
+  const finalTextRef = useRef('');
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -84,10 +122,199 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     setReview(loaded);
   }, [year, month, day]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+      }
+    };
+  }, []);
+
+  const startVoiceRecording = useCallback(() => {
+    const rec = createRecognition();
+    if (!rec) { alert('当前浏览器不支持语音识别，请使用 Chrome 浏览器'); return; }
+
+    rec.lang = 'zh-CN';
+    rec.continuous = true;
+    rec.interimResults = true;
+
+    finalTextRef.current = '';
+    setLiveText('');
+    setRecSeconds(0);
+    setPolishedPreview('');
+    setVoicePhase('recording');
+
+    rec.onresult = (event: SREventLike) => {
+      let interim = '';
+      let final = '';
+      for (let i = 0; i < event.results.length; i++) {
+        const r = event.results[i];
+        if (r.isFinal) {
+          final += r[0].transcript;
+        } else {
+          interim += r[0].transcript;
+        }
+      }
+      if (final) finalTextRef.current = final;
+      setLiveText(finalTextRef.current + (interim ? (finalTextRef.current ? '\n' : '') + interim : ''));
+    };
+
+    rec.onerror = () => {
+      // Auto-restart on error (e.g., no speech detected)
+      if (finalTextRef.current !== '__STOPPED__') {
+        try { rec.start(); } catch {}
+      }
+    };
+
+    rec.onend = () => {
+      // Auto-restart unless we manually stopped
+      if (finalTextRef.current !== '__STOPPED__') {
+        try { rec.start(); } catch {}
+      }
+    };
+
+    recognitionRef.current = rec;
+    rec.start();
+
+    // Start timer
+    timerRef.current = setInterval(() => {
+      setRecSeconds(s => s + 1);
+    }, 1000);
+  }, []);
+
+  /** Parse SSE stream from LLM API, return accumulated plain text */
+  const parseSSEStream = async (reader: ReadableStreamDefaultReader<Uint8Array>, onChunk?: (text: string) => void): Promise<string> => {
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ')) continue;
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.content) {
+            result += parsed.content;
+            onChunk?.(result);
+          }
+        } catch {}
+      }
+    }
+    return result;
+  };
+
+  const stopVoiceRecording = useCallback(async () => {
+    if (recognitionRef.current) {
+      finalTextRef.current = '__STOPPED__';
+      try { recognitionRef.current.abort(); } catch {}
+      recognitionRef.current = null;
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    const spokenText = liveText.trim();
+    if (!spokenText) {
+      setVoicePhase('idle');
+      return;
+    }
+
+    setVoicePhase('polishing');
+    setPolishedPreview('');
+
+    try {
+      const res = await fetch('/api/auto-fill-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: `${year}年${month}月${day}日`,
+          okrData: { objectives: [] },
+          events: [],
+          doneTodos: [],
+          pendingTodos: [],
+          voiceText: spokenText,
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        setVoicePhase('idle');
+        return;
+      }
+
+      const text = await parseSSEStream(res.body.getReader(), (partial) => {
+        setPolishedPreview(partial);
+      });
+
+      // Parse sections and fill review
+      const sectionMap: Record<string, keyof ReviewData> = {
+        '今天完成了什么': 'completed',
+        '美好或值得关注的事': 'goodThings',
+        '突发问题': 'problems',
+        '今天心情如何': 'mood',
+        '感想或总结': 'reflections',
+        '明日待办': 'tomorrowTodo',
+      };
+
+      const sections: Record<string, string> = {};
+      let currentKey = '';
+      let currentLines: string[] = [];
+
+      for (const line of text.split('\n')) {
+        const trimmed = line.trim();
+        let found = false;
+        for (const [label, field] of Object.entries(sectionMap)) {
+          if (trimmed.includes('【' + label + '】') || trimmed === label || trimmed === label + '：' || trimmed === label + ':') {
+            if (currentKey && currentLines.length > 0) {
+              sections[currentKey] = currentLines.join('\n');
+            }
+            currentKey = field;
+            currentLines = [];
+            found = true;
+            break;
+          }
+        }
+        if (!found && currentKey && trimmed) {
+          currentLines.push(trimmed);
+        }
+      }
+      if (currentKey && currentLines.length > 0) {
+        sections[currentKey] = currentLines.join('\n');
+      }
+
+      setReview(prev => {
+        const next = { ...prev };
+        for (const [field, value] of Object.entries(sections)) {
+          if (field in next) {
+            (next as Record<string, unknown>)[field] = value;
+          }
+        }
+        saveReview(year, month, day, next);
+        return next;
+      });
+
+      setVoicePhase('done');
+      setTimeout(() => setVoicePhase('idle'), 1200);
+    } catch {
+      setVoicePhase('idle');
+    }
+  }, [year, month, day, liveText]);
+
   const autoFillReview = useCallback(async (currentReview: ReviewData) => {
     setAutoFilling(true);
     try {
-      // Read OKR data from localStorage
       let okrData = { objectives: [] as { title: string; period: string; children: { title: string; targetValue: number; children: { title: string; done: boolean }[] }[] }[] };
       try {
         const raw = localStorage.getItem('okr-data');
@@ -115,16 +342,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 
       if (!res.ok || !res.body) return;
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let text = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        text += decoder.decode(value, { stream: true });
-      }
+      const text = await parseSSEStream(res.body.getReader());
 
-      // Parse the 5 sections from AI response
       const sections: Record<string, string> = {};
       const sectionMap: Record<string, keyof ReviewData> = {
         '今天完成了什么': 'completed',
@@ -140,7 +359,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 
       for (const line of text.split('\n')) {
         const trimmed = line.trim();
-        // Check if this line is a section header
         let found = false;
         for (const [label, field] of Object.entries(sectionMap)) {
           if (trimmed.includes('【' + label + '】') || trimmed === label || trimmed === label + '：' || trimmed === label + ':') {
@@ -161,7 +379,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         sections[currentKey] = currentLines.join('\n');
       }
 
-      // Update review with parsed sections
       setReview(prev => {
         const next = { ...prev };
         for (const [field, value] of Object.entries(sections)) {
@@ -173,7 +390,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         return next;
       });
     } catch {
-      // Silent fail - user can still manually fill
+      // Silent fail
     } finally {
       setAutoFilling(false);
     }
@@ -190,6 +407,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   if (!mounted) return null;
 
   const dateStr = `${month}月${day}日`;
+  const fmtTime = (s: number) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
@@ -202,35 +420,40 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               <div className="text-lg font-bold" style={{ color: skin.textPrimary }}>{dateStr} 复盘</div>
               <div className="text-[10px] font-medium tracking-wider" style={{ color: skin.textMuted }}>DAILY REVIEW</div>
             </div>
-            {autoFilling ? (
+            {autoFilling && (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs" style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}>
                 <span className="animate-spin">⟳</span>
                 AI 填充中...
               </div>
-            ) : (
+            )}
+            {!autoFilling && (
               <>
-              <button onClick={() => {
-                const fields = [
-                  { label: '一、今天完成了什么？', key: 'completed' as const },
-                  { label: '二、今天发生了哪些美好或值得关注的事？', key: 'beautiful' as const },
-                  { label: '三、今天遇到了哪些突发问题？', key: 'problems' as const },
-                  { label: '四、今天心情如何？', key: 'mood' as const },
-                  { label: '五、今天有哪些感想或总结？', key: 'reflections' as const },
-                  { label: '六、明日待办？', key: 'tomorrow' as const },
-                ];
-                const text = fields.map(f => `${f.label}\n${(review as unknown as Record<string, string | number | undefined>)[f.key] || '（未填写）'}`).join('\n\n');
-                navigator.clipboard.writeText(text).then(() => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }).catch(() => {});
-              }}
-                className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
-                style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
-              >{copied ? '✓ 已复制' : '📋 复制'}</button>
-              <button onClick={() => autoFillReview(review)}
-                className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
-                style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
-              >AI 重新填充</button>
+                <button onClick={startVoiceRecording}
+                  className="text-xs px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
+                  style={{ backgroundColor: '#ef444415', color: '#ef4444' }}
+                >🎙️ 语音复盘</button>
+                <button onClick={() => {
+                  const fields = [
+                    { label: '一、今天完成了什么？', key: 'completed' as const },
+                    { label: '二、今天发生了哪些美好或值得关注的事？', key: 'goodThings' as const },
+                    { label: '三、今天遇到了哪些突发问题？', key: 'problems' as const },
+                    { label: '四、今天心情如何？', key: 'mood' as const },
+                    { label: '五、今天有哪些感想或总结？', key: 'reflections' as const },
+                    { label: '六、明日待办？', key: 'tomorrowTodo' as const },
+                  ];
+                  const text = fields.map(f => `${f.label}\n${(review as unknown as Record<string, string | number | undefined>)[f.key] || '（未填写）'}`).join('\n\n');
+                  navigator.clipboard.writeText(text).then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                  }).catch(() => {});
+                }}
+                  className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
+                  style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
+                >{copied ? '✓ 已复制' : '📋 复制'}</button>
+                <button onClick={() => autoFillReview(review)}
+                  className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
+                  style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
+                >AI 重新填充</button>
               </>
             )}
           </div>
@@ -243,7 +466,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 
         {/* Content */}
         <div className="px-6 py-3">
-          {/* 3-column grid: 6 sections in 2 rows */}
           <div className="grid grid-cols-3 gap-3 mb-3">
             <ReviewSection
               title="今天完成了什么？"
@@ -308,11 +530,72 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
           </div>
         </div>
       </div>
+
+      {/* Voice Recording Modal */}
+      {voicePhase !== 'idle' && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <div className="w-[640px] rounded-2xl shadow-2xl p-8 flex flex-col items-center" style={{ backgroundColor: skin.panelBg }}>
+            {voicePhase === 'recording' && (
+              <>
+                {/* Recording indicator */}
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-xl font-bold" style={{ color: skin.textPrimary }}>正在录音</span>
+                </div>
+                {/* Timer */}
+                <div className="text-4xl font-bold mb-6 tabular-nums" style={{ color: skin.swatch }}>
+                  {fmtTime(recSeconds)}
+                </div>
+                {/* Live text */}
+                <div className="w-full rounded-xl p-4 mb-6 max-h-[300px] overflow-y-auto" style={{ backgroundColor: skin.cardBg }}>
+                  <div className="text-xs mb-2" style={{ color: skin.textMuted }}>实时转写：</div>
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: skin.textPrimary }}>
+                    {liveText || '等待语音...'}
+                  </div>
+                </div>
+                <button onClick={stopVoiceRecording}
+                  className="px-8 py-3 rounded-xl text-white font-bold text-sm transition-all"
+                  style={{ backgroundColor: '#ef4444' }}
+                >⏹ 停止录音</button>
+              </>
+            )}
+            {voicePhase === 'polishing' && (
+              <>
+                <div className="flex items-center gap-2 mb-6">
+                  <span className="animate-spin text-xl">⟳</span>
+                  <span className="text-xl font-bold" style={{ color: skin.swatch }}>AI 润色中</span>
+                </div>
+                {/* Original text */}
+                <div className="w-full rounded-xl p-3 mb-3" style={{ backgroundColor: skin.cardBg }}>
+                  <div className="text-[10px] mb-1" style={{ color: skin.textMuted }}>原始语音：</div>
+                  <div className="text-xs leading-relaxed whitespace-pre-wrap line-through opacity-50" style={{ color: skin.textMuted }}>
+                    {liveText.slice(0, 200)}{liveText.length > 200 ? '...' : ''}
+                  </div>
+                </div>
+                {/* Polished text streaming */}
+                <div className="w-full rounded-xl p-3 border-2 border-dashed min-h-[150px] max-h-[250px] overflow-y-auto"
+                  style={{ borderColor: skin.swatch + '30', backgroundColor: skin.swatch + '08' }}>
+                  <div className="text-[10px] mb-1" style={{ color: skin.swatch }}>润色结果：</div>
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: skin.textPrimary }}>
+                    {polishedPreview || '...'}
+                  </div>
+                </div>
+              </>
+            )}
+            {voicePhase === 'done' && (
+              <div className="flex flex-col items-center gap-3">
+                <div className="text-4xl">✅</div>
+                <div className="text-lg font-bold" style={{ color: skin.swatch }}>复盘已填充完成</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-/* Review Section Component - Single textarea with auto-numbering */
+/* Review Section Component */
 function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWidth, compact, loading }: {
   title: string;
   icon: string;

@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { date, okrData, events, doneTodos, pendingTodos } = body as {
+    const { date, okrData, events, doneTodos, pendingTodos, voiceText } = body as {
       date: string;
       okrData: {
         objectives: {
@@ -20,9 +20,41 @@ export async function POST(request: NextRequest) {
       events: string[];
       doneTodos: string[];
       pendingTodos: string[];
+      voiceText?: string;
     };
 
-    // Build OKR summary
+    // Voice mode: polish and categorize spoken text
+    if (voiceText && voiceText.trim()) {
+      const systemPrompt = `你是每日复盘助手。用户通过语音口述了今天的复盘内容，请将其润色整理后归入以下6个维度。
+
+要求：
+1. 仔细理解用户口述内容，提取关键信息分配到对应维度
+2. 润色语言使其更简洁清晰，但保留用户原意和关键细节
+3. 每个维度1-3条，用 "1. " "2. " 编号格式
+4. 如果用户口述中某个维度没有相关内容，写"无"
+5. 禁止寒暄、禁止空泛鼓励、禁止鸡汤、禁止加粗标记
+6. 只输出6个维度的内容，每个维度用【】标注标题
+
+6个维度：
+- 今天完成了什么：列出完成的任务和工作进展
+- 今天发生了哪些美好或值得关注的事：值得记录的好事或新发现
+- 今天遇到了哪些突发问题：遇到的困难或意外
+- 今天心情如何：整体情绪状态
+- 今天有哪些感想或总结：认知和经验提炼
+- 明日待办：明天的行动计划`;
+
+      const userContent = `日期：${date}
+
+用户的语音口述内容：
+${voiceText}`;
+
+      return createLLMStream(request, [
+        { role: 'system' as const, content: systemPrompt },
+        { role: 'user' as const, content: userContent },
+      ], { temperature: 0.3 });
+    }
+
+    // Original auto-fill mode
     const okrSummary = okrData.objectives
       .filter(o => o.period === date.slice(0, 4) || o.period.includes('Q'))
       .map(o => {
