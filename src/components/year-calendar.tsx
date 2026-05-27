@@ -135,6 +135,11 @@ export default function YearCalendar() {
     insight: '',
     track: '',
   });
+  const defaultModuleNames: Record<string, string> = { timeline: '日程', dida: '滴答', longterm: '长程', bilibili: 'B站', insight: '洞察', track: '轨迹' };
+  const [moduleNames, setModuleNames] = useState<Record<string, string>>(() => {
+    try { return { ...defaultModuleNames, ...JSON.parse(typeof window !== 'undefined' ? localStorage.getItem('calendar-module-names') || '{}' : '{}') }; } catch { return defaultModuleNames; }
+  });
+  const getModuleName = (key: string) => moduleNames[key] || defaultModuleNames[key] || key;
 
   // Real-time clock with centiseconds (2-digit)
   useEffect(() => {
@@ -210,6 +215,11 @@ export default function YearCalendar() {
         try { setModuleLinks(prev => ({ ...prev, ...JSON.parse(savedLinks) })); } catch { /* ignore */ }
       }
 
+      const savedNames = localStorage.getItem('calendar-module-names');
+      if (savedNames) {
+        try { setModuleNames(prev => ({ ...prev, ...JSON.parse(savedNames) })); } catch { /* ignore */ }
+      }
+
       // Check if drawing has strokes
       const savedDrawing = localStorage.getItem(`calendar-drawing-${year}`);
       if (savedDrawing) {
@@ -279,6 +289,13 @@ export default function YearCalendar() {
       localStorage.setItem('calendar-module-links', JSON.stringify(moduleLinks));
     } catch { /* ignore */ }
   }, [moduleLinks, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      localStorage.setItem('calendar-module-names', JSON.stringify(moduleNames));
+    } catch { /* ignore */ }
+  }, [moduleNames, mounted]);
 
   const saveNote = useCallback(() => {
     if (!notePopup) return;
@@ -815,7 +832,7 @@ export default function YearCalendar() {
               </svg>
             </span>
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>日程</span>
+              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('timeline')}</span>
           </button>
           )}
 
@@ -847,7 +864,7 @@ export default function YearCalendar() {
               </svg>
             </span>
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>滴答</span>
+              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('dida')}</span>
           </button>
           )}
 
@@ -882,7 +899,7 @@ export default function YearCalendar() {
               </svg>
             </span>
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>长程</span>
+              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('longterm')}</span>
           </button>
           )}
 
@@ -913,7 +930,7 @@ export default function YearCalendar() {
               </svg>
             </span>
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>B站</span>
+              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('bilibili')}</span>
           </button>
           )}
 
@@ -963,7 +980,7 @@ export default function YearCalendar() {
               </svg>
             </span>
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>洞察</span>
+              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('insight')}</span>
           </button>
           )}
 
@@ -1012,7 +1029,7 @@ export default function YearCalendar() {
               </svg>
             </span>
             <span className="text-[12px] leading-none font-bold tracking-wide transition-colors"
-              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>轨迹</span>
+              style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>{getModuleName('track')}</span>
           </button>
           )}
         </div>
@@ -1723,7 +1740,15 @@ export default function YearCalendar() {
                   {/* Left: icon + label + switch */}
                   <div className="flex items-center gap-2.5 flex-shrink-0 w-[150px]">
                     <span className="text-base">{item.icon}</span>
-                    <span className="text-sm font-medium" style={{ color: skin.textPrimary }}>{item.label}</span>
+                    <input
+                      type="text"
+                      value={moduleNames[item.key] || item.label}
+                      onChange={(e) => setModuleNames(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      className="text-sm font-medium bg-transparent outline-none border-b border-transparent hover:border-dashed focus:border-solid min-w-[60px] max-w-[120px]"
+                      style={{ color: skin.textPrimary, borderColor: undefined }}
+                      onFocus={(e) => { e.target.style.borderColor = `${skin.swatch}60`; }}
+                      onBlur={(e) => { e.target.style.borderColor = 'transparent'; }}
+                    />
                     <button
                       onClick={() => setModuleVisibility(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
                       className="w-9 h-[22px] rounded-full relative transition-all cursor-pointer flex-shrink-0 ml-auto"
