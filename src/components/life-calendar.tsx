@@ -261,99 +261,58 @@ const OKR_TEMPLATES: OKRTemplate[] = [
 ];
 
 // ── Life Map Stages ──
-const LIFE_STAGES = [
-  { key: 'birth',     label: '出生',     age: '0',     icon: '👶', color: '#F8BBD0', milestones: ['呱呱坠地', '第一次微笑', '学会走路', '开口叫妈妈'] },
-  { key: 'childhood', label: '童年',     age: '3-6',   icon: '🌈', color: '#FFE0B2', milestones: ['上幼儿园', '交到第一个好朋友', '第一次骑自行车', '学会游泳'] },
-  { key: 'school',    label: '少年',     age: '7-12',  icon: '📚', color: '#C8E6C9', milestones: ['背上书包入学', '第一次考试满分', '参加运动会', '找到兴趣爱好'] },
-  { key: 'teen',      label: '青春期',   age: '13-18', icon: '🔥', color: '#BBDEFB', milestones: ['中考', '高考', '第一次心动', '确定人生方向'] },
-  { key: 'college',   label: '大学',     age: '18-22', icon: '🎓', color: '#D1C4E9', milestones: ['踏入大学校园', '第一次实习', '毕业论文', '拿到第一个Offer'] },
-  { key: 'career1',   label: '职场起步', age: '22-30', icon: '💼', color: '#B2DFDB', milestones: ['入职第一份工作', '第一次升职', '经济独立', '遇到人生伴侣'] },
-  { key: 'family',    label: '成家立业', age: '28-35', icon: '🏠', color: '#FFCCBC', milestones: ['组建家庭', '迎来新生命', '买到自己的房子', '事业小成'] },
-  { key: 'prime',     label: '而立之年', age: '30-40', icon: '⛰️', color: '#FFF9C4', milestones: ['成为领域专家', '带团队', '实现财务目标', '平衡事业与家庭'] },
-  { key: 'mature',    label: '不惑之年', age: '40-50', icon: '🌟', color: '#DCEDC8', milestones: ['事业巅峰', '培养接班人', '回馈社会', '身体健康管理'] },
-  { key: 'harvest',   label: '知天命',   age: '50-60', icon: '🌾', color: '#D7CCC8', milestones: ['传道授业', '完成人生清单', '享受生活', '与老友重聚'] },
-  { key: 'retire',    label: '花甲',     age: '60-70', icon: '🌅', color: '#FFE082', milestones: ['退休旅行', '含饴弄孙', '培养新爱好', '写回忆录'] },
-  { key: 'sage',      label: '古稀以后', age: '70+',   icon: '🧓', color: '#E0E0E0', milestones: ['安享晚年', '四世同堂', '人生智慧', '平安喜乐'] },
-];
 
-function LifeMapView({ birthYear, skin, swatch }: { birthYear: number; skin: typeof SKINS[0]; swatch: string }) {
-  const s = { text1: skin.textPrimary, text2: skin.textSecondary, textMuted: skin.textMuted, panelBg: skin.panelBg, cardBg: skin.cardBg, divider: skin.divider, cardHover: skin.cardHover };
+function LifeMapView({ birthYear, skin }: { birthYear: number; skin: typeof SKINS[0]; swatch: string }) {
+  const s = { text1: skin.textPrimary, text2: skin.textSecondary, textMuted: skin.textMuted, panelBg: skin.panelBg, cardBg: skin.cardBg, divider: skin.divider };
   const currentYear = new Date().getFullYear();
   const currentAge = currentYear - birthYear;
   const totalLifespan = 80;
   const progress = Math.min(currentAge / totalLifespan, 1);
 
   return (
-    <div className="space-y-6">
-      {/* Overview bar */}
-      <div className="text-center space-y-2">
-        <div className="text-2xl font-bold" style={{ color: s.text1 }}>从 {birthYear} 到 {birthYear + totalLifespan}</div>
-        <div className="text-sm" style={{ color: s.textMuted }}>当前 {currentAge} 岁 · 人生进度 {Math.round(progress * 100)}%</div>
-        <div className="mx-auto max-w-lg h-3 rounded-full overflow-hidden" style={{ backgroundColor: s.cardBg }}>
-          <div className="h-full rounded-full transition-all relative" style={{ width: `${progress * 100}%`, background: `linear-gradient(90deg, ${LIFE_STAGES[0].color}, ${LIFE_STAGES[3].color}, ${LIFE_STAGES[6].color}, ${LIFE_STAGES[9].color})` }}>
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-white shadow-lg" style={{ backgroundColor: swatch }} />
+    <div className="flex flex-col gap-4">
+      {/* Stats bar */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm" style={{ color: s.text1 }}>
+          <span className="font-bold text-lg">{birthYear}</span>
+          <span style={{ color: s.textMuted }}> → </span>
+          <span className="font-bold text-lg">{birthYear + totalLifespan}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm" style={{ color: s.textMuted }}>当前 {currentAge} 岁</span>
+          <div className="w-40 h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: s.cardBg }}>
+            <div className="h-full rounded-full" style={{ width: `${progress * 100}%`, background: 'linear-gradient(90deg, #4ade80, #facc15, #f97316, #a78bfa)' }} />
+          </div>
+          <span className="text-sm font-bold" style={{ color: s.text1 }}>{Math.round(progress * 100)}%</span>
+        </div>
+      </div>
+
+      {/* Life Map Image */}
+      <div className="relative w-full rounded-xl overflow-hidden shadow-lg" style={{ border: `1px solid ${s.divider}` }}>
+        <img
+          src="/life-map.jpeg"
+          alt="人生地图"
+          className="w-full h-auto block"
+          style={{ maxHeight: '65vh', objectFit: 'contain', backgroundColor: '#1a1a2e' }}
+        />
+        {/* Age overlay labels */}
+        <div className="absolute bottom-0 left-0 right-0 p-3" style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}>
+          <div className="flex justify-between text-[10px] text-white/70">
+            <span>出生 0岁</span>
+            <span>童年 6岁</span>
+            <span>少年 13岁</span>
+            <span>青年 19岁</span>
+            <span>而立 30岁</span>
+            <span>不惑 40岁</span>
+            <span>知天命 50岁</span>
+            <span>花甲 60岁</span>
+            <span>古稀 70岁+</span>
           </div>
         </div>
       </div>
 
-      {/* Life Map - vertical timeline */}
-      <div className="relative">
-        {/* Vertical line */}
-        <div className="absolute left-6 top-0 bottom-0 w-0.5" style={{ background: `linear-gradient(to bottom, ${LIFE_STAGES.map(st => st.color).join(', ')})` }} />
-
-        <div className="space-y-1">
-          {LIFE_STAGES.map((stage, si) => {
-            const [ageStart] = stage.age.includes('-') ? stage.age.split('-').map(Number) : [Number(stage.age), Number(stage.age)];
-            const stageAgeEnd = stage.age.includes('-') ? Number(stage.age.split('-')[1]) : (stage.key === 'sage' ? totalLifespan : Number(stage.age));
-            const isCurrentStage = currentAge >= ageStart && currentAge <= stageAgeEnd;
-            const isPast = currentAge > stageAgeEnd;
-
-            return (
-              <div key={stage.key} className="flex items-start gap-4 relative">
-                {/* Stage dot on timeline */}
-                <div className="relative z-10 flex-shrink-0 w-12 flex justify-center pt-3">
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
-                    style={{
-                      backgroundColor: isCurrentStage ? swatch : isPast ? stage.color : s.cardBg,
-                      border: `2px solid ${isCurrentStage ? swatch : stage.color}`,
-                      boxShadow: isCurrentStage ? `0 0 12px ${swatch}60` : 'none',
-                    }}>
-                    <span className="text-[8px]">{isPast ? '✓' : isCurrentStage ? '●' : ''}</span>
-                  </div>
-                </div>
-
-                {/* Stage card */}
-                <div className="flex-1 rounded-xl p-3 transition-all"
-                  style={{
-                    backgroundColor: isCurrentStage ? `${swatch}10` : isPast ? `${stage.color}15` : s.cardBg,
-                    border: `1px solid ${isCurrentStage ? swatch : isPast ? `${stage.color}40` : s.divider}`,
-                    opacity: isPast ? 0.85 : isCurrentStage ? 1 : 0.5,
-                  }}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-lg">{stage.icon}</span>
-                    <span className="font-bold text-sm" style={{ color: isCurrentStage ? swatch : s.text1 }}>{stage.label}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: `${stage.color}30`, color: s.textMuted }}>{stage.age}岁</span>
-                    {isCurrentStage && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse" style={{ backgroundColor: `${swatch}20`, color: swatch }}>当前位置</span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {stage.milestones.map((m, mi) => (
-                      <span key={mi} className="text-[11px] px-2 py-0.5 rounded-full"
-                        style={{ backgroundColor: `${stage.color}25`, color: isPast ? s.text2 : s.textMuted, border: `1px solid ${stage.color}30` }}>
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Bottom wisdom */}
-      <div className="text-center pt-4 border-t" style={{ borderColor: s.divider }}>
+      {/* Wisdom */}
+      <div className="text-center">
         <div className="text-xs italic" style={{ color: s.textMuted }}>
           &ldquo;人生如旅，每一站都有独特的风景。珍惜当下，不负此行。&rdquo;
         </div>
@@ -996,16 +955,16 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       {/* ══════════ LIFE MAP PANEL ══════════ */}
       {showTemplates && (
         <div className="fixed inset-0 z-[60] flex" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="m-auto w-full max-w-3xl max-h-[85vh] rounded-2xl shadow-2xl flex flex-col" style={{ backgroundColor: s.panelBg }}>
+          <div className="m-auto w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col" style={{ backgroundColor: s.panelBg }}>
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: s.divider }}>
+            <div className="flex items-center justify-between px-6 py-3 border-b" style={{ borderColor: s.divider }}>
               <h3 className="text-lg font-bold" style={{ color: s.text1 }}>人生地图</h3>
               <button onClick={() => setShowTemplates(false)} className="w-7 h-7 flex items-center justify-center rounded-full hover:opacity-80" style={{ backgroundColor: s.cardBg, color: s.text2 }}>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             {/* Life Map */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
               <LifeMapView birthYear={birthYear} skin={skin} swatch={swatch} />
             </div>
           </div>
