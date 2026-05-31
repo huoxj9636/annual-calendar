@@ -763,7 +763,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         const res = await fetch('/api/import-review', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(importMode === 'text' ? { text: importHtml } : { html: importHtml }),
+                          body: JSON.stringify(importMode === 'text' ? { text: importHtml, year, month, day } : { html: importHtml }),
                         });
                         const data = await res.json();
                         if (data.error) {
@@ -771,7 +771,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         } else {
                           // 刷新当前日期的复盘数据
                           const freshData = await loadReview(year, month, day);
-                          setReview(freshData);
+                          console.log('[Import] freshData:', JSON.stringify(freshData));
+                          if (freshData) setReview(freshData);
                           // 自动关闭弹窗并清空
                           setShowImport(false);
                           setImportHtml('');
