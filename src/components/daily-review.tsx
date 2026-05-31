@@ -96,7 +96,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const [importHtml, setImportHtml] = useState('');
   const [importMode, setImportMode] = useState<'text' | 'html'>('text');
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ total: number; saved: number; entries: { date: string; [k: string]: string }[] } | null>(null);
 
   // Voice recording state — MediaRecorder based
   const [voicePhase, setVoicePhase] = useState<VoicePhase>('idle');
@@ -722,7 +721,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       {/* Import Modal */}
       {showImport && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
-          onClick={e => { if (e.target === e.currentTarget) { setShowImport(false); setImportResult(null); } }}>
+          onClick={e => { if (e.target === e.currentTarget) { setShowImport(false); } }}>
           <div className="w-[700px] max-h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
             <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
               <div className="font-bold" style={{ color: skin.textPrimary }}>📥 导入笔记</div>
@@ -736,13 +735,12 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   style={{ backgroundColor: importMode === 'html' ? skin.swatch + '20' : 'transparent', color: importMode === 'html' ? skin.swatch : skin.textMuted, border: '1px solid ' + (importMode === 'html' ? skin.swatch + '40' : 'transparent') }}
                 >HTML</button>
                 <span className="mx-2" style={{ color: skin.cellBorder }}>|</span>
-                <button onClick={() => { setShowImport(false); setImportResult(null); }} className="w-7 h-7 rounded-full flex items-center justify-center"
+                <button onClick={() => { setShowImport(false); }} className="w-7 h-7 rounded-full flex items-center justify-center"
                   style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}>✕</button>
               </div>
             </div>
             <div className="flex-1 overflow-auto p-5 flex flex-col gap-3">
-              {!importResult ? (
-                <>
+              <>
                   <div className="text-sm" style={{ color: skin.textMuted }}>
                     {importMode === 'text'
                       ? '粘贴每日复盘文本，系统会自动识别日期并将内容智能分类到6个复盘维度。'
@@ -771,10 +769,12 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         if (data.error) {
                           alert(data.error);
                         } else {
-                          setImportResult(data);
                           // 刷新当前日期的复盘数据
                           const freshData = await loadReview(year, month, day);
                           setReview(freshData);
+                          // 自动关闭弹窗并清空
+                          setShowImport(false);
+                          setImportHtml('');
                         }
                       } catch (err) {
                         alert('导入失败: ' + (err instanceof Error ? err.message : '未知错误'));
@@ -789,34 +789,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     {importing ? '⏳ 正在解析和分类...' : '🚀 开始导入'}
                   </button>
                 </>
-              ) : (
-                <>
-                  <div className="text-sm font-medium" style={{ color: skin.textPrimary }}>
-                    ✅ 导入完成！共识别 <b>{importResult.total}</b> 天，成功保存 <b>{importResult.saved}</b> 天
-                  </div>
-                  <div className="flex flex-col gap-2 max-h-[400px] overflow-auto">
-                    {importResult.entries.map((entry, i) => (
-                      <div key={i} className="rounded-xl p-3" style={{ backgroundColor: skin.cardHover }}>
-                        <div className="text-xs font-bold mb-1" style={{ color: skin.swatch }}>{entry.date}</div>
-                        {(['completed', 'goodThings', 'problems', 'mood', 'reflections', 'tomorrowTodo'] as const).map(f => (
-                          entry[f] ? (
-                            <div key={f} className="text-xs mb-1" style={{ color: skin.textMuted }}>
-                              <span style={{ color: skin.textPrimary, fontWeight: 600 }}>
-                                {{ completed: '完成', goodThings: '美好', problems: '问题', mood: '心情', reflections: '感想', tomorrowTodo: '待办' }[f]}：
-                              </span>
-                              {entry[f]}
-                            </div>
-                          ) : null
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={() => { setShowImport(false); setImportResult(null); }}
-                    className="px-6 py-2.5 rounded-xl font-medium text-white text-sm"
-                    style={{ backgroundColor: '#3b82f6' }}
-                  >确定</button>
-                </>
-              )}
             </div>
           </div>
         </div>
