@@ -273,19 +273,17 @@ export async function POST(request: NextRequest) {
     let entries: ParsedEntry[];
 
     if (isTextMode) {
-      // 文本模式：如有指定日期则归入该日期，否则尝试从文本中提取日期
-      if (reqYear && reqMonth && reqDay) {
-        entries = [{ date: `${reqYear}-${reqMonth}-${reqDay}`, content: text.trim() }];
-      } else {
-        entries = parseTextEntries(text);
-      }
+      // 文本模式：不需要日期，整段文本直接归类到当前复盘日期
+      const now = new Date();
+      const fallbackDate = `${reqYear || now.getFullYear()}-${reqMonth || (now.getMonth() + 1)}-${reqDay || now.getDate()}`;
+      entries = [{ date: fallbackDate, content: text.trim() }];
     } else {
-      // HTML 模式
+      // HTML 模式：从HTML中解析多个日期条目
       entries = parseHTMLEntries(html!);
     }
 
     if (entries.length === 0) {
-      return NextResponse.json({ error: '未能解析出任何日期条目。请确保内容中包含日期（如 2024年1月1日 或 2024-01-01），或指定 year/month/day 参数。' }, { status: 400 });
+      return NextResponse.json({ error: '未能从 HTML 中解析出任何日期条目。请确保内容中包含日期（如 2024年1月1日 或 2024-01-01）。' }, { status: 400 });
     }
 
     // Step 2: AI 分类
