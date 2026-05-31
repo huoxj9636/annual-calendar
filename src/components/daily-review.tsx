@@ -94,6 +94,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   // Import state
   const [showImport, setShowImport] = useState(false);
   const [importHtml, setImportHtml] = useState('');
+  const [importMode, setImportMode] = useState<'text' | 'html'>('text');
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ total: number; saved: number; entries: { date: string; [k: string]: string }[] } | null>(null);
 
@@ -725,19 +726,34 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
           <div className="w-[700px] max-h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
             <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
               <div className="font-bold" style={{ color: skin.textPrimary }}>📥 导入笔记</div>
-              <button onClick={() => { setShowImport(false); setImportResult(null); }} className="w-7 h-7 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}>✕</button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setImportMode('text')}
+                  className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
+                  style={{ backgroundColor: importMode === 'text' ? skin.swatch + '20' : 'transparent', color: importMode === 'text' ? skin.swatch : skin.textMuted, border: '1px solid ' + (importMode === 'text' ? skin.swatch + '40' : 'transparent') }}
+                >纯文本</button>
+                <button onClick={() => setImportMode('html')}
+                  className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
+                  style={{ backgroundColor: importMode === 'html' ? skin.swatch + '20' : 'transparent', color: importMode === 'html' ? skin.swatch : skin.textMuted, border: '1px solid ' + (importMode === 'html' ? skin.swatch + '40' : 'transparent') }}
+                >HTML</button>
+                <span className="mx-2" style={{ color: skin.cellBorder }}>|</span>
+                <button onClick={() => { setShowImport(false); setImportResult(null); }} className="w-7 h-7 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}>✕</button>
+              </div>
             </div>
             <div className="flex-1 overflow-auto p-5 flex flex-col gap-3">
               {!importResult ? (
                 <>
                   <div className="text-sm" style={{ color: skin.textMuted }}>
-                    粘贴从笔记应用导出的 HTML 内容，系统会自动识别日期并将内容智能分类到6个复盘维度。
+                    {importMode === 'text'
+                      ? '粘贴每日复盘文本，系统会自动识别日期并将内容智能分类到6个复盘维度。'
+                      : '粘贴从笔记应用导出的 HTML 内容，系统会自动识别日期并将内容智能分类到6个复盘维度。'}
                   </div>
                   <textarea
                     value={importHtml}
                     onChange={e => setImportHtml(e.target.value)}
-                    placeholder="在此粘贴笔记 HTML 内容...&#10;&#10;支持格式：&#10;· 2024年5月27日 + 内容&#10;· 2024-05-27 + 内容&#10;· 2024/05/27 + 内容"
+                    placeholder={importMode === 'text'
+                      ? "在此粘贴复盘文本内容...\n\n支持格式：\n· 2024年5月27日\n今天完成了xxx，心情不错\n明天要继续推进xxx\n\n· 2024-05-28\n今天遇到了xxx问题..."
+                      : "在此粘贴笔记 HTML 内容...\n\n支持格式：\n· 2024年5月27日 + 内容\n· 2024-05-27 + 内容\n· 2024/05/27 + 内容"}
                     className="w-full h-[300px] rounded-xl p-4 text-sm resize-none focus:outline-none focus:ring-2"
                     style={{ backgroundColor: skin.cardHover, color: skin.textPrimary, borderColor: skin.cellBorder }}
                   />
@@ -749,7 +765,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         const res = await fetch('/api/import-review', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ html: importHtml }),
+                          body: JSON.stringify(importMode === 'text' ? { text: importHtml } : { html: importHtml }),
                         });
                         const data = await res.json();
                         if (data.error) {

@@ -96,6 +96,58 @@ function parseHTMLEntries(html: string): ParsedEntry[] {
 }
 
 /**
+ * 从纯文本中提取日期+内容条目
+ * 支持格式同 HTML，但不去除标签
+ */
+function parseTextEntries(text: string): ParsedEntry[] {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  const datePatterns = [
+    /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,
+    /(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/,
+    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,
+  ];
+
+  const entries: ParsedEntry[] = [];
+  let currentDate: string | null = null;
+  let currentContent: string[] = [];
+
+  for (const line of lines) {
+    let matched: RegExpMatchArray | null = null;
+    let y = '', m = '', d = '';
+
+    for (const pat of datePatterns) {
+      matched = line.match(pat);
+      if (matched) {
+        if (pat === datePatterns[2]) {
+          d = matched[1]; m = matched[2]; y = matched[3];
+        } else {
+          y = matched[1]; m = matched[2]; d = matched[3];
+        }
+        break;
+      }
+    }
+
+    if (matched && y && m && d) {
+      if (currentDate && currentContent.length > 0) {
+        entries.push({ date: currentDate, content: currentContent.join('\n').trim() });
+      }
+      currentDate = `${y}-${parseInt(m)}-${parseInt(d)}`;
+      const rest = line.replace(matched[0], '').trim();
+      currentContent = rest ? [rest] : [];
+    } else if (currentDate) {
+      currentContent.push(line);
+    }
+  }
+
+  if (currentDate && currentContent.length > 0) {
+    entries.push({ date: currentDate, content: currentContent.join('\n').trim() });
+  }
+
+  return entries;
+}
+
+/**
  * 使用 LLM 将笔记内容分类到6个复盘维度
  */
 async function classifyWithAI(entries: ParsedEntry[], request: NextRequest): Promise<ClassifiedEntry[]> {
@@ -207,16 +259,33 @@ ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { html } = body as { html: string };
+    const { html, text, year: reqYear, month: reqMonth, day: reqDay } = body as {
+      html?: string; text?: string; year?: number; month?: number; day?: number;
+    };
 
-    if (!html || typeof html !== 'string') {
-      return NextResponse.json({ error: '缺少 html 参数' }, { status: 400 });
+    const isTextMode = !!text;
+    const input = isTextMode ? text : html;
+
+    if (!input || typeof input !== 'string') {
+      return NextResponse.json({ error: '缺少 text 或 html 参数' }, { status: 400 });
     }
 
-    // Step 1: 解析 HTML 提取日期+内容条目
-    const entries = parseHTMLEntries(html);
+    let entries: ParsedEntry[];
+
+    if (isTextMode) {
+      // 文本模式：如有指定日期则归入该日期，否则尝试从文本中提取日期
+      if (reqYear && reqMonth && reqDay) {
+        entries = [{ date: `${reqYear}-${reqMonth}-${reqDay}`, content: text.trim() }];
+      } else {
+        entries = parseTextEntries(text);
+      }
+    } else {
+      // HTML 模式
+      entries = parseHTMLEntries(html!);
+    }
+
     if (entries.length === 0) {
-      return NextResponse.json({ error: '未能从 HTML 中解析出任何日期条目。请确保内容中包含日期（如 2024年1月1日 或 2024-01-01）。' }, { status: 400 });
+      return NextResponse.json({ error: '未能解析出任何日期条目。请确保内容中包含日期（如 2024年1月1日 或 2024-01-01），或指定 year/month/day 参数。' }, { status: 400 });
     }
 
     // Step 2: AI 分类
