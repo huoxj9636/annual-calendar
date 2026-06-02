@@ -371,31 +371,25 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         setPolishedPreview(partial);
       });
 
-      // Parse sections and fill review — use flexible matching for section headers
-      const sectionEntries: Array<{ keywords: string[]; field: keyof ReviewData }> = [
-        { keywords: ['完成了什么'], field: 'completed' },
-        { keywords: ['美好', '值得关注'], field: 'goodThings' },
-        { keywords: ['突发问题', '遇到.*问题', '困难'], field: 'problems' },
-        { keywords: ['心情'], field: 'mood' },
-        { keywords: ['感想', '总结'], field: 'reflections' },
-        { keywords: ['明日待办', '明天.*计划', '明天.*安排'], field: 'tomorrowTodo' },
+      // Parse sections and fill review — use ordered priority matching
+      // Order matters: more specific patterns first to avoid misclassification
+      const sectionPatterns: Array<{ pattern: RegExp; field: keyof ReviewData }> = [
+        { pattern: /完成了什么/, field: 'completed' },
+        { pattern: /突发|遇到了.*问题|卡点|意外|困难/, field: 'problems' },
+        { pattern: /美好|值得关注|好事/, field: 'goodThings' },
+        { pattern: /心情/, field: 'mood' },
+        { pattern: /明日待办|明日.*计划|明天.*待办|明天.*计划|明天.*安排/, field: 'tomorrowTodo' },
+        { pattern: /感想|总结|感悟|收获/, field: 'reflections' },
       ];
 
       function matchSection(trimmed: string): keyof ReviewData | '' {
         // Match 【...】 format
         const bracketMatch = trimmed.match(/【(.+?)】/);
-        if (bracketMatch) {
-          const content = bracketMatch[1];
-          for (const entry of sectionEntries) {
-            if (entry.keywords.every(kw => new RegExp(kw).test(content))) {
-              return entry.field;
-            }
-          }
-        }
-        // Match plain text like "今天完成了什么："
-        const plainMatch = trimmed.replace(/[：:]/g, '');
-        for (const entry of sectionEntries) {
-          if (entry.keywords.every(kw => new RegExp(kw).test(plainMatch))) {
+        const content = bracketMatch ? bracketMatch[1] : trimmed.replace(/[：:]/g, '');
+        if (!content) return '';
+        // Priority-ordered: first match wins
+        for (const entry of sectionPatterns) {
+          if (entry.pattern.test(content)) {
             return entry.field;
           }
         }

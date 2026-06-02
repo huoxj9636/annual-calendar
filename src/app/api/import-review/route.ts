@@ -159,6 +159,19 @@ async function classifyWithAI(entries: ParsedEntry[], request: NextRequest): Pro
 
   const prompt = `你是一个每日复盘助手。用户从笔记应用导入了以下日记条目，请将每一条内容智能分类到6个复盘维度中。
 
+⚠️ 严格分类规则（极其重要，违反将导致严重错误）：
+1. 你必须将内容归入6个维度，缺一不可
+2. 每句话都必须准确归类，不能遗漏或错归
+3. 特别注意区分以下容易混淆的维度：
+   - goodThings（美好/值得关注的事）= 好事、开心的事、新发现、值得留意的事
+   - problems（突发问题）= 坏事、困难、卡点、意外、突发状况、不顺的事
+   - 这两个必须分开！好事归goodThings，坏事归problems
+   - reflections（感想/总结）= 思考、感悟、经验教训、内心感受
+   - tomorrowTodo（明日待办）= 明天要做的事、明天的计划安排
+   - 感想和待办必须分开！感想是回顾，待办是计划
+4. 已完成的事项归入 completed，计划中的事项归入 tomorrowTodo
+5. 情绪描述归入 mood，反思感悟归入 reflections
+
 6个维度（严格使用这些 key）：
 - completed: 今天完成了什么
 - goodThings: 今天发生了哪些美好或值得关注的事
@@ -172,9 +185,6 @@ async function classifyWithAI(entries: ParsedEntry[], request: NextRequest): Pro
 2. 同一维度的多条内容用编号列表，换行分隔
 3. 如果某维度没有对应内容，填空字符串 ""
 4. 不要遗漏任何内容，每句话都必须归入某个维度
-5. 情绪描述归入 mood，反思感悟归入 reflections
-6. 已完成的事项归入 completed，计划中的事项归入 tomorrowTodo
-7. 积极的见闻归入 goodThings，困难和问题归入 problems
 
 输入数据：
 ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
