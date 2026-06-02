@@ -15,6 +15,7 @@ import ParticleEffect from '@/components/particle-effect';
 import DrawingOverlay, { DrawingOverlayHandle } from '@/components/drawing-overlay';
 import TimelinePanel from '@/components/timeline-panel';
 import InsightPanel from '@/components/insight-panel';
+import { AnalogClock } from '@/components/analog-clock';
 import TrackPanel from '@/components/track-panel';
 import DailyReview from '@/components/daily-review';
 import {
@@ -625,6 +626,7 @@ export default function YearCalendar() {
 
         <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 px-5 py-2.5">
+            {mounted && <AnalogClock size={72} color={skin.textPrimary} bgColor="rgba(255,255,255,0.06)" />}
             <button
               onClick={() => setYear((y) => y - 1)}
               className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold"
