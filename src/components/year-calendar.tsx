@@ -770,7 +770,7 @@ export default function YearCalendar() {
           <div className="absolute inset-x-0 flex justify-center pointer-events-none">
             <span
               className="pointer-events-auto select-none cursor-pointer hover:opacity-70 transition-opacity"
-              style={{ color: skin.textMuted, fontSize: 40, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.3em', fontWeight: 300 }}
+              style={{ color: skin.textPrimary, fontSize: 40, fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif', letterSpacing: '0.3em', fontWeight: 300, textShadow: '0 1px 3px rgba(0,0,0,0.15)' }}
               onClick={() => { setMottoDraft(motto); setEditingMotto(true); }}
               title="点击修改标语"
             >
