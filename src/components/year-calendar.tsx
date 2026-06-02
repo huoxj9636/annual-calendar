@@ -661,7 +661,7 @@ export default function YearCalendar() {
                 {mounted && (
                   <div
                     className="absolute left-0 top-0 bottom-0 flex items-center transition-opacity duration-200 ease-out pointer-events-auto"
-                    style={{ opacity: clockMode === 'analog' ? 1 : 0, zIndex: 10 }}
+                    style={{ opacity: clockMode === 'analog' ? 1 : 0, zIndex: 10, marginTop: '8pt' }}
                     onClick={toggleClockMode}
                     title="切换到干支"
                   >
