@@ -697,7 +697,7 @@ export default function YearCalendar() {
                   </div>
                 </div>
                 {/* 固定按钮行 - 绝对定位，与干支/时钟垂直居中对齐，紧跟其后 */}
-                <div className="absolute left-[112px] top-0 bottom-0 flex items-center gap-3" style={{ zIndex: 3 }}>
+                <div className="absolute left-[106px] top-0 bottom-0 flex items-center gap-3" style={{ zIndex: 3 }}>
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
                     className="px-3 py-1 text-xs font-medium rounded-full transition-all cursor-pointer hover:opacity-80 whitespace-nowrap"
