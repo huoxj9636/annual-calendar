@@ -656,12 +656,12 @@ export default function YearCalendar() {
               style={{ color: skin.textPrimary, textShadow: `0 1px 2px ${skin.swatch}15` }}>
                 {year}
               </h1>
-              <div className="flex flex-col ml-4 relative" style={{ minHeight: 72, marginTop: '-15px' }}>
+              <div className="flex flex-col ml-4 relative" style={{ minHeight: 72 }}>
                 {/* 第一层：时钟（绝对定位，与年份垂直居中） */}
                 {mounted && (
                   <div
                     className="absolute left-0 top-0 bottom-0 flex items-center transition-opacity duration-200 ease-out pointer-events-auto"
-                    style={{ opacity: clockMode === 'analog' ? 1 : 0, zIndex: 10, marginTop: '12px' }}
+                    style={{ opacity: clockMode === 'analog' ? 1 : 0, zIndex: 10 }}
                     onClick={toggleClockMode}
                     title="切换到干支"
                   >
