@@ -679,7 +679,7 @@ export default function YearCalendar() {
                       onClick={toggleClockMode}
                       title="切换到干支"
                     >
-                      <AnalogClock size={36} color={skin.textPrimary} bgColor="transparent" />
+                      <AnalogClock size={72} color={skin.textPrimary} bgColor="transparent" />
                     </div>
                   )}
                   <button
@@ -796,21 +796,21 @@ export default function YearCalendar() {
                         )}
                       </button>
                   </div>
-                  {/* 时分秒 - slides position based on mode */}
+                </div>
+                  {/* 时分秒 - 数字模式左对齐，时钟模式向右滑到按钮下方 */}
                   {mounted && clockStr && (
                     <div
                       className="text-xl font-mono tracking-wider tabular-nums leading-tight transition-all duration-500 ease-out"
                       style={{
                         color: skin.textPrimary,
                         opacity: 0.6,
-                        marginLeft: clockMode === 'digital' ? '0px' : '44px',
-                        marginTop: '4px',
+                        transform: clockMode === 'analog' ? 'translateX(170px)' : 'translateX(0)',
+                        marginTop: '2px',
                       }}
                     >
                       {clockStr}
                     </div>
                   )}
-                </div>
               </div>
             </div>
             <button
