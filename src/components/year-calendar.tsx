@@ -650,21 +650,29 @@ export default function YearCalendar() {
             >
               ‹
             </button>
-            <div className="flex items-center">
+            <div className="flex items-center relative" style={{ minHeight: 72 }}>
+              {/* 年份 - 始终固定 */}
               <h1 className="text-7xl font-black tracking-tighter leading-none"
               style={{ color: skin.textPrimary, textShadow: `0 1px 2px ${skin.swatch}15` }}>
                 {year}
               </h1>
-              <div className="flex flex-col ml-4">
-                <div className="flex items-center gap-2 leading-tight">
-                  {/* 干支 - slides out when switching to analog */}
+              <div className="flex flex-col ml-4 relative" style={{ minHeight: 72 }}>
+                {/* 第一层：时钟（绝对定位，与年份垂直居中） */}
+                {mounted && (
                   <div
-                    className="cursor-pointer select-none overflow-hidden transition-all duration-500 ease-out"
-                    style={{
-                      maxWidth: clockMode === 'digital' ? '200px' : '0px',
-                      opacity: clockMode === 'digital' ? 1 : 0,
-                      marginRight: clockMode === 'digital' ? '0px' : '-8px',
-                    }}
+                    className="absolute left-0 top-0 bottom-0 flex items-center transition-opacity duration-500 ease-out pointer-events-auto"
+                    style={{ opacity: clockMode === 'analog' ? 1 : 0, zIndex: 10 }}
+                    onClick={toggleClockMode}
+                    title="切换到干支"
+                  >
+                    <AnalogClock size={72} color={skin.textPrimary} bgColor="transparent" />
+                  </div>
+                )}
+                {/* 第二层：干支 + 时分秒（绝对定位，不占布局空间） */}
+                <div className="absolute left-0 top-0" style={{ zIndex: 5 }}>
+                  <div
+                    className="cursor-pointer select-none transition-opacity duration-500 ease-out"
+                    style={{ opacity: clockMode === 'digital' ? 1 : 0 }}
                     onClick={toggleClockMode}
                     title="切换到时钟"
                   >
@@ -672,16 +680,22 @@ export default function YearCalendar() {
                       {ganZhi}（{animal}）
                     </span>
                   </div>
-                  {/* Analog clock icon - appears when switching from digital */}
-                  {clockMode === 'analog' && mounted && (
+                  {mounted && clockStr && (
                     <div
-                      className="cursor-pointer select-none"
-                      onClick={toggleClockMode}
-                      title="切换到干支"
+                      className="text-xl font-mono tracking-wider tabular-nums leading-tight transition-transform duration-500 ease-out"
+                      style={{
+                        color: skin.textPrimary,
+                        opacity: 0.6,
+                        transform: clockMode === 'analog' ? 'translateX(170px)' : 'translateX(0)',
+                        marginTop: '2px',
+                      }}
                     >
-                      <AnalogClock size={72} color={skin.textPrimary} bgColor="transparent" />
+                      {clockStr}
                     </div>
                   )}
+                </div>
+                {/* 固定按钮行 - 始终在固定位置，不参与动画 */}
+                <div className="flex items-center gap-2 leading-tight" style={{ marginLeft: '120px' }}>
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
                     className="px-3 py-1 text-xs font-medium rounded-full transition-all leading-tight cursor-pointer hover:opacity-80"
@@ -797,20 +811,7 @@ export default function YearCalendar() {
                       </button>
                   </div>
                 </div>
-                  {/* 时分秒 - 数字模式左对齐，时钟模式向右滑到按钮下方 */}
-                  {mounted && clockStr && (
-                    <div
-                      className="text-xl font-mono tracking-wider tabular-nums leading-tight transition-all duration-500 ease-out"
-                      style={{
-                        color: skin.textPrimary,
-                        opacity: 0.6,
-                        transform: clockMode === 'analog' ? 'translateX(170px)' : 'translateX(0)',
-                        marginTop: '2px',
-                      }}
-                    >
-                      {clockStr}
-                    </div>
-                  )}
+
               </div>
             </div>
             <button
