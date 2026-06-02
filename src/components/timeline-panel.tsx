@@ -12,11 +12,6 @@ interface TimelineEvent {
   done?: boolean;
 }
 
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
 interface TimelinePanelProps {
   year: number;
   month: number;
@@ -85,11 +80,6 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   // 右键菜单
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; event: TimelineEvent } | null>(null);
 
-  // Chat state
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const storageKey = `dayview-events-${navYear}-${navMonth}-${navDay}`;
 
@@ -128,8 +118,6 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
       body: JSON.stringify({ type: 'events', year: navYear, month: navMonth, day: navDay, data: events }),
     }).catch(() => {});
   }, [events, storageKey, mounted]);
-
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
 
   // 关闭右键菜单
   useEffect(() => {
@@ -261,55 +249,6 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     setContextMenu({ x: e.clientX, y: e.clientY, event: ev });
   }, []);
 
-  // 拆解任务 - AI
-  const handleBreakdownTask = useCallback(async (ev: TimelineEvent) => {
-    setContextMenu(null);
-    setSelectedEvent(ev);
-    const userMsg = `拆解任务：${ev.time}${ev.endTime ? `-${ev.endTime}` : ''} ${ev.title}${ev.description ? `\n描述：${ev.description}` : ''}`;
-    setChatMessages(prev => [...prev, { role: 'user', content: `拆解: ${ev.title}` }]);
-    setChatInput('');
-    setIsStreaming(true);
-    try {
-      const res = await fetch('/api/ai-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [], selectedEvent: userMsg }),
-      });
-      if (!res.ok || !res.body) throw new Error('AI请求失败');
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantContent = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') break;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) {
-                assistantContent += parsed.content;
-                setChatMessages(prev => {
-                  const updated = [...prev];
-                  if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
-                    updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
-                  } else {
-                    updated.push({ role: 'assistant', content: assistantContent });
-                  }
-                  return updated;
-                });
-              }
-            } catch { /* skip */ }
-          }
-        }
-      }
-    } catch (err) {
-      setChatMessages(prev => [...prev, { role: 'assistant', content: `抱歉，AI暂时无法回复。${err instanceof Error ? err.message : ''}` }]);
-    } finally { setIsStreaming(false); }
-  }, []);
-
   // 定位到当前时间
   const scrollToNow = useCallback(() => {
     if (!timelineScrollRef.current) return;
@@ -327,54 +266,6 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     setNavDay(d.getDate());
     setSelectedEvent(null);
   }, [navYear, navMonth, navDay]);
-
-  // AI Chat
-  const handleSendChat = useCallback(async () => {
-    if (!chatInput.trim() && !selectedEvent) return;
-    const userMsg = chatInput.trim() || `分析这个日程：${selectedEvent?.title}`;
-    setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
-    setChatInput('');
-    setIsStreaming(true);
-    try {
-      const res = await fetch('/api/ai-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: chatMessages, selectedEvent: selectedEvent ? `${selectedEvent.time} ${selectedEvent.title}` : userMsg }),
-      });
-      if (!res.ok || !res.body) throw new Error('AI请求失败');
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantContent = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') break;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) {
-                assistantContent += parsed.content;
-                setChatMessages(prev => {
-                  const updated = [...prev];
-                  if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
-                    updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
-                  } else {
-                    updated.push({ role: 'assistant', content: assistantContent });
-                  }
-                  return updated;
-                });
-              }
-            } catch { /* skip */ }
-          }
-        }
-      }
-    } catch (err) {
-      setChatMessages(prev => [...prev, { role: 'assistant', content: `抱歉，AI暂时无法回复。${err instanceof Error ? err.message : ''}` }]);
-    } finally { setIsStreaming(false); }
-  }, [chatInput, chatMessages, selectedEvent]);
 
   const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
   const dateObj = new Date(navYear, navMonth - 1, navDay);
@@ -571,7 +462,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
       {/* Main content - split 1/2 */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left: Timeline */}
-        <div className="w-1/2 border-r relative" style={{ borderColor: s.divider }}>
+        <div className="flex-1 relative">
           <div className="absolute inset-0 overflow-y-auto" ref={timelineScrollRef}>
           <div
             ref={timelineRef}
@@ -975,65 +866,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
           )}
         </div>
 
-        {/* Right: AI Chat */}
-        <div className="w-1/2 flex flex-col" style={{ backgroundColor: s.cardBg }}>
-          <div className="px-3 py-2 border-b flex items-center gap-2" style={{ borderColor: s.divider }}>
-            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px]" style={{ backgroundColor: s.swatch }}>AI</div>
-            <span className="text-xs font-medium" style={{ color: s.textPrimary }}>AI日程助手</span>
-            {selectedEvent && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: `${selectedEvent.color || s.swatch}18`, color: selectedEvent.color || s.swatch }}>
-                {selectedEvent.title}
-              </span>
-            )}
-            {selectedEvent && (
-              <button onClick={() => setSelectedEvent(null)} className="text-[10px]" style={{ color: s.textMuted }}>取消</button>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
-            {chatMessages.length === 0 && (
-              <div className="text-center py-8">
-                <div className="text-2xl mb-2">🧠</div>
-                <p className="text-xs" style={{ color: s.textMuted }}>点击左侧时间轴添加日程</p>
-                <p className="text-xs" style={{ color: s.textMuted }}>右键日程可AI拆解任务</p>
-                <div className="mt-4 space-y-1.5">
-                  {['帮我拆分当前日程', '这个日程如何优化？', '帮我规划明天'].map(q => (
-                    <button key={q} onClick={() => setChatInput(q)} className="block mx-auto text-xs px-3 py-1 rounded-full border hover:opacity-80" style={{ borderColor: s.divider, color: s.textSecondary }}>
-                      {q}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {chatMessages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className="max-w-[85%] text-sm px-3 py-2 rounded-lg whitespace-pre-wrap" style={{ backgroundColor: msg.role === 'user' ? s.swatch : s.cardHover, color: msg.role === 'user' ? '#fff' : s.textPrimary }}>
-                  {msg.content}
-                </div>
-              </div>
-            ))}
-            {isStreaming && chatMessages[chatMessages.length - 1]?.role !== 'assistant' && (
-              <div className="flex justify-start">
-                <div className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: s.cardHover, color: s.textMuted }}>思考中...</div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-          <div className="px-3 py-2 border-t" style={{ borderColor: s.divider }}>
-            <div className="flex items-center gap-1">
-              <input
-                value={chatInput} onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
-                placeholder={selectedEvent ? `分析: ${selectedEvent.title}` : '输入问题...'}
-                className="flex-1 text-xs px-2 py-1.5 border rounded-lg outline-none"
-                style={{ borderColor: s.divider, color: s.textPrimary, backgroundColor: s.panelBg }}
-                disabled={isStreaming}
-              />
-              <button onClick={handleSendChat} disabled={isStreaming || (!chatInput.trim() && !selectedEvent)} className="px-2.5 py-1.5 rounded-lg text-white text-xs disabled:opacity-40" style={{ backgroundColor: s.swatch }}>
-                发送
-              </button>
-            </div>
-          </div>
-        </div>
+
 
         {/* 右键菜单 */}
         {contextMenu && (
@@ -1048,21 +881,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
               minWidth: 140,
             }}
           >
-            <button
-              onClick={() => handleBreakdownTask(contextMenu.event)}
-              className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:opacity-80 transition-colors"
-              style={{ color: s.textPrimary, backgroundColor: 'transparent' }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = s.cardHover)}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7 1v12M1 7h12" stroke={s.swatch} strokeWidth="1.5" strokeLinecap="round" />
-                <rect x="3" y="3" width="3" height="3" rx="0.5" fill={`${s.swatch}40`} stroke={s.swatch} strokeWidth="0.75" />
-                <rect x="8" y="3" width="3" height="3" rx="0.5" fill={`${s.swatch}40`} stroke={s.swatch} strokeWidth="0.75" />
-                <rect x="3" y="8" width="3" height="3" rx="0.5" fill={`${s.swatch}40`} stroke={s.swatch} strokeWidth="0.75" />
-              </svg>
-              拆解任务
-            </button>
+
           </div>
         )}
       </div>
