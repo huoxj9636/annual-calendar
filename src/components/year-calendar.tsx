@@ -695,10 +695,10 @@ export default function YearCalendar() {
                   )}
                 </div>
                 {/* 固定按钮行 - 绝对定位，与干支/时钟垂直居中对齐，紧跟其后 */}
-                <div className="absolute left-[120px] top-0 bottom-0 flex items-center gap-3 leading-tight" style={{ zIndex: 3 }}>
+                <div className="absolute left-[120px] top-0 bottom-0 flex items-center gap-3" style={{ zIndex: 3 }}>
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
-                    className="px-3 py-1 text-xs font-medium rounded-full transition-all leading-tight cursor-pointer hover:opacity-80"
+                    className="px-3 py-1 text-xs font-medium rounded-full transition-all cursor-pointer hover:opacity-80 whitespace-nowrap"
                     style={{ color: skin.textPrimary, backgroundColor: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.15)" }}
                   >
                     今年
@@ -706,10 +706,8 @@ export default function YearCalendar() {
                   {/* Skin picker toggle */}
                   <button
                     onClick={() => setShowSkinPicker(v => !v)}
-                    className="inline-flex items-center justify-center rounded-full cursor-pointer transition-all hover:opacity-80 active:scale-95"
+                    className="w-5 h-5 rounded-full cursor-pointer transition-all hover:opacity-80 active:scale-95 flex-shrink-0"
                     style={{
-                      width: '20px',
-                      height: '20px',
                       backgroundColor: skin.swatch,
                       boxShadow: `0 0 0 1.5px rgba(255,255,255,0.5)`,
                     }}
