@@ -686,7 +686,7 @@ export default function YearCalendar() {
                       style={{
                         color: skin.textPrimary,
                         opacity: 0.6,
-                        transform: clockMode === 'analog' ? 'translateX(80px)' : 'translateX(0)',
+                        transform: clockMode === 'analog' ? 'translateX(120px)' : 'translateX(0)',
                         marginTop: '2px',
                       }}
                     >
