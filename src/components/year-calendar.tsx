@@ -660,7 +660,7 @@ export default function YearCalendar() {
                 {/* 第一层：时钟（绝对定位，与年份垂直居中） */}
                 {mounted && (
                   <div
-                    className="absolute left-0 top-0 bottom-0 flex items-center transition-opacity duration-500 ease-out pointer-events-auto"
+                    className="absolute left-0 top-0 bottom-0 flex items-center transition-opacity duration-200 ease-out pointer-events-auto"
                     style={{ opacity: clockMode === 'analog' ? 1 : 0, zIndex: 10 }}
                     onClick={toggleClockMode}
                     title="切换到干支"
@@ -668,10 +668,10 @@ export default function YearCalendar() {
                     <AnalogClock size={72} color={skin.textPrimary} bgColor="transparent" />
                   </div>
                 )}
-                {/* 第二层：干支 + 时分秒（绝对定位，不占布局空间） */}
-                <div className="absolute left-0 top-0" style={{ zIndex: 5 }}>
+                {/* 第二层：干支 + 时分秒（绝对定位，垂直居中与年份对齐） */}
+                <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-center" style={{ zIndex: 5 }}>
                   <div
-                    className="cursor-pointer select-none transition-opacity duration-500 ease-out"
+                    className="cursor-pointer select-none transition-opacity duration-200 ease-out"
                     style={{ opacity: clockMode === 'digital' ? 1 : 0 }}
                     onClick={toggleClockMode}
                     title="切换到时钟"
@@ -682,11 +682,11 @@ export default function YearCalendar() {
                   </div>
                   {mounted && clockStr && (
                     <div
-                      className="text-xl font-mono tracking-wider tabular-nums leading-tight transition-transform duration-500 ease-out"
+                      className="text-xl font-mono tracking-wider tabular-nums leading-tight transition-transform duration-300 ease-out"
                       style={{
                         color: skin.textPrimary,
                         opacity: 0.6,
-                        transform: clockMode === 'analog' ? 'translateX(170px)' : 'translateX(0)',
+                        transform: clockMode === 'analog' ? 'translateX(80px)' : 'translateX(0)',
                         marginTop: '2px',
                       }}
                     >
