@@ -57,17 +57,17 @@ export function AnalogClock({ size = 72, color = 'rgba(255,255,255,0.85)', bgCol
     };
   });
 
-  // Hour numbers
-  const numbers = showNumber ? Array.from({ length: 12 }, (_, i) => {
-    const num = i === 0 ? 12 : i;
+  // Hour numbers (only 12, 3, 6, 9)
+  const mainNumbers = [12, 3, 6, 9].map((num) => {
+    const i = num % 12;
     const angle = (i * 30 - 90) * (Math.PI / 180);
-    const numR = faceR - (showNumber ? 14 : 10);
+    const numR = faceR - 10;
     return {
       num,
       x: cx + numR * Math.cos(angle),
       y: cy + numR * Math.sin(angle),
     };
-  }) : [];
+  });
 
   return (
     <svg
@@ -94,17 +94,17 @@ export function AnalogClock({ size = 72, color = 'rgba(255,255,255,0.85)', bgCol
         />
       ))}
 
-      {/* Numbers */}
-      {numbers.map((n, i) => (
+      {/* Main numbers (12, 3, 6, 9) */}
+      {mainNumbers.map((n, i) => (
         <text
           key={i}
           x={n.x} y={n.y}
           textAnchor="middle"
           dominantBaseline="central"
-          fontSize={size * 0.12}
+          fontSize={size * 0.13}
           fontWeight="600"
           fill={color}
-          opacity={0.8}
+          opacity={0.7}
         >
           {n.num}
         </text>
