@@ -813,7 +813,7 @@ export default function YearCalendar() {
                   {/* 下一年按钮 */}
                   <button
                     onClick={() => setYear((y) => y + 1)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-lg font-bold ml-2"
+                    className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold ml-2"
                     style={{ color: skin.textMuted }}
                     onMouseEnter={e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }}
                     onMouseLeave={e => { e.currentTarget.style.color = skin.textMuted; e.currentTarget.style.backgroundColor = 'transparent'; }}
