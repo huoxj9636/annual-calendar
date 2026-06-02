@@ -104,7 +104,7 @@ export function AnalogClock({ size = 72, color = 'rgba(255,255,255,0.85)', bgCol
           fontSize={size * 0.08}
           fontWeight="500"
           fill={color}
-          opacity={0.5}
+          opacity={0.8}
         >
           {n.num}
         </text>
