@@ -814,7 +814,7 @@ export default function YearCalendar() {
                   <button
                     onClick={() => setYear((y) => y + 1)}
                     className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold ml-2"
-                    style={{ color: skin.textMuted }}
+                    style={{ color: skin.textMuted, marginTop: '6pt' }}
                     onMouseEnter={e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }}
                     onMouseLeave={e => { e.currentTarget.style.color = skin.textMuted; e.currentTarget.style.backgroundColor = 'transparent'; }}
                     aria-label="下一年"
