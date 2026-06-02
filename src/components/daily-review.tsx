@@ -69,12 +69,18 @@ async function loadReview(year: number, month: number, day: number): Promise<Rev
 
 async function saveReview(year: number, month: number, day: number, data: ReviewData) {
   try {
-    await fetch('/api/daily-review', {
+    const res = await fetch('/api/daily-review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ year, month, day, ...data }),
     });
-  } catch {}
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('[saveReview] Failed:', res.status, err);
+    }
+  } catch (e) {
+    console.error('[saveReview] Network error:', e);
+  }
 }
 
 async function clearReview(year: number, month: number, day: number) {
@@ -87,6 +93,8 @@ type VoicePhase = 'idle' | 'recording' | 'paused' | 'reviewing' | 'transcribing'
 
 export default function DailyReview({ year, month, day, skin, events, todos, onClose }: DailyReviewProps) {
   const [review, setReview] = useState<ReviewData>({ completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' });
+  const reviewRef = useRef(review);
+  reviewRef.current = review;
   const [mounted, setMounted] = useState(false);
 
   const [copied, setCopied] = useState(false);
@@ -417,17 +425,16 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         sections[currentKey] = currentLines.join('\n');
       }
 
-      setReview(prev => {
-        const next = { ...prev };
-        for (const [field, value] of Object.entries(sections)) {
-          if (field in next) {
-            const existing = String((next as Record<string, unknown>)[field] || '').trim();
-            (next as Record<string, unknown>)[field] = existing ? existing + '\n' + value : value;
-          }
+      // Compute the merged review data (append new sections to existing)
+      const nextReview = { ...reviewRef.current };
+      for (const [field, value] of Object.entries(sections)) {
+        if (field in nextReview) {
+          const existing = String((nextReview as Record<string, unknown>)[field] || '').trim();
+          (nextReview as Record<string, unknown>)[field] = existing ? existing + '\n' + value : value;
         }
-        saveReview(year, month, day, next);
-        return next;
-      });
+      }
+      setReview(nextReview);
+      saveReview(year, month, day, nextReview);
 
       setVoicePhase('done');
       setTimeout(() => setVoicePhase('idle'), 1200);
@@ -438,11 +445,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   }, [year, month, day]);
 
   const updateField = useCallback((field: keyof ReviewData, value: string | number) => {
-    setReview(prev => {
-      const next = { ...prev, [field]: value };
-      saveReview(year, month, day, next);
-      return next;
-    });
+    const next = { ...reviewRef.current, [field]: value };
+    setReview(next);
+    saveReview(year, month, day, next);
   }, [year, month, day]);
 
   if (!mounted) return null;

@@ -97,6 +97,19 @@ export default function YearCalendar() {
     return '';
   });
   const [reviewDays, setReviewDays] = useState<Set<string>>(new Set());
+
+  // Refresh reviewDays from DB
+  const refreshReviewDays = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/daily-review?year=${year}&action=list-days`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.days)) {
+          setReviewDays(new Set(data.days));
+        }
+      }
+    } catch { /* ignore */ }
+  }, [year]);
   const updateReviewStartDate = (date: string) => {
     setReviewStartDate(date);
     localStorage.setItem('calendar-review-start-date', date);
@@ -1255,7 +1268,7 @@ export default function YearCalendar() {
               skin={skin}
               events={[]}
               todos={[]}
-              onClose={() => setDailyReviewOpen(false)}
+              onClose={() => { setDailyReviewOpen(false); refreshReviewDays(); }}
             />
           )}
 
