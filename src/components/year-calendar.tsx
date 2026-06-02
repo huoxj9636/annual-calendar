@@ -650,30 +650,30 @@ export default function YearCalendar() {
             >
               ‹
             </button>
-            <div className="flex items-start relative" style={{ height: 72 }}>
-              {/* 年份 - 始终固定，垂直居中 */}
-              <h1 className="text-7xl font-black tracking-tighter leading-none self-center"
+            <div className="flex items-center relative" style={{ minHeight: 72 }}>
+              {/* 年份 - 始终固定 */}
+              <h1 className="text-7xl font-black tracking-tighter leading-none"
               style={{ color: skin.textPrimary, textShadow: `0 1px 2px ${skin.swatch}15` }}>
                 {year}
               </h1>
-              <div className="ml-4 relative" style={{ width: 280 }}>
-                {/* 主行：干支/时钟 + 固定按钮，所有元素垂直居中对齐 */}
-                <div className="flex items-center" style={{ height: 72 }}>
-                  {/* 第一层：时钟 */}
-                  {mounted && (
-                    <div
-                      className="flex items-center transition-opacity duration-200 ease-out cursor-pointer select-none"
-                      style={{ opacity: clockMode === 'analog' ? 1 : 0, zIndex: 10, height: 72 }}
-                      onClick={toggleClockMode}
-                      title="切换到干支"
-                    >
-                      <AnalogClock size={72} color={skin.textPrimary} bgColor="transparent" />
-                    </div>
-                  )}
-                  {/* 第二层：干支 */}
+              <div className="flex flex-col ml-4 relative" style={{ minHeight: 72 }}>
+                {/* 第一层：时钟（绝对定位，与年份垂直居中） */}
+                {mounted && (
                   <div
-                    className="flex items-center transition-opacity duration-200 ease-out cursor-pointer select-none"
-                    style={{ opacity: clockMode === 'digital' ? 1 : 0, height: 72 }}
+                    className="absolute left-0 top-0 bottom-0 flex items-center transition-opacity duration-200 ease-out pointer-events-auto"
+                    style={{ opacity: clockMode === 'analog' ? 1 : 0, zIndex: 10 }}
+                    onClick={toggleClockMode}
+                    title="切换到干支"
+                  >
+                    <AnalogClock size={72} color={skin.textPrimary} bgColor="transparent" />
+                  </div>
+                )}
+                {/* 第二层：干支 + 时分秒（绝对定位，干支垂直居中与年份/按钮对齐） */}
+                <div className="absolute left-0 top-0 bottom-0 flex items-center" style={{ zIndex: 5 }}>
+                  <div className="relative">
+                  <div
+                    className="cursor-pointer select-none transition-opacity duration-200 ease-out"
+                    style={{ opacity: clockMode === 'digital' ? 1 : 0 }}
                     onClick={toggleClockMode}
                     title="切换到时钟"
                   >
@@ -681,8 +681,23 @@ export default function YearCalendar() {
                       {ganZhi}（{animal}）
                     </span>
                   </div>
-                  {/* 固定按钮行 - 与干支/时钟在同一行，垂直居中 */}
-                  <div className="flex items-center gap-3 ml-2" style={{ height: 72 }}>
+                  {mounted && clockStr && (
+                    <div
+                      className="absolute top-full left-0 text-xl font-mono tracking-wider tabular-nums leading-tight transition-transform duration-300 ease-out"
+                      style={{
+                        color: skin.textPrimary,
+                        opacity: 0.6,
+                        transform: clockMode === 'analog' ? 'translateX(120px)' : 'translateX(0)',
+                        marginTop: '2px',
+                      }}
+                    >
+                      {clockStr}
+                    </div>
+                  )}
+                  </div>
+                </div>
+                {/* 固定按钮行 - 绝对定位，与干支/时钟垂直居中对齐，紧跟其后 */}
+                <div className="absolute left-[120px] top-0 bottom-0 flex items-center gap-3" style={{ zIndex: 3 }}>
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
                     className="px-3 py-1 text-xs font-medium rounded-full transition-all cursor-pointer hover:opacity-80 whitespace-nowrap"
@@ -796,21 +811,7 @@ export default function YearCalendar() {
                       </button>
                   </div>
                 </div>
-                </div>
-                {/* 时分秒 - 第二行，左对齐干支区域，时钟模式向右滑到按钮下方 */}
-                {mounted && clockStr && (
-                  <div
-                    className="text-xl font-mono tracking-wider tabular-nums leading-tight transition-transform duration-300 ease-out"
-                    style={{
-                      color: skin.textPrimary,
-                      opacity: 0.6,
-                      transform: clockMode === 'analog' ? 'translateX(120px)' : 'translateX(0)',
-                      marginTop: '-4px',
-                    }}
-                  >
-                    {clockStr}
-                  </div>
-                )}
+
               </div>
             </div>
             <button
