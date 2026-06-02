@@ -425,7 +425,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
 
   return (
     <div
-      className="absolute top-0 bottom-0 right-0 z-40 flex flex-col overflow-hidden shadow-2xl animate-slide-in"
+      className="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-hidden shadow-2xl animate-slide-in"
       style={{ backgroundColor: s.panelBg, width: '33.333%' }}
     >
 
