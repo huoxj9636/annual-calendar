@@ -425,23 +425,9 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
 
   return (
     <div
-      className="absolute top-0 bottom-0 z-40 flex flex-col overflow-hidden"
-      style={{ backgroundColor: s.panelBg, left: `${panelLeft}px`, right: '-6px' }}
+      className="absolute top-0 bottom-0 right-0 z-40 flex flex-col overflow-hidden shadow-2xl animate-slide-in"
+      style={{ backgroundColor: s.panelBg, width: '33.333%' }}
     >
-      {/* 左侧拖拽手柄 */}
-      <div
-        className="absolute top-0 bottom-0 left-0 w-2 cursor-col-resize z-50 hover:bg-black/10 transition-colors group"
-        onMouseDown={(e) => {
-          e.preventDefault(); e.stopPropagation();
-          const startX = e.clientX; const startLeft = panelLeft; let finalLeft = startLeft;
-          document.body.style.userSelect = 'none'; document.body.style.cursor = 'col-resize';
-          const onMove = (ev: MouseEvent) => { ev.preventDefault(); const newLeft = Math.max(0, Math.min(startLeft + (ev.clientX - startX), 500)); finalLeft = newLeft; setPanelLeft(newLeft); };
-          const onUp = () => { document.body.style.userSelect = ''; document.body.style.cursor = ''; localStorage.setItem('panel-left-timeline', String(finalLeft)); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-          document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
-        }}
-      >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-10 rounded-full bg-black/15 group-hover:bg-black/40 transition-colors" />
-      </div>
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b" style={{ borderColor: s.divider }}>
