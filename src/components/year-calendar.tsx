@@ -58,7 +58,7 @@ export default function YearCalendar() {
     return 0;
   });
   const [clockStr, setClockStr] = useState('');
-  const [clockMode, setClockMode] = useState<'digital' | 'analog'>('digital');
+  const [clockMode, setClockMode] = useState<'digital' | 'analog'>('analog');
   const popupRef = useRef<HTMLDivElement>(null);
   const toggleClockMode = () => {
     setClockMode(prev => {
