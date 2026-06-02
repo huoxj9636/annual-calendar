@@ -668,8 +668,9 @@ export default function YearCalendar() {
                     <AnalogClock size={72} color={skin.textPrimary} bgColor="transparent" />
                   </div>
                 )}
-                {/* 第二层：干支 + 时分秒（绝对定位，垂直居中与年份对齐） */}
-                <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-center" style={{ zIndex: 5 }}>
+                {/* 第二层：干支 + 时分秒（绝对定位，干支垂直居中与年份/按钮对齐） */}
+                <div className="absolute left-0 top-0 bottom-0 flex items-center" style={{ zIndex: 5 }}>
+                  <div className="relative">
                   <div
                     className="cursor-pointer select-none transition-opacity duration-200 ease-out"
                     style={{ opacity: clockMode === 'digital' ? 1 : 0 }}
@@ -682,7 +683,7 @@ export default function YearCalendar() {
                   </div>
                   {mounted && clockStr && (
                     <div
-                      className="text-xl font-mono tracking-wider tabular-nums leading-tight transition-transform duration-300 ease-out"
+                      className="absolute top-full left-0 text-xl font-mono tracking-wider tabular-nums leading-tight transition-transform duration-300 ease-out"
                       style={{
                         color: skin.textPrimary,
                         opacity: 0.6,
@@ -693,6 +694,7 @@ export default function YearCalendar() {
                       {clockStr}
                     </div>
                   )}
+                  </div>
                 </div>
                 {/* 固定按钮行 - 绝对定位，与干支/时钟垂直居中对齐，紧跟其后 */}
                 <div className="absolute left-[120px] top-0 bottom-0 flex items-center gap-3" style={{ zIndex: 3 }}>
