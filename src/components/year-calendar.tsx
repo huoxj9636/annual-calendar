@@ -656,7 +656,7 @@ export default function YearCalendar() {
               style={{ color: skin.textPrimary, textShadow: `0 1px 2px ${skin.swatch}15` }}>
                 {year}
               </h1>
-              <div className="flex flex-col ml-4 relative" style={{ minHeight: 72 }}>
+              <div className="flex flex-col ml-4 relative" style={{ minHeight: 72, marginTop: '-5px' }}>
                 {/* 第一层：时钟（绝对定位，与年份垂直居中） */}
                 {mounted && (
                   <div
