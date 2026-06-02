@@ -609,7 +609,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
 
       {/* ══════════ LEFT PANEL ══════════ */}
       <div
-        className="w-[480px] flex-shrink-0 flex flex-col border-r pointer-events-auto relative z-10"
+        className={`w-[480px] flex-shrink-0 flex flex-col border-r relative z-10 ${visible ? 'pointer-events-auto' : 'pointer-events-none'}`}
         style={{
           backgroundColor: s.panelBg,
           borderColor: s.divider,
@@ -717,7 +717,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
       </div>
 
       {/* ══════════ RIGHT PANEL: DETAIL ══════════ */}
-      <div className="flex-1 overflow-y-auto pointer-events-auto"
+      <div className={`flex-1 overflow-y-auto ${visible ? 'pointer-events-auto' : 'pointer-events-none'}`}
         style={{
           backgroundColor: s.panelBg,
           opacity: visible ? 1 : 0,
