@@ -657,27 +657,31 @@ export default function YearCalendar() {
               </h1>
               <div className="flex flex-col ml-4">
                 <div className="flex items-center gap-2 leading-tight">
+                  {/* 干支 - slides out when switching to analog */}
                   <div
-                    className="cursor-pointer select-none flex flex-col"
+                    className="cursor-pointer select-none overflow-hidden transition-all duration-500 ease-out"
+                    style={{
+                      maxWidth: clockMode === 'digital' ? '200px' : '0px',
+                      opacity: clockMode === 'digital' ? 1 : 0,
+                      marginRight: clockMode === 'digital' ? '0px' : '-8px',
+                    }}
                     onClick={toggleClockMode}
-                    title={clockMode === 'digital' ? '切换到时钟' : '切换到干支'}
+                    title="切换到时钟"
                   >
-                    {clockMode === 'digital' ? (
-                      <>
-                        <span className="text-lg font-medium leading-tight" style={{ color: skin.textSecondary }}>
-                          {ganZhi}（{animal}）
-                        </span>
-                        {mounted && clockStr && (
-                          <div className="text-xl font-mono tracking-wider tabular-nums leading-tight mt-1"
-                            style={{ color: skin.textPrimary, opacity: 0.6 }}>
-                            {clockStr}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      mounted && <AnalogClock size={72} color={skin.textPrimary} bgColor="transparent" />
-                    )}
+                    <span className="text-lg font-medium leading-tight whitespace-nowrap" style={{ color: skin.textSecondary }}>
+                      {ganZhi}（{animal}）
+                    </span>
                   </div>
+                  {/* Analog clock icon - appears when switching from digital */}
+                  {clockMode === 'analog' && mounted && (
+                    <div
+                      className="cursor-pointer select-none"
+                      onClick={toggleClockMode}
+                      title="切换到干支"
+                    >
+                      <AnalogClock size={36} color={skin.textPrimary} bgColor="transparent" />
+                    </div>
+                  )}
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
                     className="px-3 py-1 text-xs font-medium rounded-full transition-all leading-tight cursor-pointer hover:opacity-80"
@@ -792,6 +796,20 @@ export default function YearCalendar() {
                         )}
                       </button>
                   </div>
+                  {/* 时分秒 - slides position based on mode */}
+                  {mounted && clockStr && (
+                    <div
+                      className="text-xl font-mono tracking-wider tabular-nums leading-tight transition-all duration-500 ease-out"
+                      style={{
+                        color: skin.textPrimary,
+                        opacity: 0.6,
+                        marginLeft: clockMode === 'digital' ? '0px' : '44px',
+                        marginTop: '4px',
+                      }}
+                    >
+                      {clockStr}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
