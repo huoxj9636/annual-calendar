@@ -650,42 +650,39 @@ export default function YearCalendar() {
             >
               ‹
             </button>
-            <div className="flex items-center relative" style={{ height: 72 }}>
-              {/* 年份 - 始终固定 */}
-              <h1 className="text-7xl font-black tracking-tighter leading-none"
+            <div className="flex items-start relative" style={{ height: 72 }}>
+              {/* 年份 - 始终固定，垂直居中 */}
+              <h1 className="text-7xl font-black tracking-tighter leading-none self-center"
               style={{ color: skin.textPrimary, textShadow: `0 1px 2px ${skin.swatch}15` }}>
                 {year}
               </h1>
-              <div className="ml-4 relative">
-                {/* 主行：固定按钮在正常流中，干支/时钟绝对定位重叠 */}
-                <div className="flex items-center relative" style={{ height: 72 }}>
-                  {/* 干支/时钟重叠区域 - 绝对定位，不占流空间 */}
-                  <div className="absolute left-0 top-0 bottom-0 flex items-center" style={{ width: 72 }}>
-                    {/* 时钟 */}
-                    {mounted && (
-                      <div
-                        className="absolute inset-0 flex items-center justify-center transition-opacity duration-200 ease-out cursor-pointer select-none"
-                        style={{ opacity: clockMode === 'analog' ? 1 : 0, zIndex: 10 }}
-                        onClick={toggleClockMode}
-                        title="切换到干支"
-                      >
-                        <AnalogClock size={72} color={skin.textPrimary} bgColor="transparent" />
-                      </div>
-                    )}
-                    {/* 干支 */}
+              <div className="ml-4 relative" style={{ width: 280 }}>
+                {/* 主行：干支/时钟 + 固定按钮，所有元素垂直居中对齐 */}
+                <div className="flex items-center" style={{ height: 72 }}>
+                  {/* 第一层：时钟 */}
+                  {mounted && (
                     <div
-                      className="absolute inset-0 flex items-center transition-opacity duration-200 ease-out cursor-pointer select-none"
-                      style={{ opacity: clockMode === 'digital' ? 1 : 0, zIndex: 5 }}
+                      className="flex items-center transition-opacity duration-200 ease-out cursor-pointer select-none"
+                      style={{ opacity: clockMode === 'analog' ? 1 : 0, zIndex: 10, height: 72 }}
                       onClick={toggleClockMode}
-                      title="切换到时钟"
+                      title="切换到干支"
                     >
-                      <span className="text-lg font-medium leading-tight whitespace-nowrap" style={{ color: skin.textSecondary }}>
-                        {ganZhi}（{animal}）
-                      </span>
+                      <AnalogClock size={72} color={skin.textPrimary} bgColor="transparent" />
                     </div>
+                  )}
+                  {/* 第二层：干支 */}
+                  <div
+                    className="flex items-center transition-opacity duration-200 ease-out cursor-pointer select-none"
+                    style={{ opacity: clockMode === 'digital' ? 1 : 0, height: 72 }}
+                    onClick={toggleClockMode}
+                    title="切换到时钟"
+                  >
+                    <span className="text-lg font-medium leading-tight whitespace-nowrap" style={{ color: skin.textSecondary }}>
+                      {ganZhi}（{animal}）
+                    </span>
                   </div>
-                  {/* 固定按钮行 - 正常流，位置永远不变 */}
-                  <div className="flex items-center gap-3" style={{ marginLeft: 76 }}>
+                  {/* 固定按钮行 - 与干支/时钟在同一行，垂直居中 */}
+                  <div className="flex items-center gap-3 ml-2" style={{ height: 72 }}>
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
                     className="px-3 py-1 text-xs font-medium rounded-full transition-all cursor-pointer hover:opacity-80 whitespace-nowrap"
@@ -807,7 +804,7 @@ export default function YearCalendar() {
                     style={{
                       color: skin.textPrimary,
                       opacity: 0.6,
-                      transform: clockMode === 'analog' ? 'translateX(76px)' : 'translateX(0)',
+                      transform: clockMode === 'analog' ? 'translateX(120px)' : 'translateX(0)',
                       marginTop: '-4px',
                     }}
                   >
