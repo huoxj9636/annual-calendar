@@ -47,7 +47,7 @@ export function AnalogClock({ size = 72, color = 'rgba(255,255,255,0.85)', bgCol
     const angle = (i * 6 - 90) * (Math.PI / 180);
     const isHour = i % 5 === 0;
     const outerR = faceR - 1;
-    const innerR = isHour ? faceR - (showNumber ? 8 : 6) : faceR - 3;
+    const innerR = isHour ? faceR - 4 : faceR - 2;
     return {
       x1: cx + outerR * Math.cos(angle),
       y1: cy + outerR * Math.sin(angle),
@@ -124,6 +124,28 @@ export function AnalogClock({ size = 72, color = 'rgba(255,255,255,0.85)', bgCol
       <g data-hand="second">
         <line x1={cx} y1={cy + faceR * 0.15} x2={cx} y2={cy - faceR * 0.75} stroke="#ef4444" strokeWidth={0.9} strokeLinecap="round" />
         <circle cx={cx} cy={cy + faceR * 0.15} r={1.2} fill="#ef4444" />
+      </g>
+
+      {/* Center decoration - small sun motif */}
+      <g opacity={0.12}>
+        {Array.from({ length: 8 }, (_, i) => {
+          const angle = (i * 45) * (Math.PI / 180);
+          const ir = faceR * 0.18;
+          const or = faceR * 0.28;
+          return (
+            <line
+              key={i}
+              x1={cx + ir * Math.cos(angle)}
+              y1={cy + ir * Math.sin(angle)}
+              x2={cx + or * Math.cos(angle)}
+              y2={cy + or * Math.sin(angle)}
+              stroke={color}
+              strokeWidth={1.2}
+              strokeLinecap="round"
+            />
+          );
+        })}
+        <circle cx={cx} cy={cy} r={faceR * 0.13} fill="none" stroke={color} strokeWidth={0.8} />
       </g>
 
       {/* Center cap */}
