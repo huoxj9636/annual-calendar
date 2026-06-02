@@ -351,40 +351,39 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
 
-  // Load from API (with localStorage migration)
+  const [loading, setLoading] = useState(true);
+
+  // Mount immediately so the panel renders instantly
+  useEffect(() => { setMounted(true); }, []);
+
+  // Load from API (with localStorage migration) — async, non-blocking
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const res = await fetch('/api/okr');
+        if (cancelled) return;
         if (res.ok) {
           const data = await res.json();
           if (data.objectives) {
             const parsed = migrateGoals(data.objectives);
             setGoals(parsed);
             setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
-            if (parsed.length > 0 && !selectedOId) setSelectedOId(parsed[0].id);
+            if (parsed.length > 0) setSelectedOId(parsed[0].id);
           } else if (data.goals) {
             const parsed = migrateGoals(data.goals);
             setGoals(parsed);
             setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
-            if (parsed.length > 0 && !selectedOId) setSelectedOId(parsed[0].id);
+            if (parsed.length > 0) setSelectedOId(parsed[0].id);
           } else {
             // Migrate from localStorage if DB is empty
             try {
-              const lsData = localStorage.getItem('life-calendar-progress');
-              if (lsData) {
-                const lsParsed = JSON.parse(lsData);
-                if (lsParsed && Object.keys(lsParsed).length > 0) {
-                  // Life calendar progress is stored differently - skip complex migration
-                  // Just load any OKR data if present
-                }
-              }
               const lsOKR = localStorage.getItem('life-calendar-okr');
               if (lsOKR) {
                 const okrData = JSON.parse(lsOKR);
                 if (okrData && (Array.isArray(okrData) || okrData.objectives)) {
-                  const goals = Array.isArray(okrData) ? okrData : okrData.objectives || [];
-                  const parsed = migrateGoals(goals);
+                  const goalsArr = Array.isArray(okrData) ? okrData : okrData.objectives || [];
+                  const parsed = migrateGoals(goalsArr);
                   if (parsed.length > 0) {
                     setGoals(parsed);
                     setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
@@ -402,8 +401,9 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
           }
         }
       } catch { /* ignore */ }
-      setMounted(true);
+      if (!cancelled) setLoading(false);
     })();
+    return () => { cancelled = true; };
   }, []);
 
   // Apply template
@@ -425,8 +425,8 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     setGoals(prev => [...prev, ...newGoals]);
   };
 
-  // Save via API
-  useEffect(() => { if (mounted) fetch('/api/okr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ objectives: goals }) }).catch(() => {}); }, [goals, mounted]);
+  // Save via API — only after initial load completes
+  useEffect(() => { if (mounted && !loading) fetch('/api/okr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ objectives: goals }) }).catch(() => {}); }, [goals, mounted, loading]);
 
   // Voice for top input
   const voiceTop = useVoiceRecognition((text) => { setNewOTitle(text); });
@@ -574,7 +574,7 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     setEditingTargetValue(null);
   }, [editingTargetValue]);
 
-  if (!mounted) return null;
+  if (!mounted) return null; // SSR guard only
 
   const s = {
     bg: skin.bodyBg, panelBg: skin.panelBg, cardBg: skin.cardBg, cardHover: skin.cardHover,
