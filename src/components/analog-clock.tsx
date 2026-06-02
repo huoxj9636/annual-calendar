@@ -101,10 +101,10 @@ export function AnalogClock({ size = 72, color = 'rgba(255,255,255,0.85)', bgCol
           x={n.x} y={n.y}
           textAnchor="middle"
           dominantBaseline="central"
-          fontSize={size * 0.13}
-          fontWeight="600"
+          fontSize={size * 0.08}
+          fontWeight="500"
           fill={color}
-          opacity={0.7}
+          opacity={0.5}
         >
           {n.num}
         </text>
