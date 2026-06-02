@@ -4,6 +4,23 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const year = Number(searchParams.get('year'));
+  const action = searchParams.get('action');
+
+  // List days that have review content for a year
+  if (action === 'list-days' && year) {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('daily_reviews')
+      .select('month, day, completed, good_things, problems, mood, reflections, tomorrow_todo')
+      .eq('year', year);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const days = (data || [])
+      .filter((r: Record<string, unknown>) =>
+        !!(r.completed || r.good_things || r.problems || r.mood || r.reflections || r.tomorrow_todo))
+      .map((r: { month: number; day: number }) => `${year}-${r.month}-${r.day}`);
+    return NextResponse.json({ days });
+  }
+
   const month = Number(searchParams.get('month'));
   const day = Number(searchParams.get('day'));
 

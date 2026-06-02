@@ -92,6 +92,15 @@ export default function YearCalendar() {
   const [editingMotto, setEditingMotto] = useState(false);
   const [mottoDraft, setMottoDraft] = useState('');
   const [timelineMonth, setTimelineMonth] = useState(() => new Date().getMonth() + 1);
+  const [reviewStartDate, setReviewStartDate] = useState<string>(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('calendar-review-start-date') || '';
+    return '';
+  });
+  const [reviewDays, setReviewDays] = useState<Set<string>>(new Set());
+  const updateReviewStartDate = (date: string) => {
+    setReviewStartDate(date);
+    localStorage.setItem('calendar-review-start-date', date);
+  };
   const [timelineDay, setTimelineDay] = useState(() => new Date().getDate());
   const [dailyReviewOpen, setDailyReviewOpen] = useState(false);
   const [dailyReviewMonth, setDailyReviewMonth] = useState(() => new Date().getMonth() + 1);
@@ -244,6 +253,17 @@ export default function YearCalendar() {
     // Load data from DB asynchronously (with localStorage migration)
     (async () => {
       try {
+        // Load review days (dates that have daily review content)
+        try {
+          const reviewDaysRes = await fetch(`/api/daily-review?year=${year}&action=list-days`);
+          if (reviewDaysRes.ok) {
+            const reviewDaysData = await reviewDaysRes.json();
+            if (Array.isArray(reviewDaysData.days)) {
+              setReviewDays(new Set(reviewDaysData.days));
+            }
+          }
+        } catch { /* ignore */ }
+
         // Load overrides from DB
         const overridesRes = await fetch(`/api/calendar-data?type=overrides&year=${year}`);
         if (overridesRes.ok) {
@@ -484,11 +504,23 @@ export default function YearCalendar() {
     (month: number, day: number): 'checked' | 'crossed' | 'auto' | 'none' => {
       const key = `${year}-${month}-${day}`;
       if (overrides[key]) return overrides[key];
-      if (isDatePast(year, month, day) || isToday(year, month, day))
+      if (isDatePast(year, month, day) || isToday(year, month, day)) {
+        // If reviewStartDate is set and date >= startDate, default to crossed (✗) when no review content
+        if (reviewStartDate) {
+          const [sy, sm, sd] = reviewStartDate.split('-').map(Number);
+          const dateNum = year * 10000 + month * 100 + day;
+          const startNum = sy * 10000 + sm * 100 + sd;
+          if (dateNum >= startNum) {
+            // Check if this day has review content
+            const hasContent = reviewDays.has(key);
+            return hasContent ? 'auto' : 'crossed';
+          }
+        }
         return 'auto';
+      }
       return 'none';
     },
-    [year, overrides],
+    [year, overrides, reviewStartDate, reviewDays],
   );
 
   const toggleDay = useCallback(
@@ -1712,6 +1744,46 @@ export default function YearCalendar() {
                 </div>
                 );
               })}
+            </div>
+
+            {/* 复盘起始日期 */}
+            <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${skin.swatch}20` }}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">📅</span>
+                  <span className="text-sm font-medium" style={{ color: skin.textPrimary }}>复盘起始日期</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={reviewStartDate}
+                    onChange={(e) => {
+                      setReviewStartDate(e.target.value);
+                      localStorage.setItem('calendar-review-start-date', e.target.value);
+                    }}
+                    className="text-xs px-2 py-1 rounded-lg outline-none transition-all cursor-pointer"
+                    style={{
+                      backgroundColor: reviewStartDate ? `${skin.swatch}10` : 'rgba(0,0,0,0.04)',
+                      color: skin.textPrimary,
+                      border: `1px solid ${reviewStartDate ? `${skin.swatch}40` : 'transparent'}`,
+                    }}
+                  />
+                  {reviewStartDate && (
+                    <button
+                      onClick={() => {
+                        setReviewStartDate('');
+                        localStorage.removeItem('calendar-review-start-date');
+                      }}
+                      className="w-5 h-5 rounded flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer"
+                      style={{ color: skin.textSecondary }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-[11px] mt-1" style={{ color: skin.textSecondary }}>
+                设置后，该日期之后没有复盘内容的日期默认标记为 ✗
+              </p>
             </div>
           </div>
         </div>
