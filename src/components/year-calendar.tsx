@@ -124,7 +124,7 @@ export default function YearCalendar() {
   const [trackOpen, setTrackOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Auto-open daily review at 18:00
+  // Auto-open daily review at 18:00 (only if no review content exists for today)
   useEffect(() => {
     if (!mounted) return;
     const today = new Date();
@@ -132,9 +132,24 @@ export default function YearCalendar() {
     const shownKey = `daily-review-shown-${todayKey}`;
     if (localStorage.getItem(shownKey)) return; // already shown today
 
-    const checkAndShow = () => {
+    const checkAndShow = async () => {
       const now = new Date();
       if (now.getHours() >= 18) {
+        // Check if today already has review content
+        try {
+          const res = await fetch(`/api/daily-review?year=${now.getFullYear()}&month=${now.getMonth() + 1}&day=${now.getDate()}`);
+          if (res.ok) {
+            const data = await res.json();
+            const hasContent = data.completed || data.goodThings || data.problems || data.mood || data.reflections || data.tomorrowTodo;
+            if (hasContent) {
+              // Already has review content, don't auto-open
+              localStorage.setItem(shownKey, '1');
+              return;
+            }
+          }
+        } catch {
+          // If API fails, proceed to show anyway
+        }
         setDailyReviewMonth(now.getMonth() + 1);
         setDailyReviewDay(now.getDate());
         setDailyReviewOpen(true);
@@ -142,7 +157,7 @@ export default function YearCalendar() {
       }
     };
 
-    // If already past 18:00, show immediately
+    // If already past 18:00, check and show
     checkAndShow();
 
     // Otherwise, check every minute
