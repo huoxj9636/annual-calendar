@@ -58,12 +58,7 @@ export default function YearCalendar() {
     return 0;
   });
   const [clockStr, setClockStr] = useState('');
-  const [clockMode, setClockMode] = useState<'digital' | 'analog'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('clock-mode') as 'digital' | 'analog') || 'digital';
-    }
-    return 'digital';
-  });
+  const [clockMode, setClockMode] = useState<'digital' | 'analog'>('digital');
   const popupRef = useRef<HTMLDivElement>(null);
   const toggleClockMode = () => {
     setClockMode(prev => {
@@ -288,6 +283,12 @@ export default function YearCalendar() {
         } catch { /* ignore */ }
       }
     } catch { /* ignore */ }
+
+    // Read clockMode from localStorage before mounting
+    const savedClockMode = localStorage.getItem('clock-mode');
+    if (savedClockMode === 'analog' || savedClockMode === 'digital') {
+      setClockMode(savedClockMode);
+    }
 
     // Now set mounted - all localStorage values are already in state
     setMounted(true);
