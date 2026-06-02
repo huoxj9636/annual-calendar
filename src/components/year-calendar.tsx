@@ -657,16 +657,24 @@ export default function YearCalendar() {
               <div className="flex flex-col ml-4">
                 <div className="flex items-center gap-2 leading-tight">
                   <div
-                    className="cursor-pointer select-none flex items-center gap-2"
+                    className="cursor-pointer select-none flex flex-col"
                     onClick={toggleClockMode}
                     title={clockMode === 'digital' ? '切换到时钟' : '切换到干支'}
                   >
                     {clockMode === 'digital' ? (
-                      <span className="text-lg font-medium" style={{ color: skin.textSecondary }}>
-                        {ganZhi}（{animal}）
-                      </span>
+                      <>
+                        <span className="text-lg font-medium leading-tight" style={{ color: skin.textSecondary }}>
+                          {ganZhi}（{animal}）
+                        </span>
+                        {mounted && clockStr && (
+                          <div className="text-xl font-mono tracking-wider tabular-nums leading-tight mt-1"
+                            style={{ color: skin.textPrimary, opacity: 0.6 }}>
+                            {clockStr}
+                          </div>
+                        )}
+                      </>
                     ) : (
-                      mounted && <AnalogClock size={28} color={skin.textPrimary} bgColor="transparent" />
+                      mounted && <AnalogClock size={48} color={skin.textPrimary} bgColor="transparent" />
                     )}
                   </div>
                   <button
@@ -783,22 +791,6 @@ export default function YearCalendar() {
                         )}
                       </button>
                   </div>
-                </div>
-                <div
-                  className="cursor-pointer select-none mt-1"
-                  onClick={toggleClockMode}
-                  title={clockMode === 'digital' ? '切换到时钟' : '切换到干支'}
-                >
-                  {clockMode === 'digital' ? (
-                    mounted && clockStr && (
-                      <div className="text-xl font-mono tracking-wider tabular-nums leading-tight"
-                        style={{ color: skin.textPrimary, opacity: 0.6 }}>
-                        {clockStr}
-                      </div>
-                    )
-                  ) : (
-                    <div className="h-[1.25rem]" /> /* spacer to keep height consistent */
-                  )}
                 </div>
               </div>
             </div>
