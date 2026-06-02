@@ -810,20 +810,20 @@ export default function YearCalendar() {
                         )}
                       </button>
                   </div>
+                  {/* 下一年按钮 */}
+                  <button
+                    onClick={() => setYear((y) => y + 1)}
+                    className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold ml-2"
+                    style={{ color: skin.textMuted }}
+                    onMouseEnter={e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = skin.textMuted; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                    aria-label="下一年"
+                  >
+                    ›
+                  </button>
                 </div>
 
               </div>
-              {/* 下一年按钮 - 与上一年按钮垂直对齐 */}
-              <button
-                onClick={() => setYear((y) => y + 1)}
-                className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold relative"
-                style={{ color: skin.textMuted, zIndex: 20 }}
-                onMouseEnter={e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }}
-                onMouseLeave={e => { e.currentTarget.style.color = skin.textMuted; e.currentTarget.style.backgroundColor = 'transparent'; }}
-                aria-label="下一年"
-              >
-                ›
-              </button>
             </div>
           </div>
 
