@@ -674,7 +674,7 @@ export default function YearCalendar() {
                         )}
                       </>
                     ) : (
-                      mounted && <AnalogClock size={48} color={skin.textPrimary} bgColor="transparent" />
+                      mounted && <AnalogClock size={72} color={skin.textPrimary} bgColor="transparent" />
                     )}
                   </div>
                   <button
@@ -1658,15 +1658,14 @@ export default function YearCalendar() {
           </div>
         </div>
       )}
-      {/* 人生日历侧边栏 - 渲染在最外层以覆盖整个页面 */}
-      {showLifeCalendar && (
-        <LifeCalendar
-          birthYear={birthYear}
-          setBirthYear={handleSetBirthYear}
-          onClose={() => setShowLifeCalendar(false)}
-          skinKey={skinKey}
-        />
-      )}
+      {/* 人生日历侧边栏 - 从左侧滑入 */}
+      <LifeCalendar
+        visible={showLifeCalendar}
+        birthYear={birthYear}
+        setBirthYear={handleSetBirthYear}
+        onClose={() => setShowLifeCalendar(false)}
+        skinKey={skinKey}
+      />
 
       {/* Settings popup */}
       {settingsOpen && (

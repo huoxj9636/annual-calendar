@@ -5,6 +5,7 @@ import { SKINS } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
 
 interface LifeCalendarProps {
+  visible: boolean;
   birthYear: number;
   setBirthYear: (year: number) => void;
   onClose: () => void;
@@ -322,7 +323,7 @@ function LifeMapView({ birthYear, skin }: { birthYear: number; skin: typeof SKIN
 }
 
 // ── Component ──
-export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey }: LifeCalendarProps) {
+export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose, skinKey }: LifeCalendarProps) {
   const skin = SKINS.find(s => s.key === skinKey) || SKINS[0];
   const swatch = skin.swatch || '#6558c1';
   const currentYear = new Date().getFullYear();
@@ -598,10 +599,24 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex" style={{ backgroundColor: s.bg }}>
+    <div className="fixed inset-0 z-50 flex pointer-events-none"
+      style={{ backgroundColor: visible ? s.bg : 'transparent', transition: 'background-color 0.3s ease' }}>
+      {/* 遮罩层 */}
+      {visible && (
+        <div className="absolute inset-0 pointer-events-auto" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}
+          onClick={onClose} />
+      )}
 
       {/* ══════════ LEFT PANEL ══════════ */}
-      <div className="w-[480px] flex-shrink-0 flex flex-col border-r" style={{ backgroundColor: s.panelBg, borderColor: s.divider }}>
+      <div
+        className="w-[480px] flex-shrink-0 flex flex-col border-r pointer-events-auto relative z-10"
+        style={{
+          backgroundColor: s.panelBg,
+          borderColor: s.divider,
+          transform: visible ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      >
 
         {/* Header banner */}
         <div className="flex-shrink-0 px-5 pb-5 relative overflow-hidden" style={{ paddingTop: '1.2rem', ...(skin.headerBgImage ? { backgroundImage: `url(${skin.headerBgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: `linear-gradient(135deg, ${skin.headerFrom} 0%, ${skin.headerTo} 100%)` }) }}>
@@ -702,7 +717,12 @@ export default function LifeCalendar({ birthYear, setBirthYear, onClose, skinKey
       </div>
 
       {/* ══════════ RIGHT PANEL: DETAIL ══════════ */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pointer-events-auto"
+        style={{
+          opacity: visible ? 1 : 0,
+          transform: visible ? 'translateX(0)' : 'translateX(20px)',
+          transition: 'opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s',
+        }}>
         {!selectedO ? (
           <div className="flex flex-col items-center justify-center h-full" style={{ color: s.textMuted }}>
             <span className="text-5xl mb-3">👈</span>
