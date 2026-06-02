@@ -58,7 +58,20 @@ export default function YearCalendar() {
     return 0;
   });
   const [clockStr, setClockStr] = useState('');
+  const [clockMode, setClockMode] = useState<'digital' | 'analog'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('clock-mode') as 'digital' | 'analog') || 'digital';
+    }
+    return 'digital';
+  });
   const popupRef = useRef<HTMLDivElement>(null);
+  const toggleClockMode = () => {
+    setClockMode(prev => {
+      const next = prev === 'digital' ? 'analog' : 'digital';
+      localStorage.setItem('clock-mode', next);
+      return next;
+    });
+  };
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const gridInnerRef = useRef<HTMLDivElement>(null);
   const [cellHeight, setCellHeight] = useState(66);
@@ -625,10 +638,15 @@ export default function YearCalendar() {
         <ParticleEffect color={skin.swatch} count={50} />
 
         <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3 px-5 py-2.5">
-            {mounted && <AnalogClock size={72} color={skin.textPrimary} bgColor="rgba(255,255,255,0.06)" />}
+          <div
+            className="flex items-center gap-3 px-5 py-2.5 cursor-pointer select-none"
+            onClick={toggleClockMode}
+            title={clockMode === 'digital' ? '切换到时钟' : '切换到年份'}
+          >
+            {clockMode === 'digital' ? (
+              <>
             <button
-              onClick={() => setYear((y) => y - 1)}
+              onClick={(e) => { e.stopPropagation(); setYear((y) => y - 1); }}
               className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold"
               style={{ color: skin.textMuted }}
               onMouseEnter={e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }}
@@ -649,7 +667,7 @@ export default function YearCalendar() {
                     {ganZhi}（{animal}）
                   </span>
                   <button
-                    onClick={() => setYear(new Date().getFullYear())}
+                    onClick={(e) => { e.stopPropagation(); setYear(new Date().getFullYear()); }}
                     className="px-3 py-1 text-xs font-medium rounded-full transition-all leading-tight cursor-pointer hover:opacity-80"
                     style={{ color: skin.textPrimary, backgroundColor: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.15)" }}
                   >
@@ -657,7 +675,7 @@ export default function YearCalendar() {
                   </button>
                   {/* Skin picker toggle */}
                   <button
-                    onClick={() => setShowSkinPicker(v => !v)}
+                    onClick={(e) => { e.stopPropagation(); setShowSkinPicker(v => !v); }}
                     className="inline-flex items-center justify-center rounded-full cursor-pointer transition-all hover:opacity-80 active:scale-95"
                     style={{
                       width: '20px',
@@ -670,11 +688,7 @@ export default function YearCalendar() {
                   {/* Drawing tool buttons */}
                   <div className="flex items-center gap-0.5 ml-1">
                     <button
-                      onClick={() => {
-                        const next = !drawingMode;
-                        setDrawingMode(next);
-                        if (drawingRef.current) drawingRef.current.setDrawingEnabled(next);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); const next = !drawingMode; setDrawingMode(next); if (drawingRef.current) drawingRef.current.setDrawingEnabled(next); }}
                       className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80 active:scale-95"
                       style={{
                         backgroundColor: drawingMode ? skin.swatch : 'rgba(255,255,255,0.18)',
@@ -693,7 +707,7 @@ export default function YearCalendar() {
                         {['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899'].map(c => (
                           <button
                             key={c}
-                            onClick={() => { setDrawingColor(c); setDrawingTool('pen'); if (drawingRef.current) { drawingRef.current.setPenColor(c); drawingRef.current.setTool('pen'); } }}
+                            onClick={(e) => { e.stopPropagation(); setDrawingColor(c); setDrawingTool('pen'); if (drawingRef.current) { drawingRef.current.setPenColor(c); drawingRef.current.setTool('pen'); } }}
                             className="w-4 h-4 rounded-full border transition-transform hover:scale-125 cursor-pointer"
                             style={{
                               backgroundColor: c,
@@ -703,7 +717,7 @@ export default function YearCalendar() {
                           />
                         ))}
                         <button
-                          onClick={() => { const next = drawingTool === 'eraser' ? 'pen' : 'eraser'; setDrawingTool(next); if (drawingRef.current) drawingRef.current.setTool(next); }}
+                          onClick={(e) => { e.stopPropagation(); const next = drawingTool === 'eraser' ? 'pen' : 'eraser'; setDrawingTool(next); if (drawingRef.current) drawingRef.current.setTool(next); }}
                           className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80"
                           style={{
                             backgroundColor: drawingTool === 'eraser' ? skin.swatch : 'rgba(255,255,255,0.18)',
@@ -717,7 +731,7 @@ export default function YearCalendar() {
                           </svg>
                         </button>
                         <button
-                          onClick={() => drawingRef.current?.handleUndo()}
+                          onClick={(e) => { e.stopPropagation(); drawingRef.current?.handleUndo(); }}
                           className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80"
                           style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: skin.textSecondary, border: '1px solid rgba(255,255,255,0.15)' }}
                           title="撤销"
@@ -728,7 +742,7 @@ export default function YearCalendar() {
                           </svg>
                         </button>
                         <button
-                          onClick={() => drawingRef.current?.handleClear()}
+                          onClick={(e) => { e.stopPropagation(); drawingRef.current?.handleClear(); }}
                           className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80"
                           style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: skin.textSecondary, border: '1px solid rgba(255,255,255,0.15)' }}
                           title="清除全部"
@@ -740,7 +754,7 @@ export default function YearCalendar() {
                       </>
                     )}
                       <button
-                        onClick={() => { const next = !drawingVisible; setDrawingVisible(next); if (drawingRef.current) drawingRef.current.setOverlayVisible(next); }}
+                        onClick={(e) => { e.stopPropagation(); const next = !drawingVisible; setDrawingVisible(next); if (drawingRef.current) drawingRef.current.setOverlayVisible(next); }}
                         className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80"
                         style={{
                           backgroundColor: drawingVisible ? 'rgba(255,255,255,0.18)' : `${skin.swatch}30`,
@@ -772,7 +786,7 @@ export default function YearCalendar() {
               </div>
             </div>
             <button
-              onClick={() => setYear((y) => y + 1)}
+              onClick={(e) => { e.stopPropagation(); setYear((y) => y + 1); }}
               className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-2xl font-bold"
               style={{ color: skin.textMuted }}
               onMouseEnter={e => { e.currentTarget.style.color = skin.swatch; e.currentTarget.style.backgroundColor = skin.cardHover; }}
@@ -781,6 +795,35 @@ export default function YearCalendar() {
             >
               ›
             </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-4">
+                {mounted && <AnalogClock size={110} color={skin.textPrimary} bgColor="rgba(255,255,255,0.06)" showNumber />}
+                <div className="flex flex-col gap-1">
+                  <span className="text-2xl font-black tracking-tight" style={{ color: skin.textPrimary }}>{year}</span>
+                  <span className="text-sm font-medium" style={{ color: skin.textSecondary }}>{ganZhi}（{animal}）</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setYear((y) => y - 1); }}
+                      className="w-6 h-6 flex items-center justify-center rounded transition-colors text-sm font-bold hover:opacity-80"
+                      style={{ color: skin.textMuted, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                      aria-label="上一年"
+                    >‹</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setYear(new Date().getFullYear()); }}
+                      className="px-2 py-0.5 text-xs font-medium rounded-full cursor-pointer hover:opacity-80"
+                      style={{ color: skin.textPrimary, backgroundColor: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.15)" }}
+                    >今年</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setYear((y) => y + 1); }}
+                      className="w-6 h-6 flex items-center justify-center rounded transition-colors text-sm font-bold hover:opacity-80"
+                      style={{ color: skin.textMuted, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                      aria-label="下一年"
+                    >›</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 居中标语 */}
