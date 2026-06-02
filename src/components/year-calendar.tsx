@@ -686,7 +686,7 @@ export default function YearCalendar() {
                       style={{
                         color: skin.textPrimary,
                         opacity: 0.6,
-                        transform: clockMode === 'analog' ? 'translateX(80px)' : 'translateX(0)',
+                        transform: clockMode === 'analog' ? 'translateX(100px)' : 'translateX(0)',
                         marginTop: '2px',
                       }}
                     >
@@ -695,7 +695,7 @@ export default function YearCalendar() {
                   )}
                 </div>
                 {/* 固定按钮行 - 绝对定位，与干支/时钟垂直居中对齐，紧跟其后 */}
-                <div className="absolute left-[80px] top-0 bottom-0 flex items-center gap-2 leading-tight" style={{ zIndex: 3 }}>
+                <div className="absolute left-[100px] top-0 bottom-0 flex items-center gap-2 leading-tight" style={{ zIndex: 3 }}>
                   <button
                     onClick={() => setYear(new Date().getFullYear())}
                     className="px-3 py-1 text-xs font-medium rounded-full transition-all leading-tight cursor-pointer hover:opacity-80"
