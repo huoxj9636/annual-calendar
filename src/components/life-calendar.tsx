@@ -719,6 +719,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
       {/* ══════════ RIGHT PANEL: DETAIL ══════════ */}
       <div className="flex-1 overflow-y-auto pointer-events-auto"
         style={{
+          backgroundColor: s.panelBg,
           opacity: visible ? 1 : 0,
           transform: visible ? 'translateX(0)' : 'translateX(20px)',
           transition: 'opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s',
