@@ -269,6 +269,23 @@ function LifeMapView({ birthYear, skin }: { birthYear: number; skin: typeof SKIN
   const currentAge = currentYear - birthYear;
   const totalLifespan = 80;
   const progress = Math.min(currentAge / totalLifespan, 1);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgProgress, setImgProgress] = useState(0);
+
+  // Simulate progress while image loads
+  useEffect(() => {
+    if (imgLoaded) return;
+    setImgProgress(0);
+    const steps = [20, 40, 55, 65, 72, 78, 83, 87, 90, 93, 95];
+    let i = 0;
+    const timer = setInterval(() => {
+      if (i < steps.length) {
+        setImgProgress(steps[i]);
+        i++;
+      }
+    }, 300);
+    return () => clearInterval(timer);
+  }, [imgLoaded]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -289,12 +306,26 @@ function LifeMapView({ birthYear, skin }: { birthYear: number; skin: typeof SKIN
       </div>
 
       {/* Life Map Image */}
-      <div className="relative w-full rounded-xl overflow-hidden shadow-lg" style={{ border: `1px solid ${s.divider}` }}>
+      <div className="relative w-full rounded-xl overflow-hidden shadow-lg" style={{ border: `1px solid ${s.divider}`, minHeight: '300px', backgroundColor: '#1a1a2e' }}>
+        {/* Loading progress */}
+        {!imgLoaded && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10" style={{ backgroundColor: '#1a1a2e' }}>
+            <div className="text-sm mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>地图加载中...</div>
+            <div className="w-48 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+              <div
+                className="h-full rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${imgProgress}%`, background: 'linear-gradient(90deg, #60a5fa, #a78bfa)' }}
+              />
+            </div>
+            <div className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>{imgProgress}%</div>
+          </div>
+        )}
         <img
           src="/life-map.jpeg"
           alt="人生地图"
           className="w-full h-auto block"
-          style={{ maxHeight: '65vh', objectFit: 'contain', backgroundColor: '#1a1a2e' }}
+          style={{ maxHeight: '65vh', objectFit: 'contain', backgroundColor: '#1a1a2e', opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s ease' }}
+          onLoad={() => { setImgProgress(100); setTimeout(() => setImgLoaded(true), 200); }}
         />
         {/* Age overlay labels */}
         <div className="absolute bottom-0 left-0 right-0 p-3" style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}>
