@@ -36,38 +36,32 @@ interface ReviewData {
 const MOOD_LABELS = ['', '疲惫', '低落', '一般', '不错', '很棒'];
 const ENERGY_LABELS = ['', '枯竭', '低迷', '正常', '充沛', '满格'];
 
+// Memory cache for review data to avoid repeated API calls
+const reviewCache = new Map<string, { data: ReviewData; timestamp: number }>();
+const CACHE_TTL = 30_000; // 30 seconds
+
 async function loadReview(year: number, month: number, day: number): Promise<ReviewData> {
+  const cacheKey = `${year}-${month}-${day}`;
+  const cached = reviewCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+
   const defaultData: ReviewData = { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
   try {
     const res = await fetch(`/api/daily-review?year=${year}&month=${month}&day=${day}`);
     if (res.ok) {
       const data = await res.json();
       const hasDBData = data.completed || data.goodThings || data.problems || data.mood || data.reflections || data.tomorrowTodo;
-      if (hasDBData) return data;
-      // Migrate from localStorage if DB is empty
-      try {
-        const lsKey = `daily-review-${year}-${month}-${day}`;
-        const lsData = localStorage.getItem(lsKey);
-        if (lsData) {
-          const parsed = JSON.parse(lsData) as ReviewData;
-          const hasLSData = parsed.completed || parsed.goodThings || parsed.problems || parsed.mood || parsed.reflections || parsed.tomorrowTodo;
-          if (hasLSData) {
-            await fetch('/api/daily-review', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ year, month, day, ...parsed }),
-            });
-            localStorage.removeItem(lsKey);
-            return parsed;
-          }
-        }
-      } catch { /* ignore */ }
+      const result = hasDBData ? data : defaultData;
+      reviewCache.set(cacheKey, { data: result, timestamp: Date.now() });
+      return result;
     }
   } catch {}
   return defaultData;
 }
 
 async function saveReview(year: number, month: number, day: number, data: ReviewData) {
+  const cacheKey = `${year}-${month}-${day}`;
+  reviewCache.set(cacheKey, { data, timestamp: Date.now() }); // Update cache immediately
   try {
     const res = await fetch('/api/daily-review', {
       method: 'POST',
@@ -77,9 +71,11 @@ async function saveReview(year: number, month: number, day: number, data: Review
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       console.error('[saveReview] Failed:', res.status, err);
+      reviewCache.delete(cacheKey); // Invalidate cache on failure
     }
   } catch (e) {
     console.error('[saveReview] Network error:', e);
+    reviewCache.delete(cacheKey); // Invalidate cache on failure
   }
 }
 

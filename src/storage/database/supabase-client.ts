@@ -78,7 +78,11 @@ function getSupabaseServiceRoleKey(): string | undefined {
   return process.env.COZE_SUPABASE_SERVICE_ROLE_KEY;
 }
 
+let clientInstance: SupabaseClient | null = null;
+
 function getSupabaseClient(token?: string): SupabaseClient {
+  if (!token && clientInstance) return clientInstance;
+
   const { url, anonKey } = getSupabaseCredentials();
 
   let key: string;
@@ -94,7 +98,7 @@ function getSupabaseClient(token?: string): SupabaseClient {
     globalOptions.headers = { Authorization: `Bearer ${token}` };
   }
 
-  return createClient(url, key, {
+  const client = createClient(url, key, {
     global: globalOptions,
     db: {
       timeout: 60000,
@@ -104,6 +108,12 @@ function getSupabaseClient(token?: string): SupabaseClient {
       persistSession: false,
     },
   });
+
+  if (!token) {
+    clientInstance = client;
+  }
+
+  return client;
 }
 
 export { loadEnv, getSupabaseCredentials, getSupabaseServiceRoleKey, getSupabaseClient };
