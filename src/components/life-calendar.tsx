@@ -911,7 +911,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
       {activeVoice && (() => {
         const v = activeVoice;
         return (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-auto" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
             <div className="rounded-2xl p-6 w-[360px] shadow-2xl" style={{ backgroundColor: s.panelBg }}>
               {/* Listening */}
               {v.phase === 'listening' && (
@@ -978,7 +978,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
 
       {/* ══════════ LIFE MAP PANEL ══════════ */}
       {showTemplates && (
-        <div className="fixed inset-0 z-[60] flex" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="fixed inset-0 z-[60] flex pointer-events-auto" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="m-auto w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col" style={{ backgroundColor: s.panelBg }}>
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-3 border-b" style={{ borderColor: s.divider }}>
@@ -997,7 +997,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
 
       {/* ══════════ Delete confirmation ══════════ */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-auto" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="rounded-2xl p-6 w-[340px] shadow-2xl" style={{ backgroundColor: s.panelBg }}>
             <div className="text-center mb-4">
               <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: '#fef2f2' }}>
@@ -1031,7 +1031,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
 
       {/* ══════════ AI Decompose Modal ══════════ */}
       {(aiDecompose.loading || aiDecompose.result) && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-auto" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="rounded-2xl shadow-2xl w-[560px] max-h-[80vh] flex flex-col" style={{ backgroundColor: s.panelBg }}>
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0" style={{ borderColor: s.divider }}>
