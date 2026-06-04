@@ -150,8 +150,7 @@ export default function YearCalendar() {
           const res = await fetch(`/api/daily-review?year=${now.getFullYear()}&month=${now.getMonth() + 1}&day=${now.getDate()}`);
           if (res.ok) {
             const data = await res.json();
-            const hasRealContent = (v: string) => v && v.trim() !== '' && v.trim() !== '无' && v.trim() !== '暂无';
-            const hasContent = hasRealContent(data.completed) || hasRealContent(data.goodThings) || hasRealContent(data.problems) || hasRealContent(data.mood) || hasRealContent(data.reflections) || hasRealContent(data.tomorrowTodo);
+            const hasContent = data.completed || data.goodThings || data.problems || data.mood || data.reflections || data.tomorrowTodo;
             if (hasContent) {
               // Already has review content, don't auto-open
               localStorage.setItem(shownKey, '1');
