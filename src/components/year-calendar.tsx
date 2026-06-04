@@ -142,6 +142,7 @@ export default function YearCalendar() {
     if (localStorage.getItem(shownKey)) return; // already shown today
 
     const checkAndShow = async () => {
+      if (localStorage.getItem(shownKey)) return; // already shown today
       const now = new Date();
       if (now.getHours() >= 18) {
         // Check if today already has review content
