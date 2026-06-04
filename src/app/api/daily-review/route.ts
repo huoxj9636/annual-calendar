@@ -14,9 +14,10 @@ export async function GET(request: NextRequest) {
       .select('month, day, completed, good_things, problems, mood, reflections, tomorrow_todo')
       .eq('year', year);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const hasRealContent = (v: unknown) => typeof v === 'string' && v.trim() !== '' && v.trim() !== '无' && v.trim() !== '暂无';
     const days = (data || [])
       .filter((r: Record<string, unknown>) =>
-        !!(r.completed || r.good_things || r.problems || r.mood || r.reflections || r.tomorrow_todo))
+        hasRealContent(r.completed) || hasRealContent(r.good_things) || hasRealContent(r.problems) || hasRealContent(r.mood) || hasRealContent(r.reflections) || hasRealContent(r.tomorrow_todo))
       .map((r: { month: number; day: number }) => `${year}-${r.month}-${r.day}`);
     return NextResponse.json({ days });
   }
