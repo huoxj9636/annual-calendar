@@ -793,10 +793,35 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                   style={{ backgroundColor: swatch }}>+ 目标</button>
         </div>
 
-        {/* Objective list (flat, top-level only) */}
+        {/* Objective list + Discovery flow */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          {filteredGoals.length === 0 ? (
-            <div className="px-5 py-6">
+          {/* OKR list (always show when there are goals) */}
+          {filteredGoals.length > 0 && filteredGoals.map((o, oi) => {
+            const pct = Math.round(oProgress(o) * 100);
+            const isSelected = selectedOId === o.id;
+            return (
+              <div key={o.id} onClick={() => setSelectedOId(o.id)}
+                className="py-2.5 cursor-pointer transition-all border-l-[3px] flex items-center gap-2"
+                style={{ paddingLeft: 16, paddingRight: 16, backgroundColor: isSelected ? s.cardHover : 'transparent', borderLeftColor: isSelected ? swatch : 'transparent' }}>
+                <span className="flex-1 text-sm truncate" style={{ color: s.text1 }}><span style={{ color: swatch, fontWeight: 600 }}>O{oi + 1}：</span>{o.title}</span>
+                <span className="text-xs font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
+              </div>
+            );
+          })}
+          {/* Continue discovery button (when goals exist and discovery is idle) */}
+          {filteredGoals.length > 0 && discoveryState === 'idle' && (
+            <div className="px-5 py-3">
+              <button onClick={startDiscovery}
+                className="w-full rounded-lg py-2 text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+                style={{ backgroundColor: swatch + '12', color: swatch, border: `1px solid ${swatch}25` }}>
+                <span>🔍</span> 继续发现目标
+              </button>
+            </div>
+          )}
+
+          {/* Discovery flow (show when idle+no goals, or when actively scanning/selecting/previewing) */}
+          {(discoveryState !== 'idle' || filteredGoals.length === 0) && (
+          <div className="px-5 py-6">
               {discoveryState === 'idle' && (
                 <div className="flex flex-col items-center gap-4">
                   {/* Discovery card */}
@@ -984,19 +1009,8 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                   </div>
                 </div>
               )}
-            </div>
-          ) : filteredGoals.map((o, oi) => {
-            const pct = Math.round(oProgress(o) * 100);
-            const isSelected = selectedOId === o.id;
-            return (
-              <div key={o.id} onClick={() => setSelectedOId(o.id)}
-                className="py-2.5 cursor-pointer transition-all border-l-[3px] flex items-center gap-2"
-                style={{ paddingLeft: 16, paddingRight: 16, backgroundColor: isSelected ? s.cardHover : 'transparent', borderLeftColor: isSelected ? swatch : 'transparent' }}>
-                <span className="flex-1 text-sm truncate" style={{ color: s.text1 }}><span style={{ color: swatch, fontWeight: 600 }}>O{oi + 1}：</span>{o.title}</span>
-                <span className="text-xs font-bold flex-shrink-0" style={{ color: pct > 0 ? swatch : s.textMuted }}>{pct}%</span>
-              </div>
-            );
-          })}
+          </div>
+          )}
         </div>
 
         {/* Bottom stats */}
