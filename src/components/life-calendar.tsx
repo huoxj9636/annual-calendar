@@ -387,6 +387,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
   const [discoveryMessage, setDiscoveryMessage] = useState('');
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [pendingOKR, setPendingOKR] = useState<OKRObjective | null>(null);
+  const [addedThemes, setAddedThemes] = useState<Set<string>>(new Set());
 
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
@@ -513,6 +514,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
   // Goal discovery: scan reviews
   const startDiscovery = useCallback(async () => {
     setDiscoveryState('scanning');
+    setAddedThemes(new Set());
     try {
       const res = await fetch('/api/discover-goals');
       const data = await res.json();
@@ -852,28 +854,43 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium" style={{ color: s.text1 }}>
-                      {discoveryMessage || '选择你最想改变的方向'}
+                      {discoveredThemes.length > 0 ? '选择你想改变的方向（可多选）' : (discoveryMessage || '选择你最想改变的方向')}
                     </div>
-                    <button onClick={() => { setDiscoveryState('idle'); setDiscoveredThemes([]); setSelectedTheme(null); }}
-                      className="text-xs px-2.5 py-1 rounded-md transition-colors cursor-pointer"
-                      style={{ backgroundColor: swatch + '15', color: swatch }}>
-                      取消
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => startDiscovery()}
+                        className="text-xs px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                        style={{ backgroundColor: swatch + '15', color: swatch }}>
+                        重新扫描
+                      </button>
+                      <button onClick={() => { setDiscoveryState('idle'); setDiscoveredThemes([]); setSelectedTheme(null); }}
+                        className="text-xs px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                        style={{ backgroundColor: s.cardBg, color: s.textMuted, border: `1px solid ${s.divider}` }}>
+                        取消
+                      </button>
+                    </div>
                   </div>
                   {discoveredThemes.length > 0 ? (
                     <div className="flex flex-col gap-2">
-                      {discoveredThemes.map((t) => (
-                        <button key={t.keyword} onClick={() => generateOKRFromTheme(t.keyword)}
-                          className="w-full rounded-lg p-3.5 text-left transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-                          style={{ backgroundColor: swatch + '10', border: `1px solid ${swatch}20` }}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-bold text-sm" style={{ color: swatch }}>{t.keyword}</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: swatch + '18', color: swatch }}>{t.count}次</span>
-                          </div>
-                          <div className="text-xs" style={{ color: s.text2 }}>{t.pattern}</div>
-                          <div className="text-[10px] mt-1" style={{ color: s.textMuted }}>💡 {t.suggestion}</div>
-                        </button>
-                      ))}
+                      {discoveredThemes.map((t) => {
+                        const isAdded = addedThemes.has(t.keyword);
+                        return (
+                          <button key={t.keyword} onClick={() => !isAdded && generateOKRFromTheme(t.keyword)}
+                            className="w-full rounded-lg p-3.5 text-left transition-all cursor-pointer"
+                            style={{ 
+                              backgroundColor: isAdded ? swatch + '06' : swatch + '10', 
+                              border: `1px solid ${isAdded ? swatch + '10' : swatch + '20'}`,
+                              opacity: isAdded ? 0.5 : 1
+                            }}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-bold text-sm" style={{ color: swatch }}>{t.keyword}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: swatch + '18', color: swatch }}>{t.count}次</span>
+                              {isAdded && <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: '#22c55e18', color: '#22c55e' }}>已添加</span>}
+                            </div>
+                            <div className="text-xs" style={{ color: s.text2 }}>{t.pattern}</div>
+                            <div className="text-[10px] mt-1" style={{ color: s.textMuted }}>💡 {t.suggestion}</div>
+                          </button>
+                        );
+                      })}
                       {/* Custom theme input */}
                       <div className="flex items-center gap-2 mt-1">
                         <input type="text" placeholder="或自己输入方向..."
@@ -952,6 +969,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                       // Confirm: add the OKR
                       setGoals(prev => [...prev, pendingOKR]);
                       setSelectedOId(pendingOKR.id);
+                      setAddedThemes(prev => new Set(prev).add(selectedTheme!));
                       setPendingOKR(null);
                       setSelectedTheme(null);
                       setDiscoveryState('selecting'); // Go back to select more
