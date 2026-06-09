@@ -26,7 +26,7 @@ interface ClassifiedEntry {
  * - <time datetime="..."> 标签
  * - 日期行（2024年1月1日 / 2024-01-01 / Jan 1, 2024 等）
  */
-function parseHTMLEntries(html: string): ParsedEntry[] {
+function parseHTMLEntries(html: string, reqYear?: number): ParsedEntry[] {
   // 移除 script/style
   const clean = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -45,11 +45,12 @@ function parseHTMLEntries(html: string): ParsedEntry[] {
 
   const lines = clean.split('\n').map(l => l.trim()).filter(Boolean);
 
-  // 日期正则
+  // 日期正则（更宽松的匹配）
   const datePatterns = [
-    /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,  // 2024年1月1日
-    /(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/,           // 2024-01-01 / 2024/01/01 / 2024.01.01
-    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,               // 01/01/2024
+    /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?/,  // 2024年1月1日 / 1月1号
+    /(\d{4})[\/\-\.]\s*(\d{1,2})[\/\-\.]\s*(\d{1,2})/,       // 2024-01-01 / 2024/01/01 / 2024.01.01
+    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,                 // 01/01/2024
+    /(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]/,                    // 6月9日 / 6月9号（无年份）
   ];
 
   const entries: ParsedEntry[] = [];
@@ -66,6 +67,9 @@ function parseHTMLEntries(html: string): ParsedEntry[] {
         if (pat === datePatterns[2]) {
           // MM/DD/YYYY 格式
           d = matched[1]; m = matched[2]; y = matched[3];
+        } else if (pat === datePatterns[3]) {
+          // 无年份格式: M月D日 → 用请求年份
+          y = String(reqYear || new Date().getFullYear()); m = matched[1]; d = matched[2];
         } else {
           y = matched[1]; m = matched[2]; d = matched[3];
         }
@@ -73,7 +77,7 @@ function parseHTMLEntries(html: string): ParsedEntry[] {
       }
     }
 
-    if (matched && y && m && d) {
+    if (matched && m && d) {
       // 遇到新日期，保存之前的条目
       if (currentDate && currentContent.length > 0) {
         entries.push({ date: currentDate, content: currentContent.join('\n').trim() });
@@ -99,7 +103,8 @@ function parseHTMLEntries(html: string): ParsedEntry[] {
  * 从纯文本中提取日期+内容条目
  * 支持格式同 HTML，但不去除标签
  */
-function parseTextEntries(text: string): ParsedEntry[] {
+function parseTextEntries(text: string, reqYear?: number): ParsedEntry[] {
+  const currentYear = reqYear || new Date().getFullYear();
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
   const datePatterns = [
@@ -128,7 +133,8 @@ function parseTextEntries(text: string): ParsedEntry[] {
       }
     }
 
-    if (matched && y && m && d) {
+    if (matched && m && d) {
+      if (!y) y = String(currentYear);
       if (currentDate && currentContent.length > 0) {
         entries.push({ date: currentDate, content: currentContent.join('\n').trim() });
       }
@@ -353,7 +359,7 @@ export async function POST(request: NextRequest) {
       entries = [{ date: fallbackDate, content: text.trim() }];
     } else {
       // HTML 模式：从HTML中解析多个日期条目
-      entries = parseHTMLEntries(html!);
+      entries = parseHTMLEntries(html!, reqYear);
     }
 
     if (entries.length === 0) {
