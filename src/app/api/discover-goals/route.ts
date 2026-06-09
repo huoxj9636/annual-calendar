@@ -13,24 +13,75 @@ interface ReviewRow {
   tomorrow_todo: string;
 }
 
+interface OverrideRow {
+  date_key: string;
+  value: string;
+}
+
+interface TodoRow {
+  month: number;
+  day: number;
+  text: string;
+  done: boolean;
+}
+
+interface EventRow {
+  month: number;
+  day: number;
+  title: string;
+}
+
+// 数据源分析结果
+interface DataSourceSignals {
+  source1_checkPattern: string[];    // 勾叉模式信号
+  source2_shouldSentences: string[]; // "应该"句式
+  source3_againSentences: string[];  // "又"字句式
+  source4_noteContent: string[];     // 导入笔记内容
+  source5_canceledTodos: string[];   // 反复创建但未完成的待办
+  allReviewText: string;             // 所有复盘原文（给AI参考）
+}
+
 export async function GET(request: NextRequest) {
   try {
     const year = new Date().getFullYear();
     const client = getSupabaseClient();
 
-    // Fetch all reviews for this year
-    const { data: reviews, error } = await client
-      .from('daily_reviews')
-      .select('month, day, completed, good_things, problems, mood, reflections, tomorrow_todo')
-      .eq('year', year)
-      .order('month', { ascending: false })
-      .order('day', { ascending: false });
+    // 并行获取5大数据源
+    const [reviewsRes, overridesRes, todosRes] = await Promise.all([
+      client
+        .from('daily_reviews')
+        .select('month, day, completed, good_things, problems, mood, reflections, tomorrow_todo')
+        .eq('year', year),
+      client
+        .from('calendar_overrides')
+        .select('date_key, value')
+        .eq('year', year),
+      client
+        .from('day_todos')
+        .select('month, day, text, done')
+        .eq('year', year),
+    ]);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (reviewsRes.error) {
+      return NextResponse.json({ error: reviewsRes.error.message }, { status: 500 });
     }
 
-    if (!reviews || reviews.length === 0) {
+    const reviews = (reviewsRes.data || []) as ReviewRow[];
+    const overrides = (overridesRes.data || []) as OverrideRow[];
+    const todos = (todosRes.data || []) as TodoRow[];
+
+    // 从5个数据源提取信号
+    const signals = extractSignals(reviews, overrides, todos);
+
+    // 检查是否有足够的数据
+    const totalSignals =
+      signals.source1_checkPattern.length +
+      signals.source2_shouldSentences.length +
+      signals.source3_againSentences.length +
+      signals.source4_noteContent.length +
+      signals.source5_canceledTodos.length;
+
+    if (totalSignals === 0 && signals.allReviewText.length < 10) {
       return NextResponse.json({
         hasData: false,
         themes: [],
@@ -38,48 +89,49 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Combine all review text for analysis
-    const allText = (reviews as ReviewRow[])
-      .map((r) => {
-        const parts = [r.completed, r.good_things, r.problems, r.mood, r.reflections, r.tomorrow_todo]
-          .filter(Boolean)
-          .join(' ');
-        return parts.trim();
-      })
-      .filter(Boolean)
-      .join('\n');
-
-    if (allText.length < 10) {
-      return NextResponse.json({
-        hasData: true,
-        themes: [],
-        message: '复盘内容太少，继续积累后将发现你的模式',
-      });
-    }
-
-    // Use LLM to extract recurring themes
+    // 使用LLM分析所有信号源
     const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
     const config = new Config();
     const llmClient = new LLMClient(config, customHeaders);
 
-    const prompt = `分析以下每日复盘内容，提取用户反复出现的困扰、未实现的愿望和"应该做但没做"的事情。
+    const prompt = `你是一个目标发现助手。从用户的5种日常信号中提取反复出现的困扰和向往。
 
-重点关注：
-1. 用户反复提到但没解决的问题（如"又熬夜了""又拖延了"）
-2. 用户"应该"做但一直没做的事
-3. 用户反复表达的不满或焦虑
-4. 用户反复提到的想尝试但没行动的事
+## 信号来源
 
-复盘内容：
-${allText.slice(0, 8000)}
+### 来源1：日历勾叉模式
+${signals.source1_checkPattern.length > 0 ? signals.source1_checkPattern.join('\n') : '（无显著模式）'}
 
-请以JSON数组格式返回3-6个发现的主题，结构如下：
+### 来源2："应该"句式（用户说了想做什么但没做到）
+${signals.source2_shouldSentences.length > 0 ? signals.source2_shouldSentences.map((s, i) => `${i + 1}. ${s}`).join('\n') : '（未发现"应该"句式）'}
+
+### 来源3："又"字句式（承认反复失败，最高质量的OKR种子）
+${signals.source3_againSentences.length > 0 ? signals.source3_againSentences.map((s, i) => `${i + 1}. ${s}`).join('\n') : '（未发现"又"字句式）'}
+
+### 来源4：导入的笔记内容（用户关心的主题）
+${signals.source4_noteContent.length > 0 ? signals.source4_noteContent.slice(0, 30).map((s, i) => `${i + 1}. ${s}`).join('\n') : '（无导入笔记）'}
+
+### 来源5：反复创建但未完成的待办事项
+${signals.source5_canceledTodos.length > 0 ? signals.source5_canceledTodos.map((s, i) => `${i + 1}. ${s}`).join('\n') : '（无未完成待办模式）'}
+
+### 补充：复盘原文（用于理解上下文）
+${signals.allReviewText.slice(0, 4000)}
+
+---
+
+请综合以上5个信号源，提取3-6个反复出现的主题。重点关注：
+1. "又"字句式是最强信号 = 承认反复失败 = 有强烈意愿但缺方法
+2. "应该"句式 = 用户自己说了想做什么，只是没做到
+3. 连续✗模式 = 某维度在系统性失控
+4. 反复未完成待办 = 有行动意愿但执行困难
+
+以JSON数组格式返回：
 [
   {
     "keyword": "关键词（2-4字）",
     "count": 出现次数,
     "pattern": "反复模式描述（如'说了8次又熬夜了'）",
-    "suggestion": "简短的改善建议（10字以内）"
+    "suggestion": "简短的改善建议（10字以内）",
+    "source": "信号来源（如'又字句式/应该句式/勾叉模式/未完成待办/导入笔记'）"
   }
 ]
 
@@ -91,7 +143,7 @@ ${allText.slice(0, 8000)}
       temperature: 0.2,
     });
 
-    let themes: Array<{ keyword: string; count: number; pattern: string; suggestion: string }> = [];
+    let themes: Array<{ keyword: string; count: number; pattern: string; suggestion: string; source: string }> = [];
     try {
       if (response?.content) {
         const jsonMatch = response.content.match(/\[[\s\S]*\]/);
@@ -100,19 +152,24 @@ ${allText.slice(0, 8000)}
         }
       }
     } catch {
-      // Fallback: simple keyword extraction
-      themes = extractThemesSimple(reviews as ReviewRow[]);
+      themes = extractThemesSimple(reviews);
     }
 
-    // If LLM failed to extract, use simple extraction
     if (themes.length === 0) {
-      themes = extractThemesSimple(reviews as ReviewRow[]);
+      themes = extractThemesSimple(reviews);
     }
 
     return NextResponse.json({
       hasData: true,
       themes,
       reviewCount: reviews.length,
+      signalStats: {
+        checkPatterns: signals.source1_checkPattern.length,
+        shouldSentences: signals.source2_shouldSentences.length,
+        againSentences: signals.source3_againSentences.length,
+        noteContent: signals.source4_noteContent.length,
+        canceledTodos: signals.source5_canceledTodos.length,
+      },
       message: themes.length > 0 ? `从${reviews.length}天复盘中发现了${themes.length}个反复出现的主题` : '暂未发现明显反复模式',
     });
   } catch (err) {
@@ -122,8 +179,156 @@ ${allText.slice(0, 8000)}
   }
 }
 
+/**
+ * 从5个数据源提取信号
+ */
+function extractSignals(
+  reviews: ReviewRow[],
+  overrides: OverrideRow[],
+  todos: TodoRow[]
+): DataSourceSignals {
+  const source1_checkPattern: string[] = [];
+  const source2_shouldSentences: string[] = [];
+  const source3_againSentences: string[] = [];
+  const source4_noteContent: string[] = [];
+  const source5_canceledTodos: string[] = [];
+
+  // === 来源1：日历勾叉模式 ===
+  const crossDates = overrides
+    .filter(o => o.value === 'crossed')
+    .map(o => o.date_key)
+    .sort();
+  const checkDates = overrides
+    .filter(o => o.value === 'checked')
+    .map(o => o.date_key)
+    .sort();
+
+  // 连续✗模式
+  if (crossDates.length >= 3) {
+    const streaks = findConsecutiveStreaks(crossDates);
+    for (const streak of streaks) {
+      if (streak.length >= 3) {
+        source1_checkPattern.push(
+          `连续${streak.length}天✗（${streak[0]} ~ ${streak[streak.length - 1]}），说明某个维度在系统性失控`
+        );
+      }
+    }
+  }
+
+  // 周末✓工作日✗模式
+  if (crossDates.length >= 5 && checkDates.length >= 3) {
+    const weekdayCrosses = crossDates.filter(d => {
+      const dayOfWeek = new Date(d).getDay();
+      return dayOfWeek > 0 && dayOfWeek < 6;
+    });
+    const weekendChecks = checkDates.filter(d => {
+      const dayOfWeek = new Date(d).getDay();
+      return dayOfWeek === 0 || dayOfWeek === 6;
+    });
+    if (weekdayCrosses.length > checkDates.length * 0.7 && weekendChecks.length > 2) {
+      source1_checkPattern.push(
+        `工作日多✗（${weekdayCrosses.length}天）周末多✓（${weekendChecks.length}天），工作日和周末的落差说明工作日状态系统性偏差`
+      );
+    }
+  }
+
+  // === 来源2 & 3 & 4：复盘内容分析 ===
+  for (const r of reviews) {
+    const fields = [r.completed, r.good_things, r.problems, r.mood, r.reflections, r.tomorrow_todo];
+    const text = fields.filter(Boolean).join(' ');
+    if (!text.trim()) continue;
+
+    // 来源2："应该"句式
+    const shouldMatches = text.match(/应该[^\s，。！？；,\.!?;]{1,20}/g);
+    if (shouldMatches) {
+      for (const m of shouldMatches) {
+        source2_shouldSentences.push(`"${m}"（${r.month}月${r.day}日）`);
+      }
+    }
+
+    // 来源3："又"字句式
+    const againMatches = text.match(/又[^\s，。！？；,\.!?;]{1,15}/g);
+    if (againMatches) {
+      for (const m of againMatches) {
+        source3_againSentences.push(`"${m}"（${r.month}月${r.day}日）`);
+      }
+    }
+
+    // 来源4：导入的笔记内容（复盘内容较长且completed字段有内容的，很可能是导入的）
+    if (r.completed && r.completed.length > 50) {
+      source4_noteContent.push(`${r.completed.slice(0, 80)}${r.completed.length > 80 ? '...' : ''}（${r.month}月${r.day}日）`);
+    }
+  }
+
+  // === 来源5：反复创建但未完成的待办 ===
+  const todoByText = new Map<string, { text: string; count: number; doneCount: number }>();
+  for (const t of todos) {
+    const key = t.text.trim().slice(0, 30);
+    if (!key) continue;
+    const existing = todoByText.get(key);
+    if (existing) {
+      existing.count++;
+      if (t.done) existing.doneCount++;
+    } else {
+      todoByText.set(key, { text: t.text, count: 1, doneCount: t.done ? 1 : 0 });
+    }
+  }
+
+  for (const [, info] of todoByText) {
+    // 多次创建但完成率低
+    if (info.count >= 2 && info.doneCount < info.count * 0.5) {
+      source5_canceledTodos.push(
+        `"${info.text.slice(0, 30)}" 创建${info.count}次仅完成${info.doneCount}次`
+      );
+    }
+  }
+
+  // 拼接所有复盘原文
+  const allReviewText = reviews
+    .map(r => {
+      const parts = [r.completed, r.good_things, r.problems, r.mood, r.reflections, r.tomorrow_todo]
+        .filter(Boolean)
+        .join(' ');
+      return parts.trim() ? `[${r.month}月${r.day}日] ${parts.trim()}` : '';
+    })
+    .filter(Boolean)
+    .join('\n');
+
+  return {
+    source1_checkPattern,
+    source2_shouldSentences,
+    source3_againSentences,
+    source4_noteContent,
+    source5_canceledTodos,
+    allReviewText,
+  };
+}
+
+/**
+ * 找出日期列表中的连续序列
+ */
+function findConsecutiveStreaks(dates: string[]): string[][] {
+  if (dates.length === 0) return [];
+  const streaks: string[][] = [];
+  let current: string[] = [dates[0]];
+
+  for (let i = 1; i < dates.length; i++) {
+    const prev = new Date(current[current.length - 1]);
+    const curr = new Date(dates[i]);
+    const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) {
+      current.push(dates[i]);
+    } else {
+      if (current.length >= 3) streaks.push(current);
+      current = [dates[i]];
+    }
+  }
+  if (current.length >= 3) streaks.push(current);
+  return streaks;
+}
+
 // Simple keyword extraction as fallback
-function extractThemesSimple(reviews: ReviewRow[]): Array<{ keyword: string; count: number; pattern: string; suggestion: string }> {
+function extractThemesSimple(reviews: ReviewRow[]): Array<{ keyword: string; count: number; pattern: string; suggestion: string; source: string }> {
   const keywordPatterns: Record<string, RegExp> = {
     '熬夜': /熬夜|晚睡|凌晨|2点睡|3点睡/,
     '拖延': /拖延|推迟|没做完|又没/,
@@ -135,7 +340,7 @@ function extractThemesSimple(reviews: ReviewRow[]): Array<{ keyword: string; cou
     '专注': /分心|走神|刷手机|摸鱼|不专注/,
   };
 
-  const results: Array<{ keyword: string; count: number; pattern: string; suggestion: string }> = [];
+  const results: Array<{ keyword: string; count: number; pattern: string; suggestion: string; source: string }> = [];
 
   for (const [keyword, regex] of Object.entries(keywordPatterns)) {
     const matches = reviews.filter((r) => {
@@ -144,17 +349,26 @@ function extractThemesSimple(reviews: ReviewRow[]): Array<{ keyword: string; cou
     });
 
     if (matches.length >= 2) {
-      // Check for "又" pattern
       const youCount = matches.filter((r) => {
         const text = [r.completed, r.good_things, r.problems, r.mood, r.reflections, r.tomorrow_todo].join(' ');
         return text.includes('又') && regex.test(text);
       }).length;
+
+      const shouldCount = matches.filter((r) => {
+        const text = [r.completed, r.good_things, r.problems, r.mood, r.reflections, r.tomorrow_todo].join(' ');
+        return text.includes('应该') && regex.test(text);
+      }).length;
+
+      let source = '复盘内容';
+      if (youCount > 0) source = '又字句式';
+      else if (shouldCount > 0) source = '应该句式';
 
       results.push({
         keyword,
         count: matches.length,
         pattern: youCount > 0 ? `说了${youCount}次"又${keyword}了"` : `有${matches.length}天提到了${keyword}`,
         suggestion: getSuggestion(keyword),
+        source,
       });
     }
   }

@@ -383,7 +383,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
   // Goal discovery flow
   const [discoveryState, setDiscoveryState] = useState<'idle' | 'scanning' | 'selecting' | 'generating' | 'previewing'>('idle');
 
-  const [discoveredThemes, setDiscoveredThemes] = useState<Array<{ keyword: string; count: number; pattern: string; suggestion: string }>>([]);
+  const [discoveredThemes, setDiscoveredThemes] = useState<Array<{ keyword: string; count: number; pattern: string; suggestion: string; source?: string }>>([]);
   const [discoveryMessage, setDiscoveryMessage] = useState('');
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [pendingOKR, setPendingOKR] = useState<OKRObjective | null>(null);
@@ -520,7 +520,15 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
       const data = await res.json();
       if (data.themes && data.themes.length > 0) {
         setDiscoveredThemes(data.themes);
-        setDiscoveryMessage(data.message || '');
+        const stats = data.signalStats;
+        const statParts = [];
+        if (stats?.checkPatterns > 0) statParts.push(`勾叉模式${stats.checkPatterns}条`);
+        if (stats?.shouldSentences > 0) statParts.push(`"应该"${stats.shouldSentences}条`);
+        if (stats?.againSentences > 0) statParts.push(`"又"${stats.againSentences}条`);
+        if (stats?.noteContent > 0) statParts.push(`笔记${stats.noteContent}条`);
+        if (stats?.canceledTodos > 0) statParts.push(`未完成待办${stats.canceledTodos}条`);
+        const statMsg = statParts.length > 0 ? `（信号：${statParts.join('、')}）` : '';
+        setDiscoveryMessage(data.message + statMsg);
         setDiscoveryState('selecting');
       } else {
         setDiscoveredThemes([]);
@@ -839,13 +847,13 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                             </div>
                             <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 rounded-xl p-4 text-xs leading-relaxed opacity-0 invisible group-hover/help:opacity-100 group-hover/help:visible transition-all duration-200 -translate-x-1 group-hover/help:translate-x-0 pointer-events-none"
                               style={{ backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2 }}>
-                              <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>搜集方向</div>
+                              <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>5大数据源</div>
                               <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
-                                <li>反复未解决的问题</li>
-                                <li>"应该"做但没做的事</li>
-                                <li>反复不满或焦虑</li>
-                                <li>想尝试但没行动</li>
-                                <li>反复出现的情绪模式</li>
+                                <li>日历勾叉模式 — 连续✗、工作日周末落差</li>
+                                <li>"应该"句式 — 你自己说了想做但没做</li>
+                                <li>"又"字句式 — 承认反复失败（最强信号）</li>
+                                <li>导入的笔记内容 — 你关心的事</li>
+                                <li>未完成待办 — 有意愿但执行困难</li>
                               </ul>
                             </div>
                           </div>
@@ -909,10 +917,11 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-bold text-sm" style={{ color: swatch }}>{t.keyword}</span>
                               <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: swatch + '18', color: swatch }}>{t.count}次</span>
+                              {t.source && <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: s.panelBg, color: s.textMuted }}>{t.source}</span>}
                               {isAdded && <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: '#22c55e18', color: '#22c55e' }}>已添加</span>}
                             </div>
                             <div className="text-xs" style={{ color: s.text2 }}>{t.pattern}</div>
-                            <div className="text-[10px] mt-1" style={{ color: s.textMuted }}>💡 {t.suggestion}</div>
+                            <div className="text-[10px] mt-1" style={{ color: s.textMuted }}>{t.suggestion}</div>
                           </button>
                         );
                       })}
