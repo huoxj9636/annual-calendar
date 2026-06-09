@@ -255,6 +255,11 @@ async function classifyWithAI(entries: ParsedEntry[], request: NextRequest, fall
 
   const prompt = `你是一个每日复盘助手。用户从笔记应用导入了以下日记条目，请将每一条内容智能分类到6个复盘维度中。
 
+⚠️ 核心原则：只分类，不润色！
+- 原样保留用户原文，不要修改、精简、润色或改写任何内容
+- 不要添加任何原文中没有的内容
+- 只做归类，将原文放入合适的维度即可
+
 ⚠️ 严格分类规则（极其重要，违反将导致严重错误）：
 1. 你必须将内容归入6个维度，缺一不可
 2. 每句话都必须准确归类，不能遗漏或错归
@@ -282,6 +287,7 @@ async function classifyWithAI(entries: ParsedEntry[], request: NextRequest, fall
 3. 如果某维度没有对应内容，填空字符串 ""
 4. 不要遗漏任何内容，每句话都必须归入某个维度
 5. 字符串值中不要包含换行符（用分号代替）
+6. 原文原样保留，不做任何改写
 
 输入数据：
 ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
@@ -479,30 +485,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '未能从 HTML 中解析出任何日期条目。请确保内容中包含日期（如 2024年1月1日 或 2024-01-01）。' }, { status: 400 });
     }
 
-    // Step 2: 对于HTML模式（如浮木笔记），跳过AI分类，直接将内容存入completed字段
-    // 用户明确表示导入的文字不需要AI重新归类，原样存储即可
+    // Step 2: AI 分类（不润色原文，原样归类到6个维度）
+    // 分批处理避免AI一次性处理太多条目导致截断或失败
     let classified: ClassifiedEntry[];
 
-    if (isTextMode) {
-      // 文本模式仍走AI分类（单条短文本）
+    if (entries.length <= 20) {
       classified = await classifyWithAI(entries, request, { year: reqYear, month: reqMonth, day: reqDay });
     } else {
-      // HTML模式：直接将每条内容存入completed字段，跳过AI分类
-      classified = entries.map(entry => {
-        const parts = entry.date.split('-').map(Number);
-        return {
-          date: entry.date,
-          year: parts[0],
-          month: parts[1],
-          day: parts[2],
-          completed: entry.content,
-          goodThings: '',
-          problems: '',
-          mood: '',
-          reflections: '',
-          tomorrowTodo: '',
-        };
-      });
+      // 分批处理，每批20条
+      const batchSize = 20;
+      const allClassified: ClassifiedEntry[] = [];
+      for (let i = 0; i < entries.length; i += batchSize) {
+        const batch = entries.slice(i, i + batchSize);
+        const batchResult = await classifyWithAI(batch, request, { year: reqYear, month: reqMonth, day: reqDay });
+        allClassified.push(...batchResult);
+      }
+      classified = allClassified;
     }
 
     // Step 3: 保存到数据库（追加模式）
