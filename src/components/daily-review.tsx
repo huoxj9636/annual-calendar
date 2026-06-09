@@ -743,8 +743,39 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <div className="text-base" style={{ color: skin.textMuted }}>
                     {importMode === 'text'
                       ? '粘贴每日复盘文本，系统会自动识别日期并将内容智能分类到6个复盘维度。'
-                      : '粘贴从笔记应用导出的 HTML 内容，系统会自动识别日期并将内容智能分类到6个复盘维度。'}
+                      : '粘贴或导入本地 HTML 文件，系统会自动识别日期并将内容智能分类到6个复盘维度。'}
                   </div>
+                  {importMode === 'html' && (
+                    <div className="flex items-center gap-2">
+                      <label
+                        className="px-4 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-all hover:opacity-80"
+                        style={{ backgroundColor: skin.swatch + '15', color: skin.swatch, border: '1px solid ' + skin.swatch + '30' }}
+                      >
+                        📂 选择本地 HTML 文件
+                        <input
+                          type="file"
+                          accept=".html,.htm"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            try {
+                              const text = await file.text();
+                              setImportHtml(text);
+                            } catch {
+                              alert('读取文件失败，请重试');
+                            }
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                      {importHtml && (
+                        <span className="text-xs" style={{ color: skin.textMuted }}>
+                          已加载 {importHtml.length > 1000 ? (importHtml.length / 1024).toFixed(1) + 'KB' : importHtml.length + '字'}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <textarea
                     value={importHtml}
                     onChange={e => setImportHtml(e.target.value)}
