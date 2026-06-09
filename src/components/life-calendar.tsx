@@ -388,6 +388,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [pendingOKR, setPendingOKR] = useState<OKRObjective | null>(null);
   const [addedThemes, setAddedThemes] = useState<Set<string>>(new Set());
+  const [helpTooltipPos, setHelpTooltipPos] = useState<{top: number, left: number} | null>(null);
 
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
@@ -839,23 +840,16 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                       <div className="flex items-center gap-3">
                         <span className="text-3xl">🔍</span>
                         <div>
-                          <div className="flex items-center gap-1.5 group/help">
+                          <div className="flex items-center gap-1.5">
                             <div className="font-bold text-base" style={{ color: s.text1 }}>发现你的年度目标</div>
-                            <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center cursor-default text-[10px] font-bold shrink-0 relative"
-                              style={{ backgroundColor: swatch + '25', color: swatch }}>
+                            <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center cursor-default text-[10px] font-bold shrink-0"
+                              style={{ backgroundColor: swatch + '25', color: swatch }}
+                              onMouseEnter={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setHelpTooltipPos({ top: rect.top, left: rect.right + 8 });
+                              }}
+                              onMouseLeave={() => setHelpTooltipPos(null)}>
                               ?
-                              <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] w-80 rounded-xl p-5 text-xs leading-relaxed opacity-0 invisible group-hover/help:opacity-100 group-hover/help:visible transition-all duration-200"
-                                style={{ backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2 }}>
-                                <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>6大数据源</div>
-                                <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
-                                  <li>日历勾叉模式 — 连续✗、工作日周末落差</li>
-                                  <li>"应该"句式 — 你自己说了想做但没做</li>
-                                  <li>"又"字句式 — 承认反复失败（最强信号）</li>
-                                  <li>导入的笔记内容 — 你关心的事</li>
-                                  <li>未完成待办 — 有意愿但执行困难</li>
-                                  <li>AI深度分析 — 发现深层反复模式</li>
-                                </ul>
-                              </div>
                             </div>
                           </div>
                           <div className="text-xs mt-0.5" style={{ color: s.textMuted }}>从复盘中发现你的反复模式</div>
@@ -1408,6 +1402,21 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
               </>
             ) : null}
           </div>
+        </div>
+      )}
+
+      {helpTooltipPos && (
+        <div className="fixed z-[9999] w-80 rounded-xl p-5 text-xs leading-relaxed"
+          style={{ top: helpTooltipPos.top - 10, left: helpTooltipPos.left, backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2, transform: 'translateY(-100%)' }}>
+          <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>6大数据源</div>
+          <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
+            <li>日历勾叉模式 — 连续✗、工作日周末落差</li>
+            <li>"应该"句式 — 你自己说了想做但没做</li>
+            <li>"又"字句式 — 承认反复失败（最强信号）</li>
+            <li>导入的笔记内容 — 你关心的事</li>
+            <li>未完成待办 — 有意愿但执行困难</li>
+            <li>AI深度分析 — 发现深层反复模式</li>
+          </ul>
         </div>
       )}
     </div>
