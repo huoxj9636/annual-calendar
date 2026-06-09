@@ -1434,7 +1434,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
 
       {helpTooltipPos && (
         <div className="fixed z-[9999] w-80 rounded-xl p-5 text-xs leading-relaxed"
-          style={{ top: helpTooltipPos.top - 10, left: helpTooltipPos.left, backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2, transform: 'translateY(-100%)' }}>
+          style={{ top: helpTooltipPos.top, left: helpTooltipPos.left, backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2 }}>
           <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>6大数据源</div>
           <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
             <li>日历勾叉模式 — 连续✗、工作日周末落差</li>
