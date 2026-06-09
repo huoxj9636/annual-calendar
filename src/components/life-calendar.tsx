@@ -1068,10 +1068,10 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                       <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                              onBlur={() => saveTitle(o.id)}
                              onKeyDown={e => { if (e.key === 'Enter') saveTitle(o.id); if (e.key === 'Escape') setEditingId(null); }}
-                             className="w-full text-base font-bold outline-none rounded-lg px-2 py-1 mb-1"
-                             style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                             className="w-full text-base font-bold outline-none bg-transparent px-1 mb-1"
+                             style={{ color: s.text1, borderBottom: `1.5px solid ${swatch}` }} />
                     ) : (
-                      <h2 className="text-base font-bold cursor-pointer hover:opacity-80 mb-1 leading-snug" style={{ color: s.text1 }}
+                      <h2 className="text-base font-bold cursor-text hover:opacity-80 mb-1 leading-snug" style={{ color: s.text1 }}
                           onClick={() => { setEditingId(o.id); setEditText(o.title); }}>
                         <span style={{ color: swatch }}>O{goals.findIndex(g => g.id === o.id) + 1}</span> {o.title}
                       </h2>
@@ -1137,10 +1137,10 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                           <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                                  onBlur={() => saveTitle(kr.id)}
                                  onKeyDown={e => { if (e.key === 'Enter') saveTitle(kr.id); if (e.key === 'Escape') setEditingId(null); }}
-                                 className="flex-1 text-sm font-medium outline-none rounded-lg px-2 py-1"
-                                 style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                                 className="flex-1 text-sm font-medium outline-none bg-transparent px-1"
+                                 style={{ color: s.text1, borderBottom: `1.5px solid ${swatch}` }} />
                         ) : (
-                          <span className="flex-1 text-sm font-medium truncate cursor-pointer hover:opacity-80" style={{ color: s.text1 }}
+                          <span className="flex-1 text-sm font-medium truncate cursor-text hover:opacity-80" style={{ color: s.text1 }}
                                 onClick={() => { setEditingId(kr.id); setEditText(kr.title); }}>
                             <span style={{ color: swatch, fontWeight: 700 }}>KR{kri + 1}</span> {kr.title}
                           </span>
@@ -1191,10 +1191,10 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                               <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                                      onBlur={() => saveTitle(t.id)}
                                      onKeyDown={e => { if (e.key === 'Enter') saveTitle(t.id); if (e.key === 'Escape') setEditingId(null); }}
-                                     className="flex-1 text-xs outline-none rounded px-1.5 py-0.5"
-                                     style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                                     className={`flex-1 text-xs leading-relaxed outline-none bg-transparent px-0.5 ${t.done ? 'line-through' : ''}`}
+                                     style={{ color: t.done ? s.textMuted : s.text1, borderBottom: `1.5px solid ${swatch}` }} />
                             ) : (
-                              <span className={`flex-1 text-xs leading-relaxed ${t.done ? 'line-through' : ''}`} style={{ color: t.done ? s.textMuted : s.text2 }}
+                              <span className={`flex-1 text-xs leading-relaxed cursor-text ${t.done ? 'line-through' : ''}`} style={{ color: t.done ? s.textMuted : s.text2 }}
                                     onClick={() => { setEditingId(t.id); setEditText(t.title); }}>{t.title}</span>
                             )}
                             <button onClick={() => deleteTask(o.id, kr.id, t.id, t.title)}
