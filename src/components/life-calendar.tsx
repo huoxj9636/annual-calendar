@@ -885,11 +885,6 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                       {discoveredThemes.length > 0 ? '选择你想改变的方向' : (discoveryMessage || '选择你最想改变的方向')}
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => startDiscovery()}
-                        className="text-xs px-2.5 py-1 rounded-md transition-colors cursor-pointer"
-                        style={{ backgroundColor: swatch + '15', color: swatch }}>
-                        重新扫描
-                      </button>
                       <button onClick={() => { setDiscoveryState('idle'); setDiscoveredThemes([]); setSelectedTheme(null); }}
                         className="text-xs px-2.5 py-1 rounded-md transition-colors cursor-pointer"
                         style={{ backgroundColor: s.cardBg, color: s.textMuted, border: `1px solid ${s.divider}` }}>
@@ -988,10 +983,11 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => {
-                      // Confirm: add the OKR
+                      // Confirm: add the OKR and expand all KRs
                       setGoals(prev => [...prev, pendingOKR]);
                       setSelectedOId(pendingOKR.id);
                       setAddedThemes(prev => new Set(prev).add(selectedTheme!));
+                      setExpandedKRs(prev => new Set([...prev, ...pendingOKR.children.map(kr => kr.id)]));
                       setPendingOKR(null);
                       setSelectedTheme(null);
                       setDiscoveryState('selecting'); // Go back to select more
