@@ -879,7 +879,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium" style={{ color: s.text1 }}>
-                      {discoveredThemes.length > 0 ? '选择你想改变的方向（可多选）' : (discoveryMessage || '选择你最想改变的方向')}
+                      {discoveredThemes.length > 0 ? '选择你想改变的方向' : (discoveryMessage || '选择你最想改变的方向')}
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => startDiscovery()}
