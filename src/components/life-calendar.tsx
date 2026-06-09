@@ -381,11 +381,12 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
   const [aiDecompose, setAiDecompose] = useState<{ loading: boolean; objectiveTitle: string; result: { keyResults: { title: string; targetValue: number; tasks: string[] }[] } | null; objectiveId: string }>({ loading: false, objectiveTitle: '', result: null, objectiveId: '' });
 
   // Goal discovery flow
-  const [discoveryState, setDiscoveryState] = useState<'idle' | 'scanning' | 'selecting' | 'generating'>('idle');
+  const [discoveryState, setDiscoveryState] = useState<'idle' | 'scanning' | 'selecting' | 'generating' | 'previewing'>('idle');
 
   const [discoveredThemes, setDiscoveredThemes] = useState<Array<{ keyword: string; count: number; pattern: string; suggestion: string }>>([]);
   const [discoveryMessage, setDiscoveryMessage] = useState('');
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
+  const [pendingOKR, setPendingOKR] = useState<OKRObjective | null>(null);
 
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
@@ -534,6 +535,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
   const generateOKRFromTheme = useCallback(async (theme: string) => {
     setSelectedTheme(theme);
     setDiscoveryState('generating');
+    setPendingOKR(null);
     try {
       const res = await fetch('/api/generate-okr', {
         method: 'POST',
@@ -546,7 +548,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
         setDiscoveryState('selecting');
         return;
       }
-      // Create the objective with KRs and tasks
+      // Create the objective with KRs and tasks, but DON'T add yet — preview first
       const o: OKRObjective = {
         id: genId(),
         title: data.objective || theme,
@@ -565,10 +567,8 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
         })),
         createdAt: Date.now(),
       };
-      setGoals(prev => [...prev, o]);
-      setSelectedOId(o.id);
-      setDiscoveryState('idle');
-      setSelectedTheme(null);
+      setPendingOKR(o);
+      setDiscoveryState('previewing');
     } catch {
       setDiscoveryMessage('生成失败，请稍后重试');
       setDiscoveryState('selecting');
@@ -909,6 +909,68 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                   </div>
                   <p className="text-sm" style={{ color: s.text2 }}>正在围绕「{selectedTheme}」生成OKR...</p>
                   <p className="text-xs" style={{ color: s.textMuted }}>AI正在拆解可执行的目标和步骤</p>
+                </div>
+              )}
+              {discoveryState === 'previewing' && pendingOKR && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium" style={{ color: s.text1 }}>
+                      预览生成的OKR
+                    </div>
+                    <button onClick={() => { setDiscoveryState('selecting'); setPendingOKR(null); setSelectedTheme(null); }}
+                      className="text-xs px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                      style={{ backgroundColor: swatch + '15', color: swatch }}>
+                      返回选择
+                    </button>
+                  </div>
+                  {/* OKR Preview Card */}
+                  <div className="rounded-lg p-4" style={{ backgroundColor: swatch + '08', border: `1px solid ${swatch}20` }}>
+                    <div className="mb-3">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ backgroundColor: swatch + '18', color: swatch }}>目标</span>
+                      <p className="text-sm font-semibold mt-1.5" style={{ color: s.text1 }}>{pendingOKR.title}</p>
+                    </div>
+                    {pendingOKR.children.map((kr, ki) => (
+                      <div key={kr.id} className="ml-3 mb-2.5 pl-3" style={{ borderLeft: `2px solid ${swatch}30` }}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: swatch + '12', color: swatch }}>KR{ki + 1}</span>
+                          <span className="text-xs font-medium" style={{ color: s.text1 }}>{kr.title}</span>
+                        </div>
+                        {kr.children.length > 0 && (
+                          <div className="ml-4 flex flex-col gap-0.5">
+                            {kr.children.map(task => (
+                              <div key={task.id} className="flex items-center gap-1.5 text-[11px]" style={{ color: s.text2 }}>
+                                <span style={{ color: swatch }}>○</span> {task.title}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => {
+                      // Confirm: add the OKR
+                      setGoals(prev => [...prev, pendingOKR]);
+                      setSelectedOId(pendingOKR.id);
+                      setPendingOKR(null);
+                      setSelectedTheme(null);
+                      setDiscoveryState('selecting'); // Go back to select more
+                    }}
+                      className="flex-1 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 cursor-pointer"
+                      style={{ backgroundColor: swatch, color: '#fff' }}>
+                      添加到目标
+                    </button>
+                    <button onClick={() => {
+                      // Cancel: discard and go back to select another
+                      setPendingOKR(null);
+                      setSelectedTheme(null);
+                      setDiscoveryState('selecting');
+                    }}
+                      className="flex-1 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
+                      style={{ backgroundColor: s.cardBg, color: s.text2, border: `1px solid ${s.divider}` }}>
+                      不添加，继续选择
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
