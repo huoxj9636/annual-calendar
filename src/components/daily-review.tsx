@@ -806,18 +806,20 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                           body: JSON.stringify(importMode === 'text' ? { text: importHtml, year, month, day } : { html: importHtml }),
                         });
                         const data = await res.json();
-                        // 完成，进度条填满
                         if (importTimerRef.current) clearInterval(importTimerRef.current);
                         setImportProgress(100);
-                        await new Promise(r => setTimeout(r, 400)); // 让用户看到100%
+                        await new Promise(r => setTimeout(r, 300)); // 让用户看到100%
                         if (data.error) {
                           alert(data.error);
+                        } else if (data.taskId) {
+                          // 异步任务已创建，后台处理中
+                          // 关闭导入弹窗，用户可通过"后台任务"按钮查看进度
+                          setShowImport(false);
+                          setImportHtml('');
                         } else {
-                          // 刷新当前日期的复盘数据
+                          // 兼容旧版同步返回
                           const freshData = await loadReview(year, month, day);
-                          console.log('[Import] freshData:', JSON.stringify(freshData));
                           if (freshData) setReview(freshData);
-                          // 自动关闭弹窗并清空
                           setShowImport(false);
                           setImportHtml('');
                         }

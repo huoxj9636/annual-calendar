@@ -108,6 +108,13 @@ export default function YearCalendar() {
   const [reviewDays, setReviewDays] = useState<Set<string>>(new Set());
   const [actionDays, setActionDays] = useState<Set<string>>(new Set());
 
+  // 后台导入任务
+  const [bgTasks, setBgTasks] = useState<Array<{
+    id: string; status: string; total: number; processed: number; saved: number;
+    progress: number; createdAt: number; updatedAt: number; error?: string;
+  }>>([]);
+  const [showBgTasks, setShowBgTasks] = useState(false);
+
   // Refresh reviewDays from DB
   const refreshReviewDays = useCallback(async () => {
     try {
@@ -445,6 +452,29 @@ export default function YearCalendar() {
       localStorage.setItem('calendar-module-order', JSON.stringify(moduleOrder));
     } catch { /* ignore */ }
   }, [moduleOrder, mounted]);
+
+  // 后台任务轮询：每3秒检查一次任务状态
+  useEffect(() => {
+    if (!mounted) return;
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/import-review?action=tasks');
+        if (res.ok) {
+          const data = await res.json();
+          setBgTasks(data.tasks || []);
+          // 如果有正在进行的任务，刷新reviewDays
+          const hasActive = (data.tasks || []).some((t: { status: string }) => t.status === 'processing' || t.status === 'pending');
+          if (!hasActive && (data.tasks || []).some((t: { status: string }) => t.status === 'completed')) {
+            // 有刚完成的任务，刷新数据
+            refreshReviewDays();
+          }
+        }
+      } catch { /* ignore */ }
+    };
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, [mounted, refreshReviewDays]);
 
   const saveNote = useCallback(() => {
     if (!notePopup) return;
@@ -815,6 +845,23 @@ export default function YearCalendar() {
                         )}
                       </button>
                   </div>
+                  {/* 后台任务按钮 */}
+                  {bgTasks.filter(t => t.status === 'pending' || t.status === 'processing').length > 0 && (
+                    <button
+                      onClick={() => setShowBgTasks(v => !v)}
+                      className="w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer hover:opacity-80 relative"
+                      style={{
+                        backgroundColor: skin.swatch,
+                        color: 'white',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                      }}
+                      title="后台任务"
+                    >
+                      <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                      </svg>
+                    </button>
+                  )}
                   {/* 下一年按钮 */}
                   <button
                     onClick={() => setYear((y) => y + 1)}
@@ -1863,6 +1910,66 @@ export default function YearCalendar() {
                 设置后，该日期之后没有复盘内容的日期默认标记为 ✗
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 后台任务面板 */}
+      {showBgTasks && (
+        <div className="fixed top-4 right-4 z-50 w-80 rounded-xl shadow-2xl overflow-hidden"
+          style={{
+            backgroundColor: skin.panelBg,
+            border: `1px solid ${skin.cellBorder}`,
+            boxShadow: `0 25px 60px -12px rgba(0,0,0,0.25)`,
+          }}
+        >
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${skin.cellBorder}` }}>
+            <h3 className="text-sm font-semibold" style={{ color: skin.textPrimary }}>后台任务</h3>
+            <button onClick={() => setShowBgTasks(false)}
+              className="w-5 h-5 rounded flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer"
+              style={{ color: skin.textSecondary }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+          </div>
+          <div className="max-h-64 overflow-y-auto p-3 space-y-2">
+            {bgTasks.length === 0 && (
+              <p className="text-xs text-center py-4" style={{ color: skin.textMuted }}>暂无任务</p>
+            )}
+            {bgTasks.map(task => (
+              <div key={task.id} className="rounded-lg p-3" style={{ backgroundColor: `${skin.swatch}08`, border: `1px solid ${skin.swatch}15` }}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-medium" style={{ color: skin.textPrimary }}>
+                    {task.status === 'pending' && '等待中...'}
+                    {task.status === 'processing' && '分析中...'}
+                    {task.status === 'completed' && '已完成'}
+                    {task.status === 'failed' && '失败'}
+                  </span>
+                  <span className="text-[10px]" style={{ color: skin.textMuted }}>
+                    {task.processed}/{task.total} 条
+                  </span>
+                </div>
+                {/* 进度条 */}
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${skin.swatch}15` }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${task.progress}%`,
+                      backgroundColor: task.status === 'failed' ? '#ef4444' : skin.swatch,
+                    }}
+                  />
+                </div>
+                {task.status === 'completed' && (
+                  <p className="text-[10px] mt-1.5" style={{ color: skin.textSecondary }}>
+                    成功保存 {task.saved} 条复盘
+                  </p>
+                )}
+                {task.status === 'failed' && task.error && (
+                  <p className="text-[10px] mt-1.5" style={{ color: '#ef4444' }}>
+                    {task.error}
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

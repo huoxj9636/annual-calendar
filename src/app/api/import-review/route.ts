@@ -19,6 +19,51 @@ interface ClassifiedEntry {
   tomorrowTodo: string;
 }
 
+// ==================== 后台任务追踪 ====================
+
+type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+interface ImportTask {
+  id: string;
+  status: TaskStatus;
+  total: number;
+  processed: number;
+  saved: number;
+  createdAt: number;
+  updatedAt: number;
+  error?: string;
+}
+
+// 内存中的任务追踪（单服务实例足够）
+const tasks = new Map<string, ImportTask>();
+
+function createTask(total: number): ImportTask {
+  const id = `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const now = Date.now();
+  const task: ImportTask = { id, status: 'pending', total, processed: 0, saved: 0, createdAt: now, updatedAt: now };
+  tasks.set(id, task);
+  return task;
+}
+
+function updateTask(id: string, updates: Partial<ImportTask>): ImportTask | undefined {
+  const task = tasks.get(id);
+  if (!task) return undefined;
+  Object.assign(task, updates, { updatedAt: Date.now() });
+  return task;
+}
+
+// 清理超过1小时的已完成/失败任务
+function cleanupOldTasks(): void {
+  const now = Date.now();
+  for (const [id, task] of tasks) {
+    if ((task.status === 'completed' || task.status === 'failed') && now - task.updatedAt > 3600000) {
+      tasks.delete(id);
+    }
+  }
+}
+
+// ==================== 解析函数 ====================
+
 /**
  * 浮木笔记结构化解析
  * 格式: <div class="time">2026-06-09 19:30:11</div><div class="content"><p>...</p></div>
@@ -148,60 +193,6 @@ function parseHTMLEntries(html: string, reqYear?: number): ParsedEntry[] {
 }
 
 /**
- * 从纯文本中提取日期+内容条目
- * 支持格式同 HTML，但不去除标签
- */
-function parseTextEntries(text: string, reqYear?: number): ParsedEntry[] {
-  const currentYear = reqYear || new Date().getFullYear();
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-
-  const datePatterns = [
-    /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,
-    /(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/,
-    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,
-  ];
-
-  const entries: ParsedEntry[] = [];
-  let currentDate: string | null = null;
-  let currentContent: string[] = [];
-
-  for (const line of lines) {
-    let matched: RegExpMatchArray | null = null;
-    let y = '', m = '', d = '';
-
-    for (const pat of datePatterns) {
-      matched = line.match(pat);
-      if (matched) {
-        if (pat === datePatterns[2]) {
-          d = matched[1]; m = matched[2]; y = matched[3];
-        } else {
-          y = matched[1]; m = matched[2]; d = matched[3];
-        }
-        break;
-      }
-    }
-
-    if (matched && m && d) {
-      if (!y) y = String(currentYear);
-      if (currentDate && currentContent.length > 0) {
-        entries.push({ date: currentDate, content: currentContent.join('\n').trim() });
-      }
-      currentDate = `${y}-${parseInt(m)}-${parseInt(d)}`;
-      const rest = line.replace(matched[0], '').trim();
-      currentContent = rest ? [rest] : [];
-    } else if (currentDate) {
-      currentContent.push(line);
-    }
-  }
-
-  if (currentDate && currentContent.length > 0) {
-    entries.push({ date: currentDate, content: currentContent.join('\n').trim() });
-  }
-
-  return entries;
-}
-
-/**
  * 修复JSON字符串中字符串值内的裸换行符
  * 逐字符扫描，仅在字符串值内部将 \n 替换为 \\n
  */
@@ -243,10 +234,12 @@ function fixJsonNewlines(json: string): string {
   return result;
 }
 
+// ==================== AI 分类 ====================
+
 /**
  * 使用 LLM 将笔记内容分类到6个复盘维度
  */
-async function classifyWithAI(entries: ParsedEntry[], request: NextRequest, fallbackDate?: { year?: number; month?: number; day?: number }): Promise<ClassifiedEntry[]> {
+async function classifyWithAI(entries: ParsedEntry[], requestHeaders: Headers, fallbackDate?: { year?: number; month?: number; day?: number }): Promise<ClassifiedEntry[]> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { LLMClient, Config, HeaderUtils } = require('coze-coding-dev-sdk');
 
@@ -322,7 +315,7 @@ ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
     const data = await response.json();
     aiResult = data.choices?.[0]?.message?.content || '';
   } else {
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+    const customHeaders = HeaderUtils.extractForwardHeaders(requestHeaders);
     const config = new Config();
     const client = new LLMClient(config, customHeaders);
 
@@ -344,7 +337,6 @@ ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
   }
 
   // 解析 AI 返回的 JSON
-  // 尝试多种提取方式，兼容 markdown 代码块、非标准格式等
   let jsonStr: string | null = null;
 
   // 方式1: 提取 markdown 代码块中的 JSON
@@ -381,15 +373,11 @@ ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
   try {
     parsed = JSON.parse(jsonStr);
   } catch (e1) {
-    // 修复策略：暴力重建JSON，确保字符串值中的换行符被正确转义
     console.log('[Import Review] First parse failed, attempting robust fix...');
     try {
-      // 将整个JSON字符串中的真实换行替换（仅在字符串值内部）
-      // 策略：逐字符扫描，跟踪是否在字符串内部，仅转义字符串内的裸换行
       const fixed = fixJsonNewlines(jsonStr);
       parsed = JSON.parse(fixed);
     } catch (e2) {
-      // 最后尝试：提取所有 {...} 对象
       console.log('[Import Review] Second parse failed, extracting individual objects...');
       try {
         const objects: unknown[] = [];
@@ -413,8 +401,6 @@ ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
           parsed = objects;
         } else {
           console.error('[Import Review] All parse attempts failed. Raw (first 2000):', jsonStr.substring(0, 2000));
-          console.error('[Import Review] Original error:', e1);
-          console.error('[Import Review] Fix error:', e2);
           throw new Error('AI 返回的JSON解析失败，请重试。');
         }
       } catch (e3) {
@@ -432,7 +418,6 @@ ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
   const classified: ClassifiedEntry[] = (parsed as Record<string, string>[]).map((item) => {
     const parts = (item.date || '').split('-').map(Number);
     if (parts.length < 3 || parts.some(isNaN)) {
-      // 如果日期解析失败，使用回退日期
       const now = new Date();
       parts[0] = fallbackDate?.year || now.getFullYear();
       parts[1] = fallbackDate?.month || (now.getMonth() + 1);
@@ -455,61 +440,47 @@ ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
   return classified;
 }
 
-export async function POST(request: NextRequest) {
+// ==================== 后台处理核心 ====================
+
+async function processImportTask(
+  taskId: string,
+  entries: ParsedEntry[],
+  requestHeaders: Headers,
+  fallbackDate: { year?: number; month?: number; day?: number }
+): Promise<void> {
   try {
-    const body = await request.json();
-    const { html, text, year: reqYear, month: reqMonth, day: reqDay } = body as {
-      html?: string; text?: string; year?: number; month?: number; day?: number;
-    };
+    updateTask(taskId, { status: 'processing' });
 
-    const isTextMode = !!text;
-    const input = isTextMode ? text : html;
+    const batchSize = 20;
+    const allClassified: ClassifiedEntry[] = [];
+    const totalBatches = Math.ceil(entries.length / batchSize);
 
-    if (!input || typeof input !== 'string') {
-      return NextResponse.json({ error: '缺少 text 或 html 参数' }, { status: 400 });
-    }
+    for (let i = 0; i < entries.length; i += batchSize) {
+      const batchIdx = Math.floor(i / batchSize);
+      const batch = entries.slice(i, i + batchSize);
 
-    let entries: ParsedEntry[];
-
-    if (isTextMode) {
-      // 文本模式：不需要日期，整段文本直接归类到当前复盘日期
-      const now = new Date();
-      const fallbackDate = `${reqYear || now.getFullYear()}-${reqMonth || (now.getMonth() + 1)}-${reqDay || now.getDate()}`;
-      entries = [{ date: fallbackDate, content: text.trim() }];
-    } else {
-      // HTML 模式：从HTML中解析多个日期条目
-      entries = parseHTMLEntries(html!, reqYear);
-    }
-
-    if (entries.length === 0) {
-      return NextResponse.json({ error: '未能从 HTML 中解析出任何日期条目。请确保内容中包含日期（如 2024年1月1日 或 2024-01-01）。' }, { status: 400 });
-    }
-
-    // Step 2: AI 分类（不润色原文，原样归类到6个维度）
-    // 分批处理避免AI一次性处理太多条目导致截断或失败
-    let classified: ClassifiedEntry[];
-
-    if (entries.length <= 20) {
-      classified = await classifyWithAI(entries, request, { year: reqYear, month: reqMonth, day: reqDay });
-    } else {
-      // 分批处理，每批20条
-      const batchSize = 20;
-      const allClassified: ClassifiedEntry[] = [];
-      for (let i = 0; i < entries.length; i += batchSize) {
-        const batch = entries.slice(i, i + batchSize);
-        const batchResult = await classifyWithAI(batch, request, { year: reqYear, month: reqMonth, day: reqDay });
+      try {
+        const batchResult = await classifyWithAI(batch, requestHeaders, fallbackDate);
         allClassified.push(...batchResult);
+      } catch (err) {
+        // 单批失败不影响其他批次，记录错误继续
+        console.error(`[Import Task ${taskId}] Batch ${batchIdx + 1}/${totalBatches} failed:`, err instanceof Error ? err.message : err);
       }
-      classified = allClassified;
+
+      // 更新进度
+      updateTask(taskId, { processed: Math.min(i + batchSize, entries.length) });
     }
 
-    // Step 3: 保存到数据库（追加模式）
+    if (allClassified.length === 0) {
+      updateTask(taskId, { status: 'failed', error: '所有批次AI分类均失败，请重试' });
+      return;
+    }
+
+    // 保存到数据库
     const supabase = getSupabaseClient();
+    let savedCount = 0;
 
-    const savedCount: number[] = [];
-
-    for (const entry of classified) {
-      // 读取已有数据
+    for (const entry of allClassified) {
       const { data: existing } = await supabase
         .from('daily_reviews')
         .select('*')
@@ -521,7 +492,6 @@ export async function POST(request: NextRequest) {
       const fields = ['completed', 'goodThings', 'problems', 'mood', 'reflections', 'tomorrowTodo'] as const;
 
       if (existing) {
-        // 追加模式：在已有内容后添加新内容
         const updated: Record<string, string | number> = {};
         for (const f of fields) {
           const oldVal = (existing as Record<string, string | number | null>)[f] as string || '';
@@ -545,7 +515,7 @@ export async function POST(request: NextRequest) {
           .eq('month', entry.month)
           .eq('day', entry.day);
 
-        if (!error) savedCount.push(entry.day);
+        if (!error) savedCount++;
       } else {
         const { error } = await supabase
           .from('daily_reviews')
@@ -563,23 +533,117 @@ export async function POST(request: NextRequest) {
             energy: 3,
           }, { onConflict: 'year,month,day' });
 
-        if (!error) savedCount.push(entry.day);
+        if (!error) savedCount++;
       }
     }
 
+    updateTask(taskId, { status: 'completed', saved: savedCount, processed: allClassified.length });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[Import Task ${taskId}] Error:`, msg);
+    updateTask(taskId, { status: 'failed', error: msg });
+  }
+}
+
+// ==================== API 路由 ====================
+
+// GET: 查询任务状态
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const action = searchParams.get('action');
+
+  if (action === 'tasks') {
+    // 返回所有任务列表
+    cleanupOldTasks();
+    const taskList = Array.from(tasks.values())
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map(t => ({
+        id: t.id,
+        status: t.status,
+        total: t.total,
+        processed: t.processed,
+        saved: t.saved,
+        progress: t.total > 0 ? Math.round((t.processed / t.total) * 100) : 0,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        error: t.error,
+      }));
+    return NextResponse.json({ tasks: taskList });
+  }
+
+  if (action === 'status') {
+    const taskId = searchParams.get('taskId');
+    if (!taskId) {
+      return NextResponse.json({ error: '缺少 taskId' }, { status: 400 });
+    }
+    const task = tasks.get(taskId);
+    if (!task) {
+      return NextResponse.json({ error: '任务不存在' }, { status: 404 });
+    }
     return NextResponse.json({
-      success: true,
+      id: task.id,
+      status: task.status,
+      total: task.total,
+      processed: task.processed,
+      saved: task.saved,
+      progress: task.total > 0 ? Math.round((task.processed / task.total) * 100) : 0,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+      error: task.error,
+    });
+  }
+
+  return NextResponse.json({ error: '未知操作' }, { status: 400 });
+}
+
+// POST: 创建导入任务（异步后台执行）
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { html, text, year: reqYear, month: reqMonth, day: reqDay } = body as {
+      html?: string; text?: string; year?: number; month?: number; day?: number;
+    };
+
+    const isTextMode = !!text;
+    const input = isTextMode ? text : html;
+
+    if (!input || typeof input !== 'string') {
+      return NextResponse.json({ error: '缺少 text 或 html 参数' }, { status: 400 });
+    }
+
+    let entries: ParsedEntry[];
+
+    if (isTextMode) {
+      const now = new Date();
+      const fallbackDate = `${reqYear || now.getFullYear()}-${reqMonth || (now.getMonth() + 1)}-${reqDay || now.getDate()}`;
+      entries = [{ date: fallbackDate, content: text.trim() }];
+    } else {
+      entries = parseHTMLEntries(html!, reqYear);
+    }
+
+    if (entries.length === 0) {
+      return NextResponse.json({ error: '未能从 HTML 中解析出任何日期条目。请确保内容中包含日期（如 2024年1月1日 或 2024-01-01）。' }, { status: 400 });
+    }
+
+    // 创建后台任务
+    const task = createTask(entries.length);
+
+    // 克隆 headers 以便在后台使用（原 request 可能被消费后关闭）
+    const headerPairs: [string, string][] = [];
+    request.headers.forEach((v, k) => headerPairs.push([k, v]));
+    const clonedHeaders = new Headers(headerPairs);
+
+    // 后台异步执行（不 await，立即返回 taskId）
+    processImportTask(task.id, entries, clonedHeaders, { year: reqYear, month: reqMonth, day: reqDay })
+      .catch(err => {
+        console.error(`[Import Task ${task.id}] Unhandled error:`, err);
+        updateTask(task.id, { status: 'failed', error: err instanceof Error ? err.message : 'Unknown error' });
+      });
+
+    return NextResponse.json({
+      taskId: task.id,
       total: entries.length,
-      saved: savedCount.length,
-      entries: classified.map(e => ({
-        date: e.date,
-        completed: e.completed,
-        goodThings: e.goodThings,
-        problems: e.problems,
-        mood: e.mood,
-        reflections: e.reflections,
-        tomorrowTodo: e.tomorrowTodo,
-      })),
+      message: `已创建导入任务，共${entries.length}条记录正在后台处理`,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
