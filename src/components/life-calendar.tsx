@@ -1032,52 +1032,84 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
         }}>
         {!selectedO ? (
           <div className="flex flex-col items-center justify-center h-full" style={{ color: s.textMuted }}>
-            <span className="text-5xl mb-3">👈</span>
-            <p>选择左侧目标查看详情</p>
+            <svg className="w-16 h-16 mb-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            <p className="text-sm">选择左侧目标查看详情</p>
           </div>
         ) : (() => {
           const o = selectedO;
           const oPct = Math.round(oProgress(o) * 100);
+          const krCount = o.children.length;
+          const taskDone = o.children.reduce((a, kr) => a + kr.children.filter(t => t.done).length, 0);
+          const taskTotal = o.children.reduce((a, kr) => a + kr.children.length, 0);
           return (
-            <div className="p-6 space-y-5">
+            <div className="p-5 space-y-4">
 
-              {/* ── O Header ── */}
-              <div>
-                <div className="flex items-center gap-3">
-                  {editingId === o.id ? (
-                    <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
-                           onBlur={() => saveTitle(o.id)}
-                           onKeyDown={e => { if (e.key === 'Enter') saveTitle(o.id); if (e.key === 'Escape') setEditingId(null); }}
-                           className="flex-1 text-lg font-bold outline-none rounded-lg px-2 py-1"
-                           style={{ backgroundColor: s.cardBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                  ) : (
-                    <h2 className="flex-1 text-lg font-bold cursor-pointer hover:opacity-80" style={{ color: s.text1 }}
-                        onClick={() => { setEditingId(o.id); setEditText(o.title); }}>
-                      <span style={{ color: swatch }}>O{goals.findIndex(g => g.id === o.id) + 1}：</span>{o.title}
-                    </h2>
-                  )}
-                  <span className="text-2xl font-bold flex-shrink-0" style={{ color: oPct > 0 ? swatch : s.textMuted }}>{oPct}%</span>
-                  <button onClick={() => decomposeOKR(o.id)} disabled={aiDecompose.loading}
-                          className="text-xs px-2.5 py-1 rounded-lg font-medium flex-shrink-0 transition-all hover:opacity-80"
-                          style={{ backgroundColor: `${swatch}18`, color: swatch, border: `1px solid ${swatch}40` }}>
-                    {aiDecompose.loading && aiDecompose.objectiveId === o.id ? 'AI拆解中...' : 'AI 拆解'}
-                  </button>
-                  <button onClick={() => deleteObjective(o.id, o.title)}
-                          className="text-sm px-3 py-1.5 rounded hover:opacity-70" style={{ color: '#ef4444', backgroundColor: '#ef444412', border: '1px solid #ef444430' }}>删除</button>
+              {/* ── O Header: circular progress + info ── */}
+              <div className="rounded-2xl p-5" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+                <div className="flex items-start gap-4">
+                  {/* Circular progress */}
+                  <div className="relative flex-shrink-0" style={{ width: 64, height: 64 }}>
+                    <svg viewBox="0 0 36 36" className="w-16 h-16 -rotate-90">
+                      <circle cx="18" cy="18" r="15.5" fill="none" stroke={s.progressTrack} strokeWidth="2.5" />
+                      <circle cx="18" cy="18" r="15.5" fill="none"
+                        stroke={oPct >= 100 ? '#22c55e' : swatch} strokeWidth="2.5"
+                        strokeDasharray={`${oPct} 100`} strokeLinecap="round"
+                        className="transition-all duration-700" />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-sm font-bold" style={{ color: oPct > 0 ? swatch : s.textMuted }}>{oPct}%</span>
+                    </div>
+                  </div>
+                  {/* Title & stats */}
+                  <div className="flex-1 min-w-0">
+                    {editingId === o.id ? (
+                      <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
+                             onBlur={() => saveTitle(o.id)}
+                             onKeyDown={e => { if (e.key === 'Enter') saveTitle(o.id); if (e.key === 'Escape') setEditingId(null); }}
+                             className="w-full text-base font-bold outline-none rounded-lg px-2 py-1 mb-1"
+                             style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                    ) : (
+                      <h2 className="text-base font-bold cursor-pointer hover:opacity-80 mb-1 leading-snug" style={{ color: s.text1 }}
+                          onClick={() => { setEditingId(o.id); setEditText(o.title); }}>
+                        <span style={{ color: swatch }}>O{goals.findIndex(g => g.id === o.id) + 1}</span> {o.title}
+                      </h2>
+                    )}
+                    <div className="flex items-center gap-3 text-xs" style={{ color: s.textMuted }}>
+                      <span>{krCount} 个关键结果</span>
+                      <span>·</span>
+                      <span>已完成 {taskDone}/{taskTotal} 任务</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-1 text-xs" style={{ color: s.textMuted }}>{o.children.length} 个关键结果</div>
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 mt-4 pt-3" style={{ borderTop: `1px solid ${s.divider}` }}>
+                  <button onClick={() => decomposeOKR(o.id)} disabled={aiDecompose.loading}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-all hover:opacity-80"
+                          style={{ backgroundColor: `${swatch}15`, color: swatch, border: `1px solid ${swatch}30` }}>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    {aiDecompose.loading && aiDecompose.objectiveId === o.id ? '拆解中...' : 'AI 拆解'}
+                  </button>
+                  <div className="flex-1" />
+                  <button onClick={() => deleteObjective(o.id, o.title)}
+                          className="text-xs px-3 py-1.5 rounded-lg transition-all hover:opacity-70"
+                          style={{ color: '#ef4444', backgroundColor: '#ef444410', border: '1px solid #ef444420' }}>删除目标</button>
+                </div>
               </div>
 
-              {/* ── Add KR inline ── */}
-              <div className="flex items-center gap-2 py-2" style={{ borderBottom: `1px solid ${s.divider}` }}>
-                <span className="text-sm font-bold flex-shrink-0" style={{ color: swatch }}>+ KR</span>
+              {/* ── Add KR ── */}
+              <div className="rounded-xl flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+                <span className="text-xs font-bold flex-shrink-0" style={{ color: swatch }}>+ KR</span>
                 <input type="text" value={newKRTitle} onChange={e => setNewKRTitle(e.target.value)}
                        onKeyDown={e => e.key === 'Enter' && addKR(o.id)}
                        placeholder="添加关键结果..." className="flex-1 text-sm outline-none bg-transparent"
                        style={{ color: s.text1 }} />
                 <button onClick={voiceKR.phase !== 'idle' ? undefined : voiceKR.start}
-                        className="w-7 h-7 flex items-center justify-center rounded transition-all flex-shrink-0"
-                        style={{ color: voiceKR.phase !== 'idle' ? swatch : s.textMuted }}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg transition-all flex-shrink-0 hover:opacity-70"
+                        style={{ color: voiceKR.phase !== 'idle' ? swatch : s.textMuted, backgroundColor: voiceKR.phase !== 'idle' ? `${swatch}15` : 'transparent' }}
                         disabled={voiceKR.phase !== 'idle'}>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
@@ -1087,81 +1119,72 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                   </svg>
                 </button>
                 {newKRTitle.trim() && (
-                  <button onClick={() => addKR(o.id)} className="text-xs font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
+                  <button onClick={() => addKR(o.id)} className="text-xs font-bold flex-shrink-0 px-2 py-1 rounded-lg transition-all hover:opacity-80"
+                    style={{ color: '#fff', backgroundColor: swatch }}>添加</button>
                 )}
               </div>
 
-              {/* ── KR expand/collapse all ── */}
-              {o.children.length > 0 && (
-                <div className="flex justify-end gap-2 mb-1">
-                  <button
-                    onClick={() => { const all = new Set(o.children.map(k => k.id)); setExpandedKRs(prev => new Set([...prev, ...all])); }}
-                    className="text-xs px-2 py-0.5 rounded" style={{ color: s.text2 }}>展开全部</button>
-                  <span style={{ color: s.divider }}>|</span>
-                  <button
-                    onClick={() => { const ids = new Set(o.children.map(k => k.id)); setExpandedKRs(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; }); }}
-                    className="text-xs px-2 py-0.5 rounded" style={{ color: s.text2 }}>收起全部</button>
-                </div>
-              )}
-              {/* ── KR List ── */}
+              {/* ── KR Cards ── */}
               {o.children.map((kr, kri) => {
                 const krPct = Math.round(krProgress(kr) * 100);
-                const isExpanded = expandedKRs.has(kr.id);
                 const doneTasks = kr.children.filter(t => t.done).length;
                 return (
-                  <div key={kr.id} className="rounded-xl" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+                  <div key={kr.id} className="rounded-xl overflow-hidden" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
                     {/* KR header */}
-                    <div className="flex items-center gap-2 px-4 py-3 cursor-pointer"
-                         onClick={() => toggleKRExpand(kr.id)}>
-                      <span className="text-[10px] flex-shrink-0 transition-transform duration-200" style={{ color: s.textMuted, transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-                      {editingId === kr.id ? (
-                        <input autoFocus value={editText} onClick={e => e.stopPropagation()} onChange={e => setEditText(e.target.value)}
-                               onBlur={() => saveTitle(kr.id)}
-                               onKeyDown={e => { if (e.key === 'Enter') saveTitle(kr.id); if (e.key === 'Escape') setEditingId(null); }}
-                               className="flex-1 text-sm font-medium outline-none rounded px-1.5 py-0.5"
-                               style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                      ) : (
-                        <span className="flex-1 text-sm font-medium truncate" style={{ color: s.text1 }}
-                              onClick={e => { e.stopPropagation(); setEditingId(kr.id); setEditText(kr.title); }}>
-                          <span style={{ color: swatch, fontWeight: 600 }}>KR{kri + 1}：</span>{kr.title}
-                        </span>
-                      )}
-                      {/* Target value */}
-                      {editingTargetValue === kr.id ? (
-                        <input autoFocus type="number" min={1} value={editingTargetValue}
-                               onClick={e => e.stopPropagation()}
-                               onChange={e => setEditingTargetValue(e.target.value)}
-                               onBlur={() => saveTargetValue(o.id, kr.id)}
-                               onKeyDown={e => { if (e.key === 'Enter') saveTargetValue(o.id, kr.id); if (e.key === 'Escape') setEditingTargetValue(null); }}
-                               className="w-10 text-center text-xs outline-none rounded px-1 py-0.5"
-                               style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
-                      ) : (
-                        <span className="text-[10px] flex-shrink-0 cursor-pointer" style={{ color: s.textMuted }}
-                              onClick={e => { e.stopPropagation(); setEditingTargetValue(kr.id); setEditingTargetValue(String(kr.targetValue)); }}>
-                          目标{kr.targetValue}
-                        </span>
-                      )}
-                      <span className="text-[10px] flex-shrink-0" style={{ color: s.textMuted }}>{doneTasks}/{kr.children.length}</span>
-                      <span className="text-xs font-bold flex-shrink-0" style={{ color: krPct > 0 ? swatch : s.textMuted }}>{krPct}%</span>
-                      <button onClick={e => { e.stopPropagation(); deleteKR(o.id, kr.id, kr.title); }}
-                              className="text-sm px-2 py-1 rounded flex-shrink-0 hover:opacity-70" style={{ color: '#ef4444', backgroundColor: '#ef444412', border: '1px solid #ef444430' }}>删除</button>
+                    <div className="px-4 pt-3 pb-2">
+                      <div className="flex items-center gap-2">
+                        {editingId === kr.id ? (
+                          <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
+                                 onBlur={() => saveTitle(kr.id)}
+                                 onKeyDown={e => { if (e.key === 'Enter') saveTitle(kr.id); if (e.key === 'Escape') setEditingId(null); }}
+                                 className="flex-1 text-sm font-medium outline-none rounded-lg px-2 py-1"
+                                 style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                        ) : (
+                          <span className="flex-1 text-sm font-medium truncate cursor-pointer hover:opacity-80" style={{ color: s.text1 }}
+                                onClick={() => { setEditingId(kr.id); setEditText(kr.title); }}>
+                            <span style={{ color: swatch, fontWeight: 700 }}>KR{kri + 1}</span> {kr.title}
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {editingTargetValue === kr.id ? (
+                            <input autoFocus type="number" min={1} value={editingTargetValue}
+                                   onChange={e => setEditingTargetValue(e.target.value)}
+                                   onBlur={() => saveTargetValue(o.id, kr.id)}
+                                   onKeyDown={e => { if (e.key === 'Enter') saveTargetValue(o.id, kr.id); if (e.key === 'Escape') setEditingTargetValue(null); }}
+                                   className="w-10 text-center text-xs outline-none rounded px-1 py-0.5"
+                                   style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
+                          ) : (
+                            <span className="text-[10px] cursor-pointer hover:opacity-70" style={{ color: s.textMuted }}
+                                  onClick={() => setEditingTargetValue(kr.id)}>
+                              目标{kr.targetValue}
+                            </span>
+                          )}
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: `${swatch}12`, color: swatch }}>
+                            {doneTasks}/{kr.children.length}
+                          </span>
+                          <span className="text-xs font-bold" style={{ color: krPct > 0 ? swatch : s.textMuted }}>{krPct}%</span>
+                          <button onClick={() => deleteKR(o.id, kr.id, kr.title)}
+                                  className="w-5 h-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:opacity-80 transition-opacity"
+                                  style={{ color: '#ef4444' }}>
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="mt-2">{pb(krPct, 4)}</div>
                     </div>
 
-                    {/* KR progress bar */}
-                    <div className="px-4 pb-2">
-                      {pb(krPct, 4)}
-                    </div>
-
-                    {/* Expanded: Tasks */}
-                    {isExpanded && (
-                      <div className="px-4 pb-3 space-y-1">
-                        {/* Task list */}
+                    {/* Tasks */}
+                    {kr.children.length > 0 && (
+                      <div className="px-4 pb-2">
                         {kr.children.map(t => (
-                          <div key={t.id} className="flex items-center gap-2 py-1 group"
-                               style={{ borderBottom: `1px dashed ${s.divider}` }}>
+                          <div key={t.id} className="group flex items-center gap-2 py-1.5"
+                               style={{ borderBottom: `1px solid ${s.divider}20` }}>
                             <button onClick={() => toggleTask(o.id, kr.id, t.id)}
-                                    className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center transition-all"
-                                    style={{ border: `1.5px solid ${t.done ? '#22c55e' : s.textMuted}`, backgroundColor: t.done ? '#22c55e' : 'transparent' }}>
+                                    className="w-4 h-4 rounded-md flex-shrink-0 flex items-center justify-center transition-all"
+                                    style={{ border: `1.5px solid ${t.done ? '#22c55e' : s.textMuted}40`, backgroundColor: t.done ? '#22c55e' : 'transparent' }}>
                               {t.done && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                             </button>
                             {editingId === t.id ? (
@@ -1171,39 +1194,45 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                                      className="flex-1 text-xs outline-none rounded px-1.5 py-0.5"
                                      style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
                             ) : (
-                              <span className={`flex-1 text-xs ${t.done ? 'line-through' : ''}`} style={{ color: t.done ? s.textMuted : s.text2 }}
+                              <span className={`flex-1 text-xs leading-relaxed ${t.done ? 'line-through' : ''}`} style={{ color: t.done ? s.textMuted : s.text2 }}
                                     onClick={() => { setEditingId(t.id); setEditText(t.title); }}>{t.title}</span>
                             )}
                             <button onClick={() => deleteTask(o.id, kr.id, t.id, t.title)}
-                                    className="text-sm px-2 py-1 rounded flex-shrink-0 hover:opacity-70" style={{ color: '#ef4444', backgroundColor: '#ef444412', border: '1px solid #ef444430' }}>删除</button>
+                                    className="w-5 h-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:opacity-70 transition-opacity flex-shrink-0"
+                                    style={{ color: '#ef4444' }}>
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
                           </div>
                         ))}
-
-                        {/* Add task inline */}
-                        <div className="flex items-center gap-2 pt-1">
-                          <span className="text-[10px] flex-shrink-0" style={{ color: swatch }}>+ 任务</span>
-                          <input type="text" value={getTaskInput(kr.id)} onChange={e => setTaskInput(kr.id, e.target.value)}
-                                 onFocus={() => setActiveKRId(kr.id)}
-                                 onKeyDown={e => e.key === 'Enter' && addTask(o.id, kr.id)}
-                                 placeholder="添加任务..." className="flex-1 text-xs outline-none bg-transparent"
-                                 style={{ color: s.text1 }} />
-                          <button onClick={voiceTask.phase !== 'idle' ? undefined : () => { setActiveKRId(kr.id); voiceTask.start(); }}
-                                  className="flex-shrink-0 text-xs transition-colors"
-                                  style={{ color: voiceTask.phase !== 'idle' ? swatch : s.textMuted }}
-                                  disabled={voiceTask.phase !== 'idle'}>
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                              <line x1="12" y1="19" x2="12" y2="23" />
-                              <line x1="8" y1="23" x2="16" y2="23" />
-                            </svg>
-                          </button>
-                          {getTaskInput(kr.id).trim() && (
-                            <button onClick={() => addTask(o.id, kr.id)} className="text-[10px] font-bold flex-shrink-0" style={{ color: swatch }}>添加</button>
-                          )}
-                        </div>
                       </div>
                     )}
+
+                    {/* Add task */}
+                    <div className="px-4 pb-3 flex items-center gap-2">
+                      <svg className="w-3 h-3 flex-shrink-0" style={{ color: swatch }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <input type="text" value={getTaskInput(kr.id)} onChange={e => setTaskInput(kr.id, e.target.value)}
+                             onFocus={() => setActiveKRId(kr.id)}
+                             onKeyDown={e => e.key === 'Enter' && addTask(o.id, kr.id)}
+                             placeholder="添加任务..." className="flex-1 text-xs outline-none bg-transparent"
+                             style={{ color: s.text1 }} />
+                      <button onClick={voiceTask.phase !== 'idle' ? undefined : () => { setActiveKRId(kr.id); voiceTask.start(); }}
+                              className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded transition-colors hover:opacity-70"
+                              style={{ color: voiceTask.phase !== 'idle' ? swatch : s.textMuted }}
+                              disabled={voiceTask.phase !== 'idle'}>
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        </svg>
+                      </button>
+                      {getTaskInput(kr.id).trim() && (
+                        <button onClick={() => addTask(o.id, kr.id)} className="text-[10px] font-bold flex-shrink-0 px-1.5 py-0.5 rounded transition-all hover:opacity-80"
+                          style={{ color: '#fff', backgroundColor: swatch }}>添加</button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
