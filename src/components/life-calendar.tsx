@@ -930,15 +930,8 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
               )}
               {discoveryState === 'previewing' && pendingOKR && (
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium" style={{ color: s.text1 }}>
-                      预览生成的OKR
-                    </div>
-                    <button onClick={() => { setDiscoveryState('selecting'); setPendingOKR(null); setSelectedTheme(null); }}
-                      className="text-xs px-2.5 py-1 rounded-md transition-colors cursor-pointer"
-                      style={{ backgroundColor: swatch + '15', color: swatch }}>
-                      返回选择
-                    </button>
+                  <div className="text-sm font-medium" style={{ color: s.text1 }}>
+                    预览生成的OKR
                   </div>
                   {/* OKR Preview Card */}
                   <div className="rounded-lg p-4" style={{ backgroundColor: swatch + '08', border: `1px solid ${swatch}20` }}>
@@ -986,7 +979,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                     }}
                       className="flex-1 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
                       style={{ backgroundColor: s.cardBg, color: s.text2, border: `1px solid ${s.divider}` }}>
-                      不添加，继续选择
+                      不添加
                     </button>
                   </div>
                 </div>
