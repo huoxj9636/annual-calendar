@@ -811,28 +811,11 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
           {/* Continue discovery button (when goals exist and discovery is idle) */}
           {filteredGoals.length > 0 && discoveryState === 'idle' && (
             <div className="px-5 py-3">
-              <div className="flex items-center justify-center gap-1.5 relative group/morehelp">
-                <button onClick={startDiscovery}
-                  className="rounded-lg py-2 px-3 text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
-                  style={{ backgroundColor: swatch + '12', color: swatch, border: `1px solid ${swatch}25` }}>
-                  <span>🔍</span> 继续发现目标
-                </button>
-                <div className="w-[16px] h-[16px] rounded-full flex items-center justify-center cursor-default text-[9px] font-bold shrink-0"
-                  style={{ backgroundColor: swatch + '25', color: swatch }}>
-                  ?
-                </div>
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 rounded-xl p-4 text-xs leading-relaxed opacity-0 invisible group-hover/morehelp:opacity-100 group-hover/morehelp:visible transition-all duration-200 -translate-x-1 group-hover/morehelp:translate-x-0 pointer-events-none"
-                  style={{ backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2 }}>
-                  <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>搜集方向</div>
-                  <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
-                    <li>反复未解决的问题</li>
-                    <li>"应该"做但没做的事</li>
-                    <li>反复不满或焦虑</li>
-                    <li>想尝试但没行动</li>
-                    <li>反复出现的情绪模式</li>
-                  </ul>
-                </div>
-              </div>
+              <button onClick={startDiscovery}
+                className="w-full rounded-lg py-2 text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+                style={{ backgroundColor: swatch + '12', color: swatch, border: `1px solid ${swatch}25` }}>
+                <span>🔍</span> 继续发现目标
+              </button>
             </div>
           )}
 
@@ -899,6 +882,11 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                       {discoveredThemes.length > 0 ? '选择你想改变的方向' : (discoveryMessage || '选择你最想改变的方向')}
                     </div>
                     <div className="flex items-center gap-2">
+                      <button onClick={() => startDiscovery()}
+                        className="text-xs px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                        style={{ backgroundColor: swatch + '15', color: swatch }}>
+                        重新扫描
+                      </button>
                       <button onClick={() => { setDiscoveryState('idle'); setDiscoveredThemes([]); setSelectedTheme(null); }}
                         className="text-xs px-2.5 py-1 rounded-md transition-colors cursor-pointer"
                         style={{ backgroundColor: s.cardBg, color: s.textMuted, border: `1px solid ${s.divider}` }}>
