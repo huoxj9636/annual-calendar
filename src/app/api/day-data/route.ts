@@ -20,13 +20,14 @@ export async function GET(request: NextRequest) {
   if (eventsRes.error) return NextResponse.json({ error: eventsRes.error.message }, { status: 500 });
   if (todosRes.error) return NextResponse.json({ error: todosRes.error.message }, { status: 500 });
 
+  const pad = (n: number) => String(n).padStart(2, '0');
   const events = (eventsRes.data || []).map((e: Record<string, unknown>) => ({
     id: e.id,
     title: e.title,
-    startHour: e.start_hour ?? 0,
-    startMin: e.start_min ?? 0,
-    endHour: e.end_hour ?? 0,
-    endMin: e.end_min ?? 0,
+    time: `${pad((e.start_hour as number) ?? 0)}:${pad((e.start_min as number) ?? 0)}`,
+    endTime: e.end_hour != null || e.end_min != null
+      ? `${pad((e.end_hour as number) ?? 0)}:${pad((e.end_min as number) ?? 0)}`
+      : undefined,
   }));
 
   const todos = (todosRes.data || []).map((t: Record<string, unknown>) => ({
@@ -40,11 +41,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { year, month, day, events, todos } = body as {
+  const { year, month, day, type, data: rawData } = body as {
     year: number; month: number; day: number;
-    events: { id: string; title: string; startHour: number; startMin: number; endHour: number; endMin: number }[];
-    todos: { id: string; text: string; done: boolean }[];
+    type?: string;
+    data?: unknown[];
+    events?: { id: string; title: string; time?: string; endTime?: string; startHour?: number; startMin?: number; endHour?: number; endMin?: number; color?: string; done?: boolean }[];
+    todos?: { id: string; text: string; done: boolean }[];
   };
+
+  // Support both old format (type+data) and new format (events+todos)
+  type EventInput = { id: string; title: string; time?: string; endTime?: string; startHour?: number; startMin?: number; endHour?: number; endMin?: number };
+  type TodoInput = { id: string; text: string; done: boolean };
+  const events: EventInput[] | undefined = body.events || (type === 'events' ? rawData as EventInput[] : undefined);
+  const todos: TodoInput[] | undefined = body.todos || (type === 'todos' ? rawData as TodoInput[] : undefined);
 
   if (!year || !month || !day) {
     return NextResponse.json({ error: 'Missing params' }, { status: 400 });
@@ -58,15 +67,24 @@ export async function POST(request: NextRequest) {
 
   // Insert new events
   if (events && events.length > 0) {
-    const rows = events.map(e => ({
-      id: e.id, year, month, day,
-      title: e.title,
-      start_hour: e.startHour,
-      start_min: e.startMin,
-      end_hour: e.endHour,
-      end_min: e.endMin,
-      created_at: new Date().toISOString(),
-    }));
+    const parseTime = (t?: string) => {
+      if (!t) return { h: 0, m: 0 };
+      const parts = t.split(':').map(Number);
+      return { h: parts[0] ?? 0, m: parts[1] ?? 0 };
+    };
+    const rows = events.map(e => {
+      const start = e.startHour != null ? { h: e.startHour, m: e.startMin ?? 0 } : parseTime(e.time);
+      const end = e.endHour != null ? { h: e.endHour, m: e.endMin ?? 0 } : parseTime(e.endTime);
+      return {
+        id: e.id, year, month, day,
+        title: e.title,
+        start_hour: start.h,
+        start_min: start.m,
+        end_hour: end.h,
+        end_min: end.m,
+        created_at: new Date().toISOString(),
+      };
+    });
     const { error } = await client.from('day_events').insert(rows);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }

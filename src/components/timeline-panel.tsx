@@ -129,8 +129,9 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   const pad = (n: number) => String(n).padStart(2, '0');
 
   const timeToMinutes = (t: string) => {
+    if (!t) return 0;
     const [h, m] = t.split(':').map(Number);
-    return h * 60 + m;
+    return (h || 0) * 60 + (m || 0);
   };
   const minutesToTime = (m: number) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
 
