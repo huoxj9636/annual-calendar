@@ -845,7 +845,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                               style={{ backgroundColor: swatch + '25', color: swatch }}>
                               ?
                             </div>
-                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 rounded-xl p-4 text-xs leading-relaxed opacity-0 invisible group-hover/help:opacity-100 group-hover/help:visible transition-all duration-200 -translate-x-1 group-hover/help:translate-x-0 pointer-events-none"
+                            <div className="absolute bottom-full left-0 mb-2 z-50 w-72 rounded-xl p-4 text-xs leading-relaxed opacity-0 invisible group-hover/help:opacity-100 group-hover/help:visible transition-all duration-200 translate-y-1 group-hover/help:translate-y-0 pointer-events-none"
                               style={{ backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2 }}>
                               <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>6大数据源</div>
                               <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
