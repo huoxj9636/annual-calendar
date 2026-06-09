@@ -835,14 +835,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     style={{ backgroundColor: importing ? skin.textMuted : '#3b82f6' }}
                   >
                     {importing ? (
-                      <span className="flex items-center gap-2">
-                        <span>⏳ 正在解析和分类</span>
-                        <span className="inline-block w-24 h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: skin.textMuted + '30' }}>
-                          <span
-                            className="block h-full rounded-full transition-all duration-300 ease-out"
-                            style={{ width: `${importProgress}%`, background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }}
+                      <span className="flex flex-col items-center gap-2 w-full">
+                        <span>⏳ 正在解析和分类...</span>
+                        <div className="w-full h-3 rounded-full overflow-hidden" style={{ backgroundColor: skin.textMuted + '25' }}>
+                          <div
+                            className="h-full rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${importProgress}%`, background: `linear-gradient(90deg, ${skin.swatch}90, ${skin.swatch})` }}
                           />
-                        </span>
+                        </div>
                         <span className="text-xs opacity-70">{Math.round(importProgress)}%</span>
                       </span>
                     ) : '🚀 开始导入'}
@@ -922,7 +922,7 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWi
   };
 
   return (
-    <div className={`rounded-xl p-4 flex flex-col relative ${fullWidth ? 'col-span-2' : ''}`} style={{ backgroundColor: skin.cardBg }}>
+    <div className={`rounded-xl p-4 flex flex-col relative transition-colors duration-300 ${fullWidth ? 'col-span-2' : ''}`} style={{ backgroundColor: value.trim() ? skin.cardBg : `${skin.cardBg}60` }}>
       <div className="flex items-center gap-2 mb-3">
         <span className="text-base" style={{ color: skin.swatch }}>{icon}</span>
         <span className="text-base font-bold" style={{ color: skin.textPrimary }}>{title}</span>
