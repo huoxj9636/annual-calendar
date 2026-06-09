@@ -811,17 +811,19 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
           {/* Continue discovery button (when goals exist and discovery is idle) */}
           {filteredGoals.length > 0 && discoveryState === 'idle' && (
             <div className="px-5 py-3">
-              <div className="flex items-center justify-center relative group/morehelp">
-                <button onClick={startDiscovery}
-                  className="rounded-lg py-2 px-3 text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5"
-                  style={{ backgroundColor: swatch + '12', color: swatch, border: `1px solid ${swatch}25` }}>
-                  <span>🔍</span> 继续发现目标
-                  <div className="w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-bold shrink-0"
-                    style={{ backgroundColor: swatch + '25', color: swatch }}>
-                    ?
+              <div className="w-full rounded-xl p-4 text-left relative group/morehelp"
+                style={{ backgroundColor: swatch + '12', border: `1px solid ${swatch}25` }}>
+                <div className="flex items-center gap-2 cursor-pointer" onClick={startDiscovery}>
+                  <span className="text-lg">🔍</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium text-sm" style={{ color: swatch }}>继续发现目标</span>
+                    <div className="w-[16px] h-[16px] rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                      style={{ backgroundColor: swatch + '25', color: swatch }}>
+                      ?
+                    </div>
                   </div>
-                </button>
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 rounded-xl p-4 text-xs leading-relaxed opacity-0 invisible group-hover/morehelp:opacity-100 group-hover/morehelp:visible transition-all duration-200 -translate-x-1 group-hover/morehelp:translate-x-0 pointer-events-none"
+                </div>
+                <div className="absolute left-full top-4 ml-2 z-50 w-72 rounded-xl p-4 text-xs leading-relaxed opacity-0 invisible group-hover/morehelp:opacity-100 group-hover/morehelp:visible transition-all duration-200 -translate-x-1 group-hover/morehelp:translate-x-0"
                   style={{ backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2 }}>
                   <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>搜集方向</div>
                   <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
@@ -854,7 +856,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                               style={{ backgroundColor: swatch + '25', color: swatch }}>
                               ?
                             </div>
-                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 rounded-xl p-4 text-xs leading-relaxed opacity-0 invisible group-hover/help:opacity-100 group-hover/help:visible transition-all duration-200 -translate-x-1 group-hover/help:translate-x-0 pointer-events-none"
+                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 rounded-xl p-4 text-xs leading-relaxed opacity-0 invisible group-hover/help:opacity-100 group-hover/help:visible transition-all duration-200 -translate-x-1 group-hover/help:translate-x-0"
                               style={{ backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2 }}>
                               <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>搜集方向</div>
                               <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
