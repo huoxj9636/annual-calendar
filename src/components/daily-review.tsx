@@ -498,8 +498,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   setReview(empty);
                   await clearReview(year, month, day);
                 }}
-                  className="text-sm px-3 py-1.5 rounded-full font-medium transition-all"
-                  style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
+                  className="text-sm px-3 py-1.5 rounded-full font-medium transition-all border"
+                  style={{ backgroundColor: skin.cardHover, color: skin.textMuted, borderColor: skin.textMuted + '30' }}
                 >🗑️ 清空</button>
               </>
           </div>
