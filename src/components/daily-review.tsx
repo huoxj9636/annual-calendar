@@ -460,7 +460,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
          onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-[1100px] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
+      <div className="w-[1320px] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
           <div className="flex items-center gap-3">
@@ -701,7 +701,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   </div>
                 )}
                 {/* Polished text streaming */}
-                <div className="w-full rounded-xl p-4 border-2 border-dashed min-h-[150px] max-h-[250px] overflow-y-auto"
+                <div className="w-full rounded-xl p-4 border-2 border-dashed min-h-[180px] max-h-[300px] overflow-y-auto"
                   style={{ borderColor: skin.swatch + '30', backgroundColor: skin.swatch + '08' }}>
                   <div className="text-xs mb-1" style={{ color: skin.swatch }}>润色结果：</div>
                   <div className="text-base leading-relaxed whitespace-pre-wrap" style={{ color: skin.textPrimary }}>
@@ -723,7 +723,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       {showImport && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
           onClick={e => { if (e.target === e.currentTarget) { setShowImport(false); } }}>
-          <div className="w-[700px] max-h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
+          <div className="w-[840px] max-h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
             <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
               <div className="font-bold" style={{ color: skin.textPrimary }}>📥 导入笔记</div>
               <div className="flex items-center gap-1">
