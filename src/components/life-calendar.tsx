@@ -839,23 +839,23 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                       <div className="flex items-center gap-3">
                         <span className="text-3xl">🔍</span>
                         <div>
-                          <div className="flex items-center gap-1.5 relative group/help">
+                          <div className="flex items-center gap-1.5 group/help">
                             <div className="font-bold text-base" style={{ color: s.text1 }}>发现你的年度目标</div>
-                            <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center cursor-default text-[10px] font-bold shrink-0"
+                            <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center cursor-default text-[10px] font-bold shrink-0 relative"
                               style={{ backgroundColor: swatch + '25', color: swatch }}>
                               ?
-                            </div>
-                            <div className="absolute bottom-full left-0 mb-2 z-50 w-72 rounded-xl p-4 text-xs leading-relaxed opacity-0 invisible group-hover/help:opacity-100 group-hover/help:visible transition-all duration-200 translate-y-1 group-hover/help:translate-y-0 pointer-events-none"
-                              style={{ backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2 }}>
-                              <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>6大数据源</div>
-                              <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
-                                <li>日历勾叉模式 — 连续✗、工作日周末落差</li>
-                                <li>"应该"句式 — 你自己说了想做但没做</li>
-                                <li>"又"字句式 — 承认反复失败（最强信号）</li>
-                                <li>导入的笔记内容 — 你关心的事</li>
-                                <li>未完成待办 — 有意愿但执行困难</li>
-                                <li>AI深度分析 — 发现深层反复模式</li>
-                              </ul>
+                              <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] w-80 rounded-xl p-5 text-xs leading-relaxed opacity-0 invisible group-hover/help:opacity-100 group-hover/help:visible transition-all duration-200"
+                                style={{ backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2 }}>
+                                <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>6大数据源</div>
+                                <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
+                                  <li>日历勾叉模式 — 连续✗、工作日周末落差</li>
+                                  <li>"应该"句式 — 你自己说了想做但没做</li>
+                                  <li>"又"字句式 — 承认反复失败（最强信号）</li>
+                                  <li>导入的笔记内容 — 你关心的事</li>
+                                  <li>未完成待办 — 有意愿但执行困难</li>
+                                  <li>AI深度分析 — 发现深层反复模式</li>
+                                </ul>
+                              </div>
                             </div>
                           </div>
                           <div className="text-xs mt-0.5" style={{ color: s.textMuted }}>从复盘中发现你的反复模式</div>
