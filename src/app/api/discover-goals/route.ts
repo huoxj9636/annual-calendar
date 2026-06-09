@@ -38,6 +38,7 @@ interface DataSourceSignals {
   source3_againSentences: string[];  // "又"字句式
   source4_noteContent: string[];     // 导入笔记内容
   source5_canceledTodos: string[];   // 反复创建但未完成的待办
+  source6_aiThemes: string[];        // AI自由分析发现的反复主题
   allReviewText: string;             // 所有复盘原文（给AI参考）
 }
 
@@ -73,13 +74,70 @@ export async function GET(request: NextRequest) {
     // 从5个数据源提取信号
     const signals = extractSignals(reviews, overrides, todos);
 
+    // 初始化LLM客户端
+    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+    const config = new Config();
+    const llmClient = new LLMClient(config, customHeaders);
+
+    // === 来源6：AI自由分析复盘原文中的反复主题 ===
+    let source6_aiThemes: string[] = [];
+    if (signals.allReviewText.length > 50) {
+      try {
+        const aiAnalysisPrompt = `你是一个信号发现者。请从以下用户的日常复盘中，找出反复出现的困扰或向往。
+
+重点关注：
+- 反复出现的情绪、行为、话题
+- 用户暗示想做但没做的事
+- 反复出现的困境或纠结
+- 不要局限于"应该""又"等关键词，要发现更深层的反复模式
+
+复盘内容：
+${signals.allReviewText.slice(0, 6000)}
+
+请以JSON数组格式返回你发现的反复主题：
+[
+  {
+    "keyword": "关键词（2-4字）",
+    "count": 出现次数,
+    "pattern": "反复模式描述",
+    "suggestion": "简短改善建议"
+  }
+]
+
+只返回JSON数组，不要其他文字。如果没有发现反复模式，返回空数组。`;
+
+        const aiAnalysisMessages = [{ role: 'user' as const, content: aiAnalysisPrompt }];
+        const aiAnalysisResponse = await llmClient.invoke(aiAnalysisMessages, {
+          model: 'doubao-seed-2-0-lite-260215',
+          temperature: 0.3,
+        });
+
+        if (aiAnalysisResponse?.content) {
+          const jsonMatch = aiAnalysisResponse.content.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const aiThemes = JSON.parse(jsonMatch[0]);
+            if (Array.isArray(aiThemes)) {
+              source6_aiThemes = aiThemes.map((t: { keyword?: string; pattern?: string }) =>
+                t.keyword ? `"${t.keyword}"：${t.pattern || '反复出现'}` : ''
+              ).filter(Boolean);
+            }
+          }
+        }
+      } catch {
+        // AI自由分析失败不影响主流程
+        source6_aiThemes = [];
+      }
+    }
+    signals.source6_aiThemes = source6_aiThemes;
+
     // 检查是否有足够的数据
     const totalSignals =
       signals.source1_checkPattern.length +
       signals.source2_shouldSentences.length +
       signals.source3_againSentences.length +
       signals.source4_noteContent.length +
-      signals.source5_canceledTodos.length;
+      signals.source5_canceledTodos.length +
+      signals.source6_aiThemes.length;
 
     if (totalSignals === 0 && signals.allReviewText.length < 10) {
       return NextResponse.json({
@@ -89,12 +147,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 使用LLM分析所有信号源
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const config = new Config();
-    const llmClient = new LLMClient(config, customHeaders);
-
-    const prompt = `你是一个目标发现助手。从用户的5种日常信号中提取反复出现的困扰和向往。
+    // 使用LLM综合6个信号源，去重合并
+    const mergePrompt = `你是一个目标发现助手。从用户的6种日常信号中提取反复出现的困扰和向往。
 
 ## 信号来源
 
@@ -113,16 +167,17 @@ ${signals.source4_noteContent.length > 0 ? signals.source4_noteContent.slice(0, 
 ### 来源5：反复创建但未完成的待办事项
 ${signals.source5_canceledTodos.length > 0 ? signals.source5_canceledTodos.map((s, i) => `${i + 1}. ${s}`).join('\n') : '（无未完成待办模式）'}
 
-### 补充：复盘原文（用于理解上下文）
-${signals.allReviewText.slice(0, 4000)}
+### 来源6：AI深度分析发现的反复主题
+${signals.source6_aiThemes.length > 0 ? signals.source6_aiThemes.map((s, i) => `${i + 1}. ${s}`).join('\n') : '（未发现额外反复模式）'}
 
 ---
 
-请综合以上5个信号源，提取3-6个反复出现的主题。重点关注：
+请综合以上6个信号源，去重合并，提取3-8个反复出现的主题。重点关注：
 1. "又"字句式是最强信号 = 承认反复失败 = 有强烈意愿但缺方法
 2. "应该"句式 = 用户自己说了想做什么，只是没做到
 3. 连续✗模式 = 某维度在系统性失控
 4. 反复未完成待办 = 有行动意愿但执行困难
+5. AI深度分析 = 可能发现前5个结构化源未覆盖的深层模式
 
 以JSON数组格式返回：
 [
@@ -131,13 +186,13 @@ ${signals.allReviewText.slice(0, 4000)}
     "count": 出现次数,
     "pattern": "反复模式描述（如'说了8次又熬夜了'）",
     "suggestion": "简短的改善建议（10字以内）",
-    "source": "信号来源（如'又字句式/应该句式/勾叉模式/未完成待办/导入笔记'）"
+    "source": "信号来源（如'又字句式/应该句式/勾叉模式/未完成待办/导入笔记/AI分析/多源综合'）"
   }
 ]
 
 只返回JSON数组，不要其他文字。如果没有明显的反复模式，返回空数组。`;
 
-    const messages = [{ role: 'user' as const, content: prompt }];
+    const messages = [{ role: 'user' as const, content: mergePrompt }];
     const response = await llmClient.invoke(messages, {
       model: 'doubao-seed-2-0-lite-260215',
       temperature: 0.2,
@@ -169,6 +224,7 @@ ${signals.allReviewText.slice(0, 4000)}
         againSentences: signals.source3_againSentences.length,
         noteContent: signals.source4_noteContent.length,
         canceledTodos: signals.source5_canceledTodos.length,
+        aiAnalysis: signals.source6_aiThemes.length,
       },
       message: themes.length > 0 ? `从${reviews.length}天复盘中发现了${themes.length}个反复出现的主题` : '暂未发现明显反复模式',
     });
@@ -192,6 +248,7 @@ function extractSignals(
   const source3_againSentences: string[] = [];
   const source4_noteContent: string[] = [];
   const source5_canceledTodos: string[] = [];
+  const source6_aiThemes: string[] = [];
 
   // === 来源1：日历勾叉模式 ===
   const crossDates = overrides
@@ -300,6 +357,7 @@ function extractSignals(
     source3_againSentences,
     source4_noteContent,
     source5_canceledTodos,
+    source6_aiThemes,
     allReviewText,
   };
 }

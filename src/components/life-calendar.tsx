@@ -847,13 +847,14 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                             </div>
                             <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 rounded-xl p-4 text-xs leading-relaxed opacity-0 invisible group-hover/help:opacity-100 group-hover/help:visible transition-all duration-200 -translate-x-1 group-hover/help:translate-x-0 pointer-events-none"
                               style={{ backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2 }}>
-                              <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>5大数据源</div>
+                              <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>6大数据源</div>
                               <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
                                 <li>日历勾叉模式 — 连续✗、工作日周末落差</li>
                                 <li>"应该"句式 — 你自己说了想做但没做</li>
                                 <li>"又"字句式 — 承认反复失败（最强信号）</li>
                                 <li>导入的笔记内容 — 你关心的事</li>
                                 <li>未完成待办 — 有意愿但执行困难</li>
+                                <li>AI深度分析 — 发现深层反复模式</li>
                               </ul>
                             </div>
                           </div>
