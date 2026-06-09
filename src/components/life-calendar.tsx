@@ -1032,8 +1032,10 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
         }}>
         {!selectedO ? (
           <div className="flex flex-col items-center justify-center h-full" style={{ color: s.textMuted }}>
-            <svg className="w-16 h-16 mb-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            <svg className="w-14 h-14 mb-4 opacity-25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="6" />
+              <circle cx="12" cy="12" r="2" />
             </svg>
             <p className="text-sm">选择左侧目标查看详情</p>
           </div>
