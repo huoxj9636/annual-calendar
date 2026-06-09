@@ -1442,8 +1442,8 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
             <li>未完成待办 — 有意愿但执行困难</li>
             <li>AI深度分析 — 发现深层反复模式</li>
           </ul>
-          <div className="mt-3 pt-2" style={{ borderTop: `1px solid ${swatch}20`, color: s.text3 }}>
-            追溯范围：最近3个月（数据不足时自动扩展至6个月）
+          <div className="mt-3 pt-2" style={{ borderTop: `1px solid ${swatch}20`, color: s.textMuted }}>
+            追溯范围：最近3个月（数据不足时逐步扩展至6个月、12个月）
           </div>
         </div>
       )}

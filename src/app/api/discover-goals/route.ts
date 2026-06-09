@@ -85,6 +85,8 @@ export async function GET(request: NextRequest) {
       return d >= cutoffDate;
     }
 
+    // 逐步扩展时间范围：3个月 → 6个月 → 12个月
+    let actualMonths = 3;
     let reviews = allReviews.filter(r => isWithinCutoff(r.month, r.day));
     let overrides = allOverrides.filter(r => {
       const parts = r.date_key.split('-');
@@ -92,19 +94,34 @@ export async function GET(request: NextRequest) {
     });
     let todos = allTodos.filter(r => isWithinCutoff(r.month, r.day));
 
-    // 如果3个月内数据不足15条，扩展到6个月
     if (reviews.length < 15) {
+      actualMonths = 6;
       const extendedCutoff = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
-      function isWithinExtended(month: number, day: number): boolean {
+      function isWithin6(month: number, day: number): boolean {
         const d = new Date(year, month - 1, day);
         return d >= extendedCutoff;
       }
-      reviews = allReviews.filter(r => isWithinExtended(r.month, r.day));
+      reviews = allReviews.filter(r => isWithin6(r.month, r.day));
       overrides = allOverrides.filter(r => {
         const parts = r.date_key.split('-');
-        return parts.length >= 3 && isWithinExtended(parseInt(parts[1]), parseInt(parts[2]));
+        return parts.length >= 3 && isWithin6(parseInt(parts[1]), parseInt(parts[2]));
       });
-      todos = allTodos.filter(r => isWithinExtended(r.month, r.day));
+      todos = allTodos.filter(r => isWithin6(r.month, r.day));
+    }
+
+    if (reviews.length < 15) {
+      actualMonths = 12;
+      const extendedCutoff = new Date(now.getFullYear(), now.getMonth() - 12, now.getDate());
+      function isWithin12(month: number, day: number): boolean {
+        const d = new Date(year, month - 1, day);
+        return d >= extendedCutoff;
+      }
+      reviews = allReviews.filter(r => isWithin12(r.month, r.day));
+      overrides = allOverrides.filter(r => {
+        const parts = r.date_key.split('-');
+        return parts.length >= 3 && isWithin12(parseInt(parts[1]), parseInt(parts[2]));
+      });
+      todos = allTodos.filter(r => isWithin12(r.month, r.day));
     }
 
     // 从5个数据源提取信号
@@ -254,6 +271,7 @@ ${signals.source6_aiThemes.length > 0 ? signals.source6_aiThemes.map((s, i) => `
       hasData: true,
       themes,
       reviewCount: reviews.length,
+      actualMonths,
       signalStats: {
         checkPatterns: signals.source1_checkPattern.length,
         shouldSentences: signals.source2_shouldSentences.length,
