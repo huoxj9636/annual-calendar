@@ -382,6 +382,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
 
   // Goal discovery flow
   const [discoveryState, setDiscoveryState] = useState<'idle' | 'scanning' | 'selecting' | 'generating'>('idle');
+  const [showDiscoveryHelp, setShowDiscoveryHelp] = useState(false);
   const [discoveredThemes, setDiscoveredThemes] = useState<Array<{ keyword: string; count: number; pattern: string; suggestion: string }>>([]);
   const [discoveryMessage, setDiscoveryMessage] = useState('');
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
@@ -797,23 +798,45 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
               {discoveryState === 'idle' && (
                 <div className="flex flex-col items-center gap-4">
                   {/* Discovery card */}
-                  <button onClick={startDiscovery}
-                    className="w-full rounded-xl p-5 text-left transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                  <div className="w-full rounded-xl p-5 text-left transition-all"
                     style={{ backgroundColor: swatch + '12', border: `1px solid ${swatch}25` }}>
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-3xl">🔍</span>
-                      <div>
-                        <div className="font-bold text-base" style={{ color: s.text1 }}>发现你的年度目标</div>
-                        <div className="text-xs mt-0.5" style={{ color: s.textMuted }}>从复盘中发现你的反复模式</div>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl">🔍</span>
+                        <div>
+                          <div className="font-bold text-base" style={{ color: s.text1 }}>发现你的年度目标</div>
+                          <div className="text-xs mt-0.5" style={{ color: s.textMuted }}>从复盘中发现你的反复模式</div>
+                        </div>
                       </div>
+                      <button onClick={() => setShowDiscoveryHelp(v => !v)}
+                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors cursor-pointer"
+                        style={{ backgroundColor: swatch + '20', color: swatch }}
+                        title="查看说明">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.01" />
+                        </svg>
+                      </button>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs" style={{ color: swatch }}>
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                      点击开始扫描
-                    </div>
-                  </button>
+                    {/* Help panel - shows what directions will be collected */}
+                    {showDiscoveryHelp && (
+                      <div className="mb-3 rounded-lg p-3 text-xs leading-relaxed" style={{ backgroundColor: swatch + '08', color: s.text2 }}>
+                        <div className="font-medium mb-1.5" style={{ color: s.text1 }}>我们会从你的复盘中搜集以下方向：</div>
+                        <ul className="space-y-1 ml-3" style={{ listStyle: 'disc' }}>
+                          <li>反复提到但没解决的问题（如"又熬夜了""又拖延了"）</li>
+                          <li>"应该"做但一直没做的事</li>
+                          <li>反复表达的不满或焦虑</li>
+                          <li>想尝试但一直没行动的事</li>
+                          <li>反复出现的情绪或行为模式</li>
+                        </ul>
+                        <div className="mt-2" style={{ color: s.textMuted }}>识别结果由AI分析，仅作参考，你可以选择是否采纳。</div>
+                      </div>
+                    )}
+                    <button onClick={startDiscovery}
+                      className="w-full rounded-lg py-2 text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
+                      style={{ backgroundColor: swatch + '20', color: swatch }}>
+                      开始
+                    </button>
+                  </div>
                   {/* Manual add hint */}
                   <div className="text-center" style={{ color: s.textMuted }}>
                     <p className="text-xs">或直接在上方输入框创建目标</p>
@@ -831,8 +854,15 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
               )}
               {discoveryState === 'selecting' && (
                 <div className="flex flex-col gap-3">
-                  <div className="text-sm font-medium" style={{ color: s.text1 }}>
-                    {discoveryMessage || '选择你最想改变的方向'}
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium" style={{ color: s.text1 }}>
+                      {discoveryMessage || '选择你最想改变的方向'}
+                    </div>
+                    <button onClick={() => { setDiscoveryState('idle'); setDiscoveredThemes([]); setSelectedTheme(null); }}
+                      className="text-xs px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                      style={{ backgroundColor: swatch + '15', color: swatch }}>
+                      取消
+                    </button>
                   </div>
                   {discoveredThemes.length > 0 ? (
                     <div className="flex flex-col gap-2">
@@ -873,10 +903,6 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                         }} />
                     </div>
                   )}
-                  <button onClick={() => setDiscoveryState('idle')}
-                    className="text-xs self-start" style={{ color: s.textMuted }}>
-                    ← 返回
-                  </button>
                 </div>
               )}
               {discoveryState === 'generating' && selectedTheme && (
