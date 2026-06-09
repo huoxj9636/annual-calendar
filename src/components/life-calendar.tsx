@@ -800,32 +800,29 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                   {/* Discovery card */}
                   <div className="w-full rounded-xl p-5 text-left transition-all"
                     style={{ backgroundColor: swatch + '12', border: `1px solid ${swatch}25` }}>
-                    <div className="flex items-start justify-between mb-3">
+                    <div className="mb-3">
                       <div className="flex items-center gap-3">
                         <span className="text-3xl">🔍</span>
                         <div>
-                          <div className="font-bold text-base" style={{ color: s.text1 }}>发现你的年度目标</div>
+                          <div className="flex items-center gap-1.5 relative group/help">
+                            <div className="font-bold text-base" style={{ color: s.text1 }}>发现你的年度目标</div>
+                            <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center cursor-default text-[10px] font-bold shrink-0"
+                              style={{ backgroundColor: swatch + '25', color: swatch }}>
+                              ?
+                            </div>
+                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 rounded-xl p-4 text-xs leading-relaxed opacity-0 invisible group-hover/help:opacity-100 group-hover/help:visible transition-all duration-200 -translate-x-1 group-hover/help:translate-x-0 pointer-events-none"
+                              style={{ backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 8px 32px ${swatch}20`, color: s.text2 }}>
+                              <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>搜集方向</div>
+                              <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
+                                <li>反复未解决的问题</li>
+                                <li>"应该"做但没做的事</li>
+                                <li>反复不满或焦虑</li>
+                                <li>想尝试但没行动</li>
+                                <li>反复出现的情绪模式</li>
+                              </ul>
+                            </div>
+                          </div>
                           <div className="text-xs mt-0.5" style={{ color: s.textMuted }}>从复盘中发现你的反复模式</div>
-                        </div>
-                      </div>
-                      <div className="relative group/help">
-                        <div className="w-4 h-4 rounded-full flex items-center justify-center cursor-default"
-                          style={{ color: s.textMuted }}>
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.01" />
-                          </svg>
-                        </div>
-                        {/* Hover tooltip */}
-                        <div className="absolute right-0 top-6 z-50 w-56 rounded-lg p-3 text-xs leading-relaxed opacity-0 invisible group-hover/help:opacity-100 group-hover/help:visible transition-all duration-200 -translate-y-1 group-hover/help:translate-y-0 pointer-events-none"
-                          style={{ backgroundColor: s.cardBg, border: `1px solid ${swatch}30`, boxShadow: `0 4px 16px ${swatch}15`, color: s.text2 }}>
-                          <div className="font-medium mb-1.5" style={{ color: s.text1 }}>搜集方向：</div>
-                          <ul className="space-y-0.5 ml-3" style={{ listStyle: 'disc' }}>
-                            <li>反复未解决的问题</li>
-                            <li>"应该"做但没做的事</li>
-                            <li>反复不满或焦虑</li>
-                            <li>想尝试但没行动</li>
-                            <li>反复出现的情绪模式</li>
-                          </ul>
                         </div>
                       </div>
                     </div>
