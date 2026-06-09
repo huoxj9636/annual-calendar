@@ -380,6 +380,12 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'O' | 'KR' | 'Task'; name: string; onConfirm: () => void } | null>(null);
   const [aiDecompose, setAiDecompose] = useState<{ loading: boolean; objectiveTitle: string; result: { keyResults: { title: string; targetValue: number; tasks: string[] }[] } | null; objectiveId: string }>({ loading: false, objectiveTitle: '', result: null, objectiveId: '' });
 
+  // Goal discovery flow
+  const [discoveryState, setDiscoveryState] = useState<'idle' | 'scanning' | 'selecting' | 'generating'>('idle');
+  const [discoveredThemes, setDiscoveredThemes] = useState<Array<{ keyword: string; count: number; pattern: string; suggestion: string }>>([]);
+  const [discoveryMessage, setDiscoveryMessage] = useState('');
+  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
+
   const year = new Date().getFullYear();
   const periodKey = period === 'annual' ? `${year}` : `${year}-${period}`;
 
@@ -499,7 +505,74 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
     setGoals(prev => [...prev, o]);
     setNewOTitle('');
     setSelectedOId(o.id);
+    setDiscoveryState('idle');
   }, [newOTitle, periodKey]);
+
+  // Goal discovery: scan reviews
+  const startDiscovery = useCallback(async () => {
+    setDiscoveryState('scanning');
+    try {
+      const res = await fetch('/api/discover-goals');
+      const data = await res.json();
+      if (data.themes && data.themes.length > 0) {
+        setDiscoveredThemes(data.themes);
+        setDiscoveryMessage(data.message || '');
+        setDiscoveryState('selecting');
+      } else {
+        setDiscoveredThemes([]);
+        setDiscoveryMessage(data.message || '暂未发现明显模式');
+        setDiscoveryState('selecting');
+      }
+    } catch {
+      setDiscoveryMessage('扫描失败，请稍后重试');
+      setDiscoveryState('idle');
+    }
+  }, []);
+
+  // Goal discovery: generate OKR from selected theme
+  const generateOKRFromTheme = useCallback(async (theme: string) => {
+    setSelectedTheme(theme);
+    setDiscoveryState('generating');
+    try {
+      const res = await fetch('/api/generate-okr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setDiscoveryMessage(data.error);
+        setDiscoveryState('selecting');
+        return;
+      }
+      // Create the objective with KRs and tasks
+      const o: OKRObjective = {
+        id: genId(),
+        title: data.objective || theme,
+        period: periodKey,
+        children: (data.keyResults || []).map((kr: { title: string; targetValue: number; tasks: string[] }) => ({
+          id: genId(),
+          title: kr.title,
+          targetValue: kr.targetValue || 100,
+          children: (kr.tasks || []).map((t: string) => ({
+            id: genId(),
+            title: t,
+            done: false,
+            createdAt: Date.now(),
+          })),
+          createdAt: Date.now(),
+        })),
+        createdAt: Date.now(),
+      };
+      setGoals(prev => [...prev, o]);
+      setSelectedOId(o.id);
+      setDiscoveryState('idle');
+      setSelectedTheme(null);
+    } catch {
+      setDiscoveryMessage('生成失败，请稍后重试');
+      setDiscoveryState('selecting');
+    }
+  }, [periodKey]);
 
   const addKR = useCallback((oid: string) => {
     if (!newKRTitle.trim()) return;
@@ -720,9 +793,102 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
         {/* Objective list (flat, top-level only) */}
         <div className="flex-1 overflow-y-auto">
           {filteredGoals.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16" style={{ color: s.textMuted }}>
-              <span className="text-4xl mb-2">🎯</span>
-              <p className="text-sm">输入目标开始吧</p>
+            <div className="flex-1 overflow-y-auto px-5 py-6">
+              {discoveryState === 'idle' && (
+                <div className="flex flex-col items-center gap-4">
+                  {/* Discovery card */}
+                  <button onClick={startDiscovery}
+                    className="w-full rounded-xl p-5 text-left transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                    style={{ backgroundColor: swatch + '12', border: `1px solid ${swatch}25` }}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-3xl">🔍</span>
+                      <div>
+                        <div className="font-bold text-base" style={{ color: s.text1 }}>发现你的年度目标</div>
+                        <div className="text-xs mt-0.5" style={{ color: s.textMuted }}>从复盘中发现你的反复模式</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs" style={{ color: swatch }}>
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                      点击开始扫描
+                    </div>
+                  </button>
+                  {/* Manual add hint */}
+                  <div className="text-center" style={{ color: s.textMuted }}>
+                    <p className="text-xs">或直接在上方输入框创建目标</p>
+                  </div>
+                </div>
+              )}
+              {discoveryState === 'scanning' && (
+                <div className="flex flex-col items-center gap-3 py-8">
+                  <div className="relative w-12 h-12">
+                    <div className="absolute inset-0 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: swatch + '40', borderTopColor: 'transparent' }} />
+                    <span className="absolute inset-0 flex items-center justify-center text-xl">🔍</span>
+                  </div>
+                  <p className="text-sm" style={{ color: s.text2 }}>正在扫描你的复盘数据...</p>
+                </div>
+              )}
+              {discoveryState === 'selecting' && (
+                <div className="flex flex-col gap-3">
+                  <div className="text-sm font-medium" style={{ color: s.text1 }}>
+                    {discoveryMessage || '选择你最想改变的方向'}
+                  </div>
+                  {discoveredThemes.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      {discoveredThemes.map((t) => (
+                        <button key={t.keyword} onClick={() => generateOKRFromTheme(t.keyword)}
+                          className="w-full rounded-lg p-3.5 text-left transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                          style={{ backgroundColor: swatch + '10', border: `1px solid ${swatch}20` }}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-bold text-sm" style={{ color: swatch }}>{t.keyword}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: swatch + '18', color: swatch }}>{t.count}次</span>
+                          </div>
+                          <div className="text-xs" style={{ color: s.text2 }}>{t.pattern}</div>
+                          <div className="text-[10px] mt-1" style={{ color: s.textMuted }}>💡 {t.suggestion}</div>
+                        </button>
+                      ))}
+                      {/* Custom theme input */}
+                      <div className="flex items-center gap-2 mt-1">
+                        <input type="text" placeholder="或自己输入方向..."
+                          className="flex-1 rounded-lg px-3 py-2 text-xs outline-none"
+                          style={{ backgroundColor: s.panelBg, border: `1px solid ${s.divider}`, color: s.text1 }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
+                              generateOKRFromTheme((e.target as HTMLInputElement).value.trim());
+                            }
+                          }} />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 py-4">
+                      <p className="text-xs" style={{ color: s.textMuted }}>{discoveryMessage}</p>
+                      <input type="text" placeholder="输入你想改变的方向..."
+                        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                        style={{ backgroundColor: s.panelBg, border: `1px solid ${s.divider}`, color: s.text1 }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
+                            generateOKRFromTheme((e.target as HTMLInputElement).value.trim());
+                          }
+                        }} />
+                    </div>
+                  )}
+                  <button onClick={() => setDiscoveryState('idle')}
+                    className="text-xs self-start" style={{ color: s.textMuted }}>
+                    ← 返回
+                  </button>
+                </div>
+              )}
+              {discoveryState === 'generating' && selectedTheme && (
+                <div className="flex flex-col items-center gap-3 py-8">
+                  <div className="relative w-12 h-12">
+                    <div className="absolute inset-0 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: swatch + '40', borderTopColor: 'transparent' }} />
+                    <span className="absolute inset-0 flex items-center justify-center text-xl">✨</span>
+                  </div>
+                  <p className="text-sm" style={{ color: s.text2 }}>正在围绕「{selectedTheme}」生成OKR...</p>
+                  <p className="text-xs" style={{ color: s.textMuted }}>AI正在拆解可执行的目标和步骤</p>
+                </div>
+              )}
             </div>
           ) : filteredGoals.map((o, oi) => {
             const pct = Math.round(oProgress(o) * 100);
