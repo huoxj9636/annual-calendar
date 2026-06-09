@@ -25,6 +25,9 @@ export async function GET() {
         id: t.id,
         title: t.title,
         done: t.done ?? false,
+        plannedYear: t.planned_year ?? undefined,
+        plannedMonth: t.planned_month ?? undefined,
+        plannedDay: t.planned_day ?? undefined,
       })),
       createdAt: kr.created_at,
     })),
@@ -41,7 +44,7 @@ export async function POST(request: NextRequest) {
       id: string; title: string; period: string; createdAt?: string | number;
       children: {
         id: string; title: string; targetValue: number; createdAt?: string | number;
-        children: { id: string; title: string; done: boolean; createdAt?: string | number }[];
+        children: { id: string; title: string; done: boolean; plannedYear?: number; plannedMonth?: number; plannedDay?: number; createdAt?: string | number }[];
       }[];
     }[];
   };
@@ -121,6 +124,9 @@ export async function POST(request: NextRequest) {
             key_result_id: kr.id,
             title: t.title,
             done: t.done ?? false,
+            planned_year: t.plannedYear ?? null,
+            planned_month: t.plannedMonth ?? null,
+            planned_day: t.plannedDay ?? null,
             created_at: typeof t.createdAt === 'number' ? new Date(t.createdAt).toISOString() : (t.createdAt || new Date().toISOString()),
           }, { onConflict: 'id' });
 

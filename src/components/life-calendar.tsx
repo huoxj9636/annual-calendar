@@ -35,6 +35,9 @@ interface OKRTask {
   title: string;
   done: boolean;
   createdAt: number;
+  plannedYear?: number;
+  plannedMonth?: number;
+  plannedDay?: number;
 }
 
 type PeriodType = 'annual' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
@@ -363,6 +366,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
   const [period, setPeriod] = useState<PeriodType>('annual');
   const [mounted, setMounted] = useState(false);
   const [selectedOId, setSelectedOId] = useState<string | null>(null);
+  const [okrViewMode, setOkrViewMode] = useState<'goals' | 'timeline'>('goals');
 
   // Inline inputs
   const [newOTitle, setNewOTitle] = useState('');
@@ -564,16 +568,30 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
         id: genId(),
         title: data.objective || theme,
         period: periodKey,
-        children: (data.keyResults || []).map((kr: { title: string; targetValue: number; tasks: string[] }) => ({
+        children: (data.keyResults || []).map((kr: { title: string; targetValue: number; tasks: Array<{ title: string; plannedDate?: string }> }) => ({
           id: genId(),
           title: kr.title,
           targetValue: kr.targetValue || 100,
-          children: (kr.tasks || []).map((t: string) => ({
-            id: genId(),
-            title: t,
-            done: false,
-            createdAt: Date.now(),
-          })),
+          children: (kr.tasks || []).map((t: { title: string; plannedDate?: string }) => {
+            let plannedYear: number | undefined, plannedMonth: number | undefined, plannedDay: number | undefined;
+            if (t.plannedDate) {
+              const parts = t.plannedDate.split('-');
+              if (parts.length === 3) {
+                plannedYear = parseInt(parts[0]);
+                plannedMonth = parseInt(parts[1]);
+                plannedDay = parseInt(parts[2]);
+              }
+            }
+            return {
+              id: genId(),
+              title: t.title,
+              done: false,
+              plannedYear,
+              plannedMonth,
+              plannedDay,
+              createdAt: Date.now(),
+            };
+          }),
           createdAt: Date.now(),
         })),
         createdAt: Date.now(),
@@ -983,11 +1001,33 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => {
-                      // Confirm: add the OKR and expand all KRs
+                      // Confirm: add the OKR, expand all KRs, and create day_events for tasks with planned dates
                       setGoals(prev => [...prev, pendingOKR]);
                       setSelectedOId(pendingOKR.id);
                       setAddedThemes(prev => new Set(prev).add(selectedTheme!));
                       setExpandedKRs(prev => new Set([...prev, ...pendingOKR.children.map(kr => kr.id)]));
+                      // Create day_events for tasks with planned dates
+                      const tasksWithDates = pendingOKR.children.flatMap(kr =>
+                        kr.children.filter(t => t.plannedYear && t.plannedMonth && t.plannedDay)
+                          .map(t => ({
+                            id: `evt-${t.id}`,
+                            year: t.plannedYear!,
+                            month: t.plannedMonth!,
+                            day: t.plannedDay!,
+                            title: `📌 ${t.title}`,
+                            start_hour: 9,
+                            start_min: 0,
+                            end_hour: 10,
+                            end_min: 0,
+                          }))
+                      );
+                      if (tasksWithDates.length > 0) {
+                        fetch('/api/add-day-events', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ events: tasksWithDates }),
+                        }).catch(() => {});
+                      }
                       setPendingOKR(null);
                       setSelectedTheme(null);
                       setDiscoveryState('selecting'); // Go back to select more
@@ -1087,6 +1127,25 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                 </div>
                 {/* Action buttons */}
                 <div className="flex items-center gap-2 mt-4 pt-3" style={{ borderTop: `1px solid ${s.divider}` }}>
+                  {/* View mode toggle */}
+                  <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${s.divider}` }}>
+                    <button onClick={() => setOkrViewMode('goals')}
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-all"
+                            style={{ backgroundColor: okrViewMode === 'goals' ? `${swatch}20` : 'transparent', color: okrViewMode === 'goals' ? swatch : s.textMuted }}>
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                      目标
+                    </button>
+                    <button onClick={() => setOkrViewMode('timeline')}
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-all"
+                            style={{ backgroundColor: okrViewMode === 'timeline' ? `${swatch}20` : 'transparent', color: okrViewMode === 'timeline' ? swatch : s.textMuted }}>
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      时间线
+                    </button>
+                  </div>
                   <button onClick={() => decomposeOKR(o.id)} disabled={aiDecompose.loading}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-all hover:opacity-80"
                           style={{ backgroundColor: `${swatch}15`, color: swatch, border: `1px solid ${swatch}30` }}>
@@ -1102,7 +1161,8 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                 </div>
               </div>
 
-              {/* ── Add KR ── */}
+              {/* ── Add KR (only in goals view) ── */}
+              {okrViewMode === 'goals' && (
               <div className="rounded-xl flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
                 <span className="text-xs font-bold flex-shrink-0" style={{ color: swatch }}>+ KR</span>
                 <input type="text" value={newKRTitle} onChange={e => setNewKRTitle(e.target.value)}
@@ -1125,9 +1185,10 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                     style={{ color: '#fff', backgroundColor: swatch }}>添加</button>
                 )}
               </div>
+              )}
 
-              {/* ── KR Cards ── */}
-              {o.children.map((kr, kri) => {
+              {/* ── KR Cards (goals view) ── */}
+              {okrViewMode === 'goals' && o.children.map((kr, kri) => {
                 const krPct = Math.round(krProgress(kr) * 100);
                 const doneTasks = kr.children.filter(t => t.done).length;
                 return (
@@ -1238,6 +1299,101 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                   </div>
                 );
               })}
+
+              {/* ── Timeline view ── */}
+              {okrViewMode === 'timeline' && (() => {
+                // Collect all tasks with planned dates, grouped by date
+                const allTasks: Array<{ task: typeof o.children[0]['children'][0]; krTitle: string; krIdx: number; dateStr: string }> = [];
+                o.children.forEach((kr, kri) => {
+                  kr.children.forEach(t => {
+                    if (t.plannedYear && t.plannedMonth && t.plannedDay) {
+                      allTasks.push({
+                        task: t,
+                        krTitle: kr.title,
+                        krIdx: kri,
+                        dateStr: `${t.plannedYear}-${String(t.plannedMonth).padStart(2, '0')}-${String(t.plannedDay).padStart(2, '0')}`,
+                      });
+                    }
+                  });
+                });
+                // Sort by date
+                allTasks.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+                // Group by date
+                const grouped = new Map<string, typeof allTasks>();
+                allTasks.forEach(t => {
+                  if (!grouped.has(t.dateStr)) grouped.set(t.dateStr, []);
+                  grouped.get(t.dateStr)!.push(t);
+                });
+                // No planned tasks
+                if (allTasks.length === 0) {
+                  return (
+                    <div className="rounded-xl p-8 text-center" style={{ backgroundColor: s.cardBg, border: `1px solid ${s.divider}` }}>
+                      <svg className="w-10 h-10 mx-auto mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p className="text-sm" style={{ color: s.textMuted }}>暂无带计划日期的任务</p>
+                      <p className="text-xs mt-1" style={{ color: s.textMuted }}>通过"发现目标"生成的OKR会自动安排任务日期</p>
+                    </div>
+                  );
+                }
+                // Render timeline
+                const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+                return Array.from(grouped.entries()).map(([dateStr, tasks]) => {
+                  const [y, m, d] = dateStr.split('-').map(Number);
+                  const dateObj = new Date(y, m - 1, d);
+                  const weekday = weekdays[dateObj.getDay()];
+                  const isToday = (() => { const now = new Date(); return now.getFullYear() === y && now.getMonth() + 1 === m && now.getDate() === d; })();
+                  const isPast = dateObj < new Date(new Date().setHours(0, 0, 0, 0));
+                  return (
+                    <div key={dateStr} className="rounded-xl overflow-hidden" style={{ backgroundColor: s.cardBg, border: `1px solid ${isToday ? swatch : s.divider}` }}>
+                      {/* Date header */}
+                      <div className="px-4 py-2.5 flex items-center gap-2" style={{ backgroundColor: isToday ? `${swatch}15` : 'transparent', borderBottom: `1px solid ${s.divider}` }}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-bold" style={{ color: isToday ? swatch : s.text1 }}>{m}月{d}日</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ color: isToday ? '#fff' : s.textMuted, backgroundColor: isToday ? swatch : 'transparent' }}>
+                            周{weekday}
+                          </span>
+                          {isToday && <span className="text-xs font-medium" style={{ color: swatch }}>今天</span>}
+                        </div>
+                        <div className="flex-1" />
+                        <span className="text-xs" style={{ color: s.textMuted }}>{tasks.length} 个任务</span>
+                      </div>
+                      {/* Task list */}
+                      <div className="px-4 py-2 space-y-2">
+                        {tasks.map(({ task, krTitle, krIdx }) => (
+                          <div key={task.id} className="flex items-center gap-2.5 group">
+                            <button onClick={() => toggleTask(o.id, o.children[krIdx].id, task.id)}
+                                    className="w-5 h-5 rounded flex-shrink-0 flex items-center justify-center transition-all"
+                                    style={{ border: `2px solid ${task.done ? '#22c55e' : s.divider}`, backgroundColor: task.done ? '#22c55e' : 'transparent' }}>
+                              {task.done && (
+                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <span className={`text-sm ${task.done ? 'line-through' : ''}`} style={{ color: task.done ? s.textMuted : s.text1 }}>
+                                {task.title}
+                              </span>
+                              <span className="text-xs ml-2" style={{ color: swatch, opacity: 0.7 }}>KR{krIdx + 1}</span>
+                            </div>
+                            {isPast && !task.done && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: '#f59e0b', backgroundColor: '#f59e0b15' }}>已逾期</span>
+                            )}
+                            <button onClick={() => deleteTask(o.id, o.children[krIdx].id, task.id, task.title)}
+                                    className="opacity-0 group-hover:opacity-100 w-4 h-4 flex items-center justify-center transition-opacity"
+                                    style={{ color: '#ef4444' }}>
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
 
             </div>
           );
