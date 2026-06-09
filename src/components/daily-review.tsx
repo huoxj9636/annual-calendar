@@ -463,16 +463,16 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         <div className="flex items-center justify-between px-6 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
           <div className="flex items-center gap-3">
             <div>
-              <div className="text-lg font-bold" style={{ color: skin.textPrimary }}>{dateStr} 复盘</div>
-              <div className="text-[10px] font-medium tracking-wider" style={{ color: skin.textMuted }}>DAILY REVIEW</div>
+              <div className="text-xl font-bold" style={{ color: skin.textPrimary }}>{dateStr} 复盘</div>
+              <div className="text-xs font-medium tracking-wider" style={{ color: skin.textMuted }}>DAILY REVIEW</div>
             </div>
             <>
               <button onClick={startVoiceRecording}
-                  className="text-xs px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
+                  className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
                   style={{ backgroundColor: '#ef444415', color: '#ef4444' }}
                 >🎙️ 语音复盘</button>
                 <button onClick={() => setShowImport(true)}
-                    className="text-xs px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
+                    className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
                     style={{ backgroundColor: '#3b82f615', color: '#3b82f6' }}
                   >📥 导入笔记</button>
                 <button onClick={() => {
@@ -490,7 +490,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     setTimeout(() => setCopied(false), 1500);
                   }).catch(() => {});
                 }}
-                  className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
+                  className="text-sm px-3 py-1.5 rounded-full font-medium transition-all"
                   style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
                 >{copied ? '✓ 已复制' : '📋 复制'}</button>
                 <button onClick={async () => {
@@ -498,7 +498,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   setReview(empty);
                   await clearReview(year, month, day);
                 }}
-                  className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
+                  className="text-sm px-3 py-1.5 rounded-full font-medium transition-all"
                   style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
                 >🗑️ 清空</button>
               </>
@@ -626,18 +626,18 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   {voicePhase === 'recording' ? (
                     <>
                       <button onClick={pauseVoiceRecording}
-                        className="px-6 py-2.5 rounded-xl font-bold text-sm transition-all border"
+                        className="px-6 py-2.5 rounded-xl font-bold text-base transition-all border"
                         style={{ borderColor: skin.swatch + '40', color: skin.swatch }}
                       >⏸ 暂停</button>
                       <button onClick={stopAndReview}
-                        className="px-6 py-2.5 rounded-xl text-white font-bold text-sm transition-all"
+                        className="px-6 py-2.5 rounded-xl text-white font-bold text-base transition-all"
                         style={{ backgroundColor: '#ef4444' }}
                       >⏹ 结束</button>
                     </>
                   ) : (
                     <>
                       <button onClick={resumeVoiceRecording}
-                        className="px-6 py-2.5 rounded-xl font-bold text-sm transition-all border"
+                        className="px-6 py-2.5 rounded-xl font-bold text-base transition-all border"
                         style={{ borderColor: skin.swatch + '40', color: skin.swatch }}
                       >▶ 继续</button>
                       <button onClick={stopAndReview}
@@ -655,7 +655,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 <div className="text-lg font-bold mb-2" style={{ color: skin.textPrimary }}>
                   录音完成 · {fmtTime(recSeconds)}
                 </div>
-                <div className="text-sm mb-8" style={{ color: skin.textMuted }}>
+                <div className="text-base mb-8" style={{ color: skin.textMuted }}>
                   是否采用这段录音进行语音识别？
                 </div>
                 <div className="flex items-center gap-6">
@@ -678,7 +678,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <span className="animate-spin text-xl">⟳</span>
                   <span className="text-xl font-bold" style={{ color: skin.swatch }}>语音识别中</span>
                 </div>
-                <div className="text-sm" style={{ color: skin.textMuted }}>
+                <div className="text-base" style={{ color: skin.textMuted }}>
                   正在使用专业语音识别引擎转写...
                 </div>
               </>
@@ -699,10 +699,10 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   </div>
                 )}
                 {/* Polished text streaming */}
-                <div className="w-full rounded-xl p-3 border-2 border-dashed min-h-[150px] max-h-[250px] overflow-y-auto"
+                <div className="w-full rounded-xl p-4 border-2 border-dashed min-h-[150px] max-h-[250px] overflow-y-auto"
                   style={{ borderColor: skin.swatch + '30', backgroundColor: skin.swatch + '08' }}>
-                  <div className="text-[10px] mb-1" style={{ color: skin.swatch }}>润色结果：</div>
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: skin.textPrimary }}>
+                  <div className="text-xs mb-1" style={{ color: skin.swatch }}>润色结果：</div>
+                  <div className="text-base leading-relaxed whitespace-pre-wrap" style={{ color: skin.textPrimary }}>
                     {polishedPreview || '...'}
                   </div>
                 </div>
@@ -726,7 +726,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               <div className="font-bold" style={{ color: skin.textPrimary }}>📥 导入笔记</div>
               <div className="flex items-center gap-1">
                 <button onClick={() => setImportMode('text')}
-                  className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
+                  className="px-3 py-1 rounded-lg text-sm font-medium transition-all"
                   style={{ backgroundColor: importMode === 'text' ? skin.swatch + '20' : 'transparent', color: importMode === 'text' ? skin.swatch : skin.textMuted, border: '1px solid ' + (importMode === 'text' ? skin.swatch + '40' : 'transparent') }}
                 >纯文本</button>
                 <button onClick={() => setImportMode('html')}
@@ -740,7 +740,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
             </div>
             <div className="flex-1 overflow-auto p-5 flex flex-col gap-3">
               <>
-                  <div className="text-sm" style={{ color: skin.textMuted }}>
+                  <div className="text-base" style={{ color: skin.textMuted }}>
                     {importMode === 'text'
                       ? '粘贴每日复盘文本，系统会自动识别日期并将内容智能分类到6个复盘维度。'
                       : '粘贴从笔记应用导出的 HTML 内容，系统会自动识别日期并将内容智能分类到6个复盘维度。'}
@@ -751,7 +751,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     placeholder={importMode === 'text'
                       ? "在此粘贴复盘文本内容...\n\n支持格式：\n· 2024年5月27日\n今天完成了xxx，心情不错\n明天要继续推进xxx\n\n· 2024-05-28\n今天遇到了xxx问题..."
                       : "在此粘贴笔记 HTML 内容...\n\n支持格式：\n· 2024年5月27日 + 内容\n· 2024-05-27 + 内容\n· 2024/05/27 + 内容"}
-                    className="w-full h-[300px] rounded-xl p-4 text-sm resize-none focus:outline-none focus:ring-2"
+                    className="w-full h-[300px] rounded-xl p-4 text-base resize-none focus:outline-none focus:ring-2"
                     style={{ backgroundColor: skin.cardHover, color: skin.textPrimary, borderColor: skin.cellBorder }}
                   />
                   <button
@@ -783,7 +783,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                       }
                     }}
                     disabled={!importHtml.trim() || importing}
-                    className="px-6 py-2.5 rounded-xl font-medium text-white text-sm transition-all disabled:opacity-50"
+                    className="px-6 py-2.5 rounded-xl font-medium text-white text-base transition-all disabled:opacity-50"
                     style={{ backgroundColor: importing ? skin.textMuted : '#3b82f6' }}
                   >
                     {importing ? '⏳ 正在解析和分类...' : '🚀 开始导入'}
@@ -863,10 +863,10 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWi
   };
 
   return (
-    <div className={`rounded-xl p-3 flex flex-col relative ${fullWidth ? 'col-span-2' : ''}`} style={{ backgroundColor: skin.cardBg }}>
-      <div className="flex items-center gap-1.5 mb-2">
-        <span className="text-sm" style={{ color: skin.swatch }}>{icon}</span>
-        <span className="text-sm font-bold" style={{ color: skin.textPrimary }}>{title}</span>
+    <div className={`rounded-xl p-4 flex flex-col relative ${fullWidth ? 'col-span-2' : ''}`} style={{ backgroundColor: skin.cardBg }}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-base" style={{ color: skin.swatch }}>{icon}</span>
+        <span className="text-base font-bold" style={{ color: skin.textPrimary }}>{title}</span>
       </div>
       <textarea
         value={displayValue}
@@ -876,7 +876,7 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWi
         onBlur={handleBlur}
         placeholder={placeholder}
         rows={6}
-        className="w-full bg-transparent text-xs leading-relaxed outline-none border border-transparent rounded-lg p-2 resize-none transition-colors"
+        className="w-full bg-transparent text-sm leading-relaxed outline-none border border-transparent rounded-lg p-2.5 resize-none transition-colors"
         style={{ color: skin.textPrimary, minHeight: fullWidth ? '120px' : '192px' }}
       />
     </div>
