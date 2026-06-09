@@ -479,8 +479,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '未能从 HTML 中解析出任何日期条目。请确保内容中包含日期（如 2024年1月1日 或 2024-01-01）。' }, { status: 400 });
     }
 
-    // Step 2: AI 分类
-    const classified = await classifyWithAI(entries, request, { year: reqYear, month: reqMonth, day: reqDay });
+    // Step 2: 对于HTML模式（如浮木笔记），跳过AI分类，直接将内容存入completed字段
+    // 用户明确表示导入的文字不需要AI重新归类，原样存储即可
+    let classified: ClassifiedEntry[];
+
+    if (isTextMode) {
+      // 文本模式仍走AI分类（单条短文本）
+      classified = await classifyWithAI(entries, request, { year: reqYear, month: reqMonth, day: reqDay });
+    } else {
+      // HTML模式：直接将每条内容存入completed字段，跳过AI分类
+      classified = entries.map(entry => {
+        const parts = entry.date.split('-').map(Number);
+        return {
+          date: entry.date,
+          year: parts[0],
+          month: parts[1],
+          day: parts[2],
+          completed: entry.content,
+          goodThings: '',
+          problems: '',
+          mood: '',
+          reflections: '',
+          tomorrowTodo: '',
+        };
+      });
+    }
 
     // Step 3: 保存到数据库（追加模式）
     const supabase = getSupabaseClient();
