@@ -18,7 +18,11 @@ export async function GET(request: NextRequest) {
       .filter((r: Record<string, unknown>) =>
         !!(r.completed || r.good_things || r.problems || r.mood || r.reflections || r.tomorrow_todo))
       .map((r: { month: number; day: number }) => `${year}-${r.month}-${r.day}`);
-    return NextResponse.json({ days });
+    // Also return days with action feedback (completed + tomorrow_todo)
+    const actionDays = (data || [])
+      .filter((r: Record<string, unknown>) => !!(r.completed || r.tomorrow_todo))
+      .map((r: { month: number; day: number }) => `${year}-${r.month}-${r.day}`);
+    return NextResponse.json({ days, actionDays });
   }
 
   const month = Number(searchParams.get('month'));
