@@ -154,6 +154,48 @@ function parseTextEntries(text: string, reqYear?: number): ParsedEntry[] {
 }
 
 /**
+ * 修复JSON字符串中字符串值内的裸换行符
+ * 逐字符扫描，仅在字符串值内部将 \n 替换为 \\n
+ */
+function fixJsonNewlines(json: string): string {
+  let result = '';
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+    if (escape) {
+      result += ch;
+      escape = false;
+      continue;
+    }
+    if (ch === '\\' && inString) {
+      result += ch;
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      result += ch;
+      continue;
+    }
+    if (ch === '\n' && inString) {
+      result += '\\n';
+      continue;
+    }
+    if (ch === '\r' && inString) {
+      result += '\\r';
+      continue;
+    }
+    if (ch === '\t' && inString) {
+      result += '\\t';
+      continue;
+    }
+    result += ch;
+  }
+  return result;
+}
+
+/**
  * 使用 LLM 将笔记内容分类到6个复盘维度
  */
 async function classifyWithAI(entries: ParsedEntry[], request: NextRequest, fallbackDate?: { year?: number; month?: number; day?: number }): Promise<ClassifiedEntry[]> {
@@ -188,17 +230,17 @@ async function classifyWithAI(entries: ParsedEntry[], request: NextRequest, fall
 
 分类规则：
 1. 仔细阅读每条内容，判断它属于哪个维度
-2. 同一维度的多条内容用编号列表，换行分隔
+2. 同一维度的多条内容用分号（；）分隔，不要换行
 3. 如果某维度没有对应内容，填空字符串 ""
 4. 不要遗漏任何内容，每句话都必须归入某个维度
+5. 字符串值中不要包含换行符（用分号代替）
 
 输入数据：
 ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
 
-请严格按以下 JSON 格式输出，不要输出任何其他文字：
+请严格按以下 JSON 格式输出，不要输出任何其他文字，字符串值中不要有换行符：
 [
-  {"date":"YYYY-M-D","completed":"...","goodThings":"...","problems":"...","mood":"...","reflections":"...","tomorrowTodo":"..."},
-  ...
+  {"date":"YYYY-M-D","completed":"...","goodThings":"...","problems":"...","mood":"...","reflections":"...","tomorrowTodo":"..."}
 ]`;
 
   if (isLocalMode) {
@@ -274,7 +316,7 @@ ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
   }
 
   if (!jsonStr) {
-    console.error('[Import Review] AI raw response:', aiResult.substring(0, 500));
+    console.error('[Import Review] AI raw response (first 500):', aiResult.substring(0, 500));
     throw new Error('AI 返回格式错误，无法解析。请检查导入内容是否有效。');
   }
 
@@ -284,23 +326,46 @@ ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
   let parsed: unknown[];
   try {
     parsed = JSON.parse(jsonStr);
-  } catch (e) {
-    // 尝试修复常见问题：字符串值中的未转义换行符
+  } catch (e1) {
+    // 修复策略：暴力重建JSON，确保字符串值中的换行符被正确转义
+    console.log('[Import Review] First parse failed, attempting robust fix...');
     try {
-      const fixed = jsonStr.replace(/:\s*"([^"]*)\n([^"]*)"/g, (_m, p1, p2) => `: "${p1}\\n${p2}"`);
+      // 将整个JSON字符串中的真实换行替换（仅在字符串值内部）
+      // 策略：逐字符扫描，跟踪是否在字符串内部，仅转义字符串内的裸换行
+      const fixed = fixJsonNewlines(jsonStr);
       parsed = JSON.parse(fixed);
-    } catch {
-      // 再尝试：逐行重建，强制转义换行
+    } catch (e2) {
+      // 最后尝试：提取所有 {...} 对象
+      console.log('[Import Review] Second parse failed, extracting individual objects...');
       try {
-        const lines = jsonStr.split('\n');
-        const rebuilt = lines.map(line => {
-          // 如果行在字符串值内部，转义换行
-          return line.replace(/([^\\])\\n/g, '$1\\\\n');
-        }).join('\\n');
-        parsed = JSON.parse(rebuilt);
-      } catch {
-        console.error('[Import Review] JSON parse failed, raw:', jsonStr.substring(0, 1000));
-        console.error('[Import Review] Parse error:', e);
+        const objects: unknown[] = [];
+        let depth = 0;
+        let start = -1;
+        for (let i = 0; i < jsonStr.length; i++) {
+          if (jsonStr[i] === '{' && depth === 0) start = i;
+          if (jsonStr[i] === '{') depth++;
+          if (jsonStr[i] === '}') {
+            depth--;
+            if (depth === 0 && start >= 0) {
+              const objStr = fixJsonNewlines(jsonStr.substring(start, i + 1));
+              try {
+                objects.push(JSON.parse(objStr));
+              } catch { /* skip malformed objects */ }
+              start = -1;
+            }
+          }
+        }
+        if (objects.length > 0) {
+          parsed = objects;
+        } else {
+          console.error('[Import Review] All parse attempts failed. Raw (first 2000):', jsonStr.substring(0, 2000));
+          console.error('[Import Review] Original error:', e1);
+          console.error('[Import Review] Fix error:', e2);
+          throw new Error('AI 返回的JSON解析失败，请重试。');
+        }
+      } catch (e3) {
+        if (e3 instanceof Error && e3.message.includes('AI 返回的JSON')) throw e3;
+        console.error('[Import Review] Final parse failed. Raw (first 2000):', jsonStr.substring(0, 2000));
         throw new Error('AI 返回的JSON解析失败，请重试。');
       }
     }

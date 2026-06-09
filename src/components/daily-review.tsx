@@ -104,6 +104,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const [importHtml, setImportHtml] = useState('');
   const [importMode, setImportMode] = useState<'text' | 'html'>('text');
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const importTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Voice recording state — MediaRecorder based
   const [voicePhase, setVoicePhase] = useState<VoicePhase>('idle');
@@ -789,6 +791,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     onClick={async () => {
                       if (!importHtml.trim() || importing) return;
                       setImporting(true);
+                      setImportProgress(0);
+                      // 模拟进度条：快速到90%，最后10%等真实完成
+                      importTimerRef.current = setInterval(() => {
+                        setImportProgress(prev => {
+                          if (prev >= 90) return prev; // 90%后停住
+                          return prev + Math.random() * 8 + 2;
+                        });
+                      }, 300);
                       try {
                         const res = await fetch('/api/import-review', {
                           method: 'POST',
@@ -796,6 +806,10 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                           body: JSON.stringify(importMode === 'text' ? { text: importHtml, year, month, day } : { html: importHtml }),
                         });
                         const data = await res.json();
+                        // 完成，进度条填满
+                        if (importTimerRef.current) clearInterval(importTimerRef.current);
+                        setImportProgress(100);
+                        await new Promise(r => setTimeout(r, 400)); // 让用户看到100%
                         if (data.error) {
                           alert(data.error);
                         } else {
@@ -808,16 +822,30 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                           setImportHtml('');
                         }
                       } catch (err) {
+                        if (importTimerRef.current) clearInterval(importTimerRef.current);
                         alert('导入失败: ' + (err instanceof Error ? err.message : '未知错误'));
                       } finally {
                         setImporting(false);
+                        setImportProgress(0);
+                        if (importTimerRef.current) clearInterval(importTimerRef.current);
                       }
                     }}
                     disabled={!importHtml.trim() || importing}
                     className="px-6 py-2.5 rounded-xl font-medium text-white text-base transition-all disabled:opacity-50"
                     style={{ backgroundColor: importing ? skin.textMuted : '#3b82f6' }}
                   >
-                    {importing ? '⏳ 正在解析和分类...' : '🚀 开始导入'}
+                    {importing ? (
+                      <span className="flex items-center gap-2">
+                        <span>⏳ 正在解析和分类</span>
+                        <span className="inline-block w-24 h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: skin.textMuted + '30' }}>
+                          <span
+                            className="block h-full rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${importProgress}%`, background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }}
+                          />
+                        </span>
+                        <span className="text-xs opacity-70">{Math.round(importProgress)}%</span>
+                      </span>
+                    ) : '🚀 开始导入'}
                   </button>
                 </>
             </div>
