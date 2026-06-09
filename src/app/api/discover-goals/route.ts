@@ -47,7 +47,14 @@ export async function GET(request: NextRequest) {
     const year = new Date().getFullYear();
     const client = getSupabaseClient();
 
-    // 并行获取5大数据源
+    // 追溯3个月的数据，如果不足15条则扩展到6个月
+    const now = new Date();
+    const threeMonthsAgo = new Date(now);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const sixMonthsAgo = new Date(now);
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    // 并行获取5大数据源（查当年数据，后续按日期范围过滤）
     const [reviewsRes, overridesRes, todosRes] = await Promise.all([
       client
         .from('daily_reviews')
@@ -67,9 +74,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: reviewsRes.error.message }, { status: 500 });
     }
 
-    const reviews = (reviewsRes.data || []) as ReviewRow[];
-    const overrides = (overridesRes.data || []) as OverrideRow[];
-    const todos = (todosRes.data || []) as TodoRow[];
+    const allReviews = (reviewsRes.data || []) as ReviewRow[];
+    const allOverrides = (overridesRes.data || []) as OverrideRow[];
+    const allTodos = (todosRes.data || []) as TodoRow[];
+
+    // 按日期过滤：只保留最近3个月的数据
+    const cutoffDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+    function isWithinCutoff(month: number, day: number): boolean {
+      const d = new Date(year, month - 1, day);
+      return d >= cutoffDate;
+    }
+
+    let reviews = allReviews.filter(r => isWithinCutoff(r.month, r.day));
+    let overrides = allOverrides.filter(r => {
+      const parts = r.date_key.split('-');
+      return parts.length >= 3 && isWithinCutoff(parseInt(parts[1]), parseInt(parts[2]));
+    });
+    let todos = allTodos.filter(r => isWithinCutoff(r.month, r.day));
+
+    // 如果3个月内数据不足15条，扩展到6个月
+    if (reviews.length < 15) {
+      const extendedCutoff = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+      function isWithinExtended(month: number, day: number): boolean {
+        const d = new Date(year, month - 1, day);
+        return d >= extendedCutoff;
+      }
+      reviews = allReviews.filter(r => isWithinExtended(r.month, r.day));
+      overrides = allOverrides.filter(r => {
+        const parts = r.date_key.split('-');
+        return parts.length >= 3 && isWithinExtended(parseInt(parts[1]), parseInt(parts[2]));
+      });
+      todos = allTodos.filter(r => isWithinExtended(r.month, r.day));
+    }
 
     // 从5个数据源提取信号
     const signals = extractSignals(reviews, overrides, todos);
