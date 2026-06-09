@@ -1139,10 +1139,10 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                           <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                                  onBlur={() => saveTitle(kr.id)}
                                  onKeyDown={e => { if (e.key === 'Enter') saveTitle(kr.id); if (e.key === 'Escape') setEditingId(null); }}
-                                 className="flex-1 text-sm font-medium outline-none bg-transparent px-1"
+                                 className="flex-1 text-base font-medium outline-none bg-transparent px-1"
                                  style={{ color: s.text1, borderBottom: `1.5px solid ${swatch}` }} />
                         ) : (
-                          <span className="flex-1 text-sm font-medium truncate cursor-text hover:opacity-80" style={{ color: s.text1 }}
+                          <span className="flex-1 text-base font-medium truncate cursor-text hover:opacity-80" style={{ color: s.text1 }}
                                 onClick={() => { setEditingId(kr.id); setEditText(kr.title); }}>
                             <span style={{ color: swatch, fontWeight: 700 }}>KR{kri + 1}</span> {kr.title}
                           </span>
@@ -1153,18 +1153,18 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                                    onChange={e => setEditingTargetValue(e.target.value)}
                                    onBlur={() => saveTargetValue(o.id, kr.id)}
                                    onKeyDown={e => { if (e.key === 'Enter') saveTargetValue(o.id, kr.id); if (e.key === 'Escape') setEditingTargetValue(null); }}
-                                   className="w-10 text-center text-xs outline-none rounded px-1 py-0.5"
+                                   className="w-12 text-center text-sm outline-none rounded px-1 py-0.5"
                                    style={{ backgroundColor: s.panelBg, color: s.text1, border: `1px solid ${s.divider}` }} />
                           ) : (
-                            <span className="text-[10px] cursor-pointer hover:opacity-70" style={{ color: s.textMuted }}
+                            <span className="text-xs cursor-pointer hover:opacity-70" style={{ color: s.textMuted }}
                                   onClick={() => setEditingTargetValue(kr.id)}>
                               目标{kr.targetValue}
                             </span>
                           )}
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: `${swatch}12`, color: swatch }}>
+                          <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${swatch}12`, color: swatch }}>
                             {doneTasks}/{kr.children.length}
                           </span>
-                          <span className="text-xs font-bold" style={{ color: krPct > 0 ? swatch : s.textMuted }}>{krPct}%</span>
+                          <span className="text-sm font-bold" style={{ color: krPct > 0 ? swatch : s.textMuted }}>{krPct}%</span>
                           <button onClick={() => deleteKR(o.id, kr.id, kr.title)}
                                   className="w-5 h-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:opacity-80 transition-opacity"
                                   style={{ color: '#ef4444' }}>
@@ -1185,18 +1185,18 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                           <div key={t.id} className="group flex items-center gap-2 py-1.5"
                                style={{ borderBottom: `1px solid ${s.divider}20` }}>
                             <button onClick={() => toggleTask(o.id, kr.id, t.id)}
-                                    className="w-4 h-4 rounded-md flex-shrink-0 flex items-center justify-center transition-all"
+                                    className="w-5 h-5 rounded-md flex-shrink-0 flex items-center justify-center transition-all"
                                     style={{ border: `1.5px solid ${t.done ? '#22c55e' : s.textMuted}40`, backgroundColor: t.done ? '#22c55e' : 'transparent' }}>
-                              {t.done && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                              {t.done && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                             </button>
                             {editingId === t.id ? (
                               <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                                      onBlur={() => saveTitle(t.id)}
                                      onKeyDown={e => { if (e.key === 'Enter') saveTitle(t.id); if (e.key === 'Escape') setEditingId(null); }}
-                                     className={`flex-1 text-xs leading-relaxed outline-none bg-transparent px-0.5 ${t.done ? 'line-through' : ''}`}
+                                     className={`flex-1 text-sm leading-relaxed outline-none bg-transparent px-0.5 ${t.done ? 'line-through' : ''}`}
                                      style={{ color: t.done ? s.textMuted : s.text1, borderBottom: `1.5px solid ${swatch}` }} />
                             ) : (
-                              <span className={`flex-1 text-xs leading-relaxed cursor-text ${t.done ? 'line-through' : ''}`} style={{ color: t.done ? s.textMuted : s.text2 }}
+                              <span className={`flex-1 text-sm leading-relaxed cursor-text ${t.done ? 'line-through' : ''}`} style={{ color: t.done ? s.textMuted : s.text2 }}
                                     onClick={() => { setEditingId(t.id); setEditText(t.title); }}>{t.title}</span>
                             )}
                             <button onClick={() => deleteTask(o.id, kr.id, t.id, t.title)}
@@ -1213,7 +1213,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
 
                     {/* Add task */}
                     <div className="px-4 pb-3 flex items-center gap-2">
-                      <svg className="w-3 h-3 flex-shrink-0" style={{ color: swatch }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className="w-4 h-4 flex-shrink-0" style={{ color: swatch }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
                       <input type="text" value={getTaskInput(kr.id)} onChange={e => setTaskInput(kr.id, e.target.value)}
