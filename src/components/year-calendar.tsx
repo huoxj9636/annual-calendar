@@ -1268,7 +1268,7 @@ export default function YearCalendar() {
                       {/* Blue dot indicator: shown when completed or tomorrowTodo has content */}
                       {actionDays.has(`${year}-${cell.month}-${cell.day}`) && (
                         <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full z-20"
-                      style={{ background: `linear-gradient(135deg, ${skin.blueDot}cc, ${skin.blueDot})`, boxShadow: `0 0 6px ${skin.blueDot}80` }} />
+                      style={{ background: `${skin.blueDot}55`, boxShadow: 'none' }} />
                       )}
                       </div>{/* end content wrapper */}
                     </div>
