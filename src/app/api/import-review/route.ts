@@ -150,7 +150,7 @@ function parseTextEntries(text: string): ParsedEntry[] {
 /**
  * 使用 LLM 将笔记内容分类到6个复盘维度
  */
-async function classifyWithAI(entries: ParsedEntry[], request: NextRequest): Promise<ClassifiedEntry[]> {
+async function classifyWithAI(entries: ParsedEntry[], request: NextRequest, fallbackDate?: { year?: number; month?: number; day?: number }): Promise<ClassifiedEntry[]> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { LLMClient, Config, HeaderUtils } = require('coze-coding-dev-sdk');
 
@@ -242,15 +242,79 @@ ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
   }
 
   // 解析 AI 返回的 JSON
-  const jsonMatch = aiResult.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) {
-    throw new Error('AI 返回格式错误，无法解析');
+  // 尝试多种提取方式，兼容 markdown 代码块、非标准格式等
+  let jsonStr: string | null = null;
+
+  // 方式1: 提取 markdown 代码块中的 JSON
+  const codeBlockMatch = aiResult.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    jsonStr = codeBlockMatch[1].trim();
   }
 
-  const classified: ClassifiedEntry[] = JSON.parse(jsonMatch[0]).map((item: Record<string, string>) => {
-    const parts = item.date.split('-').map(Number);
+  // 方式2: 直接匹配 JSON 数组
+  if (!jsonStr) {
+    const arrayMatch = aiResult.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      jsonStr = arrayMatch[0];
+    }
+  }
+
+  // 方式3: 匹配 JSON 对象（单条记录）
+  if (!jsonStr) {
+    const objMatch = aiResult.match(/\{[\s\S]*\}/);
+    if (objMatch) {
+      jsonStr = `[${objMatch[0]}]`;
+    }
+  }
+
+  if (!jsonStr) {
+    console.error('[Import Review] AI raw response:', aiResult.substring(0, 500));
+    throw new Error('AI 返回格式错误，无法解析。请检查导入内容是否有效。');
+  }
+
+  // 清理可能的尾随逗号等常见JSON问题
+  jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1');
+
+  let parsed: unknown[];
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch (e) {
+    // 尝试修复常见问题：字符串值中的未转义换行符
+    try {
+      const fixed = jsonStr.replace(/:\s*"([^"]*)\n([^"]*)"/g, (_m, p1, p2) => `: "${p1}\\n${p2}"`);
+      parsed = JSON.parse(fixed);
+    } catch {
+      // 再尝试：逐行重建，强制转义换行
+      try {
+        const lines = jsonStr.split('\n');
+        const rebuilt = lines.map(line => {
+          // 如果行在字符串值内部，转义换行
+          return line.replace(/([^\\])\\n/g, '$1\\\\n');
+        }).join('\\n');
+        parsed = JSON.parse(rebuilt);
+      } catch {
+        console.error('[Import Review] JSON parse failed, raw:', jsonStr.substring(0, 1000));
+        console.error('[Import Review] Parse error:', e);
+        throw new Error('AI 返回的JSON解析失败，请重试。');
+      }
+    }
+  }
+
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error('AI 返回的数据为空，请重试。');
+  }
+
+  const classified: ClassifiedEntry[] = (parsed as Record<string, string>[]).map((item) => {
+    const parts = (item.date || '').split('-').map(Number);
+    if (parts.length < 3 || parts.some(isNaN)) {
+      // 如果日期解析失败，使用回退日期
+      const now = new Date();
+      parts[0] = fallbackDate?.year || now.getFullYear();
+      parts[1] = fallbackDate?.month || (now.getMonth() + 1);
+      parts[2] = fallbackDate?.day || now.getDate();
+    }
     return {
-      date: item.date,
+      date: `${parts[0]}-${parts[1]}-${parts[2]}`,
       year: parts[0],
       month: parts[1],
       day: parts[2],
@@ -297,7 +361,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: AI 分类
-    const classified = await classifyWithAI(entries, request);
+    const classified = await classifyWithAI(entries, request, { year: reqYear, month: reqMonth, day: reqDay });
 
     // Step 3: 保存到数据库（追加模式）
     const supabase = getSupabaseClient();
