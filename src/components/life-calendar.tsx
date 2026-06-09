@@ -1061,7 +1061,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                         className="transition-all duration-700" />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-sm font-bold" style={{ color: oPct > 0 ? swatch : s.textMuted }}>{oPct}%</span>
+                      <span className="text-base font-bold" style={{ color: oPct > 0 ? swatch : s.textMuted }}>{oPct}%</span>
                     </div>
                   </div>
                   {/* Title & stats */}
@@ -1070,10 +1070,10 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                       <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                              onBlur={() => saveTitle(o.id)}
                              onKeyDown={e => { if (e.key === 'Enter') saveTitle(o.id); if (e.key === 'Escape') setEditingId(null); }}
-                             className="w-full text-base font-bold outline-none bg-transparent px-1 mb-1"
+                             className="w-full text-lg font-bold outline-none bg-transparent px-1 mb-1"
                              style={{ color: s.text1, borderBottom: `1.5px solid ${swatch}` }} />
                     ) : (
-                      <h2 className="text-base font-bold cursor-text hover:opacity-80 mb-1 leading-snug" style={{ color: s.text1 }}
+                      <h2 className="text-lg font-bold cursor-text hover:opacity-80 mb-1 leading-snug" style={{ color: s.text1 }}
                           onClick={() => { setEditingId(o.id); setEditText(o.title); }}>
                         <span style={{ color: swatch }}>O{goals.findIndex(g => g.id === o.id) + 1}</span> {o.title}
                       </h2>
@@ -1097,7 +1097,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                   </button>
                   <div className="flex-1" />
                   <button onClick={() => deleteObjective(o.id, o.title)}
-                          className="text-xs px-3 py-1.5 rounded-lg transition-all hover:opacity-70"
+                          className="text-sm px-3 py-1.5 rounded-lg transition-all hover:opacity-70"
                           style={{ color: '#ef4444', backgroundColor: '#ef444410', border: '1px solid #ef444420' }}>删除目标</button>
                 </div>
               </div>
@@ -1107,7 +1107,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                 <span className="text-xs font-bold flex-shrink-0" style={{ color: swatch }}>+ KR</span>
                 <input type="text" value={newKRTitle} onChange={e => setNewKRTitle(e.target.value)}
                        onKeyDown={e => e.key === 'Enter' && addKR(o.id)}
-                       placeholder="添加关键结果..." className="flex-1 text-sm outline-none bg-transparent"
+                       placeholder="添加关键结果..." className="flex-1 text-base outline-none bg-transparent"
                        style={{ color: s.text1 }} />
                 <button onClick={voiceKR.phase !== 'idle' ? undefined : voiceKR.start}
                         className="w-7 h-7 flex items-center justify-center rounded-lg transition-all flex-shrink-0 hover:opacity-70"
@@ -1219,7 +1219,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                       <input type="text" value={getTaskInput(kr.id)} onChange={e => setTaskInput(kr.id, e.target.value)}
                              onFocus={() => setActiveKRId(kr.id)}
                              onKeyDown={e => e.key === 'Enter' && addTask(o.id, kr.id)}
-                             placeholder="添加任务..." className="flex-1 text-xs outline-none bg-transparent"
+                             placeholder="添加任务..." className="flex-1 text-sm outline-none bg-transparent"
                              style={{ color: s.text1 }} />
                       <button onClick={voiceTask.phase !== 'idle' ? undefined : () => { setActiveKRId(kr.id); voiceTask.start(); }}
                               className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded transition-colors hover:opacity-70"
