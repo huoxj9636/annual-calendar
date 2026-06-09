@@ -792,9 +792,9 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
         </div>
 
         {/* Objective list (flat, top-level only) */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {filteredGoals.length === 0 ? (
-            <div className="flex-1 overflow-y-auto px-5 py-6">
+            <div className="px-5 py-6">
               {discoveryState === 'idle' && (
                 <div className="flex flex-col items-center gap-4">
                   {/* Discovery card */}
