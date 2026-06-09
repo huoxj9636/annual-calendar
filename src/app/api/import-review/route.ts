@@ -20,13 +20,61 @@ interface ClassifiedEntry {
 }
 
 /**
+ * 浮木笔记结构化解析
+ * 格式: <div class="time">2026-06-09 19:30:11</div><div class="content"><p>...</p></div>
+ */
+function parseFumuHTML(html: string, reqYear?: number): ParsedEntry[] {
+  const entries: ParsedEntry[] = [];
+  // 匹配 <div class="time">...</div> 后面紧跟 <div class="content">...</div>
+  const pattern = /<div[^>]*class=["'][^"']*time[^"']*["'][^>]*>([\s\S]*?)<\/div>\s*<div[^>]*class=["'][^"']*content[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi;
+
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(html)) !== null) {
+    const timeStr = match[1].trim();
+    const contentHtml = match[2].trim();
+
+    // 从时间字符串提取日期
+    const dateMatch = timeStr.match(/(\d{4})[\/\-\.]\s*(\d{1,2})[\/\-\.]\s*(\d{1,2})/);
+    if (!dateMatch) continue;
+
+    const y = parseInt(dateMatch[1]);
+    const m = parseInt(dateMatch[2]);
+    const d = parseInt(dateMatch[3]);
+
+    // 从 content HTML 中提取纯文本
+    const contentText = contentHtml
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    if (contentText) {
+      entries.push({ date: `${y}-${m}-${d}`, content: contentText });
+    }
+  }
+
+  // 如果没有匹配到结构化格式，返回空数组（让通用解析接管）
+  return entries;
+}
+
+/**
  * 从 HTML 中提取日期+内容条目
- * 支持常见笔记导出格式：
- * - <h1/h2/h3> 标题含日期
- * - <time datetime="..."> 标签
- * - 日期行（2024年1月1日 / 2024-01-01 / Jan 1, 2024 等）
+ * 优先支持浮木笔记格式: <div class="time">YYYY-MM-DD HH:mm:ss</div><div class="content">...</div>
+ * 通用回退：常见笔记导出格式
  */
 function parseHTMLEntries(html: string, reqYear?: number): ParsedEntry[] {
+  // === 第一优先：浮木笔记结构化解析 ===
+  const fumuEntries = parseFumuHTML(html, reqYear);
+  if (fumuEntries.length > 0) return fumuEntries;
+
+  // === 回退：通用解析 ===
   // 移除 script/style
   const clean = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
