@@ -206,6 +206,13 @@ export default function YearCalendar() {
   });
   const getModuleName = (key: string) => (mounted ? (moduleNames[key] || defaultModuleNames[key]) : defaultModuleNames[key]) || key;
   const defaultModuleOrder = ['timeline', 'dida', 'longterm', 'review', 'bilibili', 'insight', 'track'];
+  type Bookmark = { id: string; name: string; url: string };
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
+    try { return JSON.parse(typeof window !== 'undefined' ? localStorage.getItem('calendar-bookmarks') || '[]' : '[]'); } catch { return []; }
+  });
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [newBookmarkName, setNewBookmarkName] = useState('');
+  const [newBookmarkUrl, setNewBookmarkUrl] = useState('');
   const [moduleOrder, setModuleOrder] = useState<string[]>(defaultModuleOrder);
 
   // Real-time clock with centiseconds (2-digit)
@@ -221,6 +228,11 @@ export default function YearCalendar() {
     const id = setInterval(tick, 53);
     return () => clearInterval(id);
   }, [mounted]);
+
+  // Persist bookmarks
+  useEffect(() => {
+    if (mounted) localStorage.setItem('calendar-bookmarks', JSON.stringify(bookmarks));
+  }, [bookmarks, mounted]);
 
   const blocks = useMemo(() => getTwelveWeekBlocks(year), [year]);
   const skin = useMemo(() => mounted ? (skinKey ? (SKINS.find(s => s.key === skinKey) ?? NO_SKIN) : NO_SKIN) : NO_SKIN, [skinKey, mounted]);
@@ -452,6 +464,13 @@ export default function YearCalendar() {
       localStorage.setItem('calendar-module-order', JSON.stringify(moduleOrder));
     } catch { /* ignore */ }
   }, [moduleOrder, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      localStorage.setItem('calendar-bookmarks', JSON.stringify(bookmarks));
+    } catch { /* ignore */ }
+  }, [bookmarks, mounted]);
 
   // 后台任务轮询：每3秒检查一次任务状态
   useEffect(() => {
@@ -1104,7 +1123,80 @@ export default function YearCalendar() {
               </button>
             </div>;
           })}
+
+          {/* 更多按钮 */}
+          <div className="flex flex-col items-center mt-auto pb-3">
+            <div className="w-6" style={{ borderTop: `1px solid ${skin.swatch}40`, margin: '8px auto 8px auto' }} />
+            <button onClick={() => setShowMoreMenu(true)}
+              className="group flex flex-col items-center gap-1 cursor-pointer">
+              <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110 text-lg font-bold" style={{ backgroundColor: skin.swatch, color: '#ffffff', boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)` }}>•••</span>
+              <span className="text-[12px] leading-none font-bold tracking-wide transition-colors" style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>更多</span>
+            </button>
+          </div>
         </div>
+
+        {/* 更多弹窗 */}
+        {showMoreMenu && (
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-24"
+            onClick={() => setShowMoreMenu(false)}>
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+            <div className="relative rounded-2xl shadow-2xl w-80 p-5 max-h-[70vh] overflow-y-auto" style={{ backgroundColor: skin.panelBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">更多链接</h3>
+                <button onClick={() => setShowMoreMenu(false)} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-black/10 cursor-pointer" style={{ color: skin.textMuted }}>✕</button>
+              </div>
+
+              {/* Add form - inline */}
+              <div className="flex gap-2 mb-3">
+                <input value={newBookmarkName} onChange={(e) => setNewBookmarkName(e.target.value)}
+                  placeholder="名称" maxLength={20}
+                  className="flex-1 min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
+                  style={{ backgroundColor: `${skin.swatch}10`, color: skin.textPrimary, border: `1px solid ${skin.divider}` }} />
+                <input value={newBookmarkUrl} onChange={(e) => setNewBookmarkUrl(e.target.value)}
+                  placeholder="URL" 
+                  className="flex-[2] min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
+                  style={{ backgroundColor: `${skin.swatch}10`, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newBookmarkName.trim() && newBookmarkUrl.trim()) {
+                      setBookmarks(prev => [...prev, { id: `bm_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, name: newBookmarkName.trim(), url: newBookmarkUrl.trim().startsWith('http') ? newBookmarkUrl.trim() : `https://${newBookmarkUrl.trim()}` }]);
+                      setNewBookmarkName(''); setNewBookmarkUrl('');
+                    }
+                  }} />
+                <button onClick={() => {
+                  if (newBookmarkName.trim() && newBookmarkUrl.trim()) {
+                    setBookmarks(prev => [...prev, { id: `bm_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, name: newBookmarkName.trim(), url: newBookmarkUrl.trim().startsWith('http') ? newBookmarkUrl.trim() : `https://${newBookmarkUrl.trim()}` }]);
+                    setNewBookmarkName(''); setNewBookmarkUrl('');
+                  }
+                }} className="rounded-xl px-3 py-2 text-sm font-bold cursor-pointer" style={{ backgroundColor: skin.swatch, color: '#fff' }}>添加</button>
+              </div>
+
+              {/* Bookmark list */}
+              {bookmarks.length === 0 ? (
+                <div className="text-center py-6" style={{ color: skin.textMuted }}>暂无自定义链接</div>
+              ) : (
+                <div className="space-y-2 mt-3">
+                  {bookmarks.map((bm) => (
+                    <div key={bm.id} className="flex items-center gap-2 rounded-xl px-3 py-2.5 group" style={{ backgroundColor: `${skin.swatch}06`, border: `1px solid ${skin.divider}` }}>
+                      <button onClick={() => window.open(bm.url, '_blank')}
+                        className="flex-1 text-left text-sm font-medium truncate cursor-pointer hover:underline" style={{ color: skin.textPrimary }}>
+                        {bm.name}
+                      </button>
+                      <button onClick={() => window.open(bm.url, '_blank')}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-black/10 cursor-pointer flex-shrink-0" style={{ color: skin.textMuted }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                      </button>
+                      <button onClick={() => setBookmarks(prev => prev.filter(b => b.id !== bm.id))}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100 cursor-pointer flex-shrink-0" style={{ color: skin.textMuted }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div
           ref={gridContainerRef}
