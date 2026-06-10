@@ -385,13 +385,6 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
   const [aiDecompose, setAiDecompose] = useState<{ loading: boolean; objectiveTitle: string; result: { keyResults: { title: string; targetValue: number; tasks: string[] }[] } | null; objectiveId: string }>({ loading: false, objectiveTitle: '', result: null, objectiveId: '' });
 
   // Goal discovery flow
-
-  // Custom links
-  const [customLinks, setCustomLinks] = useState<{ id: string; name: string; url: string }[]>([]);
-  const [showMoreLinks, setShowMoreLinks] = useState(false);
-  const [newLinkName, setNewLinkName] = useState('');
-  const [newLinkUrl, setNewLinkUrl] = useState('');
-  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
   const [discoveryState, setDiscoveryState] = useState<'idle' | 'scanning' | 'selecting' | 'generating' | 'previewing'>('idle');
 
   const [discoveredThemes, setDiscoveredThemes] = useState<Array<{ keyword: string; count: number; pattern: string; suggestion: string; source?: string }>>([]);
@@ -458,19 +451,6 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
     })();
     return () => { cancelled = true; };
   }, []);
-
-  // Custom links - load from localStorage
-  useEffect(() => {
-    if (!mounted) return;
-    try {
-      const saved = localStorage.getItem('life-calendar-links');
-      if (saved) setCustomLinks(JSON.parse(saved));
-    } catch { /* ignore */ }
-  }, [mounted]);
-  useEffect(() => {
-    if (!mounted || customLinks.length === 0) return;
-    try { localStorage.setItem('life-calendar-links', JSON.stringify(customLinks)); } catch { /* ignore */ }
-  }, [customLinks, mounted]);
 
   // Apply template
   const applyTemplate = (tpl: OKRTemplate) => {
