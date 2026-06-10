@@ -213,6 +213,7 @@ export default function YearCalendar() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [newBookmarkName, setNewBookmarkName] = useState('');
   const [newBookmarkUrl, setNewBookmarkUrl] = useState('');
+  const [showAddBookmark, setShowAddBookmark] = useState(false);
   const [moduleOrder, setModuleOrder] = useState<string[]>(defaultModuleOrder);
 
   // Real-time clock with centiseconds (2-digit)
@@ -1125,8 +1126,8 @@ export default function YearCalendar() {
           })}
 
           {/* 更多按钮 */}
-          <div className="flex flex-col items-center mt-auto pb-3">
-            <div className="w-6" style={{ borderTop: `1px solid ${skin.swatch}40`, margin: '8px auto 8px auto' }} />
+          <div className="flex flex-col items-center pb-2 pt-0.5">
+            <div className="w-6" style={{ borderTop: `1px solid ${skin.swatch}40`, margin: '4px auto 4px auto' }} />
             <button onClick={() => setShowMoreMenu(true)}
               className="group flex flex-col items-center gap-1 cursor-pointer">
               <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110 text-lg font-bold" style={{ backgroundColor: skin.swatch, color: '#ffffff', boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)` }}>•••</span>
@@ -1135,64 +1136,118 @@ export default function YearCalendar() {
           </div>
         </div>
 
-        {/* 更多弹窗 */}
+        {/* 更多弹窗 - Edge风格 */}
         {showMoreMenu && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-24"
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-20"
             onClick={() => setShowMoreMenu(false)}>
             <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
-            <div className="relative rounded-2xl shadow-2xl w-80 p-5 max-h-[70vh] overflow-y-auto" style={{ backgroundColor: skin.panelBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+            <div className="relative rounded-2xl shadow-2xl w-[480px] p-6 max-h-[80vh] overflow-y-auto"
+              style={{ backgroundColor: skin.panelBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
               onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">更多链接</h3>
-                <button onClick={() => setShowMoreMenu(false)} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-black/10 cursor-pointer" style={{ color: skin.textMuted }}>✕</button>
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-base font-bold" style={{ color: skin.textPrimary }}>快捷链接</h3>
+                <button onClick={() => setShowMoreMenu(false)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-black/10 transition-all cursor-pointer"
+                  style={{ color: skin.textMuted }}>✕</button>
               </div>
 
-              {/* Add form - inline */}
-              <div className="flex gap-2 mb-3">
-                <input value={newBookmarkName} onChange={(e) => setNewBookmarkName(e.target.value)}
-                  placeholder="名称" maxLength={20}
-                  className="flex-1 min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
-                  style={{ backgroundColor: `${skin.swatch}10`, color: skin.textPrimary, border: `1px solid ${skin.divider}` }} />
-                <input value={newBookmarkUrl} onChange={(e) => setNewBookmarkUrl(e.target.value)}
-                  placeholder="URL" 
-                  className="flex-[2] min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
-                  style={{ backgroundColor: `${skin.swatch}10`, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newBookmarkName.trim() && newBookmarkUrl.trim()) {
-                      setBookmarks(prev => [...prev, { id: `bm_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, name: newBookmarkName.trim(), url: newBookmarkUrl.trim().startsWith('http') ? newBookmarkUrl.trim() : `https://${newBookmarkUrl.trim()}` }]);
-                      setNewBookmarkName(''); setNewBookmarkUrl('');
-                    }
-                  }} />
-                <button onClick={() => {
-                  if (newBookmarkName.trim() && newBookmarkUrl.trim()) {
-                    setBookmarks(prev => [...prev, { id: `bm_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, name: newBookmarkName.trim(), url: newBookmarkUrl.trim().startsWith('http') ? newBookmarkUrl.trim() : `https://${newBookmarkUrl.trim()}` }]);
-                    setNewBookmarkName(''); setNewBookmarkUrl('');
-                  }
-                }} className="rounded-xl px-3 py-2 text-sm font-bold cursor-pointer" style={{ backgroundColor: skin.swatch, color: '#fff' }}>添加</button>
-              </div>
-
-              {/* Bookmark list */}
-              {bookmarks.length === 0 ? (
-                <div className="text-center py-6" style={{ color: skin.textMuted }}>暂无自定义链接</div>
-              ) : (
-                <div className="space-y-2 mt-3">
-                  {bookmarks.map((bm) => (
-                    <div key={bm.id} className="flex items-center gap-2 rounded-xl px-3 py-2.5 group" style={{ backgroundColor: `${skin.swatch}06`, border: `1px solid ${skin.divider}` }}>
-                      <button onClick={() => window.open(bm.url, '_blank')}
-                        className="flex-1 text-left text-sm font-medium truncate cursor-pointer hover:underline" style={{ color: skin.textPrimary }}>
-                        {bm.name}
-                      </button>
-                      <button onClick={() => window.open(bm.url, '_blank')}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-black/10 cursor-pointer flex-shrink-0" style={{ color: skin.textMuted }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-                      </button>
-                      <button onClick={() => setBookmarks(prev => prev.filter(b => b.id !== bm.id))}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100 cursor-pointer flex-shrink-0" style={{ color: skin.textMuted }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                      </button>
-                    </div>
-                  ))}
+              {/* 一级入口：按钮网格 */}
+              <div className="flex flex-wrap gap-4 mb-6">
+                <div className="flex flex-col items-center gap-1.5 w-[72px] cursor-pointer group"
+                  onClick={() => window.open('https://dida365.com', '_blank')}>
+                  <div className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center text-lg font-bold shadow-sm transition-all group-hover:shadow-md group-hover:scale-105"
+                    style={{ backgroundColor: '#3b82f6', color: '#fff' }}>滴</div>
+                  <span className="text-[11px] font-medium truncate w-full text-center" style={{ color: skin.textSecondary }}>滴答清单</span>
                 </div>
+                <div className="flex flex-col items-center gap-1.5 w-[72px] cursor-pointer group"
+                  onClick={() => window.open('https://readhub.cn', '_blank')}>
+                  <div className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center text-lg font-bold shadow-sm transition-all group-hover:shadow-md group-hover:scale-105"
+                    style={{ backgroundColor: '#8b5cf6', color: '#fff' }}>长</div>
+                  <span className="text-[11px] font-medium truncate w-full text-center" style={{ color: skin.textSecondary }}>长城</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 w-[72px] cursor-pointer group"
+                  onClick={() => window.open('https://dedao.cn', '_blank')}>
+                  <div className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center text-lg font-bold shadow-sm transition-all group-hover:shadow-md group-hover:scale-105"
+                    style={{ backgroundColor: '#f59e0b', color: '#fff' }}>得</div>
+                  <span className="text-[11px] font-medium truncate w-full text-center" style={{ color: skin.textSecondary }}>得到</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px" style={{ backgroundColor: skin.divider }} />
+                <span className="text-xs" style={{ color: skin.textMuted }}>自定义收藏</span>
+                <div className="flex-1 h-px" style={{ backgroundColor: skin.divider }} />
+              </div>
+
+              {/* 自定义链接网格 */}
+              {bookmarks.length === 0 && !showAddBookmark && (
+                <div className="text-center py-8" style={{ color: skin.textMuted }}>
+                  <svg className="mx-auto mb-2 opacity-40" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                  <p className="text-sm">暂无收藏</p>
+                  <button onClick={() => setShowAddBookmark(true)}
+                    className="mt-2 text-xs font-medium px-3 py-1.5 rounded-lg transition-all cursor-pointer hover:opacity-80"
+                    style={{ backgroundColor: skin.swatch, color: '#fff' }}>添加链接</button>
+                </div>
+              )}
+
+              {(bookmarks.length > 0 || showAddBookmark) && (
+                <>
+                  {/* 添加表单 */}
+                  {showAddBookmark && (
+                    <div className="flex items-center gap-2 mb-4 p-3 rounded-xl" style={{ backgroundColor: `${skin.swatch}08`, border: `1px solid ${skin.divider}` }}>
+                      <input value={newBookmarkName} onChange={(e) => setNewBookmarkName(e.target.value)}
+                        placeholder="名称" maxLength={20} autoFocus
+                        className="flex-1 min-w-0 rounded-lg px-3 py-2 text-sm outline-none"
+                        style={{ backgroundColor: `${skin.swatch}06`, color: skin.textPrimary, border: `1px solid ${skin.divider}` }} />
+                      <input value={newBookmarkUrl} onChange={(e) => setNewBookmarkUrl(e.target.value)}
+                        placeholder="网址" 
+                        className="flex-[2] min-w-0 rounded-lg px-3 py-2 text-sm outline-none"
+                        style={{ backgroundColor: `${skin.swatch}06`, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newBookmarkName.trim() && newBookmarkUrl.trim()) {
+                            setBookmarks(prev => [...prev, { id: `bm_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, name: newBookmarkName.trim(), url: newBookmarkUrl.trim().startsWith('http') ? newBookmarkUrl.trim() : `https://${newBookmarkUrl.trim()}` }]);
+                            setNewBookmarkName(''); setNewBookmarkUrl(''); setShowAddBookmark(false);
+                          }
+                        }} />
+                      <button onClick={() => {
+                        if (newBookmarkName.trim() && newBookmarkUrl.trim()) {
+                          setBookmarks(prev => [...prev, { id: `bm_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, name: newBookmarkName.trim(), url: newBookmarkUrl.trim().startsWith('http') ? newBookmarkUrl.trim() : `https://${newBookmarkUrl.trim()}` }]);
+                          setNewBookmarkName(''); setNewBookmarkUrl(''); setShowAddBookmark(false);
+                        }
+                      }} className="rounded-lg px-3 py-2 text-sm font-bold cursor-pointer" style={{ backgroundColor: skin.swatch, color: '#fff' }}>添加</button>
+                      <button onClick={() => { setShowAddBookmark(false); setNewBookmarkName(''); setNewBookmarkUrl(''); }}
+                        className="rounded-lg px-2 py-2 text-sm cursor-pointer" style={{ color: skin.textMuted }}>取消</button>
+                    </div>
+                  )}
+
+                  {/* 链接网格 */}
+                  <div className="flex flex-wrap gap-3">
+                    {bookmarks.map((bm) => (
+                      <div key={bm.id} className="flex flex-col items-center gap-1.5 w-[72px] relative group">
+                        <div className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center text-lg font-bold shadow-sm transition-all group-hover:shadow-md group-hover:scale-105 cursor-pointer relative overflow-hidden"
+                          style={{ backgroundColor: `${skin.swatch}20`, color: skin.textPrimary }}
+                          onClick={() => window.open(bm.url, '_blank')}>
+                          {bm.name.charAt(0).toUpperCase()}
+                          {/* 删除按钮 - hover显示 */}
+                          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer hover:scale-110 z-10"
+                            style={{ backgroundColor: '#ef4444', color: '#fff' }}
+                            onClick={(e) => { e.stopPropagation(); setBookmarks(prev => prev.filter(b => b.id !== bm.id)); }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-medium truncate w-full text-center" style={{ color: skin.textSecondary }}>{bm.name}</span>
+                      </div>
+                    ))}
+                    {/* 添加卡片 */}
+                    <div className="flex flex-col items-center gap-1.5 w-[72px] cursor-pointer group" onClick={() => setShowAddBookmark(true)}>
+                      <div className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center text-lg font-bold shadow-sm transition-all group-hover:shadow-md group-hover:scale-105 border-2 border-dashed"
+                        style={{ borderColor: `${skin.swatch}50`, color: skin.textMuted }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                      </div>
+                      <span className="text-[11px] font-medium truncate w-full text-center" style={{ color: skin.textMuted }}>添加</span>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
