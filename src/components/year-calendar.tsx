@@ -1041,7 +1041,7 @@ export default function YearCalendar() {
         </button>
 
         {/* Calendar / Task toggle sidebar */}
-        <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 z-10">
+        <div className="flex-shrink-0 w-14 flex flex-col items-center pt-4 h-full z-10">
           {mounted && moduleOrder.filter(k => moduleVisibility[k as keyof typeof moduleVisibility]).map((key, idx, arr) => {
             const mk = key as 'timeline' | 'dida' | 'longterm' | 'bilibili' | 'insight' | 'track';
             const divider = idx > 0 ? <div key={`${key}-div`} className="w-6" style={{ borderTop: `1px solid ${skin.swatch}40`, margin: '12px auto 12px auto' }} /> : null;
