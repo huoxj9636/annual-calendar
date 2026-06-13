@@ -66,8 +66,12 @@ function getDateLabel(date: Date, today: Date): string {
 }
 
 export default function AchievementPanel({ year, month, day, skin, onClose }: AchievementPanelProps) {
-  const today = new Date(year, month - 1, day);
-  const [selectedDate, setSelectedDate] = useState<Date>(today);
+  // 实际的今天（用于判断"今天"标签）
+  const realToday = new Date();
+  realToday.setHours(0, 0, 0, 0);
+  // 日历视图日期（用于默认选中）
+  const viewDate = new Date(year, month - 1, day);
+  const [selectedDate, setSelectedDate] = useState<Date>(viewDate);
   const [daysData, setDaysData] = useState<Map<string, DayData>>(new Map());
   const [loadedDays, setLoadedDays] = useState(30); // 日期列表长度（不涉及API）
   const [loadingDate, setLoadingDate] = useState<string | null>(null); // 当前正在加载的日期
@@ -84,16 +88,16 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
 
   const s = skin;
 
-  // 生成日期列表
+  // 生成日期列表（从实际今天开始）
   const generateDateList = useCallback((count: number): Date[] => {
     const dates: Date[] = [];
     for (let i = 0; i < count; i++) {
-      const d = new Date(today);
+      const d = new Date(realToday);
       d.setDate(d.getDate() - i);
       dates.push(d);
     }
     return dates;
-  }, [today]);
+  }, [realToday]);
 
   // 快速加载某一天的成果数据（仅 localStorage，不请求 API）
   const loadAchievementsOnly = useCallback((date: Date): DayData => {
@@ -116,12 +120,12 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
       month: m,
       day: d,
       weekday: WEEKDAY_NAMES[date.getDay()],
-      label: getDateLabel(date, today),
+      label: getDateLabel(date, realToday),
       review: null, // 初始不加载复盘，点击时再请求
       achievements,
       hasData: achievements.length > 0,
     };
-  }, [today]);
+  }, [realToday]);
 
   // 请求某一天的复盘 API（点击时调用）
   const fetchReviewData = useCallback(async (date: Date) => {
@@ -159,7 +163,7 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
               month: m,
               day: d,
               weekday: WEEKDAY_NAMES[date.getDay()],
-              label: getDateLabel(date, today),
+              label: getDateLabel(date, realToday),
               review,
               achievements: [],
               hasData: true,
@@ -170,7 +174,7 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
       }
     } catch {}
     setLoadingDate(null);
-  }, [today]);
+  }, [realToday]);
 
   // 初始化加载（仅成果数据，快速）
   useEffect(() => {
@@ -182,8 +186,8 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
     }
     setDaysData(newMap);
     // 自动加载今天的复盘数据
-    fetchReviewData(today);
-  }, [loadedDays, generateDateList, loadAchievementsOnly, fetchReviewData, today]);
+    fetchReviewData(realToday);
+  }, [loadedDays, generateDateList, loadAchievementsOnly, fetchReviewData, realToday]);
 
   // 滚动加载更多（仅成果数据，快速）
   const handleSidebarScroll = useCallback(() => {
@@ -362,7 +366,7 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium" style={{ color: isSelected ? s.swatch : s.textPrimary }}>
-                      {data?.label || getDateLabel(date, today)}
+                      {data?.label || getDateLabel(date, realToday)}
                     </span>
                     <span className="text-xs" style={{ color: s.textMuted }}>
                       {WEEKDAY_NAMES[date.getDay()]}
@@ -410,7 +414,7 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
             <span className="text-2xl">🏆</span>
             <div>
               <div className="text-xl font-bold" style={{ color: s.textPrimary }}>
-                {currentData?.label || getDateLabel(selectedDate, today)}
+                {currentData?.label || getDateLabel(selectedDate, realToday)}
               </div>
               <div className="text-xs" style={{ color: s.textMuted }}>
                 {selectedDate.getFullYear()}年{selectedDate.getMonth() + 1}月{selectedDate.getDate()}日 · {WEEKDAY_NAMES[selectedDate.getDay()]}
