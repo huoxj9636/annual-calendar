@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { getLunarInfo, getYearAnimal, getGanZhiYear } from '@/lib/lunar';
 import MonthlyReview from '@/components/monthly-review';
 import LifeCalendar from '@/components/life-calendar';
@@ -208,6 +209,8 @@ export default function YearCalendar() {
   const defaultModuleOrder = ['timeline', 'dida', 'longterm', 'review', 'bilibili', 'insight', 'track'];
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const moreButtonRef = useRef<HTMLDivElement | null>(null);
+  const [moreMenuPos, setMoreMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [moduleOrder, setModuleOrder] = useState<string[]>(defaultModuleOrder);
 
   // Real-time clock with centiseconds (2-digit)
@@ -1110,9 +1113,13 @@ export default function YearCalendar() {
           })}
 
           {/* 更多按钮 - 悬浮弹出 */}
-          <div className="flex flex-col items-center relative"
+          <div ref={moreButtonRef} className="flex flex-col items-center relative"
             onMouseEnter={() => {
               if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current);
+              if (moreButtonRef.current) {
+                const r = moreButtonRef.current.getBoundingClientRect();
+                setMoreMenuPos({ top: r.top, left: r.right + 5 });
+              }
               setShowMoreMenu(true);
             }}
             onMouseLeave={() => {
@@ -1124,17 +1131,19 @@ export default function YearCalendar() {
               <span className="text-[12px] leading-none font-bold tracking-wide transition-colors" style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>更多</span>
             </button>
           </div>
-          {/* 弹窗使用 fixed 定位才能真正置顶 */}
-          {showMoreMenu && (
-            <div
-              className="fixed left-[61px] top-1/2 -translate-y-1/2 z-[9999]"
-              onMouseEnter={() => { if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current); }}
-              onMouseLeave={() => { moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 250); }}
-            >
-              <MoreMenuInline onClose={() => setShowMoreMenu(false)} skin={skin} />
-            </div>
-          )}
         </div>
+
+        {/* 弹窗用 Portal 渲染到 body 真正置顶 */}
+        {mounted && showMoreMenu && moreMenuPos && typeof document !== 'undefined' && createPortal(
+          <div
+            style={{ position: 'fixed', top: moreMenuPos.top, left: moreMenuPos.left, zIndex: 99999 }}
+            onMouseEnter={() => { if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current); }}
+            onMouseLeave={() => { moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 250); }}
+          >
+            <MoreMenuInline onClose={() => setShowMoreMenu(false)} skin={skin} />
+          </div>,
+          document.body
+        )}
 
         <div
           ref={gridContainerRef}
