@@ -1118,12 +1118,12 @@ export default function YearCalendar() {
               if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current);
               if (moreButtonRef.current) {
                 const r = moreButtonRef.current.getBoundingClientRect();
-                setMoreMenuPos({ top: r.top, left: r.right + 5 });
+                setMoreMenuPos({ top: r.top + 8, left: r.right + 9 });
               }
               setShowMoreMenu(true);
             }}
             onMouseLeave={() => {
-              moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 250);
+              moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 100);
             }}>
             <div className="w-6" style={{ borderTop: `1px solid ${skin.swatch}40`, margin: '12px auto 12px auto' }} />
             <button className="group flex flex-col items-center gap-1 cursor-pointer">
@@ -1138,7 +1138,7 @@ export default function YearCalendar() {
           <div
             style={{ position: 'fixed', top: moreMenuPos.top, left: moreMenuPos.left, zIndex: 99999 }}
             onMouseEnter={() => { if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current); }}
-            onMouseLeave={() => { moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 250); }}
+            onMouseLeave={() => { moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 100); }}
           >
             <MoreMenuInline onClose={() => setShowMoreMenu(false)} skin={skin} />
           </div>,
