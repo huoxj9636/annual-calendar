@@ -176,21 +176,21 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
           </div>
         </div>
 
-        {/* 快捷操作 */}
+        {/* 添加成果按钮 - 左下角 */}
         <div className="flex-1 flex flex-col justify-end p-4">
           <button
-            onClick={onClose}
-            className="w-full py-2.5 rounded-lg font-medium text-sm transition-colors"
+            onClick={() => setShowForm(true)}
+            className="w-full py-2.5 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
             style={{ backgroundColor: s.swatch, color: '#fff' }}
           >
-            关闭
+            <span>+</span> 添加成果
           </button>
         </div>
       </div>
 
       {/* 主内容区 */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* 标题栏 */}
+        {/* 标题栏 - 带关闭按钮 */}
         <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: s.divider }}>
           <div className="flex items-center gap-3">
             <span className="text-2xl">🏆</span>
@@ -199,12 +199,14 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
               <div className="text-xs" style={{ color: s.textMuted }}>{year}年{month}月{day}日</div>
             </div>
           </div>
+          {/* 关闭按钮 - 右上角 */}
           <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{ backgroundColor: s.swatch, color: '#fff' }}
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center transition-colors cursor-pointer"
           >
-            + 添加成果
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={s.textMuted} strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
