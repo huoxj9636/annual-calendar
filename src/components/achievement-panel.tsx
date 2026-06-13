@@ -41,7 +41,6 @@ interface DayData {
   review: DailyReview | null;
   achievements: Achievement[];
   hasData: boolean;
-  score: number; // 0-4, 用于格子颜色深度
 }
 
 const TYPE_CONFIG = {
@@ -51,7 +50,7 @@ const TYPE_CONFIG = {
   other: { icon: '📦', label: '其他', color: '#f59e0b' },
 };
 
-const WEEKDAY_SHORT = ['日', '一', '二', '三', '四', '五', '六'];
+const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
 function formatDateKey(y: number, m: number, d: number): string {
   return `${y}-${m}-${d}`;
@@ -66,25 +65,11 @@ function getDateLabel(date: Date, today: Date): string {
   return `${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
-// 计算格子颜色深度 (0-4)
-function calculateScore(review: DailyReview | null, achievements: Achievement[]): number {
-  if (!review && achievements.length === 0) return 0;
-  let score = 0;
-  // 有复盘 +1
-  if (review) score += 1;
-  // 心情分数高 +1
-  if (review && review.moodScore >= 4) score += 1;
-  // 有成果 +1
-  if (achievements.length > 0) score += 1;
-  // 成果数量多 +1
-  if (achievements.length >= 2) score += 1;
-  return Math.min(score, 4);
-}
-
 export default function AchievementPanel({ year, month, day, skin, onClose }: AchievementPanelProps) {
   const today = new Date(year, month - 1, day);
   const [selectedDate, setSelectedDate] = useState<Date>(today);
   const [daysData, setDaysData] = useState<Map<string, DayData>>(new Map());
+  const [loadedDays, setLoadedDays] = useState(30); // 初始加载30天
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<Achievement['type']>('document');
   const [formTitle, setFormTitle] = useState('');
@@ -93,61 +78,21 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
   const [panelWidth, setPanelWidth] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   
-  const gridRef = useRef<HTMLDivElement>(null);
-  const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
 
   const s = skin;
 
-  // 生成格子网格数据
-  const generateGridData = useCallback((weeksBack: number = 16) => {
-    const grid: { date: Date; key: string; score: number; isToday: boolean; isSelected: boolean }[][] = [];
-    
-    // 计算起始日期：从今天往前推 weeksBack 周，然后定位到那一周的周日
-    const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - weeksBack * 7);
-    // 调整到周日
-    startDate.setDate(startDate.getDate() - startDate.getDay());
-    
-    for (let week = 0; week < weeksBack; week++) {
-      const weekColumn: { date: Date; key: string; score: number; isToday: boolean; isSelected: boolean }[] = [];
-      for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) {
-        const cellDate = new Date(startDate);
-        cellDate.setDate(cellDate.getDate() + week * 7 + dayOfWeek);
-        
-        const key = formatDateKey(cellDate.getFullYear(), cellDate.getMonth() + 1, cellDate.getDate());
-        const data = daysData.get(key);
-        const score = data ? calculateScore(data.review, data.achievements) : 0;
-        const isToday = cellDate.getTime() === today.getTime();
-        const isSelected = selectedDate.getTime() === cellDate.getTime();
-        
-        weekColumn.push({ date: cellDate, key, score, isToday, isSelected });
-      }
-      grid.push(weekColumn);
+  // 生成日期列表
+  const generateDateList = useCallback((count: number): Date[] => {
+    const dates: Date[] = [];
+    for (let i = 0; i < count; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      dates.push(d);
     }
-    
-    return grid;
-  }, [today, daysData, selectedDate]);
-
-  // 计算月份标签位置
-  const getMonthLabels = useCallback((grid: ReturnType<typeof generateGridData>) => {
-    const labels: { month: number; year: number; position: number }[] = [];
-    let lastMonth = -1;
-    
-    grid.forEach((week, weekIndex) => {
-      // 取这一周的周一（index=1）来判断月份
-      const monday = week[1]?.date;
-      if (!monday) return;
-      const m = monday.getMonth() + 1;
-      const y = monday.getFullYear();
-      
-      if (m !== lastMonth) {
-        labels.push({ month: m, year: y, position: weekIndex });
-        lastMonth = m;
-      }
-    });
-    
-    return labels;
-  }, []);
+    return dates;
+  }, [today]);
 
   // 加载某一天的数据
   const loadDayData = useCallback(async (date: Date): Promise<DayData> => {
@@ -185,79 +130,52 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
       }
     } catch {}
 
-    const score = calculateScore(review, achievements);
-
     return {
       date,
       year: y,
       month: m,
       day: d,
-      weekday: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()],
+      weekday: WEEKDAY_NAMES[date.getDay()],
       label: getDateLabel(date, today),
       review,
       achievements,
       hasData: !!review || achievements.length > 0,
-      score,
     };
   }, [today]);
 
-  // 初始化加载所有格子数据
+  // 初始化加载
   useEffect(() => {
     const initLoad = async () => {
-      // 加载16周的数据
-      const startDate = new Date(today);
-      startDate.setDate(startDate.getDate() - 16 * 7 + 7); // 从上周日开始
-      
+      const dates = generateDateList(loadedDays);
       const newMap = new Map<string, DayData>();
-      
-      // 批量加载
-      const datesToLoad: Date[] = [];
-      for (let i = 0; i < 16 * 7; i++) {
-        const d = new Date(startDate);
-        d.setDate(d.getDate() - i);
-        datesToLoad.push(d);
-      }
-      
-      for (const date of datesToLoad) {
+      for (const date of dates) {
         const data = await loadDayData(date);
         newMap.set(formatDateKey(data.year, data.month, data.day), data);
       }
-      
       setDaysData(newMap);
     };
     initLoad();
-  }, [loadDayData, today]);
+  }, [loadedDays, generateDateList, loadDayData]);
 
-  // 滚动加载更多历史
-  const handleGridScroll = useCallback(async () => {
-    if (!gridRef.current || loadTimeoutRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = gridRef.current;
-    
-    // 滚动到底部时加载更多（这里底部是更早的历史）
-    if (scrollTop + clientHeight >= scrollHeight - 50) {
-      loadTimeoutRef.current = setTimeout(async () => {
-        // 加载额外4周
-        const oldestDate = Array.from(daysData.values())
-          .reduce((oldest, d) => d.date < oldest ? d.date : oldest, today);
-        
-        const newDates: Date[] = [];
-        for (let i = 1; i <= 4 * 7; i++) {
-          const d = new Date(oldestDate);
-          d.setDate(d.getDate() - i);
-          newDates.push(d);
-        }
-        
-        const newMap = new Map(daysData);
-        for (const date of newDates) {
-          const data = await loadDayData(date);
-          newMap.set(formatDateKey(data.year, data.month, data.day), data);
-        }
-        
-        setDaysData(newMap);
-        loadTimeoutRef.current = null;
-      }, 300);
+  // 滚动加载更多
+  const handleSidebarScroll = useCallback(async () => {
+    if (loadingMoreRef.current || !sidebarRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = sidebarRef.current;
+    if (scrollTop < 50) {
+      // 接近顶部，加载更多历史
+      loadingMoreRef.current = true;
+      const newLoadedDays = loadedDays + 30;
+      const newDates = generateDateList(newLoadedDays).slice(loadedDays);
+      const newMap = new Map(daysData);
+      for (const date of newDates) {
+        const data = await loadDayData(date);
+        newMap.set(formatDateKey(data.year, data.month, data.day), data);
+      }
+      setDaysData(newMap);
+      setLoadedDays(newLoadedDays);
+      loadingMoreRef.current = false;
     }
-  }, [daysData, loadDayData, today]);
+  }, [loadedDays, daysData, generateDateList, loadDayData]);
 
   // 当前选中日期的数据
   const selectedKey = formatDateKey(
@@ -280,16 +198,15 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
     localStorage.setItem(storageKey, JSON.stringify(updated));
     
     // 更新状态
-    const newMap = new Map(daysData);
-    const newData: DayData = {
-      ...currentData!,
-      achievements: updated,
-      hasData: true,
-      score: calculateScore(currentData?.review || null, updated),
-    };
-    newMap.set(key, newData);
-    setDaysData(newMap);
-  }, [selectedDate, currentData, daysData]);
+    setDaysData(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(key);
+      if (existing) {
+        newMap.set(key, { ...existing, achievements: updated, hasData: true });
+      }
+      return newMap;
+    });
+  }, [selectedDate, currentData]);
 
   // 删除成果
   const deleteAchievement = useCallback((id: string) => {
@@ -302,26 +219,29 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
     const updated = (currentData?.achievements || []).filter(a => a.id !== id);
     localStorage.setItem(storageKey, JSON.stringify(updated));
     
-    const newMap = new Map(daysData);
-    const newData: DayData = {
-      ...currentData!,
-      achievements: updated,
-      hasData: !!currentData?.review || updated.length > 0,
-      score: calculateScore(currentData?.review || null, updated),
-    };
-    newMap.set(key, newData);
-    setDaysData(newMap);
-  }, [selectedDate, currentData, daysData]);
+    setDaysData(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(key);
+      if (existing) {
+        newMap.set(key, { 
+          ...existing, 
+          achievements: updated, 
+          hasData: !!existing.review || updated.length > 0 
+        });
+      }
+      return newMap;
+    });
+  }, [selectedDate, currentData]);
 
-  // 提交表单
-  const handleSubmitForm = useCallback(() => {
+  // 添加成果
+  const handleAddAchievement = () => {
     if (!formTitle.trim()) return;
     const achievement: Achievement = {
       id: Date.now().toString(),
       type: formType,
-      title: formTitle,
-      description: formDesc,
-      url: formUrl || undefined,
+      title: formTitle.trim(),
+      description: formDesc.trim(),
+      url: formUrl.trim() || undefined,
       createdAt: new Date().toISOString(),
     };
     saveAchievement(achievement);
@@ -329,395 +249,357 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
     setFormTitle('');
     setFormDesc('');
     setFormUrl('');
-  }, [formType, formTitle, formDesc, formUrl, saveAchievement]);
+    setFormType('document');
+  };
 
   // 拖拽调整宽度
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-    const startX = e.clientX;
-    const startWidth = panelWidth;
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      const delta = startX - e.clientX;
-      const newWidth = Math.max(0, Math.min(500, startWidth + delta));
-      setPanelWidth(newWidth);
-    };
-    
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, [panelWidth]);
+  const handleDragStart = () => setIsDragging(true);
+  const handleDrag = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const newWidth = window.innerWidth - e.clientX;
+    setPanelWidth(Math.max(0, Math.min(500, newWidth)));
+  };
+  const handleDragEnd = () => setIsDragging(false);
 
-  // 格子颜色映射
-  const getCellColor = useCallback((score: number, isSelected: boolean) => {
-    const baseColor = s.swatch; // 使用皮肤主题色
-    const opacityMap = [0, 0.15, 0.35, 0.55, 0.75];
-    const opacity = opacityMap[score];
-    
-    if (isSelected) {
-      return { bg: baseColor, border: baseColor, opacity: 1 };
-    }
-    return { bg: baseColor, border: score > 0 ? baseColor : 'transparent', opacity };
-  }, [s.swatch]);
-
-  const grid = generateGridData(16);
-  const monthLabels = getMonthLabels(grid);
+  // 日期列表渲染
+  const dateList = generateDateList(loadedDays);
 
   return (
     <div 
-      className="absolute top-0 bottom-0 right-0 z-40 flex bg-white shadow-[-4px_0_24px_rgba(0,0,0,0.08)]"
-      style={{ width: `calc(100% - ${panelWidth}px)` }}
+      className="absolute top-0 bottom-0 right-0 z-40 bg-white shadow-2xl flex"
+      style={{ 
+        width: panelWidth > 0 ? panelWidth : '100%',
+        borderLeft: `1px solid ${s.divider}`,
+      }}
     >
-      {/* 左侧格子时间轴 */}
-      <div className="w-[140px] border-r border-black/10 flex flex-col">
-        {/* 顶部标题 */}
-        <div className="p-3 border-b border-black/10">
-          <div className="text-sm font-medium text-black/70">成果时间轴</div>
+      {/* 拖拽手柄 */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize z-50 hover:bg-black/5 transition-colors"
+        onMouseDown={handleDragStart}
+        onMouseMove={handleDrag}
+        onMouseUp={handleDragEnd}
+        onMouseLeave={handleDragEnd}
+      />
+
+      {/* 左侧时间轴导航 */}
+      <div 
+        ref={sidebarRef}
+        onScroll={handleSidebarScroll}
+        className="w-72 flex-shrink-0 flex flex-col border-r overflow-y-auto"
+        style={{ borderColor: s.divider, backgroundColor: `${s.sidebarFrom}10` }}
+      >
+        {/* 标题 */}
+        <div className="px-5 pt-4 pb-3 border-b sticky top-0 bg-white/95" style={{ borderColor: s.divider }}>
+          <div className="text-lg font-bold" style={{ color: s.textPrimary }}>成果时间轴</div>
+          <div className="text-xs font-medium tracking-wider mt-0.5" style={{ color: s.swatch }}>OUTPUT TIMELINE</div>
         </div>
-        
-        {/* 格子网格区域 */}
-        <div 
-          ref={gridRef}
-          onScroll={handleGridScroll}
-          className="flex-1 overflow-x-hidden overflow-y-auto p-2"
-        >
-          {/* 月份标签 */}
-          <div className="flex mb-1 pl-[14px]">
-            {monthLabels.map((label, i) => (
-              <div 
-                key={`${label.year}-${label.month}`}
-                className="text-xs text-black/40"
-                style={{ 
-                  position: 'relative',
-                  left: label.position * 14 - (i > 0 ? monthLabels[i-1].position * 14 : 0),
-                  width: `${(monthLabels[i+1]?.position || grid.length) - label.position}em`
-                }}
-              >
-                {label.month}月
-              </div>
-            ))}
-          </div>
-          
-          {/* 格子网格 */}
-          <div className="flex flex-col-reverse"> {/* reverse 让历史日期在底部 */}
-            {/* 周几标签 */}
-            <div className="flex pl-[14px]">
-              {WEEKDAY_SHORT.map((w, i) => (
-                <div key={i} className="w-[14px] text-center">
-                  <span className="text-xs text-black/30 block">{i % 2 === 1 ? w : ''}</span>
-                </div>
-              ))}
-            </div>
+
+        {/* 日期列表 */}
+        <div className="py-2">
+          {dateList.map(date => {
+            const key = formatDateKey(date.getFullYear(), date.getMonth() + 1, date.getDate());
+            const data = daysData.get(key);
+            const isSelected = selectedDate.getTime() === date.getTime();
             
-            {/* 格子 - 横向滚动 */}
-            <div className="flex overflow-x-auto pb-2">
-              {grid.map((week, weekIdx) => (
-                <div key={weekIdx} className="flex flex-col mr-0.5">
-                  {week.map((cell, dayIdx) => {
-                    const colorInfo = getCellColor(cell.score, cell.isSelected);
-                    const isFuture = cell.date > today;
-                    
-                    return (
-                      <div
-                        key={dayIdx}
-                        className={`w-[12px] h-[12px] rounded-sm cursor-pointer transition-all ${
-                          cell.isSelected ? 'ring-2 ring-offset-1' : ''
-                        } ${isFuture ? 'opacity-30' : ''}`}
-                        style={{
-                          backgroundColor: colorInfo.bg,
-                          opacity: colorInfo.opacity,
-                          boxShadow: cell.isSelected ? `0 0 0 2px ${colorInfo.border}` : undefined,
-                        }}
-                        onClick={() => setSelectedDate(cell.date)}
-                        title={`${cell.date.getFullYear()}-${cell.date.getMonth()+1}-${cell.date.getDate()}${cell.score > 0 ? ` (得分:${cell.score})` : ''}`}
-                      />
-                    );
-                  })}
+            return (
+              <button
+                key={key}
+                onClick={() => setSelectedDate(date)}
+                className={`w-full px-5 py-3 flex items-center gap-3 transition-colors ${
+                  isSelected ? 'bg-black/5' : 'hover:bg-black/3'
+                }`}
+              >
+                {/* 左侧圆点指示器 */}
+                <div 
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ 
+                    backgroundColor: data?.hasData ? s.swatch : s.divider,
+                    boxShadow: isSelected ? `0 0 0 3px ${s.swatch}33` : 'none',
+                  }}
+                />
+                
+                {/* 日期信息 */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium" style={{ color: isSelected ? s.swatch : s.textPrimary }}>
+                      {data?.label || getDateLabel(date, today)}
+                    </span>
+                    <span className="text-xs" style={{ color: s.textMuted }}>
+                      {WEEKDAY_NAMES[date.getDay()]}
+                    </span>
+                  </div>
+                  {/* 成果摘要 */}
+                  {data?.hasData && (
+                    <div className="flex items-center gap-1 mt-1 text-xs" style={{ color: s.textMuted }}>
+                      {data.achievements.length > 0 && (
+                        <span>{data.achievements.length}项成果</span>
+                      )}
+                      {data.review?.moodScore && data.review.moodScore > 0 && (
+                        <span className="ml-1">心情{data.review.moodScore}⭐</span>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
+              </button>
+            );
+          })}
           
-          {/* 加载提示 */}
-          <div className="text-xs text-black/30 text-center mt-2">
-            向下滚动加载更多历史
+          {/* 加载更多提示 */}
+          <div className="px-5 py-3 text-center text-xs" style={{ color: s.textMuted }}>
+            向上滚动加载更多...
           </div>
         </div>
-        
-        {/* 底部添加按钮 */}
-        <div className="p-2 border-t border-black/10">
+
+        {/* 添加成果按钮 - 左下角 */}
+        <div className="p-4 border-t sticky bottom-0 bg-white/95" style={{ borderColor: s.divider }}>
           <button
             onClick={() => setShowForm(true)}
-            className="w-full flex items-center justify-center gap-1 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors text-sm text-black/60"
+            className="w-full py-2.5 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
+            style={{ backgroundColor: s.swatch, color: '#fff' }}
           >
-            <span className="text-base">+</span>
-            <span>添加成果</span>
+            <span>+</span> 添加成果
           </button>
         </div>
       </div>
-      
+
       {/* 右侧内容区 */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* 顶部标题栏 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-black/10">
-          <div>
-            <div className="text-lg font-medium">
-              {getDateLabel(selectedDate, today)}
-            </div>
-            <div className="text-sm text-black/50">
-              {selectedDate.getFullYear()}年{selectedDate.getMonth()+1}月{selectedDate.getDate()}日 · {['周日','周一','周二','周三','周四','周五','周六'][selectedDate.getDay()]}
+        {/* 标题栏 */}
+        <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: s.divider }}>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏆</span>
+            <div>
+              <div className="text-xl font-bold" style={{ color: s.textPrimary }}>
+                {currentData?.label || getDateLabel(selectedDate, today)}
+              </div>
+              <div className="text-xs" style={{ color: s.textMuted }}>
+                {selectedDate.getFullYear()}年{selectedDate.getMonth() + 1}月{selectedDate.getDate()}日 · {WEEKDAY_NAMES[selectedDate.getDay()]}
+              </div>
             </div>
           </div>
+          {/* 关闭按钮 */}
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors"
+            className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center transition-colors cursor-pointer"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-black/50">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M15 9l-6 6M9 9l6 6" />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={s.textMuted} strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
-        
+
         {/* 内容滚动区 */}
-        <div className="flex-1 overflow-y-auto px-4 py-3">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           {/* 今日复盘 */}
-          {currentData?.review && (
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-black/70 mb-3 flex items-center gap-2">
-                <span>📋</span> 今日复盘
-              </h3>
-              <div className="space-y-3 text-sm">
+          <section className="mb-6">
+            <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: s.textPrimary }}>
+              <span>📝</span> 今日复盘
+            </h3>
+            {currentData?.review ? (
+              <div className="space-y-3">
                 {currentData.review.completed && (
-                  <div>
-                    <div className="text-black/40 mb-1">完成事项</div>
-                    <div className="text-black/80 whitespace-pre-wrap">{currentData.review.completed}</div>
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: `${s.swatch}08` }}>
+                    <div className="text-xs font-medium mb-1" style={{ color: s.swatch }}>完成事项</div>
+                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.completed}</div>
                   </div>
                 )}
                 {currentData.review.goodThings && (
-                  <div>
-                    <div className="text-black/40 mb-1">美好事件</div>
-                    <div className="text-black/80 whitespace-pre-wrap">{currentData.review.goodThings}</div>
+                  <div className="p-3 rounded-lg bg-green-50/50">
+                    <div className="text-xs font-medium mb-1 text-green-600">美好事件</div>
+                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.goodThings}</div>
                   </div>
                 )}
                 {currentData.review.problems && (
-                  <div>
-                    <div className="text-black/40 mb-1">突发问题</div>
-                    <div className="text-black/80 whitespace-pre-wrap">{currentData.review.problems}</div>
+                  <div className="p-3 rounded-lg bg-red-50/50">
+                    <div className="text-xs font-medium mb-1 text-red-500">突发问题</div>
+                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.problems}</div>
                   </div>
                 )}
                 {currentData.review.mood && (
-                  <div>
-                    <div className="text-black/40 mb-1">心情</div>
-                    <div className="text-black/80 whitespace-pre-wrap">{currentData.review.mood}</div>
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: `${s.swatch}08` }}>
+                    <div className="text-xs font-medium mb-1" style={{ color: s.swatch }}>心情</div>
+                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.mood}</div>
                   </div>
                 )}
                 {currentData.review.reflections && (
-                  <div>
-                    <div className="text-black/40 mb-1">感想总结</div>
-                    <div className="text-black/80 whitespace-pre-wrap">{currentData.review.reflections}</div>
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: `${s.swatch}08` }}>
+                    <div className="text-xs font-medium mb-1" style={{ color: s.swatch }}>感想总结</div>
+                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.reflections}</div>
                   </div>
                 )}
                 {currentData.review.tomorrowTodo && (
-                  <div>
-                    <div className="text-black/40 mb-1">明日待办</div>
-                    <div className="text-black/80 whitespace-pre-wrap">{currentData.review.tomorrowTodo}</div>
+                  <div className="p-3 rounded-lg bg-blue-50/50">
+                    <div className="text-xs font-medium mb-1 text-blue-600">明日待办</div>
+                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.tomorrowTodo}</div>
                   </div>
                 )}
-                {/* 分数展示 */}
-                {(currentData.review.moodScore > 0 || currentData.review.energy > 0) && (
-                  <div className="flex gap-4 pt-2 border-t border-black/5">
-                    {currentData.review.moodScore > 0 && (
-                      <div>
-                        <div className="text-black/40 text-xs">心情分数</div>
-                        <div className="flex gap-0.5">
-                          {[1,2,3,4,5].map(i => (
-                            <span key={i} className={i <= (currentData.review?.moodScore ?? 0) ? 'text-yellow-400' : 'text-black/20'}>★</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {currentData.review.energy > 0 && (
-                      <div>
-                        <div className="text-black/40 text-xs">精力分数</div>
-                        <div className="flex gap-0.5">
-                          {[1,2,3,4,5].map(i => (
-                            <span key={i} className={i <= (currentData.review?.energy ?? 0) ? 'text-green-400' : 'text-black/20'}>⚡</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* 分数 */}
+                <div className="flex gap-4">
+                  {currentData.review.moodScore > 0 && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs" style={{ color: s.textMuted }}>心情</span>
+                      <span className="text-sm font-bold" style={{ color: s.swatch }}>
+                        {Array(currentData.review.moodScore).fill('⭐').join('')}
+                      </span>
+                    </div>
+                  )}
+                  {currentData.review.energy > 0 && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs" style={{ color: s.textMuted }}>精力</span>
+                      <span className="text-sm font-bold" style={{ color: s.swatch }}>
+                        {Array(currentData.review.energy).fill('⚡').join('')}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-          
-          {/* 无复盘提示 */}
-          {!currentData?.review && (
-            <div className="mb-6 text-center py-4 text-black/30 text-sm">
-              当日暂无复盘记录
-            </div>
-          )}
-          
+            ) : (
+              <div className="text-sm py-8 text-center" style={{ color: s.textMuted }}>
+                当天暂无复盘记录
+              </div>
+            )}
+          </section>
+
           {/* 输出成果 */}
-          <div>
-            <h3 className="text-sm font-medium text-black/70 mb-3 flex items-center gap-2">
-              <span>🏆</span> 输出成果
-              {currentData?.achievements && currentData.achievements.length > 0 && (
-                <span className="text-xs text-black/40 ml-1">({currentData.achievements.length})</span>
+          <section>
+            <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: s.textPrimary }}>
+              <span>📦</span> 输出成果
+              {currentData && currentData.achievements.length > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: s.swatch, color: '#fff' }}>
+                  {currentData.achievements.length}
+                </span>
               )}
             </h3>
-            
-            {currentData?.achievements && currentData.achievements.length > 0 ? (
-              <div className="space-y-2">
-                {currentData.achievements.map(a => {
-                  const cfg = TYPE_CONFIG[a.type];
-                  return (
-                    <div 
-                      key={a.id}
-                      className="group flex items-start gap-3 p-3 rounded-lg border border-black/5 hover:border-black/10 transition-colors"
-                      style={{ backgroundColor: `${cfg.color}08` }}
-                    >
-                      <span className="text-xl">{cfg.icon}</span>
+            {currentData && currentData.achievements.length > 0 ? (
+              <div className="grid gap-3">
+                {currentData.achievements.map(a => (
+                  <div 
+                    key={a.id} 
+                    className="p-4 rounded-lg border group relative transition-colors hover:bg-black/3"
+                    style={{ borderColor: s.divider }}
+                  >
+                    {/* 类型图标 */}
+                    <div className="flex items-start gap-3">
+                      <div className="text-2xl">{TYPE_CONFIG[a.type].icon}</div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-black/80">{a.title}</div>
+                        <div className="font-medium" style={{ color: s.textPrimary }}>{a.title}</div>
                         {a.description && (
-                          <div className="text-sm text-black/50 mt-1">{a.description}</div>
+                          <div className="text-sm mt-1" style={{ color: s.textMuted }}>{a.description}</div>
                         )}
                         {a.url && (
                           <a 
-                            href={a.url}
-                            target="_blank"
+                            href={a.url} 
+                            target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-xs text-blue-500 hover:underline mt-1 block truncate"
+                            className="text-sm mt-2 inline-flex items-center gap-1 hover:underline"
+                            style={{ color: TYPE_CONFIG[a.type].color }}
                           >
-                            {a.url}
+                            🔗 查看链接
                           </a>
                         )}
                       </div>
-                      {/* 删除按钮 */}
-                      <button
-                        onClick={() => deleteAchievement(a.id)}
-                        className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-full bg-red-500/10 hover:bg-red-500/20 transition-all text-red-500 text-xs"
-                      >
-                        ✕
-                      </button>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-4 text-black/30 text-sm">
-                暂无输出成果
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      {/* 添加成果表单弹窗 */}
-      {showForm && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20">
-          <div className="bg-white rounded-xl shadow-lg w-[320px] max-w-[90%] overflow-hidden">
-            <div className="px-4 py-3 border-b border-black/10 flex items-center justify-between">
-              <div className="font-medium">添加成果</div>
-              <button
-                onClick={() => setShowForm(false)}
-                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-black/5"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="p-4 space-y-3">
-              {/* 类型选择 */}
-              <div className="flex gap-2">
-                {(Object.entries(TYPE_CONFIG) as [Achievement['type'], { icon: string; label: string; color: string }][]).map(([key, cfg]) => (
-                  <button
-                    key={key}
-                    onClick={() => setFormType(key)}
-                    className={`p-2 rounded-lg text-center transition-colors ${
-                      formType === key ? 'ring-2 ring-offset-1' : 'hover:bg-black/5'
-                    }`}
-                    style={{ 
-                      boxShadow: formType === key ? `0 0 0 2px ${cfg.color}` : undefined,
-                      backgroundColor: formType === key ? `${cfg.color}15` : undefined,
-                    }}
-                  >
-                    <span className="text-lg">{cfg.icon}</span>
-                    <span className="text-xs block mt-1">{cfg.label}</span>
-                  </button>
+                    {/* 删除按钮 */}
+                    <button
+                      onClick={() => deleteAchievement(a.id)}
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/5 hover:bg-red-100 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 ))}
               </div>
-              
-              {/* 标题 */}
-              <div>
-                <div className="text-xs text-black/50 mb-1">标题</div>
-                <input
-                  type="text"
-                  value={formTitle}
-                  onChange={e => setFormTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-black/10 focus:border-black/30 focus:outline-none text-sm"
-                  placeholder="成果名称"
-                />
+            ) : (
+              <div className="text-sm py-8 text-center" style={{ color: s.textMuted }}>
+                当天暂无输出成果
               </div>
-              
-              {/* 描述 */}
-              <div>
-                <div className="text-xs text-black/50 mb-1">描述</div>
-                <textarea
-                  value={formDesc}
-                  onChange={e => setFormDesc(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-black/10 focus:border-black/30 focus:outline-none text-sm resize-none"
-                  placeholder="简要描述"
-                  rows={2}
-                />
-              </div>
-              
-              {/* 链接 */}
-              <div>
-                <div className="text-xs text-black/50 mb-1">链接（可选）</div>
-                <input
-                  type="text"
-                  value={formUrl}
-                  onChange={e => setFormUrl(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-black/10 focus:border-black/30 focus:outline-none text-sm"
-                  placeholder="https://..."
-                />
-              </div>
-            </div>
+            )}
+          </section>
+        </div>
+      </div>
+
+      {/* 添加成果弹窗 */}
+      {showForm && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20">
+          <div 
+            className="w-80 rounded-xl shadow-2xl p-5"
+            style={{ backgroundColor: '#fff', border: `1px solid ${s.divider}` }}
+          >
+            <h3 className="text-lg font-bold mb-4" style={{ color: s.textPrimary }}>添加成果</h3>
             
-            <div className="px-4 py-3 border-t border-black/10 flex gap-2">
+            {/* 类型选择 */}
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {Object.entries(TYPE_CONFIG).map(([key, cfg]) => (
+                <button
+                  key={key}
+                  onClick={() => setFormType(key as Achievement['type'])}
+                  className={`p-2 rounded-lg text-center transition-colors ${
+                    formType === key ? 'ring-2 ring-offset-1' : 'hover:bg-black/5'
+                  }`}
+                  style={{ 
+                    boxShadow: formType === key ? `0 0 0 2px ${cfg.color}` : undefined,
+                    backgroundColor: formType === key ? `${cfg.color}15` : undefined,
+                  }}
+                >
+                  <div className="text-xl">{cfg.icon}</div>
+                  <div className="text-xs mt-1" style={{ color: cfg.color }}>{cfg.label}</div>
+                </button>
+              ))}
+            </div>
+
+            {/* 标题 */}
+            <input
+              type="text"
+              placeholder="成果标题"
+              value={formTitle}
+              onChange={e => setFormTitle(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border mb-3 text-sm"
+              style={{ borderColor: s.divider }}
+            />
+
+            {/* 描述 */}
+            <textarea
+              placeholder="成果描述（可选）"
+              value={formDesc}
+              onChange={e => setFormDesc(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border mb-3 text-sm resize-none"
+              style={{ borderColor: s.divider }}
+              rows={2}
+            />
+
+            {/* 链接 */}
+            <input
+              type="url"
+              placeholder="链接地址（可选）"
+              value={formUrl}
+              onChange={e => setFormUrl(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border mb-4 text-sm"
+              style={{ borderColor: s.divider }}
+            />
+
+            {/* 按钮 */}
+            <div className="flex gap-2">
               <button
                 onClick={() => setShowForm(false)}
-                className="flex-1 py-2 rounded-lg bg-black/5 hover:bg-black/10 text-sm"
+                className="flex-1 py-2 rounded-lg border text-sm font-medium"
+                style={{ borderColor: s.divider, color: s.textMuted }}
               >
                 取消
               </button>
               <button
-                onClick={handleSubmitForm}
+                onClick={handleAddAchievement}
                 disabled={!formTitle.trim()}
-                className="flex-1 py-2 rounded-lg bg-black text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/80"
+                className="flex-1 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+                style={{ backgroundColor: s.swatch, color: '#fff' }}
               >
-                保存
+                添加
               </button>
             </div>
           </div>
         </div>
       )}
-      
-      {/* 拖拽手柄 */}
-      <div
-        onMouseDown={handleMouseDown}
-        className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-black/10 transition-colors ${isDragging ? 'bg-black/10' : ''}`}
-      />
     </div>
   );
 }
