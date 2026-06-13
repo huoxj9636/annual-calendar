@@ -207,6 +207,7 @@ export default function YearCalendar() {
   const getModuleName = (key: string) => (mounted ? (moduleNames[key] || defaultModuleNames[key]) : defaultModuleNames[key]) || key;
   const defaultModuleOrder = ['timeline', 'dida', 'longterm', 'review', 'bilibili', 'insight', 'track'];
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [moduleOrder, setModuleOrder] = useState<string[]>(defaultModuleOrder);
 
   // Real-time clock with centiseconds (2-digit)
@@ -1108,19 +1109,30 @@ export default function YearCalendar() {
             </div>;
           })}
 
-          {/* 更多按钮 */}
-          <div className="flex flex-col items-center pb-2 pt-0.5">
+          {/* 更多按钮 - 悬浮弹出 */}
+          <div className="flex flex-col items-center pb-2 pt-0.5 relative"
+            onMouseEnter={() => {
+              if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current);
+              setShowMoreMenu(true);
+            }}
+            onMouseLeave={() => {
+              moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 250);
+            }}>
             <div className="w-6" style={{ borderTop: `1px solid ${skin.swatch}40`, margin: '4px auto 4px auto' }} />
-            <button onClick={() => setShowMoreMenu(true)}
-              className="group flex flex-col items-center gap-1 cursor-pointer">
+            <button className="group flex flex-col items-center gap-1 cursor-pointer">
               <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110 text-lg font-bold" style={{ backgroundColor: skin.swatch, color: '#ffffff', boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)` }}>•••</span>
               <span className="text-[12px] leading-none font-bold tracking-wide transition-colors" style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>更多</span>
             </button>
           </div>
         </div>
 
-        {/* 更多弹窗 - Edge风格 */}
-        {showMoreMenu && <MoreMenuInline onClose={() => setShowMoreMenu(false)} skin={skin} />}
+        {/* 更多弹窗 - 悬浮展示 */}
+        {showMoreMenu && (
+          <div onMouseEnter={() => { if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current); }}
+            onMouseLeave={() => { moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 250); }}>
+            <MoreMenuInline onClose={() => setShowMoreMenu(false)} skin={skin} />
+          </div>
+        )}
 
         <div
           ref={gridContainerRef}
