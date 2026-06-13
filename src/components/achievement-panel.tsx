@@ -390,75 +390,75 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
 
         {/* 内容滚动区 */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          {/* 今日复盘 */}
+          {/* 今日复盘 - 六项框框始终展示 */}
           <section className="mb-6">
             <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: s.textPrimary }}>
               <span>📝</span> 今日复盘
             </h3>
-            {currentData?.review ? (
-              <div className="space-y-3">
-                {currentData.review.completed && (
-                  <div className="p-3 rounded-lg" style={{ backgroundColor: `${s.swatch}08` }}>
-                    <div className="text-xs font-medium mb-1" style={{ color: s.swatch }}>完成事项</div>
-                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.completed}</div>
+            <div className="grid grid-cols-2 gap-3">
+                {/* 完成事项 */}
+                <div className="p-3 rounded-lg border" style={{ borderColor: s.divider, backgroundColor: `${s.swatch}05` }}>
+                  <div className="text-xs font-medium mb-1" style={{ color: s.swatch }}>✅ 完成事项</div>
+                  <div className="text-sm" style={{ color: currentData?.review?.completed ? s.textPrimary : s.textMuted }}>
+                    {currentData?.review?.completed || '暂无记录'}
                   </div>
-                )}
-                {currentData.review.goodThings && (
-                  <div className="p-3 rounded-lg bg-green-50/50">
-                    <div className="text-xs font-medium mb-1 text-green-600">美好事件</div>
-                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.goodThings}</div>
+                </div>
+                {/* 美好事件 */}
+                <div className="p-3 rounded-lg border bg-green-50/30" style={{ borderColor: '#22c55e20' }}>
+                  <div className="text-xs font-medium mb-1 text-green-600">😊 美好事件</div>
+                  <div className="text-sm" style={{ color: currentData?.review?.goodThings ? s.textPrimary : s.textMuted }}>
+                    {currentData?.review?.goodThings || '暂无记录'}
                   </div>
-                )}
-                {currentData.review.problems && (
-                  <div className="p-3 rounded-lg bg-red-50/50">
-                    <div className="text-xs font-medium mb-1 text-red-500">突发问题</div>
-                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.problems}</div>
+                </div>
+                {/* 突发问题 */}
+                <div className="p-3 rounded-lg border bg-red-50/30" style={{ borderColor: '#ef444420' }}>
+                  <div className="text-xs font-medium mb-1 text-red-500">⚠️ 突发问题</div>
+                  <div className="text-sm" style={{ color: currentData?.review?.problems ? s.textPrimary : s.textMuted }}>
+                    {currentData?.review?.problems || '暂无记录'}
                   </div>
-                )}
-                {currentData.review.mood && (
-                  <div className="p-3 rounded-lg" style={{ backgroundColor: `${s.swatch}08` }}>
-                    <div className="text-xs font-medium mb-1" style={{ color: s.swatch }}>心情</div>
-                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.mood}</div>
+                </div>
+                {/* 心情 */}
+                <div className="p-3 rounded-lg border" style={{ borderColor: s.divider, backgroundColor: `${s.swatch}05` }}>
+                  <div className="text-xs font-medium mb-1" style={{ color: s.swatch }}>💭 心情</div>
+                  <div className="text-sm" style={{ color: currentData?.review?.mood ? s.textPrimary : s.textMuted }}>
+                    {currentData?.review?.mood || '暂无记录'}
                   </div>
-                )}
-                {currentData.review.reflections && (
-                  <div className="p-3 rounded-lg" style={{ backgroundColor: `${s.swatch}08` }}>
-                    <div className="text-xs font-medium mb-1" style={{ color: s.swatch }}>感想总结</div>
-                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.reflections}</div>
+                </div>
+                {/* 感想总结 */}
+                <div className="p-3 rounded-lg border" style={{ borderColor: s.divider, backgroundColor: `${s.swatch}05` }}>
+                  <div className="text-xs font-medium mb-1" style={{ color: s.swatch }}>💡 感想总结</div>
+                  <div className="text-sm" style={{ color: currentData?.review?.reflections ? s.textPrimary : s.textMuted }}>
+                    {currentData?.review?.reflections || '暂无记录'}
                   </div>
-                )}
-                {currentData.review.tomorrowTodo && (
-                  <div className="p-3 rounded-lg bg-blue-50/50">
-                    <div className="text-xs font-medium mb-1 text-blue-600">明日待办</div>
-                    <div className="text-sm" style={{ color: s.textPrimary }}>{currentData.review.tomorrowTodo}</div>
+                </div>
+                {/* 明日待办 */}
+                <div className="p-3 rounded-lg border bg-blue-50/30" style={{ borderColor: '#3b82f620' }}>
+                  <div className="text-xs font-medium mb-1 text-blue-600">📋 明日待办</div>
+                  <div className="text-sm" style={{ color: currentData?.review?.tomorrowTodo ? s.textPrimary : s.textMuted }}>
+                    {currentData?.review?.tomorrowTodo || '暂无记录'}
                   </div>
-                )}
-                {/* 分数 */}
-                <div className="flex gap-4">
-                  {currentData.review.moodScore > 0 && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs" style={{ color: s.textMuted }}>心情</span>
-                      <span className="text-sm font-bold" style={{ color: s.swatch }}>
-                        {Array(currentData.review.moodScore).fill('⭐').join('')}
-                      </span>
-                    </div>
-                  )}
-                  {currentData.review.energy > 0 && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs" style={{ color: s.textMuted }}>精力</span>
-                      <span className="text-sm font-bold" style={{ color: s.swatch }}>
-                        {Array(currentData.review.energy).fill('⚡').join('')}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
-            ) : (
-              <div className="text-sm py-8 text-center" style={{ color: s.textMuted }}>
-                当天暂无复盘记录
+              {/* 分数 - 横向展示 */}
+              <div className="flex gap-6 mt-3 p-3 rounded-lg border" style={{ borderColor: s.divider }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs" style={{ color: s.textMuted }}>心情分数</span>
+                  <span className="text-sm font-bold">
+                    {currentData?.review?.moodScore && currentData.review.moodScore > 0 
+                      ? Array(currentData.review.moodScore).fill('⭐').join('') 
+                      : <span style={{ color: s.textMuted }}>未评分</span>}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs" style={{ color: s.textMuted }}>精力分数</span>
+                  <span className="text-sm font-bold">
+                    {currentData?.review?.energy && currentData.review.energy > 0 
+                      ? Array(currentData.review.energy).fill('⚡').join('') 
+                      : <span style={{ color: s.textMuted }}>未评分</span>}
+                  </span>
+                </div>
               </div>
-            )}
-          </section>
+            </section>
 
           {/* 输出成果 */}
           <section>
