@@ -1123,15 +1123,17 @@ export default function YearCalendar() {
               <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110 text-lg font-bold" style={{ backgroundColor: skin.swatch, color: '#ffffff', boxShadow: `0 0 0 2px ${skin.swatch}80, 0 2px 8px rgba(0,0,0,0.3)` }}>•••</span>
               <span className="text-[12px] leading-none font-bold tracking-wide transition-colors" style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>更多</span>
             </button>
+            {/* 弹窗紧挨着按钮右侧 */}
+            {showMoreMenu && (
+              <div
+                className="absolute left-[calc(100%+5px)] top-0 z-[9999]"
+                onMouseEnter={() => { if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current); }}
+                onMouseLeave={() => { moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 250); }}
+              >
+                <MoreMenuInline onClose={() => setShowMoreMenu(false)} skin={skin} />
+              </div>
+            )}
           </div>
-          {showMoreMenu && (
-          <div
-            onMouseEnter={() => { if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current); }}
-            onMouseLeave={() => { moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 250); }}
-          >
-            <MoreMenuInline onClose={() => setShowMoreMenu(false)} skin={skin} />
-          </div>
-          )}
         </div>
 
         <div
@@ -2060,7 +2062,7 @@ function MoreMenuInline({ onClose, skin }: { onClose: () => void; skin: typeof S
   };
 
   return (
-    <div className="fixed left-[64px] bottom-[24px] z-[100] w-[480px] max-h-[70vh] overflow-y-auto rounded-2xl shadow-2xl border p-4" style={{ backgroundColor: skin.panelBg, borderColor: divider }}>
+    <div className="w-[480px] max-h-[70vh] overflow-y-auto rounded-2xl shadow-2xl border p-4" style={{ backgroundColor: skin.panelBg, borderColor: divider }}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold" style={{ color: textPrimary }}>更多链接</h2>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:opacity-70 text-lg" style={{ color: textSecondary }}>✕</button>
