@@ -212,6 +212,39 @@ export default function YearCalendar() {
   const moreButtonRef = useRef<HTMLDivElement | null>(null);
   const [moreMenuPos, setMoreMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [moduleOrder, setModuleOrder] = useState<string[]>(defaultModuleOrder);
+  const [bookmarks, setBookmarks] = useState<BM[]>(() => {
+    try { return JSON.parse(typeof window !== 'undefined' ? localStorage.getItem('calendar-bookmarks') || '[]' : '[]'); } catch { return []; }
+  });
+  useEffect(() => { if (mounted) localStorage.setItem('calendar-bookmarks', JSON.stringify(bookmarks)); }, [bookmarks, mounted]);
+
+  // 所有模块列表（用于"更多"弹窗）：内建6个 + 自定义
+  const builtinModules = [
+    { id: 'timeline', label: '日程' },
+    { id: 'dida', label: '滴答' },
+    { id: 'longterm', label: '长程' },
+    { id: 'review', label: '复盘' },
+    { id: 'bilibili', label: 'B站' },
+    { id: 'insight', label: '洞察' },
+    { id: 'track', label: '轨迹' },
+  ];
+  // 按 moduleOrder 排序后的所有项
+  const allModuleIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const k of moduleOrder) {
+      if (builtinModules.some(m => m.id === k) || bookmarks.some(b => b.id === k)) ids.push(k);
+    }
+    // 追加新增但未在 moduleOrder 里的
+    for (const m of builtinModules) if (!ids.includes(m.id)) ids.push(m.id);
+    for (const b of bookmarks) if (!ids.includes(b.id)) ids.push(b.id);
+    return ids;
+  }, [moduleOrder, bookmarks]);
+  const getModuleInfo = (id: string) => {
+    const bm = builtinModules.find(m => m.id === id);
+    if (bm) return { id, label: bm.label, isBuiltin: true };
+    const b = bookmarks.find(x => x.id === id);
+    if (b) return { id, label: b.name, isBuiltin: false };
+    return { id, label: id, isBuiltin: false };
+  };
 
   // Real-time clock with centiseconds (2-digit)
   useEffect(() => {
@@ -1141,7 +1174,23 @@ export default function YearCalendar() {
             onMouseEnter={() => { if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current); }}
             onMouseLeave={() => { moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 100); }}
           >
-            <MoreMenuInline onClose={() => setShowMoreMenu(false)} skin={skin} />
+            <MoreMenuInline
+              onClose={() => setShowMoreMenu(false)}
+              skin={skin}
+              bookmarks={bookmarks}
+              setBookmarks={setBookmarks}
+              builtinModules={builtinModules}
+              allModuleIds={allModuleIds}
+              getModuleInfo={getModuleInfo}
+              moduleVisibility={moduleVisibility}
+              setModuleVisibility={setModuleVisibility}
+              moduleOrder={moduleOrder}
+              setModuleOrder={setModuleOrder}
+              moduleNames={moduleNames}
+              setModuleNames={setModuleNames}
+              moduleLinks={moduleLinks}
+              setModuleLinks={setModuleLinks}
+            />
           </div>,
           document.body
         )}
@@ -2019,39 +2068,63 @@ export default function YearCalendar() {
 
 interface BM { id: string; name: string; url: string; }
 
-function MoreMenuInline({ onClose, skin }: { onClose: () => void; skin: typeof SKINS[number]; }) {
-  const [bookmarks, setBookmarks] = useState<BM[]>(() => {
-    try {
-      if (typeof window === 'undefined') return [];
-      return JSON.parse(localStorage.getItem('calendar-bookmarks') || '[]');
-    } catch { return []; }
-  });
+function MoreMenuInline({
+  onClose, skin,
+  bookmarks, setBookmarks,
+  builtinModules, allModuleIds, getModuleInfo,
+  moduleVisibility, setModuleVisibility,
+  moduleOrder, setModuleOrder,
+  moduleNames, setModuleNames,
+  moduleLinks, setModuleLinks,
+}: {
+  onClose: () => void; skin: typeof SKINS[number];
+  bookmarks: BM[]; setBookmarks: React.Dispatch<React.SetStateAction<BM[]>>;
+  builtinModules: { id: string; label: string }[];
+  allModuleIds: string[];
+  getModuleInfo: (id: string) => { id: string; label: string; isBuiltin: boolean };
+  moduleVisibility: Record<string, boolean>;
+  setModuleVisibility: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  moduleOrder: string[];
+  setModuleOrder: React.Dispatch<React.SetStateAction<string[]>>;
+  moduleNames: Record<string, string>;
+  setModuleNames: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  moduleLinks: Record<string, string>;
+  setModuleLinks: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
-  const { swatch, cardBg, textPrimary, textSecondary, divider } = skin;
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
+  const { swatch, cardBg, textPrimary, textSecondary, divider, panelBg } = skin;
 
-  useEffect(() => {
-    localStorage.setItem('calendar-bookmarks', JSON.stringify(bookmarks));
-  }, [bookmarks]);
+  const getLink = (id: string) => {
+    const b = bookmarks.find(x => x.id === id);
+    return b?.url || moduleLinks[id] || '';
+  };
 
-  const allLinks = [
-    { id: 'timeline', label: '滴答', url: '' },
-    { id: 'dida', label: '长城', url: '' },
-    { id: 'longterm', label: '得到', url: '' },
-    { id: 'review', label: '复盘', url: '' },
-    { id: 'bilibili', label: 'B站', url: '' },
-    { id: 'insight', label: '洞察', url: '' },
-    ...bookmarks.map(b => ({ id: b.id, label: b.name, url: b.url })),
-  ];
+  const getLabel = (id: string) => {
+    return moduleNames[id] || getModuleInfo(id).label;
+  };
 
   const handleSave = () => {
     if (!name.trim()) return;
-    if (editId) {
-      setBookmarks(prev => prev.map(b => b.id === editId ? { ...b, name: name.trim(), url: url.trim() } : b));
-    } else {
-      setBookmarks(prev => [...prev, { id: `bm_${Date.now()}`, name: name.trim(), url: url.trim() }]);
+    if (editId === '__new__') {
+      const newId = `bm_${Date.now()}`;
+      setBookmarks(prev => [...prev, { id: newId, name: name.trim(), url: url.trim() }]);
+      setModuleOrder(prev => [...prev, newId]);
+      setModuleVisibility(prev => ({ ...prev, [newId]: true }));
+    } else if (editId) {
+      // 编辑现有项
+      const info = getModuleInfo(editId);
+      if (info.isBuiltin) {
+        // 内建模块：改 moduleNames / moduleLinks
+        setModuleNames(prev => ({ ...prev, [editId]: name.trim() }));
+        setModuleLinks(prev => ({ ...prev, [editId]: url.trim() }));
+      } else {
+        setBookmarks(prev => prev.map(b => b.id === editId ? { ...b, name: name.trim(), url: url.trim() } : b));
+      }
     }
     setShowForm(false);
     setEditId(null);
@@ -2059,59 +2132,133 @@ function MoreMenuInline({ onClose, skin }: { onClose: () => void; skin: typeof S
     setUrl('');
   };
 
-  const handleEdit = (b: BM) => {
-    setEditId(b.id);
-    setName(b.name);
-    setUrl(b.url);
+  const handleEdit = (id: string) => {
+    setEditId(id);
+    setName(getLabel(id));
+    setUrl(getLink(id));
     setShowForm(true);
   };
 
   const handleDelete = (id: string) => {
-    setBookmarks(prev => prev.filter(b => b.id !== id));
+    const info = getModuleInfo(id);
+    if (!info.isBuiltin) {
+      setBookmarks(prev => prev.filter(b => b.id !== id));
+      setModuleOrder(prev => prev.filter(x => x !== id));
+      setModuleVisibility(prev => { const c = { ...prev }; delete c[id]; return c; });
+    }
     if (editId === id) { setShowForm(false); setEditId(null); setName(''); setUrl(''); }
   };
 
+  const handleToggleVisibility = (id: string) => {
+    setModuleVisibility(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDragId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOver !== id) setDragOver(id);
+  };
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!dragId || dragId === targetId) { setDragId(null); setDragOver(null); return; }
+    setModuleOrder(prev => {
+      const arr = [...prev];
+      const fromIdx = arr.indexOf(dragId);
+      const toIdx = arr.indexOf(targetId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      arr.splice(fromIdx, 1);
+      arr.splice(toIdx, 0, dragId);
+      return arr;
+    });
+    setDragId(null);
+    setDragOver(null);
+  };
+  const handleDragEnd = () => { setDragId(null); setDragOver(null); };
+
   return (
-    <div className="w-[480px] max-h-[70vh] overflow-y-auto rounded-2xl shadow-2xl border p-4" style={{ backgroundColor: skin.panelBg, borderColor: divider }}>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold" style={{ color: textPrimary }}>更多链接</h2>
+    <div className="w-[520px] max-h-[70vh] overflow-y-auto rounded-2xl shadow-2xl border p-4" style={{ backgroundColor: panelBg, borderColor: divider }}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: textPrimary }}>
+            <span>更多链接</span>
+            <span className="text-xs font-normal opacity-60" style={{ color: textSecondary }}>拖拽排序 · 眼睛控制显示</span>
+          </h2>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:opacity-70 text-lg" style={{ color: textSecondary }}>✕</button>
         </div>
-        <div className="grid grid-cols-5 gap-3">
-          {allLinks.map(link => (
-            <div key={link.id} className="relative group flex flex-col items-center gap-1.5 cursor-pointer rounded-xl p-3 transition-all hover:scale-105" style={{ backgroundColor: cardBg }} onClick={() => link.url && window.open(link.url, '_blank')}>
-              {link.url && (
+        <div className="grid grid-cols-5 gap-2">
+          {allModuleIds.map(id => {
+            const info = getModuleInfo(id);
+            const label = getLabel(id);
+            const link = getLink(id);
+            const visible = moduleVisibility[id] !== false;
+            const isDragging = dragId === id;
+            const isDragOver = dragOver === id;
+            return (
+              <div
+                key={id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, id)}
+                onDragOver={(e) => handleDragOver(e, id)}
+                onDrop={(e) => handleDrop(e, id)}
+                onDragEnd={handleDragEnd}
+                className={`relative group flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing rounded-xl p-2.5 transition-all ${isDragging ? 'opacity-40 scale-95' : ''} ${isDragOver ? 'ring-2' : ''}`}
+                style={{ backgroundColor: cardBg, boxShadow: isDragOver ? `0 0 0 2px ${swatch}` : 'none' }}
+                onClick={() => link && visible && window.open(link, '_blank')}
+                title="拖动可排序"
+              >
+                {/* 左上角：眼睛（显示/隐藏） */}
                 <button
-                  className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full text-white text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ backgroundColor: '#ef4444' }}
-                  onClick={(e) => { e.stopPropagation(); handleDelete(link.id); }}
-                >✕</button>
-              )}
-              <div className="w-12 h-12 flex items-center justify-center rounded-xl text-lg font-bold" style={{ backgroundColor: swatch + '20', color: swatch }}>
-                {link.label.charAt(0)}
-              </div>
-              <span className="text-xs truncate w-full text-center" style={{ color: textSecondary }}>{link.label}</span>
-              {!link.url && (
-                <button className="text-[10px] mt-0.5 px-2 py-0.5 rounded opacity-70 hover:opacity-100" style={{ color: swatch, backgroundColor: swatch + '15' }}
-                  onClick={(e) => { e.stopPropagation(); handleEdit({ id: link.id, name: link.label, url: '' }); }}>
-                  编辑
+                  className="absolute -top-2 -left-2 w-5 h-5 flex items-center justify-center rounded-full text-white text-[10px] shadow-sm"
+                  style={{ backgroundColor: visible ? swatch : '#9ca3af' }}
+                  onClick={(e) => { e.stopPropagation(); handleToggleVisibility(id); }}
+                  title={visible ? '在主页显示' : '在主页隐藏'}
+                >{visible ? '👁' : '✕'}</button>
+                {/* 右上角：编辑（图标） */}
+                <button
+                  className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full text-white text-[10px] shadow-sm opacity-70 group-hover:opacity-100"
+                  style={{ backgroundColor: swatch }}
+                  onClick={(e) => { e.stopPropagation(); handleEdit(id); }}
+                  title="编辑"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" /></svg>
                 </button>
-              )}
-            </div>
-          ))}
-          <div className="flex flex-col items-center gap-1.5 cursor-pointer rounded-xl p-3 border-2 border-dashed transition-all hover:scale-105" style={{ borderColor: divider, color: textSecondary }} onClick={() => { setShowForm(true); setEditId(null); setName(''); setUrl(''); }}>
-            <div className="w-12 h-12 flex items-center justify-center rounded-xl text-2xl opacity-50">+</div>
-            <span className="text-xs">添加快捷</span>
+                {/* 右下角：删除（仅自定义） */}
+                {!info.isBuiltin && (
+                  <button
+                    className="absolute -bottom-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full text-white text-[10px] shadow-sm opacity-70 group-hover:opacity-100"
+                    style={{ backgroundColor: '#ef4444' }}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(id); }}
+                    title="删除"
+                  >✕</button>
+                )}
+                <div className="w-11 h-11 flex items-center justify-center rounded-xl text-base font-bold" style={{ backgroundColor: swatch + '20', color: visible ? swatch : '#9ca3af', opacity: visible ? 1 : 0.5 }}>
+                  {label.charAt(0)}
+                </div>
+                <span className="text-[11px] truncate w-full text-center" style={{ color: visible ? textSecondary : '#9ca3af' }}>{label}</span>
+              </div>
+            );
+          })}
+          <div
+            className="flex flex-col items-center gap-1 cursor-pointer rounded-xl p-2.5 border-2 border-dashed transition-all hover:scale-105"
+            style={{ borderColor: divider, color: textSecondary }}
+            onClick={() => { setShowForm(true); setEditId('__new__'); setName(''); setUrl(''); }}
+          >
+            <div className="w-11 h-11 flex items-center justify-center rounded-xl text-2xl opacity-50">+</div>
+            <span className="text-[11px]">添加快捷</span>
           </div>
         </div>
         {showForm && (
-          <div className="mt-5 p-4 rounded-xl" style={{ backgroundColor: cardBg }}>
-            <div className="flex flex-col gap-3">
-              <input className="w-full px-3 py-2 rounded-lg text-sm outline-none border" style={{ backgroundColor: skin.panelBg, borderColor: divider, color: textPrimary }} placeholder="网站名称" value={name} onChange={e => setName(e.target.value)} autoFocus />
-              <input className="w-full px-3 py-2 rounded-lg text-sm outline-none border" style={{ backgroundColor: skin.panelBg, borderColor: divider, color: textPrimary }} placeholder="网址（如 https://example.com）" value={url} onChange={e => setUrl(e.target.value)} />
+          <div className="mt-4 p-3 rounded-xl" style={{ backgroundColor: cardBg }}>
+            <div className="flex flex-col gap-2">
+              <input className="w-full px-3 py-2 rounded-lg text-sm outline-none border" style={{ backgroundColor: panelBg, borderColor: divider, color: textPrimary }} placeholder="网站名称" value={name} onChange={e => setName(e.target.value)} autoFocus />
+              <input className="w-full px-3 py-2 rounded-lg text-sm outline-none border" style={{ backgroundColor: panelBg, borderColor: divider, color: textPrimary }} placeholder="网址（如 https://example.com）" value={url} onChange={e => setUrl(e.target.value)} />
               <div className="flex gap-2 justify-end">
                 <button className="px-4 py-1.5 rounded-lg text-sm" style={{ backgroundColor: divider, color: textPrimary }} onClick={() => { setShowForm(false); setEditId(null); setName(''); setUrl(''); }}>取消</button>
-                <button className="px-4 py-1.5 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: swatch }} onClick={handleSave}>{editId ? '保存修改' : '添加'}</button>
+                <button className="px-4 py-1.5 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: swatch }} onClick={handleSave}>{editId === '__new__' ? '添加' : '保存修改'}</button>
               </div>
             </div>
           </div>
