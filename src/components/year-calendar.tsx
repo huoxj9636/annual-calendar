@@ -108,7 +108,7 @@ export default function YearCalendar() {
     return '';
   });
   const [reviewDays, setReviewDays] = useState<Set<string>>(new Set());
-  const [actionDays, setActionDays] = useState<Set<string>>(new Set());
+  const [achievementDays, setAchievementDays] = useState<Set<string>>(new Set()); // 有成果物的日期
 
   // 后台导入任务
   const [bgTasks, setBgTasks] = useState<Array<{
@@ -126,12 +126,29 @@ export default function YearCalendar() {
         if (Array.isArray(data.days)) {
           setReviewDays(new Set(data.days));
         }
-        if (Array.isArray(data.actionDays)) {
-          setActionDays(new Set(data.actionDays));
-        }
       }
     } catch { /* ignore */ }
   }, [year]);
+
+  // 从 localStorage 扫描有成果物的日期
+  const scanAchievementDays = useCallback(() => {
+    const days = new Set<string>();
+    // 扫描 localStorage 中所有 achievements-{year}-{month}-{day} 键
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('achievements-')) {
+        // 格式: achievements-{year}-{month}-{day}
+        const datePart = key.replace('achievements-', '');
+        try {
+          const data = JSON.parse(localStorage.getItem(key) || '[]');
+          if (Array.isArray(data) && data.length > 0) {
+            days.add(datePart);
+          }
+        } catch { /* ignore parse error */ }
+      }
+    }
+    setAchievementDays(days);
+  }, []);
   const updateReviewStartDate = (date: string) => {
     setReviewStartDate(date);
     localStorage.setItem('calendar-review-start-date', date);
@@ -346,6 +363,9 @@ export default function YearCalendar() {
 
     // Now set mounted - all localStorage values are already in state
     setMounted(true);
+
+    // 扫描有成果物的日期
+    scanAchievementDays();
 
     // Load data from DB asynchronously (with localStorage migration)
     (async () => {
@@ -1409,8 +1429,8 @@ export default function YearCalendar() {
                           setDailyReviewOpen(true);
                         }}
                       />
-                      {/* Blue dot indicator: shown when completed or tomorrowTodo has content */}
-                      {actionDays.has(`${year}-${cell.month}-${cell.day}`) && (
+                      {/* Blue dot indicator: shown when has achievements (outputs) */}
+                      {achievementDays.has(`${year}-${cell.month}-${cell.day}`) && (
                         <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full z-20"
                       style={{ background: `${skin.blueDot}55`, boxShadow: 'none' }} />
                       )}
@@ -1476,7 +1496,7 @@ export default function YearCalendar() {
               month={new Date().getMonth() + 1}
               day={new Date().getDate()}
               skin={skin}
-              onClose={() => setShowAchievement(false)}
+              onClose={() => { setShowAchievement(false); scanAchievementDays(); }}
             />
           )}
 
