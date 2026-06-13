@@ -115,16 +115,16 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
       const res = await fetch(`/api/daily-review?year=${y}&month=${m}&day=${d}`);
       if (res.ok) {
         const data = await res.json();
-        if (data && data.review) {
+        if (data) {
           review = {
-            completed: data.review.completed || '',
-            goodThings: data.review.good_things || '',
-            problems: data.review.problems || '',
-            mood: data.review.mood || '',
-            reflections: data.review.reflections || '',
-            tomorrowTodo: data.review.tomorrow_todo || '',
-            moodScore: data.review.mood_score || 0,
-            energy: data.review.energy || 0,
+            completed: data.completed || '',
+            goodThings: data.goodThings || '',
+            problems: data.problems || '',
+            mood: data.mood || '',
+            reflections: data.reflections || '',
+            tomorrowTodo: data.tomorrowTodo || '',
+            moodScore: data.moodScore || 0,
+            energy: data.energy || 0,
           };
         }
       }
