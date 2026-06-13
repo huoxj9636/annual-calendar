@@ -568,7 +568,7 @@ export default function YearCalendar() {
       setShowBackToTop(page > 0);
 
       // Skip snap when any overlay panel is open
-      if (timelineOpenRef.current || insightOpen || trackOpen) return;
+      if (timelineOpenRef.current || insightOpen || trackOpen || showAchievement) return;
       if (isSnapping.current) return;
       if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
       scrollTimeout.current = setTimeout(() => {
@@ -608,19 +608,19 @@ export default function YearCalendar() {
 
   // Lock scroll position when timeline is open (belt-and-suspenders)
   useEffect(() => {
-    const anyPanelOpen = timelineOpen || insightOpen || trackOpen;
+    const anyPanelOpen = timelineOpen || insightOpen || trackOpen || showAchievement;
     if (anyPanelOpen && scrollContainerRef.current) {
       const container = scrollContainerRef.current;
       const savedScroll = container.scrollTop;
       const lockScroll = () => {
-        if ((timelineOpenRef.current || insightOpen || trackOpen) && container.scrollTop !== savedScroll) {
+        if ((timelineOpenRef.current || insightOpen || trackOpen || showAchievement) && container.scrollTop !== savedScroll) {
           container.scrollTop = savedScroll;
         }
       };
       container.addEventListener('scroll', lockScroll, { passive: true });
       return () => container.removeEventListener('scroll', lockScroll);
     }
-  }, [timelineOpen, insightOpen, trackOpen]);
+  }, [timelineOpen, insightOpen, trackOpen, showAchievement]);
 
   const getDayStatus = useCallback(
     (month: number, day: number): 'checked' | 'crossed' | 'auto' | 'none' => {
@@ -702,7 +702,7 @@ export default function YearCalendar() {
 
 
   return (
-    <div ref={scrollContainerRef} className="h-screen overflow-y-scroll" style={{ scrollbarWidth: 'none', overflowY: (timelineOpen || insightOpen || trackOpen) ? 'hidden' : 'scroll' }}>
+    <div ref={scrollContainerRef} className="h-screen overflow-y-scroll" style={{ scrollbarWidth: 'none', overflowY: (timelineOpen || insightOpen || trackOpen || showAchievement) ? 'hidden' : 'scroll' }}>
       {/* Page 1: Calendar */}
       <div className="h-screen print:bg-white print:h-auto flex flex-col overflow-hidden relative"
       style={{ backgroundColor: skin.bodyBg }}>
@@ -1469,6 +1469,17 @@ export default function YearCalendar() {
             />
           )}
 
+          {/* 成果面板 */}
+          {showAchievement && (
+            <AchievementPanel
+              year={year}
+              month={new Date().getMonth() + 1}
+              day={new Date().getDate()}
+              skin={skin}
+              onClose={() => setShowAchievement(false)}
+            />
+          )}
+
           {/* 今日复盘 - 覆盖层 */}
           {dailyReviewOpen && (
             <DailyReview
@@ -1836,17 +1847,6 @@ export default function YearCalendar() {
         onClose={() => setShowLifeCalendar(false)}
         skinKey={skinKey}
       />
-
-      {/* 成果面板 */}
-      {showAchievement && (
-        <AchievementPanel
-          year={year}
-          month={new Date().getMonth() + 1}
-          day={new Date().getDate()}
-          skin={skin}
-          onClose={() => setShowAchievement(false)}
-        />
-      )}
 
       {/* Settings popup */}
       {settingsOpen && (
