@@ -1124,15 +1124,15 @@ export default function YearCalendar() {
               <span className="text-[12px] leading-none font-bold tracking-wide transition-colors" style={{ color: '#ffffff', textShadow: '0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' }}>更多</span>
             </button>
           </div>
-        </div>
-
-        {/* 更多弹窗 - 悬浮展示 */}
-        {showMoreMenu && (
-          <div onMouseEnter={() => { if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current); }}
-            onMouseLeave={() => { moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 250); }}>
+          {showMoreMenu && (
+          <div
+            onMouseEnter={() => { if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current); }}
+            onMouseLeave={() => { moreHoverTimerRef.current = setTimeout(() => setShowMoreMenu(false), 250); }}
+          >
             <MoreMenuInline onClose={() => setShowMoreMenu(false)} skin={skin} />
           </div>
-        )}
+          )}
+        </div>
 
         <div
           ref={gridContainerRef}
