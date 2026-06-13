@@ -69,7 +69,8 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
   const today = new Date(year, month - 1, day);
   const [selectedDate, setSelectedDate] = useState<Date>(today);
   const [daysData, setDaysData] = useState<Map<string, DayData>>(new Map());
-  const [loadedDays, setLoadedDays] = useState(30); // 初始加载30天
+  const [loadedDays, setLoadedDays] = useState(30); // 日期列表长度（不涉及API）
+  const [loadingDate, setLoadingDate] = useState<string | null>(null); // 当前正在加载的日期
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<Achievement['type']>('document');
   const [formTitle, setFormTitle] = useState('');
@@ -94,8 +95,8 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
     return dates;
   }, [today]);
 
-  // 加载某一天的数据
-  const loadDayData = useCallback(async (date: Date): Promise<DayData> => {
+  // 快速加载某一天的成果数据（仅 localStorage，不请求 API）
+  const loadAchievementsOnly = useCallback((date: Date): DayData => {
     const y = date.getFullYear();
     const m = date.getMonth() + 1;
     const d = date.getDate();
@@ -109,27 +110,6 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
       if (stored) achievements = JSON.parse(stored);
     } catch {}
 
-    // 从 API 读取复盘
-    let review: DailyReview | null = null;
-    try {
-      const res = await fetch(`/api/daily-review?year=${y}&month=${m}&day=${d}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data) {
-          review = {
-            completed: data.completed || '',
-            goodThings: data.goodThings || '',
-            problems: data.problems || '',
-            mood: data.mood || '',
-            reflections: data.reflections || '',
-            tomorrowTodo: data.tomorrowTodo || '',
-            moodScore: data.moodScore || 0,
-            energy: data.energy || 0,
-          };
-        }
-      }
-    } catch {}
-
     return {
       date,
       year: y,
@@ -137,28 +117,76 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
       day: d,
       weekday: WEEKDAY_NAMES[date.getDay()],
       label: getDateLabel(date, today),
-      review,
+      review: null, // 初始不加载复盘，点击时再请求
       achievements,
-      hasData: !!review || achievements.length > 0,
+      hasData: achievements.length > 0,
     };
   }, [today]);
 
-  // 初始化加载
-  useEffect(() => {
-    const initLoad = async () => {
-      const dates = generateDateList(loadedDays);
-      const newMap = new Map<string, DayData>();
-      for (const date of dates) {
-        const data = await loadDayData(date);
-        newMap.set(formatDateKey(data.year, data.month, data.day), data);
-      }
-      setDaysData(newMap);
-    };
-    initLoad();
-  }, [loadedDays, generateDateList, loadDayData]);
+  // 请求某一天的复盘 API（点击时调用）
+  const fetchReviewData = useCallback(async (date: Date) => {
+    const y = date.getFullYear();
+    const m = date.getMonth() + 1;
+    const d = date.getDate();
+    const key = formatDateKey(y, m, d);
 
-  // 滚动加载更多
-  const handleSidebarScroll = useCallback(async () => {
+    setLoadingDate(key);
+    try {
+      const res = await fetch(`/api/daily-review?year=${y}&month=${m}&day=${d}`);
+      if (res.ok) {
+        const data = await res.json();
+        const review: DailyReview = {
+          completed: data.completed || '',
+          goodThings: data.goodThings || '',
+          problems: data.problems || '',
+          mood: data.mood || '',
+          reflections: data.reflections || '',
+          tomorrowTodo: data.tomorrowTodo || '',
+          moodScore: data.moodScore || 0,
+          energy: data.energy || 0,
+        };
+        // 更新该日期的数据
+        setDaysData(prev => {
+          const newMap = new Map(prev);
+          const existing = newMap.get(key);
+          if (existing) {
+            newMap.set(key, { ...existing, review, hasData: true });
+          } else {
+            // 如果不存在，创建完整数据
+            newMap.set(key, {
+              date,
+              year: y,
+              month: m,
+              day: d,
+              weekday: WEEKDAY_NAMES[date.getDay()],
+              label: getDateLabel(date, today),
+              review,
+              achievements: [],
+              hasData: true,
+            });
+          }
+          return newMap;
+        });
+      }
+    } catch {}
+    setLoadingDate(null);
+  }, [today]);
+
+  // 初始化加载（仅成果数据，快速）
+  useEffect(() => {
+    const dates = generateDateList(loadedDays);
+    const newMap = new Map<string, DayData>();
+    for (const date of dates) {
+      const data = loadAchievementsOnly(date);
+      newMap.set(formatDateKey(data.year, data.month, data.day), data);
+    }
+    setDaysData(newMap);
+    // 自动加载今天的复盘数据
+    fetchReviewData(today);
+  }, [loadedDays, generateDateList, loadAchievementsOnly, fetchReviewData, today]);
+
+  // 滚动加载更多（仅成果数据，快速）
+  const handleSidebarScroll = useCallback(() => {
     if (loadingMoreRef.current || !sidebarRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = sidebarRef.current;
     if (scrollTop < 50) {
@@ -168,14 +196,14 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
       const newDates = generateDateList(newLoadedDays).slice(loadedDays);
       const newMap = new Map(daysData);
       for (const date of newDates) {
-        const data = await loadDayData(date);
+        const data = loadAchievementsOnly(date);
         newMap.set(formatDateKey(data.year, data.month, data.day), data);
       }
       setDaysData(newMap);
       setLoadedDays(newLoadedDays);
       loadingMoreRef.current = false;
     }
-  }, [loadedDays, daysData, generateDateList, loadDayData]);
+  }, [loadedDays, daysData, generateDateList, loadAchievementsOnly]);
 
   // 当前选中日期的数据
   const selectedKey = formatDateKey(
@@ -304,7 +332,19 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
             return (
               <button
                 key={key}
-                onClick={() => setSelectedDate(date)}
+                onClick={() => {
+                  setSelectedDate(date);
+                  // 点击日期时请求复盘数据
+                  const y = date.getFullYear();
+                  const m = date.getMonth() + 1;
+                  const d = date.getDate();
+                  const key = formatDateKey(y, m, d);
+                  // 如果该日期还没有复盘数据，则请求
+                  const existing = daysData.get(key);
+                  if (!existing?.review) {
+                    fetchReviewData(date);
+                  }
+                }}
                 className={`w-full px-5 py-3 flex items-center gap-3 transition-colors ${
                   isSelected ? 'bg-black/5' : 'hover:bg-black/3'
                 }`}
@@ -390,6 +430,13 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
 
         {/* 内容滚动区 */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
+          {/* 加载中提示 */}
+          {loadingDate === selectedKey && (
+            <div className="mb-4 p-3 rounded-lg bg-black/5 text-center text-sm" style={{ color: s.textMuted }}>
+              <span className="inline-block animate-spin mr-2">⏳</span> 加载复盘数据...
+            </div>
+          )}
+          
           {/* 今日复盘 - 六项框框始终展示 */}
           <section className="mb-6">
             <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: s.textPrimary }}>
