@@ -1118,7 +1118,8 @@ export default function YearCalendar() {
               if (moreHoverTimerRef.current) clearTimeout(moreHoverTimerRef.current);
               if (moreButtonRef.current) {
                 const r = moreButtonRef.current.getBoundingClientRect();
-                setMoreMenuPos({ top: r.top + 8, left: r.right + 9 });
+                // 弹窗顶部对齐"更多"圆形图标的顶部：wrapper顶部 + 12px(分隔线margin-top) + 12px(分隔线margin-bottom) = +24px
+                setMoreMenuPos({ top: r.top + 24, left: r.right + 9 });
               }
               setShowMoreMenu(true);
             }}
