@@ -2034,7 +2034,13 @@ function MoreMenuInline({
   };
 
   const getLabel = (id: string) => {
-    return moduleNames[id] || getModuleInfo(id).label;
+    // 先检查 moduleNames（内建模块改名）
+    if (moduleNames[id]) return moduleNames[id];
+    // 再检查 bookmarks（自定义书签）
+    const bm = bookmarks.find(b => b.id === id);
+    if (bm) return bm.name;
+    // 最后用默认名
+    return getModuleInfo(id).label;
   };
 
   const handleSave = () => {
