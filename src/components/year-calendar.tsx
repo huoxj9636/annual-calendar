@@ -2249,35 +2249,38 @@ function MoreMenuInline({
                 onClick={() => link && visible && window.open(link, '_blank')}
                 title="拖动可排序"
               >
-                {/* 左上角：眼睛（显示/隐藏） */}
-                <button
-                  className="absolute -top-2 -left-2 w-5 h-5 flex items-center justify-center rounded-full text-white text-[10px] shadow-sm"
-                  style={{ backgroundColor: visible ? swatch : '#9ca3af' }}
-                  onClick={(e) => { e.stopPropagation(); handleToggleVisibility(id); }}
-                  title={visible ? '在主页显示' : '在主页隐藏'}
-                >{visible ? '👁' : '✕'}</button>
-                {/* 右上角：编辑（图标） */}
-                <button
-                  className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full text-white text-[10px] shadow-sm opacity-70 group-hover:opacity-100"
-                  style={{ backgroundColor: swatch }}
-                  onClick={(e) => { e.stopPropagation(); handleEdit(id); }}
-                  title="编辑"
-                >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" /></svg>
-                </button>
-                {/* 右下角：删除（仅自定义） */}
-                {!info.isBuiltin && (
-                  <button
-                    className="absolute -bottom-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full text-white text-[10px] shadow-sm opacity-70 group-hover:opacity-100"
-                    style={{ backgroundColor: '#ef4444' }}
-                    onClick={(e) => { e.stopPropagation(); handleDelete(id); }}
-                    title="删除"
-                  >✕</button>
-                )}
                 <div className="w-11 h-11 flex items-center justify-center rounded-xl text-base font-bold" style={{ backgroundColor: swatch + '20', color: visible ? swatch : '#9ca3af', opacity: visible ? 1 : 0.5 }}>
                   {label.charAt(0)}
                 </div>
                 <span className="text-[11px] truncate w-full text-center" style={{ color: visible ? textSecondary : '#9ca3af' }}>{label}</span>
+                {/* 按钮行放在文字下方 */}
+                <div className="flex gap-1.5 mt-0.5">
+                  {/* 眼睛（显示/隐藏） */}
+                  <button
+                    className="w-5 h-5 flex items-center justify-center rounded-full text-white text-[10px] shadow-sm"
+                    style={{ backgroundColor: visible ? swatch : '#9ca3af' }}
+                    onClick={(e) => { e.stopPropagation(); handleToggleVisibility(id); }}
+                    title={visible ? '在主页显示' : '在主页隐藏'}
+                  >{visible ? '👁' : '✕'}</button>
+                  {/* 编辑（图标） */}
+                  <button
+                    className="w-5 h-5 flex items-center justify-center rounded-full text-white text-[10px] shadow-sm opacity-70 group-hover:opacity-100"
+                    style={{ backgroundColor: swatch }}
+                    onClick={(e) => { e.stopPropagation(); handleEdit(id); }}
+                    title="编辑"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" /></svg>
+                  </button>
+                  {/* 删除（仅自定义） */}
+                  {!info.isBuiltin && (
+                    <button
+                      className="w-5 h-5 flex items-center justify-center rounded-full text-white text-[10px] shadow-sm opacity-70 group-hover:opacity-100"
+                      style={{ backgroundColor: '#ef4444' }}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(id); }}
+                      title="删除"
+                    >✕</button>
+                  )}
+                </div>
               </div>
             );
           })}
