@@ -2118,7 +2118,7 @@ function MoreMenuInline({
           </h2>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:opacity-70 text-lg" style={{ color: textSecondary }}>✕</button>
         </div>
-        <div className="grid grid-cols-7 gap-1.5">
+        <div className="grid grid-cols-5 gap-2">
           {allModuleIds.map(id => {
             const info = getModuleInfo(id);
             const label = getLabel(id);
@@ -2134,31 +2134,31 @@ function MoreMenuInline({
                 onDragOver={(e) => handleDragOver(e, id)}
                 onDrop={(e) => handleDrop(e, id)}
                 onDragEnd={handleDragEnd}
-                className={`relative group flex flex-col items-center gap-0.5 cursor-grab active:cursor-grabbing rounded-lg p-1 transition-all ${isDragging ? 'opacity-40 scale-95' : ''} ${isDragOver ? 'ring-2' : ''}`}
+                className={`relative group flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing rounded-lg p-2 transition-all ${isDragging ? 'opacity-40 scale-95' : ''} ${isDragOver ? 'ring-2' : ''}`}
                 style={{ backgroundColor: cardBg, boxShadow: isDragOver ? `0 0 0 2px ${swatch}` : 'none' }}
                 onClick={() => link && visible && window.open(link, '_blank')}
                 title="拖动可排序"
               >
-                <div className="w-6 h-6 flex items-center justify-center rounded-md text-[10px] font-bold" style={{ backgroundColor: swatch + '20', color: visible ? swatch : '#9ca3af', opacity: visible ? 1 : 0.5 }}>
+                <div className="w-10 h-10 flex items-center justify-center rounded-lg text-base font-bold" style={{ backgroundColor: swatch + '20', color: visible ? swatch : '#9ca3af', opacity: visible ? 1 : 0.5 }}>
                   {label.charAt(0)}
                 </div>
-                <span className="text-[8px] truncate w-full text-center" style={{ color: visible ? textSecondary : '#9ca3af' }}>{label}</span>
+                <span className="text-xs truncate w-full text-center font-medium" style={{ color: visible ? textSecondary : '#9ca3af' }}>{label}</span>
                 {/* 按钮行放在文字下方 */}
-                <div className="flex gap-1 mt-0.5">
+                <div className="flex gap-1.5 mt-1">
                   {/* 眼睛（显示/隐藏） */}
                   <button
-                    className="w-3 h-3 flex items-center justify-center rounded-full shadow-sm"
+                    className="w-5 h-5 flex items-center justify-center rounded-full shadow-sm"
                     style={{ backgroundColor: visible ? swatch : '#9ca3af' }}
                     onClick={(e) => { e.stopPropagation(); handleToggleVisibility(id); }}
                     title={visible ? '在主页显示' : '在主页隐藏'}
                   >
                     {visible ? (
-                      <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                         <circle cx="12" cy="12" r="3" />
                       </svg>
                     ) : (
-                      <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 4.06-5.94" />
                         <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
                         <line x1="1" y1="1" x2="23" y2="23" />
@@ -2167,33 +2167,35 @@ function MoreMenuInline({
                   </button>
                   {/* 编辑（图标） */}
                   <button
-                    className="w-3 h-3 flex items-center justify-center rounded-full text-white shadow-sm opacity-70 group-hover:opacity-100"
+                    className="w-5 h-5 flex items-center justify-center rounded-full text-white shadow-sm opacity-70 group-hover:opacity-100"
                     style={{ backgroundColor: swatch }}
                     onClick={(e) => { e.stopPropagation(); handleEdit(id); }}
                     title="编辑"
                   >
-                    <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" /></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" /></svg>
                   </button>
                   {/* 删除（仅自定义） */}
                   {!info.isBuiltin && (
                     <button
-                      className="w-3 h-3 flex items-center justify-center rounded-full text-white text-[6px] shadow-sm opacity-70 group-hover:opacity-100"
+                      className="w-5 h-5 flex items-center justify-center rounded-full text-white shadow-sm opacity-70 group-hover:opacity-100"
                       style={{ backgroundColor: '#ef4444' }}
                       onClick={(e) => { e.stopPropagation(); handleDelete(id); }}
                       title="删除"
-                    >✕</button>
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
                   )}
                 </div>
               </div>
             );
           })}
           <div
-            className="flex flex-col items-center gap-0.5 cursor-pointer rounded-lg p-1 border-2 border-dashed transition-all hover:scale-105"
+            className="flex flex-col items-center gap-1 cursor-pointer rounded-lg p-2 border-2 border-dashed transition-all hover:scale-105"
             style={{ borderColor: divider, color: textSecondary }}
             onClick={() => { setShowForm(true); setEditId('__new__'); setName(''); setUrl(''); }}
           >
-            <div className="w-6 h-6 flex items-center justify-center rounded-md text-xs opacity-50">+</div>
-            <span className="text-[8px]">添加</span>
+            <div className="w-10 h-10 flex items-center justify-center rounded-lg text-lg opacity-50">+</div>
+            <span className="text-xs">添加</span>
           </div>
         </div>
         {showForm && (
