@@ -1873,7 +1873,7 @@ export default function YearCalendar() {
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
           style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}
           onClick={() => setSettingsOpen(false)}>
-          <div className="rounded-2xl shadow-2xl p-6 w-[640px] max-h-[85vh] overflow-y-auto"
+          <div className="rounded-2xl shadow-2xl p-6 w-[400px]"
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: skin.panelBg,
@@ -1882,10 +1882,7 @@ export default function YearCalendar() {
             }}>
             {/* Header */}
             <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-lg font-bold" style={{ color: skin.textPrimary }}>模块设置</h2>
-                <p className="text-xs mt-0.5" style={{ color: skin.textSecondary }}>显隐控制 · 外链跳转</p>
-              </div>
+              <h2 className="text-lg font-bold" style={{ color: skin.textPrimary }}>设置</h2>
               <button onClick={() => setSettingsOpen(false)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer"
                 style={{ color: skin.textSecondary }}>
@@ -1893,148 +1890,41 @@ export default function YearCalendar() {
               </button>
             </div>
 
-            {/* Module list — horizontal layout with reorder */}
-            <div className="space-y-2">
-              {moduleOrder.map((mkey, idx) => {
-                const moduleDefs: Record<string, { label: string; icon: string }> = {
-                  timeline: { label: '日程', icon: '📅' },
-                  dida: { label: '滴答清单', icon: '✅' },
-                  longterm: { label: '长程', icon: '🧭' },
-                  review: { label: '复盘', icon: '📝' },
-                  bilibili: { label: 'B站', icon: '📺' },
-                  insight: { label: '洞察', icon: '💡' },
-                  track: { label: '轨迹', icon: '📊' },
-                };
-                const def = moduleDefs[mkey];
-                if (!def) return null;
-                return (
-                <div key={mkey}
-                  className="flex items-center gap-3 rounded-xl px-4 py-3 transition-all"
-                  style={{
-                    backgroundColor: moduleVisibility[mkey] ? `${skin.swatch}08` : 'rgba(0,0,0,0.03)',
-                    border: `1px solid ${moduleVisibility[mkey] ? `${skin.swatch}25` : 'transparent'}`,
-                  }}>
-                  {/* Reorder arrows */}
-                  <div className="flex flex-col gap-0.5 flex-shrink-0">
-                    <button
-                      disabled={idx === 0}
-                      onClick={() => {
-                        setModuleOrder(prev => {
-                          const next = [...prev];
-                          [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-                          return next;
-                        });
-                      }}
-                      className="w-5 h-4 rounded flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
-                      style={{ color: skin.textSecondary }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6" /></svg>
-                    </button>
-                    <button
-                      disabled={idx === moduleOrder.length - 1}
-                      onClick={() => {
-                        setModuleOrder(prev => {
-                          const next = [...prev];
-                          [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-                          return next;
-                        });
-                      }}
-                      className="w-5 h-4 rounded flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
-                      style={{ color: skin.textSecondary }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-                    </button>
-                  </div>
-                  {/* Left: icon + label + switch */}
-                  <div className="flex items-center gap-2.5 flex-shrink-0 w-[150px]">
-                    <span className="text-base">{def.icon}</span>
-                    <input
-                      type="text"
-                      value={moduleNames[mkey] || def.label}
-                      onChange={(e) => setModuleNames(prev => ({ ...prev, [mkey]: e.target.value }))}
-                      className="text-sm font-medium bg-transparent outline-none border-b border-transparent hover:border-dashed focus:border-solid min-w-[60px] max-w-[120px]"
-                      style={{ color: skin.textPrimary, borderColor: undefined }}
-                      onFocus={(e) => { e.target.style.borderColor = `${skin.swatch}60`; }}
-                      onBlur={(e) => { e.target.style.borderColor = 'transparent'; }}
-                    />
-                    <button
-                      onClick={() => setModuleVisibility(prev => ({ ...prev, [mkey]: !prev[mkey] }))}
-                      className="w-9 h-[22px] rounded-full relative transition-all cursor-pointer flex-shrink-0 ml-auto"
-                      style={{
-                        backgroundColor: moduleVisibility[mkey] ? skin.swatch : '#d1d5db',
-                        boxShadow: moduleVisibility[mkey] ? `0 1px 6px ${skin.swatch}40` : 'none',
-                      }}>
-                      <span className="absolute top-[3px] w-4 h-4 bg-white rounded-full shadow-sm transition-all"
-                        style={{ left: moduleVisibility[mkey] ? '18px' : '3px' }} />
-                    </button>
-                  </div>
-
-                  {/* Right: link input */}
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={skin.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                    </svg>
-                    <input
-                      type="url"
-                      placeholder="填写链接则新标签页打开，留空用内置页面"
-                      value={moduleLinks[mkey] || ''}
-                      onChange={(e) => setModuleLinks(prev => ({ ...prev, [mkey]: e.target.value }))}
-                      className="flex-1 min-w-0 text-xs px-3 py-1.5 rounded-lg outline-none transition-all"
-                      style={{
-                        backgroundColor: moduleLinks[mkey] ? `${skin.swatch}08` : 'rgba(0,0,0,0.04)',
-                        color: skin.textPrimary,
-                        border: `1px solid ${moduleLinks[mkey] ? `${skin.swatch}40` : 'transparent'}`,
-                      }}
-                    />
-                    {moduleLinks[mkey] && (
-                      <button
-                        onClick={() => setModuleLinks(prev => ({ ...prev, [mkey]: '' }))}
-                        className="w-5 h-5 rounded flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer flex-shrink-0"
-                        style={{ color: skin.textSecondary }}>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                      </button>
-                    )}
-                  </div>
-                </div>
-                );
-              })}
-            </div>
-
             {/* 复盘起始日期 */}
-            <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${skin.swatch}20` }}>
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">📅</span>
-                  <span className="text-sm font-medium" style={{ color: skin.textPrimary }}>复盘起始日期</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={reviewStartDate}
-                    onChange={(e) => {
-                      setReviewStartDate(e.target.value);
-                      localStorage.setItem('calendar-review-start-date', e.target.value);
-                    }}
-                    className="text-xs px-2 py-1 rounded-lg outline-none transition-all cursor-pointer"
-                    style={{
-                      backgroundColor: reviewStartDate ? `${skin.swatch}10` : 'rgba(0,0,0,0.04)',
-                      color: skin.textPrimary,
-                      border: `1px solid ${reviewStartDate ? `${skin.swatch}40` : 'transparent'}`,
-                    }}
-                  />
-                  {reviewStartDate && (
-                    <button
-                      onClick={() => {
-                        setReviewStartDate('');
-                        localStorage.removeItem('calendar-review-start-date');
-                      }}
-                      className="w-5 h-5 rounded flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer"
-                      style={{ color: skin.textSecondary }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                    </button>
-                  )}
-                </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base">📅</span>
+                <span className="text-sm font-medium" style={{ color: skin.textPrimary }}>复盘起始日期</span>
               </div>
-              <p className="text-[11px] mt-1" style={{ color: skin.textSecondary }}>
+              <div className="flex items-center gap-3">
+                <input
+                  type="date"
+                  value={reviewStartDate}
+                  onChange={(e) => {
+                    setReviewStartDate(e.target.value);
+                    localStorage.setItem('calendar-review-start-date', e.target.value);
+                  }}
+                  className="text-sm px-3 py-2 rounded-lg outline-none transition-all cursor-pointer flex-1"
+                  style={{
+                    backgroundColor: reviewStartDate ? `${skin.swatch}10` : 'rgba(0,0,0,0.04)',
+                    color: skin.textPrimary,
+                    border: `1px solid ${reviewStartDate ? `${skin.swatch}40` : 'transparent'}`,
+                  }}
+                />
+                {reviewStartDate && (
+                  <button
+                    onClick={() => {
+                      setReviewStartDate('');
+                      localStorage.removeItem('calendar-review-start-date');
+                    }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-black/10 active:scale-90 cursor-pointer"
+                    style={{ color: skin.textSecondary }}
+                    title="清除">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                )}
+              </div>
+              <p className="text-xs opacity-60" style={{ color: skin.textSecondary }}>
                 设置后，该日期之后没有复盘内容的日期默认标记为 ✗
               </p>
             </div>
