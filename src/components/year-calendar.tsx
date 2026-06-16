@@ -2257,18 +2257,18 @@ function MoreMenuInline({
                 <div className="flex gap-1 mt-0.5">
                   {/* 眼睛（显示/隐藏） */}
                   <button
-                    className="w-4 h-4 flex items-center justify-center rounded-full shadow-sm"
+                    className="w-3 h-3 flex items-center justify-center rounded-full shadow-sm"
                     style={{ backgroundColor: visible ? swatch : '#9ca3af' }}
                     onClick={(e) => { e.stopPropagation(); handleToggleVisibility(id); }}
                     title={visible ? '在主页显示' : '在主页隐藏'}
                   >
                     {visible ? (
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                         <circle cx="12" cy="12" r="3" />
                       </svg>
                     ) : (
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 4.06-5.94" />
                         <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
                         <line x1="1" y1="1" x2="23" y2="23" />
@@ -2277,17 +2277,17 @@ function MoreMenuInline({
                   </button>
                   {/* 编辑（图标） */}
                   <button
-                    className="w-4 h-4 flex items-center justify-center rounded-full text-white text-[8px] shadow-sm opacity-70 group-hover:opacity-100"
+                    className="w-3 h-3 flex items-center justify-center rounded-full text-white shadow-sm opacity-70 group-hover:opacity-100"
                     style={{ backgroundColor: swatch }}
                     onClick={(e) => { e.stopPropagation(); handleEdit(id); }}
                     title="编辑"
                   >
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" /></svg>
+                    <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" /></svg>
                   </button>
                   {/* 删除（仅自定义） */}
                   {!info.isBuiltin && (
                     <button
-                      className="w-4 h-4 flex items-center justify-center rounded-full text-white text-[8px] shadow-sm opacity-70 group-hover:opacity-100"
+                      className="w-3 h-3 flex items-center justify-center rounded-full text-white text-[6px] shadow-sm opacity-70 group-hover:opacity-100"
                       style={{ backgroundColor: '#ef4444' }}
                       onClick={(e) => { e.stopPropagation(); handleDelete(id); }}
                       title="删除"
