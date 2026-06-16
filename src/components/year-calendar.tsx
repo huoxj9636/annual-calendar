@@ -224,7 +224,6 @@ export default function YearCalendar() {
   const [moduleNames, setModuleNames] = useState<Record<string, string>>(() => {
     try { return { ...defaultModuleNames, ...JSON.parse(typeof window !== 'undefined' ? localStorage.getItem('calendar-module-names') || '{}' : '{}') }; } catch { return defaultModuleNames; }
   });
-  const getModuleName = (key: string) => (mounted ? (moduleNames[key] || defaultModuleNames[key]) : defaultModuleNames[key]) || key;
   const defaultModuleOrder = ['timeline', 'dida', 'longterm', 'review', 'achievement', 'bilibili', 'insight', 'track'];
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showAchievement, setShowAchievement] = useState(false);
@@ -236,6 +235,12 @@ export default function YearCalendar() {
     try { return JSON.parse(typeof window !== 'undefined' ? localStorage.getItem('calendar-bookmarks') || '[]' : '[]'); } catch { return []; }
   });
   useEffect(() => { if (mounted) localStorage.setItem('calendar-bookmarks', JSON.stringify(bookmarks)); }, [bookmarks, mounted]);
+  // 获取模块名称：优先 bookmarks，其次 moduleNames
+  const getModuleName = (key: string) => {
+    const bm = bookmarks.find(b => b.id === key);
+    if (bm) return bm.name;
+    return (mounted ? (moduleNames[key] || defaultModuleNames[key]) : defaultModuleNames[key]) || key;
+  };
 
   // 所有模块列表（用于"更多"弹窗）：内建6个 + 自定义
   const builtinModules = [
