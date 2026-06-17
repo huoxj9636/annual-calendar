@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- 医疗蓝圆角方形背景 -->
+  <rect x="0" y="0" width="128" height="128" rx="20" ry="20" fill="#4A90D9"/>
+  <!-- 白色日历网格线条 -->
+  <g stroke="white" stroke-width="3" stroke-linecap="round">
+    <!-- 外框 -->
+    <rect x="24" y="32" width="80" height="72" rx="8" ry="8" fill="none"/>
+    <!-- 挂环 -->
+    <circle cx="40" cy="32" r="6" fill="white"/>
+    <circle cx="88" cy="32" r="6" fill="white"/>
+    <!-- 顶部横线（日历头部） -->
+    <line x1="24" y1="48" x2="104" y2="48"/>
+    <!-- 网格横线 -->
+    <line x1="24" y1="68" x2="104" y2="68"/>
+    <line x1="24" y1="88" x2="104" y2="88"/>
+    <!-- 网格竖线 -->
+    <line x1="50" y1="48" x2="50" y2="104"/>
+    <line x1="78" y1="48" x2="78" y2="104"/>
+  </g>
+  <!-- 对勾标记 -->
+  <polyline points="32,76 38,84 50,66" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

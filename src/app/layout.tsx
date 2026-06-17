@@ -9,7 +9,10 @@ export const metadata: Metadata = {
   description:
     '年度计划日历 - 12周工作法区块划分、农历节气显示、每日满意度勾选',
   icons: {
-    icon: '/favicon-new.png?v=4',
+    icon: [
+      { url: '/favicon-blue.svg', type: 'image/svg+xml' },
+      { url: '/favicon-new.png?v=5', type: 'image/png', sizes: '128x128' },
+    ],
   },
 };
 
