@@ -597,6 +597,8 @@ export default function ForestScene({
     (e: React.PointerEvent<HTMLDivElement>) => {
       // 仅在 my 变体支持画布拖动
       if (variant !== "my") return;
+      // 鸟瞰模式：已看全画布，禁止拖动（虚线边框标识边界）
+      if (isBirdseye) return;
       // 仅主按钮（左键 / touch）
       if (e.button !== 0) return;
       const target = e.target as HTMLElement;
@@ -618,7 +620,7 @@ export default function ForestScene({
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       } catch {}
     },
-    [pan, variant]
+    [pan, variant, isBirdseye]
   );
 
   const handleCanvasPointerMove = useCallback(
@@ -733,8 +735,8 @@ export default function ForestScene({
         onPointerCancel={handleCanvasPointerEnd}
       >
         {/* 内层物理画布：所有内容在内层，支持平移和缩放
-            物理画布 200%×200%，zoom=1 时正常显示，zoom=0.5 时鸟瞰全图
-            pan 范围 [-50/zoom, 50/zoom]，pan=0 时画布居中（看到画布中点） */}
+            物理画布 200%×200%，zoom=1 时正常显示，zoom=ZOOM_MIN 时鸟瞰全图
+            鸟瞰模式时画布四周显示虚线边框，标识画布拖动最大范围 */}
         <div
           style={{
             position: "absolute",
@@ -744,6 +746,11 @@ export default function ForestScene({
             height: `${CANVAS_H * zoom}%`,
             transform: `translate(-50%, -50%) translate(${-pan.x}%, ${-pan.y}%)`,
             transition: panning ? "none" : "transform 0.35s ease-out",
+            // 鸟瞰模式时画布四周显示虚线边框（标识画布能拖到的最大边界）
+            boxShadow: isBirdseye
+              ? `inset 0 0 0 2px ${skin.swatch}, inset 0 0 0 6px ${skin.swatch}22`
+              : "none",
+            pointerEvents: isBirdseye ? "none" : "auto",
           }}
         >
         {/* 晨曦太阳 */}
