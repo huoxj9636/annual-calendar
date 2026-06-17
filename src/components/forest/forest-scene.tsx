@@ -79,15 +79,15 @@ function hashStr(s: string): number {
   return Math.abs(h);
 }
 
-// 基础尺寸：固定为成树大小（不再随节点数变化）。整体放大约 6 倍，
+// 基础尺寸：固定为成树大小（不再随节点数变化）。整体放大后按 0.75 缩放，
 // 树之间用 treeScale 等比缩放以避免 10+ 棵树重叠。
 const TREE_HEIGHTS: Record<number, { h: number; crown: number; trunk: number }> = {
-  0: { h: 156, crown: 72, trunk: 48 },  // 空地（树桩）
-  1: { h: 612, crown: 420, trunk: 192 },
-  2: { h: 612, crown: 420, trunk: 192 },
-  3: { h: 612, crown: 420, trunk: 192 },
-  4: { h: 612, crown: 420, trunk: 192 },
-  5: { h: 612, crown: 420, trunk: 192 },
+  0: { h: 117, crown: 54, trunk: 36 },  // 空地（树桩）
+  1: { h: 459, crown: 315, trunk: 144 },
+  2: { h: 459, crown: 315, trunk: 144 },
+  3: { h: 459, crown: 315, trunk: 144 },
+  4: { h: 459, crown: 315, trunk: 144 },
+  5: { h: 459, crown: 315, trunk: 144 },
 };
 
 /** 单棵树 */
@@ -164,8 +164,10 @@ function ForestTree({
       if (!rect) return;
       const px = ((e.clientX - rect.left) / rect.width) * 100;
       const py = ((e.clientY - rect.top) / rect.height) * 100;
+      // left: 0% 在画布最左 → 指针向右 px 增大 → dx 应为 + (left 增大)
+      // bottom: 0% 在画布最底 → 指针向下 py 增大 → bottom 应减小 → dy 应为 - (py 增量取反)
       const dx = px - startRef.current.pointerX;
-      const dy = py - startRef.current.pointerY;
+      const dy = -(py - startRef.current.pointerY);
       setDragOffset({ dx, dy });
     },
     [dragging, sceneRect]
@@ -189,7 +191,8 @@ function ForestTree({
       const px = ((e.clientX - rect.left) / rect.width) * 100;
       const py = ((e.clientY - rect.top) / rect.height) * 100;
       const newX = Math.max(2, Math.min(98, startRef.current.itemX + (px - startRef.current.pointerX)));
-      const newY = Math.max(2, Math.min(95, startRef.current.itemY + (py - startRef.current.pointerY)));
+      // bottom 坐标系与屏幕 Y 反向：指针向下时 bottom 减小
+      const newY = Math.max(2, Math.min(95, startRef.current.itemY - (py - startRef.current.pointerY)));
       onPositionChange?.({ x: newX, y: newY });
       setDragging(false);
       setDragOffset(null);
