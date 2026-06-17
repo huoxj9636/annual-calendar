@@ -8,7 +8,7 @@
  *      5 种知识类型（root/trunk/branch/leaf/fruit）保持兼容
  */
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   Plus,
   Trees,
@@ -167,6 +167,8 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
       species: newTree.species,
       nodes: baseNodes,
       createdAt: now,
+      // 新树默认种在画布逻辑中心 (50, 50)，pan 复位时正好在可视区中央
+      position: { x: 50, y: 50 },
     };
     setTrees([...trees, tree]);
     setNewTree({ name: "", industry: "", description: "", species: "oak" });
@@ -696,6 +698,17 @@ function MyForestView({
   onTreePositionChange: (id: string, position: { x: number; y: number }) => void;
   skin: SkinTheme;
 }) {
+  // 新增树时自动重置画布到中心：pan=0 让 position (50,50) 的新树正好在可视区中央
+  const [panResetKey, setPanResetKey] = useState(0);
+  const prevCountRef = useRef(forestItems.length);
+  useEffect(() => {
+    if (forestItems.length > prevCountRef.current) {
+      // 新树刚被种下 → 触发画布复位
+      setPanResetKey((k) => k + 1);
+    }
+    prevCountRef.current = forestItems.length;
+  }, [forestItems.length]);
+
   return (
     <div className="relative h-full">
       {/* 森林全景：铺满整个详情页 */}
@@ -707,6 +720,7 @@ function MyForestView({
         onItemDelete={onDeleteTree}
         onItemPositionChange={onTreePositionChange}
         fillHeight
+        resetTrigger={panResetKey}
       />
 
       {/* 左上角统计 chip（玻璃拟态） */}

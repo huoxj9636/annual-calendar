@@ -51,6 +51,11 @@ export type ForestSceneProps = {
   onItemPositionChange?: (id: string, position: { x: number; y: number }) => void;
   /** 是否允许拖拽（默认 true，仅 my 变体可拖） */
   draggable?: boolean;
+  /**
+   * 画布复位触发器：每次变化时，ForestScene 内部自动把画布 pan 归零 + 清空 localStorage。
+   * 用于"创建新树后自动把画布定位到让新树在中心"。
+   */
+  resetTrigger?: number;
 };
 
 /**
@@ -443,6 +448,7 @@ export default function ForestScene({
   selectedId,
   variant = "my",
   draggable = true,
+  resetTrigger,
 }: ForestSceneProps) {
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const itemsKey = useMemo(() => items.map((i) => i.id).join(","), [items]);
@@ -478,9 +484,10 @@ export default function ForestScene({
       const h = hashStr(item.id);
       const xJitter = (((h % 200) / 100) - 1) * 1.5;
       const x = Math.max(6, Math.min(94, baseX + xJitter));
-      const yBase = 30 + (autoIndex % 3) * 5;
+      // y 分布：25-75%（画布中间 50% 区域），上下都有空间
+      const yBase = 25 + (autoIndex % 4) * 12;
       const yJitter = (((h >> 8) % 80) / 10 - 4);
-      const y = Math.max(10, Math.min(48, yBase + yJitter));
+      const y = Math.max(20, Math.min(75, yBase + yJitter));
       const treeScale = total <= 1 ? 1 : total <= 2 ? 0.55 : total <= 3 ? 0.4 : total <= 5 ? 0.32 : total <= 8 ? 0.26 : total <= 12 ? 0.22 : 0.19;
       return { item, x, y, treeScale };
     });
@@ -513,8 +520,8 @@ export default function ForestScene({
         if (
           typeof saved?.x === "number" &&
           typeof saved?.y === "number" &&
-          Math.abs(saved.x) < 2000 &&
-          Math.abs(saved.y) < 2000
+          Math.abs(saved.x) <= 50 &&
+          Math.abs(saved.y) <= 50
         ) {
           setPan({ x: saved.x, y: saved.y });
         }
@@ -522,17 +529,25 @@ export default function ForestScene({
     } catch {}
   }, []);
 
+  // 外部触发画布复位：resetTrigger 每次变化时把画布 pan 归零
+  useEffect(() => {
+    if (resetTrigger === undefined) return;
+    setPan({ x: 0, y: 0 });
+    try {
+      localStorage.removeItem("forest-canvas-pan");
+    } catch {}
+  }, [resetTrigger]);
+
   // 平移限制：保证物理画布始终有内容覆盖可视区
+  // 物理画布 200%，pan 范围 [-50, 50]（pan=0 是中心）
+  // pan=+50：可视区看到物理画布 0-50% 区域（左边）
+  // pan=-50：可视区看到物理画布 50-100% 区域（右边）
+  const PAN_MIN = -50;
+  const PAN_MAX = 50;
   const clampPan = useCallback((x: number, y: number) => {
-    // 物理画布 200%，可视区 100%
-    // 最远平移：物理画布的边缘到可视区的边缘
-    // 物理画布 200% 表示 (可视区宽度 * 2) 宽
-    // 可视区 100% 在物理画布中的位置 = [pan, pan + 100%]
-    // 限制：pan >= 0（不超出左/上边界）且 pan <= 100%（不超出右/下边界）
-    const max = 100; // % 单位（相对于可视区宽度）
     return {
-      x: Math.max(0, Math.min(max, x)),
-      y: Math.max(0, Math.min(max, y)),
+      x: Math.max(PAN_MIN, Math.min(PAN_MAX, x)),
+      y: Math.max(PAN_MIN, Math.min(PAN_MAX, y)),
     };
   }, []);
 
@@ -576,8 +591,11 @@ export default function ForestScene({
       // 把像素转成 %（外层可视区宽/高）
       const rect = sceneRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const dxPct = (dx / rect.width) * 100;
-      const dyPct = (dy / rect.height) * 100;
+      // 保护：rect 宽高为 0 时（fillHeight 父容器未布局）使用回退值
+      const w = rect.width > 0 ? rect.width : 360;
+      const h = rect.height > 0 ? rect.height : 360;
+      const dxPct = (dx / w) * 100;
+      const dyPct = (dy / h) * 100;
       setPan(
         clampPan(panStartRef.current.panX + dxPct, panStartRef.current.panY + dyPct)
       );
@@ -656,15 +674,16 @@ export default function ForestScene({
         onPointerUp={handleCanvasPointerEnd}
         onPointerCancel={handleCanvasPointerEnd}
       >
-        {/* 内层物理画布：所有内容在内层，支持平移 */}
+        {/* 内层物理画布：所有内容在内层，支持平移
+            物理画布 200%×200%，pan 范围 [-50, 50]，pan=0 时画布居中（看到物理画布中点） */}
         <div
           style={{
             position: "absolute",
-            left: 0,
-            top: 0,
+            left: "50%",
+            top: "50%",
             width: `${CANVAS_W}%`,
             height: `${CANVAS_H}%`,
-            transform: `translate(${-pan.x}%, ${-pan.y}%)`,
+            transform: `translate(-50%, -50%) translate(${-pan.x}%, ${-pan.y}%)`,
             transition: panning ? "none" : "transform 0.2s ease-out",
           }}
         >
@@ -673,7 +692,7 @@ export default function ForestScene({
           className="absolute pointer-events-none"
           style={{
             left: "85%",
-            top: "12%",
+            top: "6%",
             color: "#FFD27A",
             filter: "drop-shadow(0 0 16px rgba(255, 210, 122, 0.5))",
             animation: "sunbeamPulse 6s ease-in-out infinite",
@@ -690,7 +709,7 @@ export default function ForestScene({
           className="absolute inset-x-0 bottom-0 w-full pointer-events-none"
           viewBox="0 0 1000 220"
           preserveAspectRatio="none"
-          style={{ height: "70%" }}
+          style={{ height: "85%" }}
         >
           {/* 最远山：连绵圆润的低矮山脊 */}
           <path
@@ -716,7 +735,7 @@ export default function ForestScene({
         <div
           className="absolute inset-x-0 bottom-0"
           style={{
-            height: "32%",
+            height: "45%",
             background: `linear-gradient(180deg, ${skin.swatch}30 0%, ${skin.swatch}50 100%)`,
           }}
         />
@@ -767,7 +786,7 @@ export default function ForestScene({
         </div>
 
         {/* 画布平移指示 + 复位按钮（覆盖在内层之上，不受 transform 影响） */}
-        {variant === "my" && (pan.x !== 0 || pan.y !== 0) && (
+        {variant === "my" && (Math.abs(pan.x) > 0.5 || Math.abs(pan.y) > 0.5) && (
           <button
             type="button"
             onClick={(e) => {
@@ -792,7 +811,7 @@ export default function ForestScene({
         )}
 
         {/* 拖动提示（首次平移时） */}
-        {variant === "my" && pan.x === 0 && pan.y === 0 && items.length > 0 && (
+        {variant === "my" && Math.abs(pan.x) < 0.5 && Math.abs(pan.y) < 0.5 && items.length > 0 && (
           <div
             className="absolute z-40 pointer-events-none flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs"
             style={{
