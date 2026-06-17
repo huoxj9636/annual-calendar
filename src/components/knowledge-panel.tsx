@@ -21,6 +21,7 @@ import type { SkinTheme } from "@/lib/skins";
 import ForestScene, { type ForestItem } from "./forest/forest-scene";
 import TreeCloseup, { TREE_NODE_TYPE_INFO, type NodeType } from "./forest/tree-closeup";
 import FriendsForest from "./forest/friends-forest";
+import { TREE_SPECIES, SpeciesPreview, type TreeSpeciesId } from "./forest/tree-species";
 
 // === 数据类型（保持兼容）===
 
@@ -44,6 +45,7 @@ export interface KnowledgeTree {
   name: string;
   industry: string;
   description: string;
+  species?: TreeSpeciesId;
   nodes: KnowledgeNode[];
   createdAt: number;
 }
@@ -78,7 +80,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   const [pendingDeleteTreeId, setPendingDeleteTreeId] = useState<string | null>(null);
 
   // 表单状态
-  const [newTree, setNewTree] = useState({ name: "", industry: "", description: "" });
+  const [newTree, setNewTree] = useState<{ name: string; industry: string; description: string; species: TreeSpeciesId }>({ name: "", industry: "", description: "", species: "oak" });
   const [newNode, setNewNode] = useState<{
     type: NodeType;
     title: string;
@@ -160,11 +162,12 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
       name: newTree.name,
       industry: newTree.industry || newTree.name,
       description: newTree.description,
+      species: newTree.species,
       nodes: baseNodes,
       createdAt: now,
     };
     setTrees([...trees, tree]);
-    setNewTree({ name: "", industry: "", description: "" });
+    setNewTree({ name: "", industry: "", description: "", species: "oak" });
     setShowAddTree(false);
   };
 
@@ -247,6 +250,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         id: t.id,
         name: t.name,
         count: t.nodes.length,
+        species: t.species,
       })),
     [trees]
   );
@@ -434,6 +438,43 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               placeholder="一句话描述这棵树要承载的方向"
               skin={skin}
             />
+            <div>
+              <label
+                className="text-xs mb-1.5 block tracking-wider uppercase"
+                style={{ color: skin.textMuted }}
+              >
+                树种
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(Object.keys(TREE_SPECIES) as TreeSpeciesId[]).map((key) => {
+                  const info = TREE_SPECIES[key];
+                  const isActive = newTree.species === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setNewTree({ ...newTree, species: key })}
+                      className="rounded-lg p-2.5 flex flex-col items-center gap-1 transition-all hover:scale-[1.02]"
+                      style={{
+                        background: isActive ? skin.swatch + "20" : skin.cardBg,
+                        border: isActive ? `1.5px solid ${skin.swatch}` : `1px solid ${skin.divider}`,
+                      }}
+                    >
+                      <SpeciesPreview
+                        species={key}
+                        size={36}
+                      />
+                      <div className="text-xs font-medium" style={{ color: skin.textPrimary }}>
+                        {info.name}
+                      </div>
+                      <div className="text-[10px] leading-tight text-center opacity-70" style={{ color: skin.textMuted }}>
+                        {info.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="flex gap-2 justify-end pt-2">
               <Button onClick={() => setShowAddTree(false)} variant="ghost" skin={skin}>
                 取消

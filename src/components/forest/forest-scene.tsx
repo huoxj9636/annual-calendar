@@ -9,8 +9,9 @@
  */
 
 import { useMemo } from "react";
-import { Cloud, Sun, X, Trees } from "lucide-react";
+import { Cloud, Sun, X, TreeDeciduous } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
+import { SpeciesTree, TREE_SPECIES, type TreeSpeciesId } from "./tree-species";
 
 export type ForestItem = {
   id: string;
@@ -21,6 +22,12 @@ export type ForestItem = {
   badge?: string;
   /** 可选：自定义颜色（用于好友森林区分） */
   accentColor?: string;
+  /** 可选：物种（决定树形），缺省 oak */
+  species?: import("./tree-species").TreeSpeciesId;
+  /** 可选：物种自定义颜色覆盖 */
+  speciesColor?: string;
+  /** 可选：物种自定义深色覆盖 */
+  speciesColorDeep?: string;
 };
 
 export type ForestSceneProps = {
@@ -156,9 +163,12 @@ function ForestTree({
             transition: "transform 200ms ease-out",
           }}
         >
-          <WaveTree
+          <SpeciesTree
+            species={item.species || "oak"}
             tier={stage.tier}
-            accent={accent}
+            accent={item.speciesColor || accent}
+            accentDeep={item.speciesColorDeep || skin.divider}
+            count={item.count}
             badge={variant === "friends" ? item.badge : undefined}
             isFriends={variant === "friends"}
           />
@@ -214,117 +224,6 @@ function ForestTree({
         />
       )}
     </button>
-  );
-}
-
-/** 波纹树：用多个不规则圆形叠加形成云朵状树冠 + 梯形树干 + 树皮纹路
- *  size 1-2 幼苗/小树：3-4 个云朵
- *  size 3-4 成树/参天：5-6 个云朵 + 树枝分叉
- *  size 5   古木    ：7 个云朵 + 复杂分叉 + 厚重树干
- */
-function WaveTree({
-  tier,
-  accent,
-  badge,
-  isFriends,
-}: {
-  tier: number;
-  accent: string;
-  badge?: string;
-  isFriends?: boolean;
-}) {
-  // 树冠云朵数量随 tier 增长
-  const blobCount = Math.min(3 + tier, 7);
-  // 7 个不规则云朵位置（手工调过，呈现真实树木的不规则边缘）
-  const allBlobs = [
-    { cx: 30, cy: 18, r: 11 },   // 顶部主冠
-    { cx: 16, cy: 24, r: 9 },    // 左侧
-    { cx: 44, cy: 24, r: 10 },   // 右侧
-    { cx: 24, cy: 30, r: 8 },    // 中左下
-    { cx: 36, cy: 30, r: 8.5 },  // 中右下
-    { cx: 8,  cy: 32, r: 6 },    // 左外侧
-    { cx: 52, cy: 32, r: 6.5 },  // 右外侧
-  ];
-  const blobs = allBlobs.slice(0, blobCount);
-
-  // 树干梯形（上窄下宽，更像真实树干）
-  const trunkTopW = 2.4 + tier * 0.5;
-  const trunkBotW = trunkTopW + 1.6 + tier * 0.55;
-  const trunkH = 6 + tier * 3.2;
-  const trunkY = 32;
-  const trunkBotY = trunkY + trunkH;
-
-  return (
-    <svg
-      viewBox="0 0 60 60"
-      width="100%"
-      height="100%"
-      style={{ display: "block" }}
-    >
-      {/* 地面投影 */}
-      <ellipse cx="30" cy={trunkBotY + 1.5} rx="13" ry="1.6" fill="rgba(0,0,0,0.15)" />
-
-      {/* 树干（梯形） */}
-      <path
-        d={`M${30 - trunkTopW / 2},${trunkY} L${30 + trunkTopW / 2},${trunkY} L${30 + trunkBotW / 2},${trunkBotY} L${30 - trunkBotW / 2},${trunkBotY} Z`}
-        fill="#6B4423"
-      />
-      {/* 树皮纹路（3 条竖向暗线 + 1-2 条横向断纹） */}
-      <line x1="28" y1={trunkY + 1} x2="28" y2={trunkBotY - 0.5} stroke="#3D2415" strokeWidth="0.35" opacity="0.7" />
-      <line x1="30" y1={trunkY + 1} x2="30" y2={trunkBotY - 0.5} stroke="#3D2415" strokeWidth="0.5" opacity="0.85" />
-      <line x1="32" y1={trunkY + 1} x2="32" y2={trunkBotY - 0.5} stroke="#3D2415" strokeWidth="0.35" opacity="0.7" />
-      {tier >= 3 && (
-        <>
-          <line x1="27" y1={trunkY + trunkH * 0.45} x2="33" y2={trunkY + trunkH * 0.45} stroke="#3D2415" strokeWidth="0.3" opacity="0.5" />
-          <line x1="27.5" y1={trunkY + trunkH * 0.7} x2="32.5" y2={trunkY + trunkH * 0.7} stroke="#3D2415" strokeWidth="0.3" opacity="0.5" />
-        </>
-      )}
-
-      {/* 树枝（Y 形分叉，tier>=3 出现） */}
-      {tier >= 3 && (
-        <g stroke="#5C3818" strokeWidth="0.7" fill="none" strokeLinecap="round">
-          <path d={`M30,${trunkY + trunkH * 0.45} L24,${trunkY + trunkH * 0.2} L21,${trunkY + trunkH * 0.12}`} />
-          <path d={`M30,${trunkY + trunkH * 0.45} L36,${trunkY + trunkH * 0.2} L39,${trunkY + trunkH * 0.12}`} />
-        </g>
-      )}
-      {tier >= 4 && (
-        <g stroke="#5C3818" strokeWidth="0.6" fill="none" strokeLinecap="round">
-          <path d={`M30,${trunkY + trunkH * 0.7} L22,${trunkY + trunkH * 0.55}`} />
-          <path d={`M30,${trunkY + trunkH * 0.7} L38,${trunkY + trunkH * 0.55}`} />
-        </g>
-      )}
-
-      {/* 树冠：多个不规则云朵叠加，每片略偏移 + 略透明（营造云层感） */}
-      {blobs.map((b, i) => (
-        <circle
-          key={i}
-          cx={b.cx}
-          cy={b.cy}
-          r={b.r}
-          fill={accent}
-          opacity={0.93 - i * 0.045}
-        />
-      ))}
-
-      {/* 树冠高光（左上角小椭圆，体现阳光打在树上的反光） */}
-      <ellipse cx="20" cy="16" rx="4" ry="2.2" fill="rgba(255,255,255,0.22)" />
-      <ellipse cx="16" cy="22" rx="2" ry="1.2" fill="rgba(255,255,255,0.14)" />
-
-      {/* 朋友森林：把首字母作为徽章浮在树冠上 */}
-      {isFriends && badge && (
-        <text
-          x="30"
-          y="32"
-          textAnchor="middle"
-          fill="white"
-          fontSize="11"
-          fontWeight="700"
-          style={{ filter: "drop-shadow(0 0 2px rgba(0,0,0,0.4))" }}
-        >
-          {badge}
-        </text>
-      )}
-    </svg>
   );
 }
 
@@ -505,7 +404,6 @@ export default function ForestScene({
           style={{
             height: "32%",
             background: `linear-gradient(180deg, ${skin.swatch}30 0%, ${skin.swatch}50 100%)`,
-            borderTop: `1px solid ${skin.swatch}40`,
           }}
         />
 
@@ -534,7 +432,7 @@ export default function ForestScene({
             className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
             style={{ color: skin.textSecondary }}
           >
-            <Trees size={56} strokeWidth={1} className="opacity-40 mb-2" />
+            <TreeDeciduous size={56} strokeWidth={1} className="opacity-40 mb-2" />
             <p className="text-sm opacity-70">这里还是一片荒地</p>
             <p className="text-xs opacity-50 mt-1">点击右下角种下第一棵树</p>
           </div>
