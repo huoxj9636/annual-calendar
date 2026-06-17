@@ -1665,10 +1665,9 @@ export default function YearCalendar() {
       </button>
 
       {/* Knowledge Panel */}
-      <KnowledgePanel
-        visible={showKnowledge}
-        onClose={() => setShowKnowledge(false)}
-      />
+      {showKnowledge && (
+        <KnowledgePanel onClose={() => setShowKnowledge(false)} />
+      )}
 
       {/* Note Popup - TickTick inspired */}
       {notePopup && mounted && (
