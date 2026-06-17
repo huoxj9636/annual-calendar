@@ -458,35 +458,49 @@ function TreesList({
           还没有知识树，点击右上角创建第一棵吧
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pt-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 pt-4">
           {trees.map((tree) => (
             <div
               key={tree.id}
               className="cursor-pointer relative group transition-all hover:scale-105 flex flex-col items-center"
               onClick={() => onSelect(tree)}
             >
-              {/* 树苗形状卡片：树冠（圆形）+ 树干 + 土壤 */}
-              <div
-                className="w-24 h-24 rounded-full flex items-center justify-center relative shadow-md"
-                style={{
-                  background: `linear-gradient(180deg, ${skin.swatch}22 0%, ${skin.swatch}44 60%, #8B4513 60%, #654321 100%)`,
-                }}
-              >
-                {/* 树苗图标 */}
-                <div className="text-4xl absolute top-3 left-1/2 -translate-x-1/2">
-                  🌱
-                </div>
-                {/* 数量徽章 */}
+              {/* 参天大树卡片：树冠 + 树干 + 土壤 */}
+              <div className="w-24 flex flex-col items-center">
+                {/* 树冠（圆形，茂密） */}
                 <div
-                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center border-2"
+                  className="w-20 h-20 rounded-full flex items-center justify-center relative shadow-lg"
                   style={{
-                    background: skin.swatch,
-                    color: "#fff",
-                    borderColor: "var(--background)",
+                    background: `radial-gradient(circle at 30% 30%, ${skin.swatch}88, ${skin.swatch} 70%, ${skin.swatch}cc 100%)`,
                   }}
                 >
-                  {tree.nodes.length}
+                  <div className="text-3xl">🌳</div>
+                  {/* 数量徽章 */}
+                  <div
+                    className="absolute -top-1 -right-1 w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center border-2"
+                    style={{
+                      background: skin.swatch,
+                      color: "#fff",
+                      borderColor: "var(--background)",
+                    }}
+                  >
+                    {tree.nodes.length}
+                  </div>
                 </div>
+                {/* 树干（细长，棕色） */}
+                <div
+                  className="w-4 h-16"
+                  style={{
+                    background: "linear-gradient(90deg, #654321 0%, #8B4513 50%, #654321 100%)",
+                  }}
+                />
+                {/* 土壤基座 */}
+                <div
+                  className="w-24 h-3 rounded-b-lg"
+                  style={{
+                    background: "linear-gradient(180deg, #8B4513 0%, #5C2E0A 100%)",
+                  }}
+                />
               </div>
               {/* 名字 */}
               <div
@@ -661,25 +675,42 @@ function FriendsList({
           还没有朋友链接，点击右上角添加吧
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pt-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 pt-4">
           {bookmarks.map((b) => (
             <div
               key={b.id}
               className="cursor-pointer relative group transition-all hover:scale-105 flex flex-col items-center"
               onClick={() => window.open(b.url, "_blank")}
             >
-              <div
-                className="w-24 h-24 rounded-full flex items-center justify-center relative shadow-md"
-                style={{
-                  background: `linear-gradient(180deg, ${skin.swatch}22 0%, ${skin.swatch}44 60%, #8B4513 60%, #654321 100%)`,
-                }}
-              >
+              <div className="w-24 flex flex-col items-center">
+                {/* 树冠（圆形，茂密） */}
                 <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-medium"
-                  style={{ background: skin.swatch, color: "#fff" }}
+                  className="w-20 h-20 rounded-full flex items-center justify-center relative shadow-lg"
+                  style={{
+                    background: `radial-gradient(circle at 30% 30%, ${skin.swatch}88, ${skin.swatch} 70%, ${skin.swatch}cc 100%)`,
+                  }}
                 >
-                  {b.name.charAt(0).toUpperCase()}
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-medium"
+                    style={{ background: skin.swatch, color: "#fff" }}
+                  >
+                    {b.name.charAt(0).toUpperCase()}
+                  </div>
                 </div>
+                {/* 树干（细长，棕色） */}
+                <div
+                  className="w-4 h-16"
+                  style={{
+                    background: "linear-gradient(90deg, #654321 0%, #8B4513 50%, #654321 100%)",
+                  }}
+                />
+                {/* 土壤基座 */}
+                <div
+                  className="w-24 h-3 rounded-b-lg"
+                  style={{
+                    background: "linear-gradient(180deg, #8B4513 0%, #5C2E0A 100%)",
+                  }}
+                />
               </div>
               <div
                 className="text-center mt-2 text-sm truncate w-full px-1"
