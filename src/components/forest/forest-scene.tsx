@@ -627,9 +627,9 @@ export default function ForestScene({
       setFocusPulseId((cur) => (cur === focusTreeId ? null : cur));
     }, 2400);
     return () => clearTimeout(t);
-    // 依赖 focusTreeId 和 items.position（树移动时重算）
+    // 只监听 focusTreeId 变化；拖树后 items 变化不应触发画布 pan
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusTreeId, items]);
+  }, [focusTreeId]);
 
   // 外部触发"鸟瞰"：计算所有树的总中心，pan 让总中心对齐可视区中心 + zoom 归 1
   // 用于"拖完树后找不到树了"的一键复位
@@ -668,8 +668,9 @@ export default function ForestScene({
       setFocusPulseId((cur) => (cur === "__all__" ? null : cur));
     }, 1800);
     return () => clearTimeout(t);
+    // 只监听 birdseyeTrigger 变化；拖树后 items 变化不应触发画布 pan
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birdseyeTrigger, items]);
+  }, [birdseyeTrigger]);
 
   // 平移限制：保证物理画布始终有内容覆盖可视区
   // 物理画布 200%，pan 范围 [-50, 50]（pan=0 是中心）
