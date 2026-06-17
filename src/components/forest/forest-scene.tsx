@@ -754,6 +754,7 @@ export default function ForestScene({
         onPointerMove={handleCanvasPointerMove}
         onPointerUp={handleCanvasPointerEnd}
         onPointerCancel={handleCanvasPointerEnd}
+        onWheel={handleCanvasWheel}
       >
         {/* 内层物理画布：所有内容在内层，支持平移和缩放
             物理画布 200%×200%，zoom=1 时正常显示，zoom=ZOOM_MIN 时鸟瞰全图
