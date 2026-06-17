@@ -363,8 +363,8 @@ function ForestTree({
         className="absolute left-1/2 -translate-x-1/2 rounded-full blur-[2px]"
         style={{
           bottom: -2,
-          width: 28,
-          height: 6,
+          width: sizes.crown * 0.7 * zoom,
+          height: 6 * zoom,
           background: "rgba(0,0,0,0.18)",
         }}
       />
