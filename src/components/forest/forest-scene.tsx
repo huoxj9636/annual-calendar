@@ -109,6 +109,7 @@ function ForestTree({
   variant,
   index,
   treeScale = 1,
+  zoom = 1,
   sceneRect,
 }: {
   item: ForestItem;
@@ -123,6 +124,7 @@ function ForestTree({
   variant: "my" | "friends";
   index: number;
   treeScale?: number;
+  zoom?: number; // 画布缩放比例，树也要跟着缩放
   sceneRect: React.RefObject<HTMLDivElement | null>;
 }) {
   const stage = getStage(item.count);
@@ -261,8 +263,8 @@ function ForestTree({
         left: `${displayX}%`,
         bottom: `${displayY}%`,
         transform: "translateX(-50%)",
-        width: (sizes.crown + 16) * treeScale,
-        height: (sizes.h + 8) * treeScale,
+        width: (sizes.crown + 16) * treeScale * zoom,
+        height: (sizes.h + 8) * treeScale * zoom,
         cursor: draggable ? (dragging ? "grabbing" : "grab") : onClick ? "pointer" : "default",
         touchAction: "none",
         zIndex: dragging ? 50 : selected ? 10 : 1,
@@ -274,8 +276,8 @@ function ForestTree({
         className="absolute left-1/2 -translate-x-1/2 rounded-full blur-[2px]"
         style={{
           bottom: -2,
-          width: sizes.crown * 0.7,
-          height: 6,
+          width: sizes.crown * 0.7 * zoom,
+          height: 6 * zoom,
           background: "rgba(0,0,0,0.18)",
         }}
       />
@@ -284,8 +286,8 @@ function ForestTree({
         className="absolute left-1/2 -translate-x-1/2"
         style={{
           bottom: 0,
-          width: sizes.crown,
-          height: sizes.h,
+          width: sizes.crown * zoom,
+          height: sizes.h * zoom,
         }}
       >
         {/* 波纹树（真实树木：有云朵状树冠 + 梯形树干 + 树皮纹路） */}
@@ -293,8 +295,8 @@ function ForestTree({
           className="absolute left-1/2 -translate-x-1/2"
           style={{
             bottom: 0,
-            width: sizes.crown * 1.4,
-            height: sizes.trunk + sizes.crown,
+            width: sizes.crown * 1.4 * zoom,
+            height: (sizes.trunk + sizes.crown) * zoom,
             transition: "transform 200ms ease-out",
           }}
         >
@@ -309,12 +311,14 @@ function ForestTree({
           />
         </div>
 
-        {/* 树名称徽章（常显，悬停态更突出） */}
+        {/* 树名称徽章（常显，悬停态更突出） - 不随 zoom 缩放，保持固定大小 */}
         <div
           className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap flex items-center gap-1.5 transition-all"
           style={{
-            top: -22,
+            top: -22 / zoom, // 反向补偿，让徽章始终在树上方固定距离
             fontSize: 11,
+            transform: zoom !== 1 ? `scale(${1 / zoom})` : undefined, // 反向缩放，保持固定大小
+            transformOrigin: "bottom center",
             fontWeight: 500,
             padding: "2px 8px",
             borderRadius: 999,
@@ -530,6 +534,23 @@ export default function ForestScene({
       return next;
     });
   }, []);
+
+  // 滚轮缩放：向上滚动放大，向下滚动缩小
+  const handleCanvasWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      // 仅在 my 变体支持
+      if (variant !== "my") return;
+      // 阻止默认滚动行为
+      e.preventDefault();
+      // deltaY > 0 表示向下滚动（缩小），deltaY < 0 表示向上滚动（放大）
+      if (e.deltaY > 0) {
+        handleZoomOut();
+      } else if (e.deltaY < 0) {
+        handleZoomIn();
+      }
+    },
+    [variant, handleZoomIn, handleZoomOut]
+  );
 
   // 物理画布尺寸（比可视区大，给平移留空间）
   // 横向 200% 给左右平移空间，纵向 200% 给上下平移空间
