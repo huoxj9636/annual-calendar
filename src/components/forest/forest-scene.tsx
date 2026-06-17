@@ -32,6 +32,8 @@ export type ForestItem = {
   position?: { x: number; y: number };
   /** 可选：自定义缩放比例（滚轮缩放），默认 1 */
   scale?: number;
+  /** 可选：知识节点列表（用于判断是否有果实） */
+  nodes?: Array<{ type: string; content: string }>;
 };
 
 export type ForestSceneProps = {
@@ -395,6 +397,7 @@ function ForestTree({
             count={item.count}
             badge={variant === "friends" ? item.badge : undefined}
             isFriends={variant === "friends"}
+            hasFruit={!!(item.nodes && item.nodes.some((n) => n.type === "fruit"))}
           />
         </div>
 

@@ -97,6 +97,8 @@ type SpeciesTreeProps = {
   badge?: string;
   /** 是否好友森林 */
   isFriends?: boolean;
+  /** 是否有果实（根据知识节点是否有 fruit 类型） */
+  hasFruit?: boolean;
 };
 
 /** 单棵树（SVG，60×60 viewBox） */
@@ -108,6 +110,7 @@ export function SpeciesTree({
   count,
   badge,
   isFriends,
+  hasFruit,
 }: SpeciesTreeProps) {
   // 阶段遮罩：0=空地 1=幼苗 2=小树 3=成树 4=参天 5=古木
   const truncated = tier === 0;
@@ -154,6 +157,7 @@ export function SpeciesTree({
           giant={giant}
           ancient={ancient}
           count={count}
+          hasFruit={hasFruit}
         />
       )}
 
@@ -202,6 +206,7 @@ function SpeciesShape({
   giant,
   ancient,
   count,
+  hasFruit,
 }: Omit<SpeciesTreeProps, "badge" | "isFriends"> & {
   tiny: boolean;
   small: boolean;
@@ -223,6 +228,7 @@ function SpeciesShape({
           giant={giant}
           ancient={ancient}
           count={count}
+          hasFruit={hasFruit}
         />
       );
     case "pine":
@@ -237,6 +243,7 @@ function SpeciesShape({
           giant={giant}
           ancient={ancient}
           count={count}
+          hasFruit={hasFruit}
         />
       );
     case "maple":
@@ -251,6 +258,7 @@ function SpeciesShape({
           giant={giant}
           ancient={ancient}
           count={count}
+          hasFruit={hasFruit}
         />
       );
     case "cherry":
@@ -265,6 +273,7 @@ function SpeciesShape({
           giant={giant}
           ancient={ancient}
           count={count}
+          hasFruit={hasFruit}
         />
       );
     case "banyan":
@@ -279,6 +288,7 @@ function SpeciesShape({
           giant={giant}
           ancient={ancient}
           count={count}
+          hasFruit={hasFruit}
         />
       );
     case "cypress":
@@ -293,6 +303,7 @@ function SpeciesShape({
           giant={giant}
           ancient={ancient}
           count={count}
+          hasFruit={hasFruit}
         />
       );
   }
@@ -309,6 +320,7 @@ function OakShape({
   giant,
   ancient,
   count,
+  hasFruit,
 }: {
   tier: number;
   accent: string;
@@ -319,6 +331,7 @@ function OakShape({
   giant: boolean;
   ancient: boolean;
   count: number;
+  hasFruit?: boolean;
 }) {
   // 基础尺寸：最低成树（tier 3），不再随节点缩减
   const sizeTier = Math.max(tier, 3);
@@ -434,6 +447,7 @@ function PineShape({
   giant,
   ancient,
   count,
+  hasFruit,
 }: {
   tier: number;
   accent: string;
@@ -444,6 +458,7 @@ function PineShape({
   giant: boolean;
   ancient: boolean;
   count: number;
+  hasFruit?: boolean;
 }) {
   // 基础尺寸：固定成树大小（不再随节点缩减）
   const sizeTier = Math.max(tier, 3);
@@ -550,6 +565,7 @@ function MapleShape({
   giant,
   ancient,
   count,
+  hasFruit,
 }: {
   tier: number;
   accent: string;
@@ -560,6 +576,7 @@ function MapleShape({
   giant: boolean;
   ancient: boolean;
   count: number;
+  hasFruit?: boolean;
 }) {
   // 基础尺寸：固定成树大小（不再随节点缩减）
   const sizeTier = Math.max(tier, 3);
@@ -652,6 +669,7 @@ function CherryShape({
   giant,
   ancient,
   count,
+  hasFruit,
 }: {
   tier: number;
   accent: string;
@@ -662,6 +680,7 @@ function CherryShape({
   giant: boolean;
   ancient: boolean;
   count: number;
+  hasFruit?: boolean;
 }) {
   // 基础尺寸：固定成树大小（不再随节点缩减）
   const sizeTier = Math.max(tier, 3);
@@ -739,14 +758,28 @@ function CherryShape({
       <ellipse cx={30 + cs * 0.35} cy={top + cs * 0.25} rx={cs * 0.4} ry={cs * 0.3} fill={accentDeep} opacity="0.4" />
       <ellipse cx={30} cy={top + cs * 0.45} rx={cs * 0.3} ry={cs * 0.2} fill={accentDeep} opacity="0.5" />
       {/* 花簇（成树开始，自然点缀） */}
-      {mature && (
+      {mature && !hasFruit && (
         <g>
           <Flower x={26 - cs * 0.4} y={top + cs * 0.3} r={2.2} />
           <Flower x={34 + cs * 0.35} y={top + cs * 0.4} r={2.0} opacity={0.85} />
           <Flower x={30} y={top + cs * 0.0} r={1.9} opacity={0.8} />
         </g>
       )}
-      {giant && <Flower x={22 - cs * 0.5} y={top + cs * 0.55} r={2.3} opacity={0.9} />}
+      {giant && !hasFruit && <Flower x={22 - cs * 0.5} y={top + cs * 0.55} r={2.3} opacity={0.9} />}
+      {/* 果实（樱桃，红色小圆点，有fruit节点时显示） */}
+      {hasFruit && mature && (
+        <g>
+          <circle cx={26 - cs * 0.35} cy={top + cs * 0.35} r={1.8} fill="#C41E3A" />
+          <circle cx={28 - cs * 0.25} cy={top + cs * 0.4} r={1.6} fill="#C41E3A" opacity={0.9} />
+          <circle cx={34 + cs * 0.3} cy={top + cs * 0.45} r={1.7} fill="#C41E3A" opacity={0.85} />
+        </g>
+      )}
+      {hasFruit && giant && (
+        <g>
+          <circle cx={22 - cs * 0.45} cy={top + cs * 0.6} r={1.9} fill="#C41E3A" opacity={0.95} />
+          <circle cx={36 + cs * 0.4} cy={top + cs * 0.5} r={1.6} fill="#C41E3A" opacity={0.9} />
+        </g>
+      )}
       {ancient && (
         <g>
           <Flower x={38 + cs * 0.5} y={top + cs * 0.5} r={2.0} opacity={0.9} />
@@ -776,6 +809,7 @@ function BanyanShape({
   giant,
   ancient,
   count,
+  hasFruit,
 }: {
   tier: number;
   accent: string;
@@ -786,6 +820,7 @@ function BanyanShape({
   giant: boolean;
   ancient: boolean;
   count: number;
+  hasFruit?: boolean;
 }) {
   // 基础尺寸：固定成树大小（不再随节点缩减）
   const sizeTier = Math.max(tier, 3);
@@ -908,6 +943,7 @@ function CypressShape({
   giant,
   ancient,
   count,
+  hasFruit,
 }: {
   tier: number;
   accent: string;
@@ -918,6 +954,7 @@ function CypressShape({
   giant: boolean;
   ancient: boolean;
   count: number;
+  hasFruit?: boolean;
 }) {
   // 基础尺寸：固定成树大小（不再随节点缩减）
   const sizeTier = Math.max(tier, 3);
