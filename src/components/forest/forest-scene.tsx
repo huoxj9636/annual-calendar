@@ -57,14 +57,9 @@ export type ForestSceneProps = {
    */
   resetTrigger?: number;
   /**
-   * 焦点树 id：变化时画布自动 pan 到让该树在可视区中央，并触发短暂视觉高亮（pulse）。
+   * 焦点树 id：变化时触发短暂视觉高亮（pulse），不 pan（树永远在屏幕内）。
    */
   focusTreeId?: string | null;
-  /**
-   * 鸟瞰触发器：每次变化时画布自动 pan 让所有树的总中心对齐可视区中心 + zoom 归 1。
-   * 用于"拖完树后找不到树了"的场景，一键回到所有树都能看到的视图。
-   */
-  birdseyeTrigger?: number;
 };
 
 /**
@@ -458,7 +453,6 @@ export default function ForestScene({
   draggable = true,
   resetTrigger,
   focusTreeId,
-  birdseyeTrigger,
 }: ForestSceneProps) {
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
@@ -559,8 +553,8 @@ export default function ForestScene({
   // 物理画布尺寸（比可视区大，给平移留空间）
   // 横向 200% 给左右平移空间，纵向 200% 给上下平移空间
   // zoom 缩放会等比调整 inner 实际尺寸，pan 范围也按 zoom 反比放大
-  const CANVAS_W = 200; // % 相对外层可视区
-  const CANVAS_H = 200; // % 相对外层可视区
+  const CANVAS_W = 100; // % 相对外层可视区（inner = sceneRef，树永远在屏幕内）
+  const CANVAS_H = 100; // % 相对外层可视区
   const ZOOM_MIN = 1; // 最小缩放 1 倍 = 背景图完全铺满屏幕，不允许再小
   const ZOOM_MAX = 2.5; // 最大放大 2.5 倍
 
@@ -606,165 +600,30 @@ export default function ForestScene({
     if (!focusTreeId) return;
     const target = items.find((it) => it.id === focusTreeId);
     if (!target) return;
-    const pos = target.position || { x: 50, y: 50 };
-    // 目标：让树的视觉位置 = sceneRef 中心
-    // inner 实际宽度 = sceneRef.width * (CANVAS_W * zoom / 100) = sceneRef.width * 2 * zoom
-    // inner.left = sceneRef.width/2 - inner.width/2 = sceneRef.width * (0.5 - zoom)
-    // 树视觉位置 = inner.left + pos.x% * inner.width/100 - pan.x% * sceneRef.width/100
-    //            = sceneRef.width * (0.5 - zoom + pos.x% * 2 * zoom / 100 - pan.x/100)
-    // 令其 = sceneRef.width / 2：
-    //   pan.x = zoom * (2 * pos.x - 100)  （pos.x 是 0-100 的百分数）
-    const px = zoom * (2 * pos.x - 100);
-    // bottom 坐标系：屏幕 Y 与 bottom 反向
-    // 树视觉位置 = sceneRef.width * (0.5 - zoom + pos.y% * 2 * zoom / 100 + pan.y/100) = sceneRef.height/2
-    //   pan.y = -zoom * (2 * pos.y - 100)
-    const py = -zoom * (2 * pos.y - 100);
-    const clamped = clampPan(px, py);
-    setPan(clamped);
-    try {
-      localStorage.setItem("forest-canvas-pan", JSON.stringify(clamped));
-    } catch {}
-    // 触发高亮 pulse：2.4s 后清除
+    // 触发高亮 pulse：2.4s 后清除（不 pan，树永远在屏幕内）
     setFocusPulseId(focusTreeId);
     const t = setTimeout(() => {
       setFocusPulseId((cur) => (cur === focusTreeId ? null : cur));
     }, 2400);
     return () => clearTimeout(t);
-    // 只监听 focusTreeId 变化；拖树后 items 变化不应触发画布 pan
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusTreeId]);
 
   // 外部触发"鸟瞰"：计算所有树的总中心，pan 让总中心对齐可视区中心 + zoom 归 1
   // 用于"拖完树后找不到树了"的一键复位
-  useEffect(() => {
-    if (birdseyeTrigger === undefined) return;
-    if (items.length === 0) {
-      // 没树时：直接归位
-      setPan({ x: 0, y: 0 });
-      setZoom(1);
-      try {
-        localStorage.setItem("forest-canvas-pan", JSON.stringify({ x: 0, y: 0 }));
-        localStorage.setItem("forest-canvas-zoom", "1");
-      } catch {}
-      return;
-    }
-    // 计算所有树的平均位置（inner 坐标内的 0-100%）
-    const avgX = items.reduce((sum, it) => sum + (it.position?.x ?? 50), 0) / items.length;
-    const avgY = items.reduce((sum, it) => sum + (it.position?.y ?? 50), 0) / items.length;
-    // 鸟瞰 zoom 归 1
-    setZoom(1);
-    try {
-      localStorage.setItem("forest-canvas-zoom", "1");
-    } catch {}
-    // pan 计算：与 focus 树相同公式（zoom=1）
-    // pan.x = zoom * (2 * pos.x - 100)
-    const px = 1 * (2 * avgX - 100);
-    const py = -1 * (2 * avgY - 100);
-    const clamped = clampPan(px, py);
-    setPan(clamped);
-    try {
-      localStorage.setItem("forest-canvas-pan", JSON.stringify(clamped));
-    } catch {}
-    // 触发所有树短暂高亮 pulse，让用户能看到所有树的位置
-    setFocusPulseId("__all__");
-    const t = setTimeout(() => {
-      setFocusPulseId((cur) => (cur === "__all__" ? null : cur));
-    }, 1800);
-    return () => clearTimeout(t);
-    // 只监听 birdseyeTrigger 变化；拖树后 items 变化不应触发画布 pan
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birdseyeTrigger]);
+  // 平移限制：禁用（画布不动，树永远在屏幕内）
+  // inner = sceneRef（100%×100%），pan 固定为 {x:0, y:0}
 
-  // 平移限制：保证物理画布始终有内容覆盖可视区
-  // 物理画布 200%，pan 范围 [-50, 50]（pan=0 是中心）
-  // pan=+50：可视区看到物理画布 0-50% 区域（左边）
-  // pan=-50：可视区看到物理画布 50-100% 区域（右边）
-  // pan 范围随 zoom 反比放大：zoom 越小（画布越小），允许的 pan 范围越大
-  // 物理画布 200%×200%，zoom 缩放后 inner 实际尺寸 200%×zoom
-  // 视口只能看到 100% 视口宽，要让 inner 任意边界对齐视口边界，pan 范围 = 50 / zoom
-  const panRange = 50 / zoom;
-  const clampPan = useCallback((x: number, y: number) => {
-    const r = 100 / zoom; // 放宽到 ±100%，让边缘的树也能居中
-    return {
-      x: Math.max(-r, Math.min(r, x)),
-      y: Math.max(-r, Math.min(r, y)),
-    };
-  }, [zoom]);
-
-  // 画布拖拽处理
+  // 画布拖拽处理（禁用：所有树永远在屏幕内，不需要拖画布）
   const handleCanvasPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      // 仅在 my 变体支持画布拖动
-      if (variant !== "my") return;
-      // 仅主按钮（左键 / touch）
-      if (e.button !== 0) return;
-      const target = e.target as HTMLElement;
-      // 排除树和删除按钮（树的 pointerdown 会 stopPropagation，所以这里能进来说明按的是空白处）
-      // 但保险起见再检查一次
-      if (target.closest("[data-forest-tree]") || target.closest("[data-forest-delete]")) {
-        return;
-      }
-      e.preventDefault();
-      panStartRef.current = {
-        pointerX: e.clientX,
-        pointerY: e.clientY,
-        panX: pan.x,
-        panY: pan.y,
-      };
-      canvasPannedRef.current = false;
-      setPanning(true);
-      try {
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      } catch {}
+      // 禁用画布拖动
+      return;
     },
-    [pan, variant]
+    []
   );
-
-  const handleCanvasPointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!panning || !panStartRef.current) return;
-      const dx = e.clientX - panStartRef.current.pointerX;
-      const dy = e.clientY - panStartRef.current.pointerY;
-      if (Math.hypot(dx, dy) > PAN_THRESHOLD_PX) {
-        canvasPannedRef.current = true;
-      }
-      // 把像素转成 %（外层可视区宽/高）
-      const rect = sceneRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      // 保护：rect 宽高为 0 时（fillHeight 父容器未布局）使用回退值
-      const w = rect.width > 0 ? rect.width : 360;
-      const h = rect.height > 0 ? rect.height : 360;
-      const dxPct = (dx / w) * 100;
-      const dyPct = (dy / h) * 100;
-      // 拖动方向 = 画布内容跟随手指（drag mode）
-      // 向左拖 (dx<0) → panX 增大 → translate(-panX%) 内层向左移 → 看到画布右边内容
-      // 向上拖 (dy<0) → panY 增大 → translate(-panY%) 内层向上移 → 看到画布下方内容
-      setPan(
-        clampPan(panStartRef.current.panX - dxPct, panStartRef.current.panY - dyPct)
-      );
-    },
-    [panning, clampPan]
-  );
-
-  const handleCanvasPointerEnd = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!panning) {
-        panStartRef.current = null;
-        return;
-      }
-      try {
-        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {}
-      setPanning(false);
-      panStartRef.current = null;
-      // 持久化
-      try {
-        localStorage.setItem("forest-canvas-pan", JSON.stringify(pan));
-        localStorage.setItem("forest-canvas-zoom", String(zoom));
-      } catch {}
-    },
-    [panning, pan, zoom]
-  );
+  const handleCanvasPointerMove = useCallback(() => {}, []);
+  const handleCanvasPointerEnd = useCallback(() => {}, []);
 
   // 重置缩放到默认 1 倍（背景图完全铺满屏幕）
   const handleResetZoom = useCallback(() => {

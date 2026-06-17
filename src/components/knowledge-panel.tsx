@@ -728,9 +728,8 @@ function MyForestView({
 
   // 树列表折叠状态（默认展开）
   const [listOpen, setListOpen] = useState(true);
-  // focus 树 id：点击列表项时设置，ForestScene 内部 pan 到该树
+  // focus 树 id：点击列表项时设置，ForestScene 内部高亮该树（不 pan，树永远在屏幕内）
   const [focusTreeId, setFocusTreeId] = useState<string | null>(null);
-  const [birdseyeTrigger, setBirdseyeTrigger] = useState<number>(0);
 
   // 按节点数倒序排（参天古木在前）
   const sortedItems = useMemo(
@@ -755,26 +754,7 @@ function MyForestView({
         fillHeight
         resetTrigger={panResetKey}
         focusTreeId={focusTreeId}
-        birdseyeTrigger={birdseyeTrigger}
       />
-
-      {/* 刷新定位按钮：右上角浮窗，一键看全所有树 */}
-      <button
-        onClick={() => setBirdseyeTrigger((k) => k + 1)}
-        className="absolute top-4 right-4 z-20 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all hover:scale-105 active:scale-95"
-        style={{
-          background: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          border: `1.5px solid ${skin.swatch}80`,
-          color: "var(--foreground)",
-          boxShadow: `0 4px 16px ${skin.swatch}30`,
-        }}
-        title="刷新定位：自动 pan 到所有树的总中心 + zoom 归 1，所有树短暂高亮"
-      >
-        <RefreshCw className="h-4 w-4" style={{ color: skin.swatch }} />
-        刷新定位
-      </button>
 
       {/* 左上角统计 chip（玻璃拟态） */}
       <div
