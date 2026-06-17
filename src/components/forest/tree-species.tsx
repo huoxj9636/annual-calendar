@@ -409,8 +409,6 @@ function OakShape({
         ry={crownSize * 0.18}
         fill="rgba(255,255,255,0.18)"
       />
-      {/* 知识果实（按节点数生成） */}
-      <KnowledgeFruits tier={tier} count={count} crownCenter={[30, crownY + 3]} crownR={crownSize} />
     </g>
   );
 }
@@ -491,13 +489,6 @@ function PineShape({
         stroke="rgba(255,255,255,0.25)"
         strokeWidth="0.6"
         fill="none"
-      />
-      {/* 知识果实（针叶间点缀） */}
-      <KnowledgeFruits
-        tier={tier}
-        count={count}
-        crownCenter={[30, 32 - layers * segmentH * 0.55]}
-        crownR={baseW * 0.7}
       />
       {/* 古木加雪花点 */}
       {ancient && (
@@ -601,8 +592,6 @@ function MapleShape({
           rot={45}
         />
       )}
-      {/* 知识果实 */}
-      <KnowledgeFruits tier={tier} count={count} crownCenter={[30, crownY + 1]} crownR={crownR} />
     </g>
   );
 }
@@ -697,13 +686,6 @@ function CherryShape({
           <Flower x={30} y={crownY} r={2.0} opacity={0.85} />
         </g>
       )}
-      {/* 知识果实 */}
-      <KnowledgeFruits
-        tier={tier}
-        count={count}
-        crownCenter={[30, crownY + 5]}
-        crownR={crownY > 20 ? 7 : 5}
-      />
     </g>
   );
 }
@@ -803,13 +785,6 @@ function BanyanShape({
       <ellipse cx={30} cy={crownY - 2} rx={crownR * 0.65} ry={crownR * 0.45} fill={accentDeep} opacity="0.65" />
       {/* 树冠高光 */}
       <ellipse cx={22} cy={crownY + 1} rx={crownR * 0.25} ry={crownR * 0.12} fill="rgba(255,255,255,0.2)" />
-      {/* 知识果实 */}
-      <KnowledgeFruits
-        tier={tier}
-        count={count}
-        crownCenter={[30, crownY + 3]}
-        crownR={crownR}
-      />
     </g>
   );
 }
@@ -879,81 +854,10 @@ function CypressShape({
         strokeWidth="0.6"
         fill="none"
       />
-      {/* 知识果实（密集小点） */}
-      <KnowledgeFruits
-        tier={tier}
-        count={count}
-        crownCenter={[30, (tip + 32) / 2]}
-        crownR={baseW * 0.65}
-        dense
-      />
     </g>
   );
 }
 
-// ============== 知识果实（散布在树冠上） ==============
-function KnowledgeFruits({
-  tier,
-  count,
-  crownCenter,
-  crownR,
-  dense,
-}: {
-  tier: number;
-  count: number;
-  crownCenter: [number, number];
-  crownR: number;
-  dense?: boolean;
-}) {
-  if (count <= 0) return null;
-  // 限制果实数量（过多会爆）
-  const fruitCount = Math.min(
-    count,
-    dense ? 16 : tier >= 4 ? 10 : tier >= 3 ? 7 : tier >= 2 ? 4 : 2,
-  );
-
-  // 简单伪随机散布（基于 count 种子）
-  const items: Array<{
-    x: number;
-    y: number;
-    r: number;
-    type: NodeTypeId;
-  }> = [];
-  const seed = Math.max(1, count * 7 + 3);
-  for (let i = 0; i < fruitCount; i++) {
-    const angle = (i * 137.5 + seed) % 360;
-    const dist = ((i * 53 + seed * 11) % 100) / 100;
-    const rad = (angle * Math.PI) / 180;
-    const x = crownCenter[0] + Math.cos(rad) * crownR * 0.5 * dist;
-    const y = crownCenter[1] + Math.sin(rad) * crownR * 0.4 * dist;
-    const typeKeys: NodeTypeId[] = ["root", "trunk", "branch", "leaf", "fruit"];
-    const type = typeKeys[(i + seed) % 5];
-    const r = 0.8 + (i % 3) * 0.3;
-    items.push({ x, y, r, type });
-  }
-
-  return (
-    <g>
-      {items.map((it, i) => (
-        <g key={i}>
-          <circle
-            cx={it.x}
-            cy={it.y}
-            r={it.r + 0.6}
-            fill={NODE_TYPE_TINT[it.type]}
-            opacity="0.95"
-          />
-          <circle
-            cx={it.x - it.r * 0.3}
-            cy={it.y - it.r * 0.3}
-            r={it.r * 0.35}
-            fill="rgba(255,255,255,0.55)"
-          />
-        </g>
-      ))}
-    </g>
-  );
-}
 
 // ============== 物种选择预览（用于 Modal） ==============
 export function SpeciesPreview({

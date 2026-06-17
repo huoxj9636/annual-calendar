@@ -329,7 +329,7 @@ export default function ForestScene({
       const yJitter = (((h >> 8) % 80) / 10 - 4); // -4 ~ +4
       const y = Math.max(10, Math.min(48, yBase + yJitter));
       // 多棵树时整体缩放，避免重叠；基础大小固定为"成树"
-      const treeScale = total <= 3 ? 1 : total <= 6 ? 0.9 : total <= 9 ? 0.78 : total <= 12 ? 0.68 : 0.6;
+      const treeScale = total <= 1 ? 1 : total <= 2 ? 0.72 : total <= 3 ? 0.55 : total <= 5 ? 0.45 : total <= 8 ? 0.38 : total <= 12 ? 0.32 : 0.28;
       return { item, x, y, treeScale };
     });
   }, [items]);
