@@ -1652,14 +1652,14 @@ export default function YearCalendar() {
         </div>{/* end gridInnerRef */}
         </div>{/* end gridContainerRef */}
 
-      {/* Right arrow for Knowledge Panel */}
+      {/* Right arrow for Knowledge Panel - floating, no layout impact */}
       <button
         onClick={() => setShowKnowledge(true)}
-        className="flex-shrink-0 w-14 flex items-center justify-center transition-all group cursor-pointer z-10"
+        className="fixed right-0 top-1/2 -translate-y-1/2 w-14 h-32 flex items-center justify-center transition-all group cursor-pointer z-20"
         style={{ background: `linear-gradient(to left, ${skin.swatch}18, transparent)` }}
         title="知识库"
       >
-        <span className="transition-colors text-4xl font-bold tracking-tight group-hover:opacity-100 opacity-40 opacity-100 transition-opacity inline-block group-hover:-translate-x-1 transform" style={{ color: `${skin.swatch}bb` }}>
+        <span className="text-4xl font-bold tracking-tight opacity-40 group-hover:opacity-100 transition-opacity inline-block group-hover:-translate-x-1 transform" style={{ color: `${skin.swatch}bb` }}>
           «
         </span>
       </button>
