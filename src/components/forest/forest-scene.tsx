@@ -111,6 +111,7 @@ function ForestTree({
   treeScale = 1,
   zoom = 1,
   sceneRect,
+  innerRect: innerRectProp,
 }: {
   item: ForestItem;
   x: number;
@@ -126,10 +127,45 @@ function ForestTree({
   treeScale?: number;
   zoom?: number; // 画布缩放比例，树也要跟着缩放
   sceneRect: React.RefObject<HTMLDivElement | null>;
+  innerRect?: React.RefObject<HTMLDivElement | null>;
 }) {
+  // 物理画布占外层可视区的 200%（与 ForestScene 中的 CANVAS_W 保持一致）
+  const CANVAS_W = 200;
   const stage = getStage(item.count);
   const sizes = TREE_HEIGHTS[stage.size] || TREE_HEIGHTS[1];
   const accent = item.accentColor || skin.swatch;
+
+  // 计算指针位置：优先用 inner（物理画布）rect，让 px/py 和 x/y 同坐标系
+  // 这样树在 inner 内的位置可以拖到整个 0-100% 范围（视觉上覆盖整个可视区）
+  const getPointerInCanvas = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const inner = innerRectProp?.current;
+      if (inner) {
+        const r = inner.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          return {
+            px: ((e.clientX - r.left) / r.width) * 100,
+            py: ((e.clientY - r.top) / r.height) * 100,
+            rectW: r.width,
+            rectH: r.height,
+          };
+        }
+      }
+      // 兜底：用 sceneRect（外层可视区），并按 inner/scene 比例换算到 inner 坐标系
+      const scene = sceneRect.current;
+      if (!scene) return null;
+      const r = scene.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return null;
+      const ratio = 100 / (CANVAS_W * zoom);
+      return {
+        px: ((e.clientX - r.left) / r.width) * 100 * ratio,
+        py: ((e.clientY - r.top) / r.height) * 100 * ratio,
+        rectW: r.width,
+        rectH: r.height,
+      };
+    },
+    [innerRectProp, sceneRect, zoom]
+  );
 
   // 拖拽状态
   const [dragging, setDragging] = useState(false);
@@ -152,31 +188,28 @@ function ForestTree({
       // 仅响应主键（左键 / 触屏）
       if (e.button !== 0) return;
       const btn = e.currentTarget;
-      const rect = sceneRect.current?.getBoundingClientRect();
-      if (!rect) return;
-      // 计算指针在画布中的位置（百分比）
-      const px = ((e.clientX - rect.left) / rect.width) * 100;
-      const py = ((e.clientY - rect.top) / rect.height) * 100;
+      const p = getPointerInCanvas(e);
+      if (!p) return;
       // 当前树的底部锚点位置
       const itemX = x;
       const itemY = y;
-      startRef.current = { pointerX: px, pointerY: py, itemX, itemY };
+      startRef.current = { pointerX: p.px, pointerY: p.py, itemX, itemY };
       wasDraggedRef.current = false;
       setDragOffset({ dx: 0, dy: 0 });
       setDragging(true);
       btn.setPointerCapture(e.pointerId);
       e.stopPropagation();
     },
-    [draggable, sceneRect, x, y]
+    [draggable, getPointerInCanvas, x, y]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!dragging || !startRef.current) return;
-      const rect = sceneRect.current?.getBoundingClientRect();
-      if (!rect) return;
-      const px = ((e.clientX - rect.left) / rect.width) * 100;
-      const py = ((e.clientY - rect.top) / rect.height) * 100;
+      const p = getPointerInCanvas(e);
+      if (!p) return;
+      const px = p.px;
+      const py = p.py;
       // left: 0% 在画布最左 → 指针向右 px 增大 → dx 应为 + (left 增大)
       // bottom: 0% 在画布最底 → 指针向下 py 增大 → bottom 应减小 → dy 应为 - (py 增量取反)
       const rawDx = px - startRef.current.pointerX;
@@ -191,19 +224,16 @@ function ForestTree({
       const dx = targetX - startRef.current.itemX;
       const dy = targetY - startRef.current.itemY;
       // 用像素距离判断是否真的在拖动（避免抖动被识别为点击失败）
-      const rectForDist = sceneRect.current?.getBoundingClientRect();
-      if (rectForDist) {
-        const dPx = Math.hypot(
-          (px - startRef.current.pointerX) * rectForDist.width / 100,
-          (py - startRef.current.pointerY) * rectForDist.height / 100
-        );
-        if (dPx > DRAG_THRESHOLD_PX) {
-          wasDraggedRef.current = true;
-        }
+      const dPx = Math.hypot(
+        (px - startRef.current.pointerX) * p.rectW / 100,
+        (py - startRef.current.pointerY) * p.rectH / 100
+      );
+      if (dPx > DRAG_THRESHOLD_PX) {
+        wasDraggedRef.current = true;
       }
       setDragOffset({ dx, dy });
     },
-    [dragging, sceneRect]
+    [dragging, getPointerInCanvas]
   );
 
   const endDrag = useCallback(
@@ -214,18 +244,16 @@ function ForestTree({
         startRef.current = null;
         return;
       }
-      const rect = sceneRect.current?.getBoundingClientRect();
-      if (!rect) {
+      const p = getPointerInCanvas(e);
+      if (!p) {
         setDragging(false);
         setDragOffset(null);
         startRef.current = null;
         return;
       }
-      const px = ((e.clientX - rect.left) / rect.width) * 100;
-      const py = ((e.clientY - rect.top) / rect.height) * 100;
-      const newX = Math.max(0, Math.min(100, startRef.current.itemX + (px - startRef.current.pointerX)));
+      const newX = Math.max(0, Math.min(100, startRef.current.itemX + (p.px - startRef.current.pointerX)));
       // bottom 坐标系与屏幕 Y 反向：指针向下时 bottom 减小
-      const newY = Math.max(0, Math.min(100, startRef.current.itemY - (py - startRef.current.pointerY)));
+      const newY = Math.max(0, Math.min(100, startRef.current.itemY - (p.py - startRef.current.pointerY)));
       onPositionChange?.({ x: newX, y: newY });
       setDragging(false);
       setDragOffset(null);
@@ -234,7 +262,7 @@ function ForestTree({
         e.currentTarget.releasePointerCapture(e.pointerId);
       } catch {}
     },
-    [dragging, onPositionChange, sceneRect]
+    [dragging, onPositionChange, getPointerInCanvas]
   );
 
   // 计算当前实际显示位置（拖拽中 = 原始 + 偏移）
@@ -404,6 +432,7 @@ export default function ForestScene({
   resetTrigger,
 }: ForestSceneProps) {
   const sceneRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
   const itemsKey = useMemo(() => items.map((i) => i.id).join(","), [items]);
 
   // 树木位置：均匀分布 + 稳定 hash 抖动；数量越多，缩放越小以保持 10+ 棵不重叠
@@ -676,6 +705,7 @@ export default function ForestScene({
         {/* 内层物理画布：所有内容在内层，支持平移和缩放
             画布背景用主题色（跟日历主页背景保持一致） */}
         <div
+          ref={innerRef}
           style={{
             position: "absolute",
             left: "50%",
@@ -716,6 +746,7 @@ export default function ForestScene({
             index={i}
             zoom={zoom}
             sceneRect={sceneRef}
+            innerRect={innerRef}
           />
           </div>
         ))}
