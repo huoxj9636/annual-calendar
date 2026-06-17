@@ -1165,6 +1165,10 @@ export default function YearCalendar() {
               } else if (mk === 'achievement') {
                 if (moduleLinks.achievement) { window.open(moduleLinks.achievement, '_blank'); return; }
                 setShowAchievement(true);
+              } else if ((mk as string).startsWith('bm_')) {
+                // 自定义书签：打开对应URL
+                const bm = bookmarks.find(b => b.id === mk);
+                if (bm?.url) window.open(bm.url, '_blank');
               }
             };
 
@@ -1172,7 +1176,9 @@ export default function YearCalendar() {
               {divider}
               <button onClick={handleClick} onMouseDown={(e) => e.preventDefault()}
                 className="group flex flex-col items-center gap-1 cursor-pointer" title={getModuleName(mk)}>
-                <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110" style={btnStyle}>{icons[mk]}</span>
+                <span className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110" style={btnStyle}>
+                  {icons[mk as keyof typeof icons] || ((mk as string).startsWith('bm_') ? <span className="text-lg font-bold">{(getModuleName(mk) || 'N')[0].toUpperCase()}</span> : null)}
+                </span>
                 <span className="text-[12px] leading-none font-bold tracking-wide transition-colors" style={labelStyle}>{getModuleName(mk)}</span>
               </button>
             </div>;
