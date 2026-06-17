@@ -140,7 +140,7 @@ function ForestTree({
   const crownDeep = 0.85 + stage.size * 0.03;
 
   const handlePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLButtonElement>) => {
+    (e: React.PointerEvent<HTMLDivElement>) => {
       if (!draggable) return;
       // 仅响应主键（左键 / 触屏）
       if (e.button !== 0) return;
@@ -164,7 +164,7 @@ function ForestTree({
   );
 
   const handlePointerMove = useCallback(
-    (e: React.PointerEvent<HTMLButtonElement>) => {
+    (e: React.PointerEvent<HTMLDivElement>) => {
       if (!dragging || !startRef.current) return;
       const rect = sceneRect.current?.getBoundingClientRect();
       if (!rect) return;
@@ -191,7 +191,7 @@ function ForestTree({
   );
 
   const endDrag = useCallback(
-    (e: React.PointerEvent<HTMLButtonElement>) => {
+    (e: React.PointerEvent<HTMLDivElement>) => {
       if (!dragging || !startRef.current) {
         setDragging(false);
         setDragOffset(null);
@@ -226,8 +226,9 @@ function ForestTree({
   const displayY = dragging && dragOffset ? y + dragOffset.dy : y;
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={(e) => {
         // 如果本次按下-抬起发生过拖动（移动 > 阈值），则不触发点击
         if (wasDraggedRef.current) {
@@ -239,6 +240,12 @@ function ForestTree({
         // 拖拽中也不触发点击
         if (dragging) return;
         onClick?.();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (!dragging) onClick?.();
+        }
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -316,10 +323,20 @@ function ForestTree({
           <span>{item.name}</span>
           {onDelete && (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 onDelete();
               }}
+              onPointerDown={(e) => {
+                // 阻止冒泡到外层 div 的拖拽/点击逻辑
+                e.stopPropagation();
+              }}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+              }}
+              aria-label="拔除这棵树"
               className="ml-0.5 w-4 h-4 rounded-full flex items-center justify-center pointer-events-auto transition-colors"
               style={{ background: "rgba(255,255,255,0.18)" }}
               onMouseEnter={(e) => {
@@ -349,7 +366,7 @@ function ForestTree({
           }}
         />
       )}
-    </button>
+    </div>
   );
 }
 
