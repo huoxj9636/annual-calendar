@@ -110,8 +110,8 @@ function ForestTree({
   index,
   treeScale = 1,
   zoom = 1,
-  pan,
   sceneRect,
+  innerRect: innerRectProp,
 }: {
   item: ForestItem;
   x: number;
@@ -125,13 +125,47 @@ function ForestTree({
   variant: "my" | "friends";
   index: number;
   treeScale?: number;
-  zoom?: number; // 画布缩放比例
-  pan?: { x: number; y: number }; // 画布平移（% sceneRef）
+  zoom?: number; // 画布缩放比例，树也要跟着缩放
   sceneRect: React.RefObject<HTMLDivElement | null>;
+  innerRect?: React.RefObject<HTMLDivElement | null>;
 }) {
+  // 物理画布占外层可视区的 200%（与 ForestScene 中的 CANVAS_W 保持一致）
+  const CANVAS_W = 200;
   const stage = getStage(item.count);
   const sizes = TREE_HEIGHTS[stage.size] || TREE_HEIGHTS[1];
   const accent = item.accentColor || skin.swatch;
+
+  // 计算指针位置：优先用 inner（物理画布）rect，让 px/py 和 x/y 同坐标系
+  // 这样树在 inner 内的位置可以拖到整个 0-100% 范围（视觉上覆盖整个可视区）
+  const getPointerInCanvas = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const inner = innerRectProp?.current;
+      if (inner) {
+        const r = inner.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          return {
+            px: ((e.clientX - r.left) / r.width) * 100,
+            py: ((e.clientY - r.top) / r.height) * 100,
+            rectW: r.width,
+            rectH: r.height,
+          };
+        }
+      }
+      // 兜底：用 sceneRect（外层可视区），并按 inner/scene 比例换算到 inner 坐标系
+      const scene = sceneRect.current;
+      if (!scene) return null;
+      const r = scene.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return null;
+      const ratio = 100 / (CANVAS_W * zoom);
+      return {
+        px: ((e.clientX - r.left) / r.width) * 100 * ratio,
+        py: ((e.clientY - r.top) / r.height) * 100 * ratio,
+        rectW: r.width,
+        rectH: r.height,
+      };
+    },
+    [innerRectProp, sceneRect, zoom]
+  );
 
   // 拖拽状态
   const [dragging, setDragging] = useState(false);
@@ -148,69 +182,58 @@ function ForestTree({
   const crownOpacity = 0.55 + stage.size * 0.05; // 越大越浓
   const crownDeep = 0.85 + stage.size * 0.03;
 
-  // 安全的 pan 默认值（pan 可能未传）
-  const panX = pan?.x ?? 0;
-  const panY = pan?.y ?? 0;
-
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!draggable) return;
       // 仅响应主键（左键 / 触屏）
       if (e.button !== 0) return;
       const btn = e.currentTarget;
-      const rect = sceneRect.current?.getBoundingClientRect();
-      if (!rect) return;
-      // 计算指针在画布屏幕坐标中的位置（百分比）
-      const screenPct = ((e.clientX - rect.left) / rect.width) * 100;
-      const screenPctY = ((e.clientY - rect.top) / rect.height) * 100;
-      // 换算到内容层（pan-zoom 容器）坐标系：除以 zoom，再减去 pan 偏移
-      // 这样 px/py 和 x/y 都在同一坐标系内
-      const px = (screenPct - panX) / zoom;
-      const py = (screenPctY - panY) / zoom;
+      const p = getPointerInCanvas(e);
+      if (!p) return;
       // 当前树的底部锚点位置
       const itemX = x;
       const itemY = y;
-      startRef.current = { pointerX: px, pointerY: py, itemX, itemY };
+      startRef.current = { pointerX: p.px, pointerY: p.py, itemX, itemY };
       wasDraggedRef.current = false;
       setDragOffset({ dx: 0, dy: 0 });
       setDragging(true);
       btn.setPointerCapture(e.pointerId);
       e.stopPropagation();
     },
-    [draggable, sceneRect, x, y, panX, panY, zoom]
+    [draggable, getPointerInCanvas, x, y]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!dragging || !startRef.current) return;
-      const rect = sceneRect.current?.getBoundingClientRect();
-      if (!rect) return;
-      // 计算指针在画布屏幕坐标中的位置（百分比）
-      const screenPct = ((e.clientX - rect.left) / rect.width) * 100;
-      const screenPctY = ((e.clientY - rect.top) / rect.height) * 100;
-      // 换算到内容层坐标系：除以 zoom，再减去 pan 偏移
-      const px = (screenPct - panX) / zoom;
-      const py = (screenPctY - panY) / zoom;
+      const p = getPointerInCanvas(e);
+      if (!p) return;
+      const px = p.px;
+      const py = p.py;
       // left: 0% 在画布最左 → 指针向右 px 增大 → dx 应为 + (left 增大)
       // bottom: 0% 在画布最底 → 指针向下 py 增大 → bottom 应减小 → dy 应为 - (py 增量取反)
       const rawDx = px - startRef.current.pointerX;
       const rawDy = -(py - startRef.current.pointerY);
-      // 边界限制：树可以拖到内容层的 0-100% 整个范围
-      const targetX = Math.max(0, Math.min(100, startRef.current.itemX + rawDx));
-      const targetY = Math.max(0, Math.min(100, startRef.current.itemY + rawDy));
+      // 实时边界限制：拖动过程中树不能飘出画布
+      const minX = 0;
+      const maxX = 100;
+      const minY = 0;
+      const maxY = 100;
+      const targetX = Math.max(minX, Math.min(maxX, startRef.current.itemX + rawDx));
+      const targetY = Math.max(minY, Math.min(maxY, startRef.current.itemY + rawDy));
       const dx = targetX - startRef.current.itemX;
       const dy = targetY - startRef.current.itemY;
       // 用像素距离判断是否真的在拖动（避免抖动被识别为点击失败）
       const dPx = Math.hypot(
-        (px - startRef.current.pointerX) * rect.width * zoom / 100,
-        (py - startRef.current.pointerY) * rect.height * zoom / 100
+        (px - startRef.current.pointerX) * p.rectW / 100,
+        (py - startRef.current.pointerY) * p.rectH / 100
       );
       if (dPx > DRAG_THRESHOLD_PX) {
         wasDraggedRef.current = true;
       }
       setDragOffset({ dx, dy });
     },
-    [dragging, sceneRect, panX, panY, zoom]
+    [dragging, getPointerInCanvas]
   );
 
   const endDrag = useCallback(
@@ -221,22 +244,16 @@ function ForestTree({
         startRef.current = null;
         return;
       }
-      const rect = sceneRect.current?.getBoundingClientRect();
-      if (!rect) {
+      const p = getPointerInCanvas(e);
+      if (!p) {
         setDragging(false);
         setDragOffset(null);
         startRef.current = null;
         return;
       }
-      // 计算指针在画布屏幕坐标中的位置（百分比）
-      const screenPct = ((e.clientX - rect.left) / rect.width) * 100;
-      const screenPctY = ((e.clientY - rect.top) / rect.height) * 100;
-      // 换算到内容层坐标系
-      const px = (screenPct - panX) / zoom;
-      const py = (screenPctY - panY) / zoom;
-      const newX = Math.max(0, Math.min(100, startRef.current.itemX + (px - startRef.current.pointerX)));
+      const newX = Math.max(0, Math.min(100, startRef.current.itemX + (p.px - startRef.current.pointerX)));
       // bottom 坐标系与屏幕 Y 反向：指针向下时 bottom 减小
-      const newY = Math.max(0, Math.min(100, startRef.current.itemY - (py - startRef.current.pointerY)));
+      const newY = Math.max(0, Math.min(100, startRef.current.itemY - (p.py - startRef.current.pointerY)));
       onPositionChange?.({ x: newX, y: newY });
       setDragging(false);
       setDragOffset(null);
@@ -245,7 +262,7 @@ function ForestTree({
         e.currentTarget.releasePointerCapture(e.pointerId);
       } catch {}
     },
-    [dragging, onPositionChange, sceneRect, panX, panY, zoom]
+    [dragging, onPositionChange, getPointerInCanvas]
   );
 
   // 计算当前实际显示位置（拖拽中 = 原始 + 偏移）
@@ -415,6 +432,7 @@ export default function ForestScene({
   resetTrigger,
 }: ForestSceneProps) {
   const sceneRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
   const itemsKey = useMemo(() => items.map((i) => i.id).join(","), [items]);
 
   // 树木位置：均匀分布 + 稳定 hash 抖动；数量越多，缩放越小以保持 10+ 棵不重叠
@@ -442,16 +460,16 @@ export default function ForestScene({
         const treeScale = total <= 1 ? 1 : total <= 2 ? 0.55 : total <= 3 ? 0.4 : total <= 5 ? 0.32 : total <= 8 ? 0.26 : total <= 12 ? 0.22 : 0.19;
         return { item, x: item.position.x, y: item.position.y, treeScale };
       }
-      // 自动分布：使用稳定 hash 抖动（占满整个画布 0-100% 范围）
+      // 自动分布：使用稳定 hash 抖动
       const autoIndex = Array.from(items.slice(0, i + 1).filter((it) => !it.position)).length - 1;
       const baseX = 8 + ((autoIndex + 0.5) / Math.max(1, autoItems.length)) * 84;
       const h = hashStr(item.id);
       const xJitter = (((h % 200) / 100) - 1) * 1.5;
-      const x = Math.max(2, Math.min(98, baseX + xJitter));
-      // y 分布：覆盖整个画布 0-100% 范围
-      const yBase = 15 + (autoIndex % 5) * 18;
+      const x = Math.max(6, Math.min(94, baseX + xJitter));
+      // y 分布：25-75%（画布中间 50% 区域），上下都有空间
+      const yBase = 25 + (autoIndex % 4) * 12;
       const yJitter = (((h >> 8) % 80) / 10 - 4);
-      const y = Math.max(2, Math.min(98, yBase + yJitter));
+      const y = Math.max(20, Math.min(75, yBase + yJitter));
       const treeScale = total <= 1 ? 1 : total <= 2 ? 0.55 : total <= 3 ? 0.4 : total <= 5 ? 0.32 : total <= 8 ? 0.26 : total <= 12 ? 0.22 : 0.19;
       return { item, x, y, treeScale };
     });
@@ -507,9 +525,13 @@ export default function ForestScene({
     [variant, handleZoomIn, handleZoomOut]
   );
 
-  // 缩放范围：最小 1 倍（画布铺满屏幕），最大 2.5 倍
-  const ZOOM_MIN = 1;
-  const ZOOM_MAX = 2.5;
+  // 物理画布尺寸（比可视区大，给平移留空间）
+  // 横向 200% 给左右平移空间，纵向 200% 给上下平移空间
+  // zoom 缩放会等比调整 inner 实际尺寸，pan 范围也按 zoom 反比放大
+  const CANVAS_W = 200; // % 相对外层可视区
+  const CANVAS_H = 200; // % 相对外层可视区
+  const ZOOM_MIN = 1; // 最小缩放 1 倍 = 背景图完全铺满屏幕，不允许再小
+  const ZOOM_MAX = 2.5; // 最大放大 2.5 倍
 
 
   // 从 localStorage 读取画布平移和缩放（持久化）
@@ -548,15 +570,21 @@ export default function ForestScene({
     } catch {}
   }, [resetTrigger]);
 
-  // 平移限制：内容层无物理边界，pan 可以自由拖动到任何方向
-  // 树的位置 x/y 永远在内容层 0-100% 范围内，pan 只是视图偏移
+  // 平移限制：保证物理画布始终有内容覆盖可视区
+  // 物理画布 200%，pan 范围 [-50, 50]（pan=0 是中心）
+  // pan=+50：可视区看到物理画布 0-50% 区域（左边）
+  // pan=-50：可视区看到物理画布 50-100% 区域（右边）
+  // pan 范围随 zoom 反比放大：zoom 越小（画布越小），允许的 pan 范围越大
+  // 物理画布 200%×200%，zoom 缩放后 inner 实际尺寸 200%×zoom
+  // 视口只能看到 100% 视口宽，要让 inner 任意边界对齐视口边界，pan 范围 = 50 / zoom
+  const panRange = 50 / zoom;
   const clampPan = useCallback((x: number, y: number) => {
-    const r = 200;
+    const r = 50 / zoom;
     return {
       x: Math.max(-r, Math.min(r, x)),
       y: Math.max(-r, Math.min(r, y)),
     };
-  }, []);
+  }, [zoom]);
 
   // 画布拖拽处理
   const handleCanvasPointerDown = useCallback(
@@ -641,12 +669,14 @@ export default function ForestScene({
     } catch {}
   }, []);
 
-  // 画布样式：纯主题色，无边框无阴影
+  // 关键样式：画布背景跟日历主页主题色保持一致
   const sceneStyle: React.CSSProperties = {
     ...(fillHeight ? { height: "100%" } : { height }),
     background: skin.panelBg,
+    borderRadius: fillHeight ? 0 : 16,
     overflow: "hidden",
     position: "relative",
+    boxShadow: fillHeight ? "none" : "0 4px 20px -8px rgba(0,0,0,0.1)",
   };
 
   return (
@@ -672,19 +702,24 @@ export default function ForestScene({
         onPointerCancel={handleCanvasPointerEnd}
         onWheel={handleCanvasWheel}
       >
-        {/* 画布内容层：用 transform 实现平移 + 缩放
-            树的位置 x/y（0-100%）直接基于 sceneRef 坐标系 */}
+        {/* 内层物理画布：所有内容在内层，支持平移和缩放
+            画布背景用主题色（跟日历主页背景保持一致） */}
         <div
+          ref={innerRef}
           style={{
             position: "absolute",
-            inset: 0,
-            transform: `translate(${pan.x}%, ${pan.y}%) scale(${zoom})`,
-            transformOrigin: "0 100%",
+            left: "50%",
+            top: "50%",
+            width: `${CANVAS_W * zoom}%`,
+            height: `${CANVAS_H * zoom}%`,
+            transform: `translate(-50%, -50%) translate(${-pan.x}%, ${-pan.y}%)`,
             transition: panning ? "none" : "transform 0.35s ease-out",
-            pointerEvents: "none",
+            // 画布背景色：跟日历主页主题色保持一致
+            background: skin.panelBg,
+            borderRadius: 12,
+            overflow: "hidden",
           }}
         >
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "auto" }}>
         {/* 树木 */}
         {layout.map(({ item, x, y }, i) => (
           <div
@@ -710,8 +745,8 @@ export default function ForestScene({
             variant={variant}
             index={i}
             zoom={zoom}
-            pan={pan}
             sceneRect={sceneRef}
+            innerRect={innerRef}
           />
           </div>
         ))}
@@ -727,7 +762,6 @@ export default function ForestScene({
             <p className="text-xs opacity-50 mt-1">点击右下角种下第一棵树</p>
           </div>
         )}
-          </div>
         </div>
 
         {/* 缩放百分比显示 */}
