@@ -216,7 +216,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         >
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center text-2xl z-10"
+            className="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center text-2xl z-20"
             style={{ background: skin.swatch, color: "#fff" }}
             aria-label="关闭"
           >
@@ -226,7 +226,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
           <div className="w-full h-full flex flex-col overflow-hidden">
             {/* Tab 切换 */}
             <div
-              className="flex border-b"
+              className="flex border-b pr-16"
               style={{ borderColor: skin.divider }}
             >
               <button
@@ -235,7 +235,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
                   setSelectedTree(null);
                   setShowAddNode(false);
                 }}
-                className="px-6 py-3 text-sm font-medium transition-colors"
+                className="px-6 py-3 text-lg font-bold transition-colors"
                 style={{
                   color: activeTab === "tree" ? skin.swatch : skin.textSecondary,
                   borderBottom: activeTab === "tree" ? `2px solid ${skin.swatch}` : "2px solid transparent",
@@ -245,7 +245,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               </button>
               <button
                 onClick={() => setActiveTab("friends")}
-                className="px-6 py-3 text-sm font-medium transition-colors"
+                className="px-6 py-3 text-lg font-bold transition-colors"
                 style={{
                   color: activeTab === "friends" ? skin.swatch : skin.textSecondary,
                   borderBottom: activeTab === "friends" ? `2px solid ${skin.swatch}` : "2px solid transparent",
@@ -445,10 +445,7 @@ function TreesList({
 }) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold" style={{ color: skin.textPrimary }}>
-          我的知识树
-        </h2>
+      <div className="flex items-center justify-end mb-4">
         <Button onClick={onAdd} skin={skin}>
           + 新建
         </Button>
@@ -461,22 +458,22 @@ function TreesList({
           还没有知识树，点击右上角创建第一棵吧
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {trees.map((tree) => (
             <div
               key={tree.id}
-              className="p-4 rounded-lg cursor-pointer relative group transition-all hover:scale-105"
+              className="p-4 rounded-lg cursor-pointer relative group transition-all hover:scale-105 flex flex-col items-center justify-center min-h-[160px]"
               style={{ background: skin.cardBg }}
               onClick={() => onSelect(tree)}
             >
               <div
-                className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-xl"
+                className="w-12 h-12 rounded-full mb-2 flex items-center justify-center text-xl"
                 style={{ background: skin.swatch, color: "#fff" }}
               >
                 🌳
               </div>
               <div className="text-center">
-                <div className="font-medium" style={{ color: skin.textPrimary }}>
+                <div className="font-medium text-sm" style={{ color: skin.textPrimary }}>
                   {tree.name}
                 </div>
                 <div className="text-xs mt-1" style={{ color: skin.textSecondary }}>
@@ -636,10 +633,7 @@ function FriendsList({
 }) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold" style={{ color: skin.textPrimary }}>
-          朋友们
-        </h2>
+      <div className="flex items-center justify-end mb-4">
         <Button onClick={onAdd} skin={skin}>
           + 添加
         </Button>
@@ -652,22 +646,22 @@ function FriendsList({
           还没有朋友链接，点击右上角添加吧
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {bookmarks.map((b) => (
             <div
               key={b.id}
-              className="p-4 rounded-lg relative group cursor-pointer transition-all hover:scale-105"
+              className="p-4 rounded-lg relative group cursor-pointer transition-all hover:scale-105 flex flex-col items-center justify-center min-h-[160px]"
               style={{ background: skin.cardBg }}
               onClick={() => window.open(b.url, "_blank")}
             >
               <div
-                className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-lg font-medium"
+                className="w-12 h-12 rounded-full mb-2 flex items-center justify-center text-lg font-medium"
                 style={{ background: skin.swatch, color: "#fff" }}
               >
                 {b.name.charAt(0).toUpperCase()}
               </div>
               <div
-                className="text-center text-sm truncate"
+                className="text-center text-sm truncate w-full px-1"
                 style={{ color: skin.textPrimary }}
               >
                 {b.name}
