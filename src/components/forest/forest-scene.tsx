@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useRef, useState, useCallback, useEffect } from "react";
-import { Cloud, Sun, X, TreeDeciduous, Maximize2, Minimize2 } from "lucide-react";
+import { Cloud, Sun, X, TreeDeciduous, Maximize2, Minimize2, Plus, Minus } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import { SpeciesTree, TREE_SPECIES, type TreeSpeciesId } from "./tree-species";
 
@@ -512,15 +512,33 @@ export default function ForestScene({
   } | null>(null);
   const canvasPannedRef = useRef(false); // 画布本次按下-抬起是否发生实际平移
   const PAN_THRESHOLD_PX = 4; // 平移阈值（像素）
+  const ZOOM_STEP = 0.15; // 单次缩放步长
+
+  // 缩放控制（让画布支持 zoom in / zoom out）
+  const handleZoomIn = useCallback(() => {
+    setZoom((z) => {
+      const next = Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2));
+      try { localStorage.setItem("forest-canvas-zoom", String(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((z) => {
+      const next = Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2));
+      try { localStorage.setItem("forest-canvas-zoom", String(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   // 物理画布尺寸（比可视区大，给平移留空间）
   // 横向 200% 给左右平移空间，纵向 200% 给上下平移空间
   // zoom 缩放会等比调整 inner 实际尺寸，pan 范围也按 zoom 反比放大
   const CANVAS_W = 200; // % 相对外层可视区
   const CANVAS_H = 200; // % 相对外层可视区
-  const ZOOM_MIN = 0.4; // 最大缩小 0.4 倍（让 200% 画布缩小到 80% 视口）
-  const ZOOM_MAX = 1.2; // 最大放大 1.2 倍
-  const isBirdseye = zoom <= 0.55; // 鸟瞰模式（缩到刚好能看全画布）
+  const ZOOM_MIN = 0.3; // 最大缩小 0.3 倍（让 200% 画布缩小到 60% 视口，留出四周空白）
+  const ZOOM_MAX = 1.5; // 最大放大 1.5 倍
+  const isBirdseye = zoom <= 0.55; // 鸟瞰模式（缩到最小看全画布）
 
   // 从 localStorage 读取画布平移和缩放（持久化）
   useEffect(() => {
@@ -649,14 +667,12 @@ export default function ForestScene({
     [panning, pan, zoom]
   );
 
-  // 鸟瞰全图：把画布缩放到刚好能看全 200%×200% 物理画布边界
-  // 物理画布 200%×200% = 720×720，视口 360×360
-  // 要看全 → 缩放比例 360/720 = 0.5，加上 pan=0 让画布居中
+  // 鸟瞰全图：把画布缩到最小（最大视图范围），让整个 200% 物理画布都能看到
   const handleBirdseye = useCallback(() => {
-    setZoom(0.5);
+    setZoom(ZOOM_MIN);
     setPan({ x: 0, y: 0 });
     try {
-      localStorage.setItem("forest-canvas-zoom", "0.5");
+      localStorage.setItem("forest-canvas-zoom", String(ZOOM_MIN));
       localStorage.setItem(
         "forest-canvas-pan",
         JSON.stringify({ x: 0, y: 0 })
@@ -875,6 +891,52 @@ export default function ForestScene({
             <Minimize2 size={12} />
             <span>退出鸟瞰</span>
           </button>
+        )}
+
+        {/* 缩放控制按钮（+ / -）放在右下角 */}
+        {variant === "my" && items.length > 0 && (
+          <div
+            className="absolute z-50 flex flex-col gap-1.5"
+            style={{ right: 12, bottom: 12 }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleZoomIn();
+              }}
+              disabled={zoom >= ZOOM_MAX}
+              className="w-9 h-9 rounded-full text-base shadow-md hover:scale-105 transition-transform flex items-center justify-center disabled:opacity-40 disabled:hover:scale-100"
+              style={{
+                background: `${skin.swatch}cc`,
+                color: "white",
+                backdropFilter: "blur(8px)",
+              }}
+              aria-label="放大"
+              title={`放大（当前 ${(zoom * 100).toFixed(0)}%）`}
+            >
+              <Plus size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleZoomOut();
+              }}
+              disabled={zoom <= ZOOM_MIN}
+              className="w-9 h-9 rounded-full text-base shadow-md hover:scale-105 transition-transform flex items-center justify-center disabled:opacity-40 disabled:hover:scale-100"
+              style={{
+                background: `${skin.swatch}cc`,
+                color: "white",
+                backdropFilter: "blur(8px)",
+              }}
+              aria-label="缩小"
+              title={`缩小（当前 ${(zoom * 100).toFixed(0)}%）`}
+            >
+              <Minus size={16} />
+            </button>
+          </div>
         )}
       </div>
     </>
