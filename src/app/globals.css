@@ -177,6 +177,26 @@ body {
 .animate-slide-in { animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
 .animate-slide-in-panel { animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
 .animate-slide-in-left { animation: slideInLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* 知识库大树树叶飘动动画 */
+@keyframes sway {
+  0%, 100% { transform: rotate(-3deg) translateX(0); }
+  25% { transform: rotate(2deg) translateX(1px); }
+  50% { transform: rotate(-2deg) translateX(-1px); }
+  75% { transform: rotate(3deg) translateX(0); }
+}
+@keyframes swayReverse {
+  0%, 100% { transform: rotate(3deg) translateX(0); }
+  25% { transform: rotate(-2deg) translateX(-1px); }
+  50% { transform: rotate(2deg) translateX(1px); }
+  75% { transform: rotate(-3deg) translateX(0); }
+}
+.animate-sway {
+  animation: sway 4s ease-in-out infinite;
+}
+.animate-sway-reverse {
+  animation: swayReverse 4s ease-in-out infinite;
+}
 .animate-fade-in { animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 
 /* Hide scrollbar for snap scroll container */
