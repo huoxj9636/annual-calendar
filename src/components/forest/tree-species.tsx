@@ -127,7 +127,8 @@ export function SpeciesTree({
       height="100%"
       style={{ overflow: "visible" }}
     >
-      {/* 草地投影已移到 ForestTree 中渲染，固定尺寸 */}
+      {/* 草地投影：固定尺寸，不随树阶段变化 */}
+      <ellipse cx="30" cy="58.5" rx="14" ry="2" fill="rgba(0,0,0,0.14)" />
 
       {truncated ? (
         // 空地：一个小土堆 + 一根小枝
