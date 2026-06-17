@@ -73,13 +73,15 @@ function hashStr(s: string): number {
   return Math.abs(h);
 }
 
+// 基础尺寸：固定为成树大小（不再随节点数变化）。古木/参天/成树都是这个尺寸，
+// 视觉差异由"分叉、苔藓、鸟巢"等装饰承担，整体仍保持单树苗 ~80×110 不重叠。
 const TREE_HEIGHTS: Record<number, { h: number; crown: number; trunk: number }> = {
-  0: { h: 32, crown: 16, trunk: 12 }, // 空地（小树桩）
-  1: { h: 56, crown: 36, trunk: 18 }, // 幼苗
-  2: { h: 96, crown: 64, trunk: 30 }, // 小树
-  3: { h: 136, crown: 90, trunk: 44 }, // 成树
-  4: { h: 168, crown: 110, trunk: 56 }, // 参天
-  5: { h: 200, crown: 132, trunk: 66 }, // 古木
+  0: { h: 26, crown: 12, trunk: 8 },  // 空地（树桩）
+  1: { h: 102, crown: 70, trunk: 32 }, // 幼苗及以上统一为成树尺寸
+  2: { h: 102, crown: 70, trunk: 32 },
+  3: { h: 102, crown: 70, trunk: 32 },
+  4: { h: 102, crown: 70, trunk: 32 },
+  5: { h: 102, crown: 70, trunk: 32 },
 };
 
 /** 单棵树 */
@@ -93,6 +95,7 @@ function ForestTree({
   skin,
   variant,
   index,
+  treeScale = 1,
 }: {
   item: ForestItem;
   x: number;
@@ -103,6 +106,7 @@ function ForestTree({
   skin: SkinTheme;
   variant: "my" | "friends";
   index: number;
+  treeScale?: number;
 }) {
   const stage = getStage(item.count);
   const sizes = TREE_HEIGHTS[stage.size] || TREE_HEIGHTS[1];
@@ -124,8 +128,8 @@ function ForestTree({
         left: `${x}%`,
         bottom: `${y}%`,
         transform: "translateX(-50%)",
-        width: sizes.crown + 16,
-        height: sizes.h + 8,
+        width: (sizes.crown + 16) * treeScale,
+        height: (sizes.h + 8) * treeScale,
         cursor: onClick ? "pointer" : "default",
       }}
       title={`${item.name} · ${stage.label} · ${item.count} 个知识`}
@@ -299,22 +303,34 @@ export default function ForestScene({
   selectedId,
   variant = "my",
 }: ForestSceneProps) {
-  // 树木位置：均匀分布 + 稳定 hash 抖动
+  // 树木位置：均匀分布 + 稳定 hash 抖动；数量越多，缩放越小以保持 10+ 棵不重叠
+  const treeScale = useMemo(() => {
+    const n = items.length;
+    if (n <= 1) return 1;
+    if (n <= 3) return 0.95;
+    if (n <= 5) return 0.88;
+    if (n <= 8) return 0.78;
+    if (n <= 12) return 0.65;
+    if (n <= 18) return 0.55;
+    return 0.48;
+  }, [items.length]);
+
   const layout = useMemo(() => {
     const total = items.length;
     if (total === 0) return [];
     return items.map((item, i) => {
-      // 主体均匀分布，保留 8% 边距
-      const baseX = 8 + (i / Math.max(total - 1, 1)) * 84;
+      // 等分 + 8% 左右边距，再加 hash 抖动避免完全等分
+      const baseX = 8 + ((i + 0.5) / total) * 84;
       const h = hashStr(item.id);
-      const jitter = ((h % 800) / 100) - 4; // -4 ~ +4
-      const x = Math.max(5, Math.min(95, baseX + jitter));
-      // y 在前景草地（15-30%）和中景（30-50%）之间，根据 stage.size 决定
-      const stage = getStage(item.count);
-      const yBase = stage.size >= 4 ? 22 : stage.size === 3 ? 28 : stage.size === 2 ? 34 : 40;
-      const yJitter = ((h >> 8) % 80) / 10 - 4;
-      const y = Math.max(8, Math.min(50, yBase + yJitter));
-      return { item, x, y };
+      const xJitter = (((h % 200) / 100) - 1) * 1.5; // -1.5 ~ +1.5
+      const x = Math.max(6, Math.min(94, baseX + xJitter));
+      // y 随 index 微调，让多棵树错落有致
+      const yBase = 30 + (i % 3) * 5; // 30 / 35 / 40
+      const yJitter = (((h >> 8) % 80) / 10 - 4); // -4 ~ +4
+      const y = Math.max(10, Math.min(48, yBase + yJitter));
+      // 多棵树时整体缩放，避免重叠；基础大小固定为"成树"
+      const treeScale = total <= 3 ? 1 : total <= 6 ? 0.9 : total <= 9 ? 0.78 : total <= 12 ? 0.68 : 0.6;
+      return { item, x, y, treeScale };
     });
   }, [items]);
 

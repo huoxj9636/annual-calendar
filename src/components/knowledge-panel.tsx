@@ -460,10 +460,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
                         border: isActive ? `1.5px solid ${skin.swatch}` : `1px solid ${skin.divider}`,
                       }}
                     >
-                      <SpeciesPreview
-                        species={key}
-                        size={36}
-                      />
+                      <SpeciesPreview species={key} />
                       <div className="text-xs font-medium" style={{ color: skin.textPrimary }}>
                         {info.name}
                       </div>

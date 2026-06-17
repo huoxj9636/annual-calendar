@@ -326,11 +326,13 @@ function OakShape({
   ancient: boolean;
   count: number;
 }) {
-  // 树干：随 tier 变粗变高
-  const trunkH = 8 + tier * 2.2;
-  const trunkW = 3 + tier * 0.6;
+  // 基础尺寸：最低成树（tier 3），不再随节点缩减
+  const sizeTier = Math.max(tier, 3);
+  // 树干：基础大尺寸，固定不再随节点缩减（sizeTier 已 shadow tier）
+  const trunkH = 8 + sizeTier * 2.2;
+  const trunkW = 3 + sizeTier * 0.6;
   const crownY = 32 - trunkH;
-  const crownSize = 10 + tier * 2.4;
+  const crownSize = 10 + sizeTier * 2.4;
 
   // 树冠 blob 数
   const blobs: Array<[number, number, number]> = [
@@ -379,11 +381,11 @@ function OakShape({
           strokeWidth={ancient ? 1 : 0.8}
           strokeLinecap="round"
         >
-          <path d={`M30,${32 + trunkH * 0.4} L${24 - tier * 0.4},${crownY + 4}`} />
-          <path d={`M30,${32 + trunkH * 0.4} L${36 + tier * 0.4},${crownY + 4}`} />
+          <path d={`M30,${32 + trunkH * 0.4} L${24 - sizeTier * 0.4},${crownY + 4}`} />
+          <path d={`M30,${32 + trunkH * 0.4} L${36 + sizeTier * 0.4},${crownY + 4}`} />
           {giant && (
             <path
-              d={`M30,${32 + trunkH * 0.5} L${30 - tier * 0.6},${crownY + 6}`}
+              d={`M30,${32 + trunkH * 0.5} L${30 - sizeTier * 0.6},${crownY + 6}`}
             />
           )}
         </g>
@@ -435,15 +437,17 @@ function PineShape({
   ancient: boolean;
   count: number;
 }) {
+  // 基础尺寸：固定成树大小（不再随节点缩减）
+  const sizeTier = Math.max(tier, 3);
   // 树干
-  const trunkH = 6 + tier * 1.4;
-  const trunkW = 2.2 + tier * 0.3;
+  const trunkH = 6 + sizeTier * 1.4;
+  const trunkW = 2.2 + sizeTier * 0.3;
   // 树冠：每层三角形叠加
   const layers = Math.max(2, Math.min(tier, 5));
 
   // 每层三角
   const segmentH = (52 - trunkH) / layers;
-  const baseW = 8 + tier * 1.6;
+  const baseW = 8 + sizeTier * 1.6;
 
   return (
     <g>
@@ -529,10 +533,12 @@ function MapleShape({
   ancient: boolean;
   count: number;
 }) {
-  const trunkH = 6 + tier * 1.6;
-  const trunkW = 2.4 + tier * 0.4;
+  // 基础尺寸：固定成树大小（不再随节点缩减）
+  const sizeTier = Math.max(tier, 3);
+  const trunkH = 6 + sizeTier * 1.6;
+  const trunkW = 2.4 + sizeTier * 0.4;
   const crownY = 32 - trunkH;
-  const crownR = 9 + tier * 2.2;
+  const crownR = 9 + sizeTier * 2.2;
 
   // 掌状叶 path（5 瓣）
   const MapleLeaf = ({ x, y, r, rot }: { x: number; y: number; r: number; rot: number }) => (
@@ -574,16 +580,16 @@ function MapleShape({
       {/* 树冠上的掌状叶点缀（成树及以上） */}
       {mature && (
         <g>
-          <MapleLeaf x={24} y={crownY - 2} r={3 + tier * 0.3} rot={-15} />
-          <MapleLeaf x={36} y={crownY - 1} r={3 + tier * 0.3} rot={20} />
-          <MapleLeaf x={30} y={crownY + 4} r={2.6 + tier * 0.25} rot={170} />
+          <MapleLeaf x={24} y={crownY - 2} r={3 + sizeTier * 0.3} rot={-15} />
+          <MapleLeaf x={36} y={crownY - 1} r={3 + sizeTier * 0.3} rot={20} />
+          <MapleLeaf x={30} y={crownY + 4} r={2.6 + sizeTier * 0.25} rot={170} />
         </g>
       )}
       {giant && (
         <MapleLeaf
           x={20}
           y={crownY + 5}
-          r={2.6 + tier * 0.2}
+          r={2.6 + sizeTier * 0.2}
           rot={-30}
         />
       )}
@@ -591,7 +597,7 @@ function MapleShape({
         <MapleLeaf
           x={40}
           y={crownY + 5}
-          r={2.6 + tier * 0.2}
+          r={2.6 + sizeTier * 0.2}
           rot={45}
         />
       )}
@@ -623,8 +629,10 @@ function CherryShape({
   ancient: boolean;
   count: number;
 }) {
-  const trunkH = 10 + tier * 1.4;
-  const trunkW = 1.6 + tier * 0.3;
+  // 基础尺寸：固定成树大小（不再随节点缩减）
+  const sizeTier = Math.max(tier, 3);
+  const trunkH = 10 + sizeTier * 1.4;
+  const trunkW = 1.6 + sizeTier * 0.3;
   const crownY = 32 - trunkH;
 
   // 花瓣（五瓣樱花）
@@ -660,17 +668,17 @@ function CherryShape({
           strokeWidth={ancient ? 1 : 0.8}
           strokeLinecap="round"
         >
-          <path d={`M30,${32 + trunkH * 0.35} L${24 - tier * 0.3},${crownY + 6}`} />
-          <path d={`M30,${32 + trunkH * 0.35} L${36 + tier * 0.3},${crownY + 6}`} />
-          <path d={`M30,${32 + trunkH * 0.5} L${30 - tier * 0.4},${crownY + 3}`} />
-          <path d={`M30,${32 + trunkH * 0.5} L${30 + tier * 0.4},${crownY + 3}`} />
+          <path d={`M30,${32 + trunkH * 0.35} L${24 - sizeTier * 0.3},${crownY + 6}`} />
+          <path d={`M30,${32 + trunkH * 0.35} L${36 + sizeTier * 0.3},${crownY + 6}`} />
+          <path d={`M30,${32 + trunkH * 0.5} L${30 - sizeTier * 0.4},${crownY + 3}`} />
+          <path d={`M30,${32 + trunkH * 0.5} L${30 + sizeTier * 0.4},${crownY + 3}`} />
         </g>
       )}
       {/* 小树冠（稀疏） */}
       <g>
-        <circle cx={26} cy={crownY + 5} r={crownY > 20 ? 6 + tier * 0.5 : 4 + tier * 0.4} fill={accent} opacity="0.55" />
-        <circle cx={34} cy={crownY + 5} r={crownY > 20 ? 6 + tier * 0.5 : 4 + tier * 0.4} fill={accent} opacity="0.55" />
-        <circle cx={30} cy={crownY + 2} r={5 + tier * 0.5} fill={accent} opacity="0.6" />
+        <circle cx={26} cy={crownY + 5} r={crownY > 20 ? 6 + sizeTier * 0.5 : 4 + sizeTier * 0.4} fill={accent} opacity="0.55" />
+        <circle cx={34} cy={crownY + 5} r={crownY > 20 ? 6 + sizeTier * 0.5 : 4 + sizeTier * 0.4} fill={accent} opacity="0.55" />
+        <circle cx={30} cy={crownY + 2} r={5 + sizeTier * 0.5} fill={accent} opacity="0.6" />
       </g>
       {/* 花簇（成树开始） */}
       {mature && (
@@ -722,10 +730,12 @@ function BanyanShape({
   ancient: boolean;
   count: number;
 }) {
-  const trunkH = 8 + tier * 1.5;
-  const trunkW = 4 + tier * 0.7; // 粗干
+  // 基础尺寸：固定成树大小（不再随节点缩减）
+  const sizeTier = Math.max(tier, 3);
+  const trunkH = 8 + sizeTier * 1.5;
+  const trunkW = 4 + sizeTier * 0.7; // 粗干
   const crownY = 32 - trunkH;
-  const crownR = 12 + tier * 2.6; // 超大树冠
+  const crownR = 12 + sizeTier * 2.6; // 超大树冠
 
   // 气根（成树起多根）
   const roots: Array<[number, number, number]> = mature
@@ -826,11 +836,13 @@ function CypressShape({
   ancient: boolean;
   count: number;
 }) {
-  const trunkH = 5 + tier * 1;
-  const trunkW = 1.8 + tier * 0.25;
+  // 基础尺寸：固定成树大小（不再随节点缩减）
+  const sizeTier = Math.max(tier, 3);
+  const trunkH = 5 + sizeTier * 1;
+  const trunkW = 1.8 + sizeTier * 0.25;
   // 整体高度
-  const totalH = 28 + tier * 2;
-  const baseW = 5 + tier * 0.9;
+  const totalH = 28 + sizeTier * 2;
+  const baseW = 5 + sizeTier * 0.9;
   const tip = 32 - totalH;
 
   return (
@@ -946,12 +958,10 @@ function KnowledgeFruits({
 // ============== 物种选择预览（用于 Modal） ==============
 export function SpeciesPreview({
   species,
-  size = 56,
   className,
   style,
 }: {
   species: TreeSpeciesId;
-  size?: number;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -960,8 +970,11 @@ export function SpeciesPreview({
     <div
       className={className}
       style={{
-        width: size,
-        height: size,
+        width: 90,
+        height: 120,
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
         ...style,
       }}
     >
