@@ -874,13 +874,13 @@ export default function ForestScene({
         )}
         </div>
 
-        {/* 缩放百分比显示 */}
+        {/* 缩放百分比显示：放在刷新按钮下方 */}
         {variant === "my" && items.length > 0 && (
           <div
-            className="absolute z-50 pointer-events-none"
+            className="absolute z-40 pointer-events-none"
             style={{
               right: 12,
-              top: 12,
+              top: 56, // 刷新按钮 top-4 ≈ 16px + 高度 ≈ 40px = 56px 下方
               padding: "4px 10px",
               borderRadius: 999,
               background: `${skin.swatch}cc`,
