@@ -383,6 +383,9 @@ function DriftingClouds() {
         { top: 8, delay: 0, duration: 38, scale: 1 },
         { top: 18, delay: 12, duration: 52, scale: 0.7 },
         { top: 5, delay: 26, duration: 44, scale: 1.2 },
+        { top: 12, delay: 6, duration: 46, scale: 0.85 },
+        { top: 22, delay: 20, duration: 50, scale: 0.6 },
+        { top: 4, delay: 32, duration: 42, scale: 1.1 },
       ],
     []
   );
@@ -393,7 +396,7 @@ function DriftingClouds() {
           key={i}
           className="absolute pointer-events-none"
           style={{
-            left: -100,
+            left: -300,
             top: `${c.top}%`,
             color: "rgba(255,255,255,0.7)",
             transform: `scale(${c.scale})`,
@@ -411,9 +414,11 @@ function DriftingClouds() {
 /** 阳光光斑 */
 function Sunbeams() {
   const beams = [
-    { left: 18, top: 22, size: 120, delay: 0 },
-    { left: 55, top: 12, size: 160, delay: 1.5 },
-    { left: 78, top: 32, size: 100, delay: 3 },
+    { left: 12, top: 22, size: 120, delay: 0 },
+    { left: 35, top: 12, size: 160, delay: 1.5 },
+    { left: 55, top: 30, size: 100, delay: 3 },
+    { left: 72, top: 18, size: 140, delay: 0.8 },
+    { left: 88, top: 28, size: 110, delay: 2.2 },
   ];
   return (
     <>
@@ -652,7 +657,7 @@ export default function ForestScene({
       <style>{`
 @keyframes cloudDrift {
           0%   { transform: translateX(0) scale(var(--s, 1)); }
-          100% { transform: translateX(calc(100vw + 200px)) scale(var(--s, 1)); }
+          100% { transform: translateX(calc(200vw + 400px)) scale(var(--s, 1)); }
         }
         @keyframes sunbeamPulse {
           0%, 100% { opacity: 0.5; transform: scale(1); }
@@ -707,36 +712,36 @@ export default function ForestScene({
         {/* 漂浮云朵 */}
         <DriftingClouds />
 
-        {/* 远山（三层叠加，从远到近） */}
+        {/* 远山（三层叠加，从远到近）—— 扩展到整个物理画布宽度（200%×200%） */}
         <svg
           className="absolute inset-x-0 bottom-0 w-full pointer-events-none"
-          viewBox="0 0 1000 220"
+          viewBox="0 0 2000 220"
           preserveAspectRatio="none"
           style={{ height: "85%" }}
         >
-          {/* 最远山：连绵圆润的低矮山脊 */}
+          {/* 最远山：连绵圆润的低矮山脊（横跨整个物理画布） */}
           <path
-            d="M0,180 Q40,150 80,160 Q140,135 200,150 Q260,125 320,145 Q400,120 480,135 Q560,115 640,130 Q720,110 800,135 Q880,125 1000,140 L1000,220 L0,220 Z"
+            d="M0,180 Q40,150 80,160 Q140,135 200,150 Q260,125 320,145 Q400,120 480,135 Q560,115 640,130 Q720,110 800,135 Q880,125 960,140 Q1040,118 1120,140 Q1180,128 1240,145 Q1300,125 1360,142 Q1420,120 1480,135 Q1540,115 1600,130 Q1660,108 1720,128 Q1780,118 1840,135 Q1900,122 1960,138 L2000,142 L2000,220 L0,220 Z"
             fill={skin.swatch}
             opacity={0.14}
           />
-          {/* 中景山：连绵圆润 + 一座不对称多棱角山峰（次峰+主峰+小肩） */}
+          {/* 中景山：连绵圆润 + 多座不对称多棱角山峰 */}
           <path
-            d="M0,200 Q60,170 130,185 Q200,160 280,175 Q360,140 440,170 Q500,158 540,168 L555,148 L570,128 L585,112 L600,100 L615,118 L628,138 L640,160 L660,168 Q740,150 820,170 Q900,160 1000,175 L1000,220 L0,220 Z"
+            d="M0,200 Q60,170 130,185 Q200,160 280,175 Q360,140 440,170 Q500,158 540,168 L555,148 L570,128 L585,112 L600,100 L615,118 L628,138 L640,160 L660,168 Q740,150 820,170 Q880,160 940,178 Q1000,155 1080,172 Q1140,142 1200,168 Q1260,158 1320,172 L1340,148 L1360,128 L1380,108 L1400,92 L1420,112 L1438,135 L1452,158 L1475,168 Q1540,150 1620,170 Q1700,160 1780,175 Q1860,160 1940,170 L2000,175 L2000,220 L0,220 Z"
             fill={skin.swatch}
             opacity={0.22}
           />
-          {/* 近山：圆润丘陵 + 两座不对称多棱角山峰（各有次峰、肩部、岩石碎裂感） */}
+          {/* 近山：圆润丘陵 + 多座不对称多棱角山峰（重复覆盖整个物理画布） */}
           <path
-            d="M0,215 Q60,195 130,205 Q190,185 250,200 Q280,180 300,188 L315,160 L330,138 L345,118 L362,132 L378,150 L395,170 Q420,188 480,205 Q510,195 540,205 Q570,180 590,192 L605,158 L620,138 L635,118 L650,108 L665,128 L680,148 L695,168 Q720,188 770,205 Q800,195 850,205 Q920,195 1000,205 L1000,220 L0,220 Z"
+            d="M0,215 Q60,195 130,205 Q190,185 250,200 Q280,180 300,188 L315,160 L330,138 L345,118 L362,132 L378,150 L395,170 Q420,188 480,205 Q510,195 540,205 Q570,180 590,192 L605,158 L620,138 L635,118 L650,108 L665,128 L680,148 L695,168 Q720,188 770,205 Q800,195 850,205 Q890,180 920,195 L935,168 L950,148 L965,128 L980,118 L995,138 L1010,158 L1025,178 Q1050,195 1100,205 Q1140,195 1180,200 Q1215,180 1240,192 L1255,160 L1270,138 L1285,118 L1300,108 L1315,128 L1330,148 L1345,168 Q1370,188 1420,205 Q1460,195 1500,205 Q1535,180 1555,192 L1570,158 L1585,138 L1600,118 L1615,108 L1630,128 L1645,148 L1660,168 Q1685,188 1740,205 Q1780,195 1820,205 Q1860,180 1880,192 L1895,160 L1910,138 L1925,118 L1940,108 L1955,128 L1970,148 L1985,168 L2000,200 L2000,220 L0,220 Z"
             fill={skin.swatch}
             opacity={0.32}
           />
         </svg>
 
-        {/* 草地 */}
+        {/* 草地（覆盖整个物理画布宽度） */}
         <div
-          className="absolute inset-x-0 bottom-0"
+          className="absolute inset-x-0 bottom-0 pointer-events-none"
           style={{
             height: "45%",
             background: `linear-gradient(180deg, ${skin.swatch}30 0%, ${skin.swatch}50 100%)`,
