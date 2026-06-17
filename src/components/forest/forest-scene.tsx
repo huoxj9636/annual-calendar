@@ -128,6 +128,11 @@ function ForestTree({
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ dx: number; dy: number } | null>(null);
   const startRef = useRef<{ pointerX: number; pointerY: number; itemX: number; itemY: number } | null>(null);
+  // 标记本次按下-抬起是否发生过实际拖动（移动 > 阈值）
+  // 用于拖拽后阻止误触的 click 事件
+  const wasDraggedRef = useRef(false);
+  // 移动距离阈值（像素），超过此值认为是拖动而非点击
+  const DRAG_THRESHOLD_PX = 4;
 
   // 树冠颜色：从主题色到略深渐变
   // 用 mix-blend 不可靠，直接用主色 + alpha 表示深浅
@@ -149,6 +154,7 @@ function ForestTree({
       const itemX = x;
       const itemY = y;
       startRef.current = { pointerX: px, pointerY: py, itemX, itemY };
+      wasDraggedRef.current = false;
       setDragOffset({ dx: 0, dy: 0 });
       setDragging(true);
       btn.setPointerCapture(e.pointerId);
@@ -168,6 +174,17 @@ function ForestTree({
       // bottom: 0% 在画布最底 → 指针向下 py 增大 → bottom 应减小 → dy 应为 - (py 增量取反)
       const dx = px - startRef.current.pointerX;
       const dy = -(py - startRef.current.pointerY);
+      // 用像素距离判断是否真的在拖动（避免抖动被识别为点击失败）
+      const rectForDist = sceneRect.current?.getBoundingClientRect();
+      if (rectForDist) {
+        const dPx = Math.hypot(
+          (px - startRef.current.pointerX) * rectForDist.width / 100,
+          (py - startRef.current.pointerY) * rectForDist.height / 100
+        );
+        if (dPx > DRAG_THRESHOLD_PX) {
+          wasDraggedRef.current = true;
+        }
+      }
       setDragOffset({ dx, dy });
     },
     [dragging, sceneRect]
@@ -212,7 +229,14 @@ function ForestTree({
     <button
       type="button"
       onClick={(e) => {
-        // 拖拽中不触发点击
+        // 如果本次按下-抬起发生过拖动（移动 > 阈值），则不触发点击
+        if (wasDraggedRef.current) {
+          wasDraggedRef.current = false;
+          e.stopPropagation();
+          e.preventDefault();
+          return;
+        }
+        // 拖拽中也不触发点击
         if (dragging) return;
         onClick?.();
       }}
