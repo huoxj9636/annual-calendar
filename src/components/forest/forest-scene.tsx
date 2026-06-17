@@ -320,13 +320,16 @@ function ForestTree({
       }}
       title={`${item.name} · ${stage.label} · ${item.count} 个知识`}
     >
-      {/* focus pulse 光环：在树外圈扩散的高亮圆环 */}
+      {/* focus pulse 光环：围绕树冠中心的扩散高亮圆环 */}
       {focused && (
         <div
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
+          className="absolute left-1/2 -translate-x-1/2 rounded-full pointer-events-none"
           style={{
-            width: sizes.crown * 1.6 * zoom,
-            height: sizes.crown * 1.6 * zoom,
+            // 树冠中心位置（从容器顶部算）：树冠高度的一半
+            top: sizes.crown * 0.5 * treeScale * zoom,
+            transform: "translateY(-50%)",
+            width: sizes.crown * 1.6 * treeScale * zoom,
+            height: sizes.crown * 1.6 * treeScale * zoom,
             border: `2px solid ${skin.swatch}`,
             animation: "focusRing 1.2s ease-out 2",
           }}
@@ -681,7 +684,7 @@ export default function ForestScene({
   // 视口只能看到 100% 视口宽，要让 inner 任意边界对齐视口边界，pan 范围 = 50 / zoom
   const panRange = 50 / zoom;
   const clampPan = useCallback((x: number, y: number) => {
-    const r = 50 / zoom;
+    const r = 100 / zoom; // 放宽到 ±100%，让边缘的树也能居中
     return {
       x: Math.max(-r, Math.min(r, x)),
       y: Math.max(-r, Math.min(r, y)),
