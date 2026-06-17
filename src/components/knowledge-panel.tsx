@@ -53,6 +53,17 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   const [showAddBookmark, setShowAddBookmark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [skinKey, setSkinKey] = useState<string>("");
+  const [panelWidth, setPanelWidth] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // 拖拽调整宽度
+  const handleDragStart = () => setIsDragging(true);
+  const handleDrag = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const newWidth = window.innerWidth - e.clientX;
+    setPanelWidth(Math.max(320, Math.min(800, newWidth)));
+  };
+  const handleDragEnd = () => setIsDragging(false);
 
   // 获取当前主题
   const skin = useMemo(() => {
@@ -181,10 +192,24 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl h-full overflow-y-auto shadow-2xl animate-slide-in-right"
-        style={{ backgroundColor: panelBg }}
+        className="h-full overflow-y-auto shadow-2xl animate-slide-in-right relative"
+        style={{ 
+          backgroundColor: panelBg,
+          width: panelWidth > 0 ? panelWidth : '100%',
+          maxWidth: '800px',
+          minWidth: '320px',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* 拖拽手柄 */}
+        <div
+          className="absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize z-50 hover:bg-black/5 transition-colors"
+          onMouseDown={handleDragStart}
+          onMouseMove={handleDrag}
+          onMouseUp={handleDragEnd}
+          onMouseLeave={handleDragEnd}
+        />
+        
         {/* 头部 */}
         <div
           className="flex items-center justify-between px-6 py-4"
