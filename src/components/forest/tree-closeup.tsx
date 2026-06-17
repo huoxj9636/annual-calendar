@@ -494,7 +494,7 @@ export default function TreeCloseup({
   }, [nodesByType]);
 
   return (
-    <div className="space-y-4">
+    <div className="h-full overflow-y-auto p-5 space-y-4">
       {/* 顶部导航 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

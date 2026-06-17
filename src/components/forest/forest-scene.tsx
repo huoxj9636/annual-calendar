@@ -35,8 +35,10 @@ export type ForestItem = {
 export type ForestSceneProps = {
   items: ForestItem[];
   skin: SkinTheme;
-  /** 高度（默认 360） */
+  /** 高度（默认 360）；当 fillHeight 为 true 时被忽略，使用父容器高度 */
   height?: number;
+  /** 填满父容器高度（用于铺满整个详情页场景） */
+  fillHeight?: boolean;
   /** 点击树木回调 */
   onItemClick?: (id: string) => void;
   /** 选中的 item id（高亮） */
@@ -331,6 +333,7 @@ export default function ForestScene({
   items,
   skin,
   height = 360,
+  fillHeight = false,
   onItemClick,
   selectedId,
   variant = "my",
@@ -356,16 +359,16 @@ export default function ForestScene({
 
   // 关键样式
   const sceneStyle: React.CSSProperties = {
-    height,
-    background: `linear-gradient(180deg, 
-      oklch(0.97 0.02 85) 0%, 
-      oklch(0.94 0.04 95) 35%, 
-      ${skin.swatch}10 75%, 
+    ...(fillHeight ? { height: "100%" } : { height }),
+    background: `linear-gradient(180deg,
+      oklch(0.97 0.02 85) 0%,
+      oklch(0.94 0.04 95) 35%,
+      ${skin.swatch}10 75%,
       ${skin.swatch}25 100%)`,
-    borderRadius: 16,
+    borderRadius: fillHeight ? 0 : 16,
     overflow: "hidden",
     position: "relative",
-    boxShadow: "0 10px 30px -10px rgba(0,0,0,0.15)",
+    boxShadow: fillHeight ? "none" : "0 10px 30px -10px rgba(0,0,0,0.15)",
   };
 
   return (
@@ -396,7 +399,7 @@ export default function ForestScene({
         }
       `}</style>
 
-      <div style={sceneStyle} className="w-full">
+      <div style={sceneStyle} className={fillHeight ? "w-full h-full" : "w-full"}>
         {/* 晨曦太阳 */}
         <div
           className="absolute pointer-events-none"

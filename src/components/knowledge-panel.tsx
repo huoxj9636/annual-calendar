@@ -350,18 +350,17 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         </div>
 
         {/* 内容区 */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-hidden">
           {activeTab === "my" && !selectedTree && (
             <MyForestView
-              trees={trees}
               forestItems={forestItems}
-              stats={stats}
+              totalNodes={stats.totalNodes}
+              totalTrees={stats.totalTrees}
               onSelectTree={(id) => {
                 const t = trees.find((x) => x.id === id);
                 if (t) setSelectedTree(t);
               }}
               onAddTree={() => setShowAddTree(true)}
-              onDeleteTree={handleDeleteTree}
               skin={skin}
             />
           )}
@@ -577,132 +576,90 @@ function TabButton({
   );
 }
 
-/** 我的森林主视图（森林全景 + 统计 + 列表） */
+/** 我的森林主视图：森林全景铺满整个内容区 + 统计 chip + 种新树入口 */
 function MyForestView({
-  trees,
   forestItems,
-  stats,
+  totalNodes,
+  totalTrees,
   onSelectTree,
   onAddTree,
-  onDeleteTree,
   skin,
 }: {
-  trees: KnowledgeTree[];
   forestItems: ForestItem[];
-  stats: { totalTrees: number; totalNodes: number; highestTier: number; highestLabel: string; newThisMonth: number };
+  totalNodes: number;
+  totalTrees: number;
   onSelectTree: (id: string) => void;
   onAddTree: () => void;
-  onDeleteTree: (id: string) => void;
   skin: SkinTheme;
 }) {
   return (
-    <div className="space-y-5">
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="树木" value={stats.totalTrees} unit="棵" skin={skin} icon={<Trees size={14} />} />
-        <StatCard label="知识" value={stats.totalNodes} unit="个" skin={skin} icon={<Sparkles size={14} />} />
-        <StatCard
-          label="最高阶段"
-          value={stats.highestLabel}
-          unit=""
-          skin={skin}
-          mono={false}
-        />
-        <StatCard label="本月新种" value={stats.newThisMonth} unit="棵" skin={skin} icon={<Plus size={14} />} />
-      </div>
+    <div className="relative h-full">
+      {/* 森林全景：铺满整个详情页 */}
+      <ForestScene
+        items={forestItems}
+        skin={skin}
+        variant="my"
+        onItemClick={onSelectTree}
+        fillHeight
+      />
 
-      {/* 森林全景 */}
-      <div>
-        <div className="flex items-center justify-between mb-2 px-1">
-          <div
-            className="text-xs tracking-widest uppercase flex items-center gap-1.5"
+      {/* 左上角统计 chip（玻璃拟态） */}
+      <div
+        className="absolute top-4 left-4 z-10 flex items-center gap-3 px-3.5 py-2 rounded-full"
+        style={{
+          background: "rgba(255,255,255,0.78)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          border: `1px solid ${skin.divider}`,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
+        }}
+      >
+        <div className="flex items-center gap-1.5">
+          <Trees size={14} style={{ color: skin.swatch }} />
+          <span
+            className="font-mono font-semibold text-sm tabular-nums"
+            style={{ color: skin.textPrimary }}
+          >
+            {totalTrees}
+          </span>
+          <span
+            className="text-[11px] tracking-wide"
             style={{ color: skin.textMuted }}
           >
-            <Trees size={12} />
-            Forest Panorama
-          </div>
-          <div
-            className="text-[10px]"
-            style={{ color: skin.textMuted }}
-          >
-            点击树木查看图鉴
-          </div>
+            棵
+          </span>
         </div>
-        <ForestScene
-          items={forestItems}
-          skin={skin}
-          height={400}
-          variant="my"
-          onItemClick={onSelectTree}
-        />
-      </div>
-
-      {/* 树木列表 */}
-      <div>
-        <div className="flex items-center justify-between mb-3 px-1">
-          <div
-            className="text-xs tracking-widest uppercase flex items-center gap-1.5"
+        <div className="w-px h-3.5" style={{ background: skin.divider }} />
+        <div className="flex items-center gap-1.5">
+          <Sparkles size={14} style={{ color: skin.swatch }} />
+          <span
+            className="font-mono font-semibold text-sm tabular-nums"
+            style={{ color: skin.textPrimary }}
+          >
+            {totalNodes}
+          </span>
+          <span
+            className="text-[11px] tracking-wide"
             style={{ color: skin.textMuted }}
           >
-            <Sparkles size={12} />
-            My Trees
-          </div>
-          <button
-            onClick={onAddTree}
-            className="text-xs px-3 py-1.5 rounded-full flex items-center gap-1 transition-transform hover:scale-105"
-            style={{
-              background: skin.swatch,
-              color: "#fff",
-            }}
-          >
-            <Plus size={12} />
-            种新树
-          </button>
+            个
+          </span>
         </div>
-
-        {trees.length === 0 ? (
-          <div
-            className="p-10 rounded-lg text-center"
-            style={{
-              background: `linear-gradient(135deg, ${skin.swatch}08, ${skin.swatch}04)`,
-              border: `1px dashed ${skin.swatch}40`,
-            }}
-          >
-            <div
-              className="text-base font-medium mb-1"
-              style={{
-                color: skin.textPrimary,
-                fontFamily: "var(--font-serif)",
-              }}
-            >
-              森林还在等待第一位园丁
-            </div>
-            <div className="text-xs" style={{ color: skin.textSecondary }}>
-              点一下「种新树」，把你想探索的方向变成一片小树
-            </div>
-            <button
-              onClick={onAddTree}
-              className="mt-4 px-4 py-2 rounded-full inline-flex items-center gap-1.5 text-sm font-medium"
-              style={{ background: skin.swatch, color: "#fff" }}
-            >
-              <Plus size={14} />
-              种下第一棵树
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {trees.map((tree) => (
-              <TreeCard
-                key={tree.id}
-                tree={tree}
-                onSelect={() => onSelectTree(tree.id)}
-                onDelete={() => onDeleteTree(tree.id)}
-                skin={skin}
-              />
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* 右下角"种新树"按钮 */}
+      <button
+        onClick={onAddTree}
+        className="absolute bottom-6 right-6 z-10 flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-medium transition-all hover:scale-105 active:scale-95"
+        style={{
+          background: skin.swatch,
+          color: "#fff",
+          boxShadow: `0 8px 24px ${skin.swatch}55`,
+        }}
+      >
+        <Plus size={14} />
+        种新树
+      </button>
     </div>
   );
 }

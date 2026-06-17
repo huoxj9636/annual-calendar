@@ -52,7 +52,7 @@ export default function FriendsForest({
   }));
 
   return (
-    <div className="space-y-4">
+    <div className="h-full overflow-y-auto p-5 space-y-4">
       {/* 顶部统计 */}
       <div
         className="flex items-center justify-between p-4 rounded-lg"
