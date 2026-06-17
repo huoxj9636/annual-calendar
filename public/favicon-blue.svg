@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
   <!-- 医疗蓝圆角方形背景 -->
   <rect x="0" y="0" width="128" height="128" rx="20" ry="20" fill="#4A90D9"/>
-  <!-- 大数字30 -->
-  <text x="64" y="78" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white">30</text>
+  <!-- 大数字30 - 字体加大 -->
+  <text x="64" y="88" text-anchor="middle" font-family="Arial, sans-serif" font-size="64" font-weight="bold" fill="white">30</text>
 </svg>
