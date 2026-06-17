@@ -143,13 +143,23 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
 
   const handleAddTree = () => {
     if (!newTree.name.trim()) return;
+    const now = Date.now();
+    const treeId = `tree-${now}`;
+    // 每棵新树都先种下 5 个"地基"节点（根/干/枝/叶/果 各一），让树一落地便茁壮
+    const baseNodes: KnowledgeNode[] = [
+      { id: `${treeId}-root`, type: "root", title: `${newTree.name} · 根`, content: "底层认知与核心原理", createdAt: now },
+      { id: `${treeId}-trunk`, type: "trunk", title: `${newTree.name} · 干`, content: "核心目标与方向", createdAt: now + 1 },
+      { id: `${treeId}-branch`, type: "branch", title: `${newTree.name} · 枝`, content: "实现路径与方法", createdAt: now + 2 },
+      { id: `${treeId}-leaf`, type: "leaf", title: `${newTree.name} · 叶`, content: "具体执行与碎片知识", createdAt: now + 3 },
+      { id: `${treeId}-fruit`, type: "fruit", title: `${newTree.name} · 果`, content: "成果产出与价值兑现", createdAt: now + 4 },
+    ];
     const tree: KnowledgeTree = {
-      id: `tree-${Date.now()}`,
+      id: treeId,
       name: newTree.name,
       industry: newTree.industry || newTree.name,
       description: newTree.description,
-      nodes: [],
-      createdAt: Date.now(),
+      nodes: baseNodes,
+      createdAt: now,
     };
     setTrees([...trees, tree]);
     setNewTree({ name: "", industry: "", description: "" });
