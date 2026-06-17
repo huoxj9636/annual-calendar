@@ -388,7 +388,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         </div>
 
         {/* 内容区 */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1" style={{ overflow: "visible" }}>
           {activeTab === "my" && !selectedTree && (
             <MyForestView
               forestItems={forestItems}
