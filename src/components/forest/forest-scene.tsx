@@ -30,6 +30,8 @@ export type ForestItem = {
   speciesColorDeep?: string;
   /** 可选：自定义位置（画布坐标，百分比 0-100）；未提供时使用自动布局 */
   position?: { x: number; y: number };
+  /** 可选：自定义缩放比例（滚轮缩放），默认 1 */
+  scale?: number;
 };
 
 export type ForestSceneProps = {
@@ -49,6 +51,8 @@ export type ForestSceneProps = {
   variant?: "my" | "friends";
   /** 拖动树木结束回调（持久化新位置） */
   onItemPositionChange?: (id: string, position: { x: number; y: number }) => void;
+  /** 滚轮缩放树木回调（持久化新缩放） */
+  onItemScaleChange?: (id: string, scale: number) => void;
   /** 是否允许拖拽（默认 true，仅 my 变体可拖） */
   draggable?: boolean;
   /**
@@ -109,6 +113,7 @@ function ForestTree({
   onClick,
   onDelete,
   onPositionChange,
+  onScaleChange,
   draggable,
   skin,
   variant,
@@ -126,6 +131,7 @@ function ForestTree({
   onClick?: () => void;
   onDelete?: () => void;
   onPositionChange?: (position: { x: number; y: number }) => void;
+  onScaleChange?: (scale: number) => void;
   draggable?: boolean;
   skin: SkinTheme;
   variant: "my" | "friends";
@@ -140,6 +146,27 @@ function ForestTree({
   const stage = getStage(item.count);
   const sizes = TREE_HEIGHTS[stage.size] || TREE_HEIGHTS[1];
   const accent = item.accentColor || skin.swatch;
+
+  // 树的缩放范围（滚轮放大缩小）
+  const SCALE_MIN = 0.5;
+  const SCALE_MAX = 2.0;
+  const SCALE_STEP = 0.1;
+  const currentScale = item.scale ?? 1;
+
+  // 滚轮放大缩小树
+  const handleWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      if (!onScaleChange) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = e.deltaY > 0 ? -SCALE_STEP : SCALE_STEP;
+      const newScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, currentScale + delta));
+      if (newScale !== currentScale) {
+        onScaleChange(newScale);
+      }
+    },
+    [onScaleChange, currentScale]
+  );
 
   // 计算指针位置：优先用 inner（物理画布）rect，让 px/py 和 x/y 同坐标系
   // 这样树在 inner 内的位置可以拖到整个 0-100% 范围（视觉上覆盖整个可视区）
@@ -301,13 +328,14 @@ function ForestTree({
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
+      onWheel={handleWheel}
       className="absolute group focus:outline-none select-none"
       style={{
         left: `${displayX}%`,
         bottom: `${displayY}%`,
         transform: "translateX(-50%)",
-        width: (sizes.crown + 16) * treeScale * zoom,
-        height: (sizes.h + 8) * treeScale * zoom,
+        width: (sizes.crown + 16) * treeScale * zoom * currentScale,
+        height: (sizes.h + 8) * treeScale * zoom * currentScale,
         cursor: draggable ? (dragging ? "grabbing" : "grab") : onClick ? "pointer" : "default",
         touchAction: "none",
         zIndex: dragging ? 50 : selected ? 10 : 1,
@@ -321,10 +349,10 @@ function ForestTree({
           className="absolute left-1/2 -translate-x-1/2 rounded-full pointer-events-none"
           style={{
             // 树冠中心位置（从容器顶部算）：树冠高度的一半
-            top: sizes.crown * 0.5 * treeScale * zoom,
+            top: sizes.crown * 0.5 * treeScale * zoom * currentScale,
             transform: "translateY(-50%)",
-            width: sizes.crown * 1.6 * treeScale * zoom,
-            height: sizes.crown * 1.6 * treeScale * zoom,
+            width: sizes.crown * 1.6 * treeScale * zoom * currentScale,
+            height: sizes.crown * 1.6 * treeScale * zoom * currentScale,
             border: `2px solid ${skin.swatch}`,
             animation: "focusRing 1.2s ease-out 2",
           }}
@@ -335,8 +363,8 @@ function ForestTree({
         className="absolute left-1/2 -translate-x-1/2 rounded-full blur-[2px]"
         style={{
           bottom: -2,
-          width: sizes.crown * 0.7 * zoom,
-          height: 6 * zoom,
+          width: sizes.crown * 0.7 * zoom * currentScale,
+          height: 6 * zoom * currentScale,
           background: "rgba(0,0,0,0.18)",
         }}
       />
@@ -345,8 +373,8 @@ function ForestTree({
         className="absolute left-1/2 -translate-x-1/2"
         style={{
           bottom: 0,
-          width: sizes.crown * zoom,
-          height: sizes.h * zoom,
+          width: sizes.crown * zoom * currentScale,
+          height: sizes.h * zoom * currentScale,
         }}
       >
         {/* 波纹树（真实树木：有云朵状树冠 + 梯形树干 + 树皮纹路） */}
@@ -354,8 +382,8 @@ function ForestTree({
           className="absolute left-1/2 -translate-x-1/2"
           style={{
             bottom: 0,
-            width: sizes.crown * 1.4 * zoom,
-            height: (sizes.trunk + sizes.crown) * zoom,
+            width: sizes.crown * 1.4 * zoom * currentScale,
+            height: (sizes.trunk + sizes.crown) * zoom * currentScale,
             transition: "transform 200ms ease-out",
           }}
         >
@@ -374,8 +402,8 @@ function ForestTree({
         <div
           className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap flex items-center gap-1.5 transition-all"
           style={{
-            top: -22 * zoom,
-            fontSize: 11 * zoom,
+            top: -22 * zoom * currentScale,
+            fontSize: 11 * zoom * currentScale,
             fontWeight: 500,
             padding: "2px 8px",
             borderRadius: 999,
@@ -403,8 +431,12 @@ function ForestTree({
                 e.stopPropagation();
               }}
               aria-label="拔除这棵树"
-              className="ml-0.5 w-4 h-4 rounded-full flex items-center justify-center pointer-events-auto transition-colors"
-              style={{ background: "rgba(255,255,255,0.18)" }}
+              className="ml-0.5 rounded-full flex items-center justify-center pointer-events-auto transition-colors"
+              style={{ 
+                background: "rgba(255,255,255,0.18)",
+                width: 16 * currentScale,
+                height: 16 * currentScale,
+              }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background = "#dc2626";
               }}
@@ -413,7 +445,7 @@ function ForestTree({
               }}
               title="拔除这棵树"
             >
-              <X size={10} strokeWidth={2.5} />
+              <X size={10 * currentScale} strokeWidth={2.5} />
             </button>
           )}
         </div>
@@ -448,6 +480,7 @@ export default function ForestScene({
   onItemClick,
   onItemDelete,
   onItemPositionChange,
+  onItemScaleChange,
   selectedId,
   variant = "my",
   draggable = true,
@@ -655,6 +688,11 @@ export default function ForestScene({
             onPositionChange={
               onItemPositionChange
                 ? (p) => onItemPositionChange(item.id, p)
+                : undefined
+            }
+            onScaleChange={
+              onItemScaleChange
+                ? (s) => onItemScaleChange(item.id, s)
                 : undefined
             }
             draggable={draggable && variant === "my"}

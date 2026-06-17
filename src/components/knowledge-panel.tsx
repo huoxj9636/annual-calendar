@@ -67,6 +67,8 @@ export interface KnowledgeTree {
   createdAt: number;
   /** 可选：自定义画布位置（拖拽后的位置，百分比 0-100） */
   position?: { x: number; y: number };
+  /** 可选：自定义缩放（滚轮放大缩小，默认 1） */
+  scale?: number;
 }
 
 export interface Bookmark {
@@ -287,6 +289,15 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
     []
   );
 
+  const handleTreeScaleChange = useCallback(
+    (id: string, scale: number) => {
+      setTrees((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, scale } : t))
+      );
+    },
+    []
+  );
+
   // 统计数据
   const stats = useMemo(() => {
     const totalNodes = trees.reduce((sum, t) => sum + t.nodes.length, 0);
@@ -418,6 +429,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               onAddTree={() => setShowAddTree(true)}
               onDeleteTree={setPendingDeleteTreeId}
               onTreePositionChange={handleTreePositionChange}
+              onTreeScaleChange={handleTreeScaleChange}
               skin={skin}
             />
           )}
@@ -704,6 +716,7 @@ function MyForestView({
   onAddTree,
   onDeleteTree,
   onTreePositionChange,
+  onTreeScaleChange,
   skin,
 }: {
   forestItems: ForestItem[];
@@ -713,6 +726,7 @@ function MyForestView({
   onAddTree: () => void;
   onDeleteTree: (id: string) => void;
   onTreePositionChange: (id: string, position: { x: number; y: number }) => void;
+  onTreeScaleChange: (id: string, scale: number) => void;
   skin: SkinTheme;
 }) {
   // 新增树时自动重置画布到中心：pan=0 让 position (50,50) 的新树正好在可视区中央
@@ -751,6 +765,7 @@ function MyForestView({
         onItemClick={onSelectTree}
         onItemDelete={onDeleteTree}
         onItemPositionChange={onTreePositionChange}
+        onItemScaleChange={onTreeScaleChange}
         fillHeight
         resetTrigger={panResetKey}
         focusTreeId={focusTreeId}
