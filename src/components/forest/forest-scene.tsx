@@ -9,16 +9,7 @@
  */
 
 import { useMemo } from "react";
-import {
-  Sprout,
-  TreePine,
-  TreeDeciduous,
-  TreePalm,
-  Cherry,
-  Trees,
-  Cloud,
-  Sun,
-} from "lucide-react";
+import { Cloud, Sun, X, Trees } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 
 export type ForestItem = {
@@ -41,6 +32,8 @@ export type ForestSceneProps = {
   fillHeight?: boolean;
   /** 点击树木回调 */
   onItemClick?: (id: string) => void;
+  /** 删除树木回调（提供时悬停会出现删除按钮） */
+  onItemDelete?: (id: string) => void;
   /** 选中的 item id（高亮） */
   selectedId?: string;
   /** 变体：my = 我的森林，friends = 好友森林 */
@@ -56,12 +49,12 @@ export type ForestSceneProps = {
  * 16+ ：参天 Trees
  */
 function getStage(count: number) {
-  if (count === 0) return { tier: 0, label: "空地", size: 0, Icon: Sprout };
-  if (count <= 2) return { tier: 1, label: "幼苗", size: 1, Icon: Sprout };
-  if (count <= 7) return { tier: 2, label: "小树", size: 2, Icon: TreePine };
-  if (count <= 15) return { tier: 3, label: "成树", size: 3, Icon: TreeDeciduous };
-  if (count <= 30) return { tier: 4, label: "参天", size: 4, Icon: Cherry };
-  return { tier: 5, label: "古木", size: 5, Icon: Trees };
+  if (count === 0) return { tier: 0, label: "空地", size: 0 };
+  if (count <= 2) return { tier: 1, label: "幼苗", size: 1 };
+  if (count <= 7) return { tier: 2, label: "小树", size: 2 };
+  if (count <= 15) return { tier: 3, label: "成树", size: 3 };
+  if (count <= 30) return { tier: 4, label: "参天", size: 4 };
+  return { tier: 5, label: "古木", size: 5 };
 }
 
 /** 简易 hash，用于稳定的位置抖动 */
@@ -89,6 +82,7 @@ function ForestTree({
   y,
   selected,
   onClick,
+  onDelete,
   skin,
   variant,
   index,
@@ -98,6 +92,7 @@ function ForestTree({
   y: number;
   selected: boolean;
   onClick?: () => void;
+  onDelete?: () => void;
   skin: SkinTheme;
   variant: "my" | "friends";
   index: number;
@@ -112,7 +107,6 @@ function ForestTree({
   // 用 mix-blend 不可靠，直接用主色 + alpha 表示深浅
   const crownOpacity = 0.55 + stage.size * 0.05; // 越大越浓
   const crownDeep = 0.85 + stage.size * 0.03;
-  const Icon = stage.Icon;
 
   return (
     <button
@@ -152,61 +146,57 @@ function ForestTree({
             : undefined,
         }}
       >
-        {/* 树干 */}
+        {/* 波纹树（真实树木：有云朵状树冠 + 梯形树干 + 树皮纹路） */}
         <div
           className="absolute left-1/2 -translate-x-1/2"
           style={{
             bottom: 0,
-            width: Math.max(6, sizes.trunk * 0.18),
-            height: sizes.trunk,
-            background: "linear-gradient(90deg, #4a2f1a 0%, #6B4423 45%, #4a2f1a 100%)",
-            borderRadius: "2px 2px 1px 1px",
-          }}
-        />
-        {/* 树冠 */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center"
-          style={{
-            bottom: sizes.trunk - sizes.crown * 0.08,
-            width: sizes.crown,
-            height: sizes.crown,
-            background: `radial-gradient(circle at 35% 30%, ${accent}55 0%, ${accent}aa ${30 * crownOpacity}% , ${accent} ${crownDeep * 100}%)`,
-            borderRadius: "50%",
-            boxShadow: `0 4px 16px ${accent}44, inset 0 -8px 12px ${accent}66`,
-            border: `1px solid ${accent}55`,
-            transition: "transform 200ms ease-out, box-shadow 200ms ease-out",
+            width: sizes.crown * 1.4,
+            height: sizes.trunk + sizes.crown,
+            transition: "transform 200ms ease-out",
           }}
         >
-          {variant === "friends" && item.badge ? (
-            <span
-              className="text-white font-semibold"
-              style={{ fontSize: sizes.crown * 0.32 }}
-            >
-              {item.badge}
-            </span>
-          ) : (
-            <Icon
-              size={sizes.crown * 0.45}
-              strokeWidth={1.4}
-              style={{ color: "rgba(255,255,255,0.85)" }}
-            />
-          )}
+          <WaveTree
+            tier={stage.tier}
+            accent={accent}
+            badge={variant === "friends" ? item.badge : undefined}
+            isFriends={variant === "friends"}
+          />
         </div>
 
         {/* 阶段/数量徽章（仅悬停显示） */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none"
+          className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none flex items-center gap-1.5"
           style={{
             bottom: sizes.h + 4,
             fontSize: 11,
-            padding: "2px 8px",
+            padding: "3px 6px 3px 10px",
             borderRadius: 999,
             background: "rgba(0,0,0,0.6)",
             color: "#fff",
             letterSpacing: "0.04em",
           }}
         >
-          {item.name} · {item.count}
+          <span>{item.name} · {item.count}</span>
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="ml-0.5 w-4 h-4 rounded-full flex items-center justify-center pointer-events-auto transition-colors"
+              style={{ background: "rgba(255,255,255,0.18)" }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "#dc2626";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.18)";
+              }}
+              title="拔除这棵树"
+            >
+              <X size={10} strokeWidth={2.5} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -227,43 +217,114 @@ function ForestTree({
   );
 }
 
-/** 飘落叶 */
-function FallingLeaves({ skin }: { skin: SkinTheme }) {
-  const leaves = useMemo(
-    () =>
-      Array.from({ length: 6 }).map((_, i) => ({
-        left: 5 + (i * 17) % 90,
-        delay: i * 1.7,
-        duration: 9 + (i % 3) * 2,
-        size: 8 + (i % 3) * 3,
-        rotateDir: i % 2 === 0 ? 1 : -1,
-        key: i,
-      })),
-    []
-  );
+/** 波纹树：用多个不规则圆形叠加形成云朵状树冠 + 梯形树干 + 树皮纹路
+ *  size 1-2 幼苗/小树：3-4 个云朵
+ *  size 3-4 成树/参天：5-6 个云朵 + 树枝分叉
+ *  size 5   古木    ：7 个云朵 + 复杂分叉 + 厚重树干
+ */
+function WaveTree({
+  tier,
+  accent,
+  badge,
+  isFriends,
+}: {
+  tier: number;
+  accent: string;
+  badge?: string;
+  isFriends?: boolean;
+}) {
+  // 树冠云朵数量随 tier 增长
+  const blobCount = Math.min(3 + tier, 7);
+  // 7 个不规则云朵位置（手工调过，呈现真实树木的不规则边缘）
+  const allBlobs = [
+    { cx: 30, cy: 18, r: 11 },   // 顶部主冠
+    { cx: 16, cy: 24, r: 9 },    // 左侧
+    { cx: 44, cy: 24, r: 10 },   // 右侧
+    { cx: 24, cy: 30, r: 8 },    // 中左下
+    { cx: 36, cy: 30, r: 8.5 },  // 中右下
+    { cx: 8,  cy: 32, r: 6 },    // 左外侧
+    { cx: 52, cy: 32, r: 6.5 },  // 右外侧
+  ];
+  const blobs = allBlobs.slice(0, blobCount);
+
+  // 树干梯形（上窄下宽，更像真实树干）
+  const trunkTopW = 2.4 + tier * 0.5;
+  const trunkBotW = trunkTopW + 1.6 + tier * 0.55;
+  const trunkH = 6 + tier * 3.2;
+  const trunkY = 32;
+  const trunkBotY = trunkY + trunkH;
+
   return (
-    <>
-      {leaves.map((l) => (
-        <div
-          key={l.key}
-          className="absolute pointer-events-none"
-          style={{
-            left: `${l.left}%`,
-            top: -20,
-            width: l.size,
-            height: l.size,
-            color: "#D4A574",
-            opacity: 0.7,
-            animation: `leafFall ${l.duration}s linear ${l.delay}s infinite`,
-            transformOrigin: "center",
-          }}
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C8 6 4 10 4 14a8 8 0 0016 0c0-4-4-8-8-12z" />
-          </svg>
-        </div>
+    <svg
+      viewBox="0 0 60 60"
+      width="100%"
+      height="100%"
+      style={{ display: "block" }}
+    >
+      {/* 地面投影 */}
+      <ellipse cx="30" cy={trunkBotY + 1.5} rx="13" ry="1.6" fill="rgba(0,0,0,0.15)" />
+
+      {/* 树干（梯形） */}
+      <path
+        d={`M${30 - trunkTopW / 2},${trunkY} L${30 + trunkTopW / 2},${trunkY} L${30 + trunkBotW / 2},${trunkBotY} L${30 - trunkBotW / 2},${trunkBotY} Z`}
+        fill="#6B4423"
+      />
+      {/* 树皮纹路（3 条竖向暗线 + 1-2 条横向断纹） */}
+      <line x1="28" y1={trunkY + 1} x2="28" y2={trunkBotY - 0.5} stroke="#3D2415" strokeWidth="0.35" opacity="0.7" />
+      <line x1="30" y1={trunkY + 1} x2="30" y2={trunkBotY - 0.5} stroke="#3D2415" strokeWidth="0.5" opacity="0.85" />
+      <line x1="32" y1={trunkY + 1} x2="32" y2={trunkBotY - 0.5} stroke="#3D2415" strokeWidth="0.35" opacity="0.7" />
+      {tier >= 3 && (
+        <>
+          <line x1="27" y1={trunkY + trunkH * 0.45} x2="33" y2={trunkY + trunkH * 0.45} stroke="#3D2415" strokeWidth="0.3" opacity="0.5" />
+          <line x1="27.5" y1={trunkY + trunkH * 0.7} x2="32.5" y2={trunkY + trunkH * 0.7} stroke="#3D2415" strokeWidth="0.3" opacity="0.5" />
+        </>
+      )}
+
+      {/* 树枝（Y 形分叉，tier>=3 出现） */}
+      {tier >= 3 && (
+        <g stroke="#5C3818" strokeWidth="0.7" fill="none" strokeLinecap="round">
+          <path d={`M30,${trunkY + trunkH * 0.45} L24,${trunkY + trunkH * 0.2} L21,${trunkY + trunkH * 0.12}`} />
+          <path d={`M30,${trunkY + trunkH * 0.45} L36,${trunkY + trunkH * 0.2} L39,${trunkY + trunkH * 0.12}`} />
+        </g>
+      )}
+      {tier >= 4 && (
+        <g stroke="#5C3818" strokeWidth="0.6" fill="none" strokeLinecap="round">
+          <path d={`M30,${trunkY + trunkH * 0.7} L22,${trunkY + trunkH * 0.55}`} />
+          <path d={`M30,${trunkY + trunkH * 0.7} L38,${trunkY + trunkH * 0.55}`} />
+        </g>
+      )}
+
+      {/* 树冠：多个不规则云朵叠加，每片略偏移 + 略透明（营造云层感） */}
+      {blobs.map((b, i) => (
+        <circle
+          key={i}
+          cx={b.cx}
+          cy={b.cy}
+          r={b.r}
+          fill={accent}
+          opacity={0.93 - i * 0.045}
+        />
       ))}
-    </>
+
+      {/* 树冠高光（左上角小椭圆，体现阳光打在树上的反光） */}
+      <ellipse cx="20" cy="16" rx="4" ry="2.2" fill="rgba(255,255,255,0.22)" />
+      <ellipse cx="16" cy="22" rx="2" ry="1.2" fill="rgba(255,255,255,0.14)" />
+
+      {/* 朋友森林：把首字母作为徽章浮在树冠上 */}
+      {isFriends && badge && (
+        <text
+          x="30"
+          y="32"
+          textAnchor="middle"
+          fill="white"
+          fontSize="11"
+          fontWeight="700"
+          style={{ filter: "drop-shadow(0 0 2px rgba(0,0,0,0.4))" }}
+        >
+          {badge}
+        </text>
+      )}
+    </svg>
   );
 }
 
@@ -335,6 +396,7 @@ export default function ForestScene({
   height = 360,
   fillHeight = false,
   onItemClick,
+  onItemDelete,
   selectedId,
   variant = "my",
 }: ForestSceneProps) {
@@ -377,13 +439,6 @@ export default function ForestScene({
         @keyframes treeSway {
           0%   { transform: translateX(-50%) rotate(-1.4deg); }
           100% { transform: translateX(-50%) rotate(1.4deg); }
-        }
-        @keyframes leafFall {
-          0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-          8%   { opacity: 0.7; }
-          50%  { transform: translate(40px, 200px) rotate(180deg); }
-          92%  { opacity: 0.6; }
-          100% { transform: translate(-20px, 480px) rotate(360deg); opacity: 0; }
         }
         @keyframes cloudDrift {
           0%   { transform: translateX(0) scale(var(--s, 1)); }
@@ -430,15 +485,15 @@ export default function ForestScene({
             fill={skin.swatch}
             opacity={0.14}
           />
-          {/* 中景山：圆润起伏 + 一座尖峰点缀 */}
+          {/* 中景山：连绵圆润 + 一座不对称多棱角山峰（次峰+主峰+小肩） */}
           <path
-            d="M0,200 Q60,170 130,185 Q200,160 280,175 Q360,140 440,170 Q520,150 600,165 L640,88 L680,165 Q740,145 820,170 Q900,160 1000,175 L1000,220 L0,220 Z"
+            d="M0,200 Q60,170 130,185 Q200,160 280,175 Q360,140 440,170 Q500,158 540,168 L555,148 L570,128 L585,112 L600,100 L615,118 L628,138 L640,160 L660,168 Q740,150 820,170 Q900,160 1000,175 L1000,220 L0,220 Z"
             fill={skin.swatch}
             opacity={0.22}
           />
-          {/* 近山：圆润丘陵 + 两座明显尖峰 */}
+          {/* 近山：圆润丘陵 + 两座不对称多棱角山峰（各有次峰、肩部、岩石碎裂感） */}
           <path
-            d="M0,215 Q60,195 130,205 Q190,185 250,200 Q300,170 340,195 L380,118 L420,200 Q480,185 540,205 Q600,175 650,200 L700,92 L740,200 Q790,185 850,205 Q920,195 1000,205 L1000,220 L0,220 Z"
+            d="M0,215 Q60,195 130,205 Q190,185 250,200 Q280,180 300,188 L315,160 L330,138 L345,118 L362,132 L378,150 L395,170 Q420,188 480,205 Q510,195 540,205 Q570,180 590,192 L605,158 L620,138 L635,118 L650,108 L665,128 L680,148 L695,168 Q720,188 770,205 Q800,195 850,205 Q920,195 1000,205 L1000,220 L0,220 Z"
             fill={skin.swatch}
             opacity={0.32}
           />
@@ -457,9 +512,6 @@ export default function ForestScene({
         {/* 阳光光斑 */}
         <Sunbeams />
 
-        {/* 飘落叶 */}
-        <FallingLeaves skin={skin} />
-
         {/* 树木 */}
         {layout.map(({ item, x, y }, i) => (
           <ForestTree
@@ -469,6 +521,7 @@ export default function ForestScene({
             y={y}
             selected={item.id === selectedId}
             onClick={onItemClick ? () => onItemClick(item.id) : undefined}
+            onDelete={onItemDelete ? () => onItemDelete(item.id) : undefined}
             skin={skin}
             variant={variant}
             index={i}

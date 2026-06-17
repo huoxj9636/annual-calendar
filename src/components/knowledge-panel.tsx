@@ -15,6 +15,7 @@ import {
   Users,
   X,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import ForestScene, { type ForestItem } from "./forest/forest-scene";
@@ -74,6 +75,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   const [showAddTree, setShowAddTree] = useState(false);
   const [showAddNode, setShowAddNode] = useState<NodeType | null>(null);
   const [showAddBookmark, setShowAddBookmark] = useState(false);
+  const [pendingDeleteTreeId, setPendingDeleteTreeId] = useState<string | null>(null);
 
   // 表单状态
   const [newTree, setNewTree] = useState({ name: "", industry: "", description: "" });
@@ -167,7 +169,13 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   };
 
   const handleDeleteTree = (id: string) => {
-    if (!confirm("确定移除这棵树吗？所有知识将一并消失。")) return;
+    // 触发 Modal 确认
+    setPendingDeleteTreeId(id);
+  };
+
+  const confirmDeleteTree = () => {
+    if (!pendingDeleteTreeId) return;
+    const id = pendingDeleteTreeId;
     const next = trees.filter((t) => t.id !== id);
     setTrees(next);
     if (selectedTree?.id === id) {
@@ -176,6 +184,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
     if (next.length === 0) {
       localStorage.removeItem("knowledge-trees");
     }
+    setPendingDeleteTreeId(null);
   };
 
   const handleAddNode = () => {
@@ -371,6 +380,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
                 if (t) setSelectedTree(t);
               }}
               onAddTree={() => setShowAddTree(true)}
+              onDeleteTree={setPendingDeleteTreeId}
               skin={skin}
             />
           )}
@@ -540,6 +550,34 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         </Modal>
       )}
 
+      {/* 删除树确认 */}
+      {pendingDeleteTreeId && (
+        <Modal
+          title="拔除这棵树"
+          onClose={() => setPendingDeleteTreeId(null)}
+          skin={skin}
+          icon={<Trash2 size={16} />}
+        >
+          <div className="space-y-4">
+            <p className="text-sm leading-relaxed" style={{ color: skin.textPrimary }}>
+              确定要拔除「
+              <span style={{ color: skin.swatch, fontWeight: 600 }}>
+                {trees.find((t) => t.id === pendingDeleteTreeId)?.name ?? ""}
+              </span>
+              」吗？此操作不可恢复，树上所有的知识节点会一并消失。
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button onClick={() => setPendingDeleteTreeId(null)} variant="ghost" skin={skin}>
+                取消
+              </Button>
+              <Button onClick={confirmDeleteTree} variant="danger" skin={skin}>
+                拔除
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
     </div>
   );
 }
@@ -593,6 +631,7 @@ function MyForestView({
   totalTrees,
   onSelectTree,
   onAddTree,
+  onDeleteTree,
   skin,
 }: {
   forestItems: ForestItem[];
@@ -600,6 +639,7 @@ function MyForestView({
   totalTrees: number;
   onSelectTree: (id: string) => void;
   onAddTree: () => void;
+  onDeleteTree: (id: string) => void;
   skin: SkinTheme;
 }) {
   return (
@@ -610,6 +650,7 @@ function MyForestView({
         skin={skin}
         variant="my"
         onItemClick={onSelectTree}
+        onItemDelete={onDeleteTree}
         fillHeight
       />
 
@@ -965,17 +1006,23 @@ function Button({
 }: {
   onClick: () => void;
   children: React.ReactNode;
-  variant?: "primary" | "ghost";
+  variant?: "primary" | "ghost" | "danger";
   skin: SkinTheme;
 }) {
+  const isPrimary = variant === "primary";
+  const isDanger = variant === "danger";
   return (
     <button
       onClick={onClick}
       className="px-4 py-2 rounded text-sm transition-all hover:scale-105"
       style={{
-        background: variant === "primary" ? skin.swatch : "transparent",
-        color: variant === "primary" ? "#fff" : skin.textPrimary,
-        border: variant === "primary" ? "none" : `1px solid ${skin.divider}`,
+        background: isPrimary
+          ? skin.swatch
+          : isDanger
+            ? "#dc2626"
+            : "transparent",
+        color: isPrimary || isDanger ? "#fff" : skin.textPrimary,
+        border: isPrimary || isDanger ? "none" : `1px solid ${skin.divider}`,
       }}
     >
       {children}
