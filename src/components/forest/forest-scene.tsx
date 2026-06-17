@@ -855,6 +855,7 @@ export default function ForestScene({
             skin={skin}
             variant={variant}
             index={i}
+            zoom={zoom}
             sceneRect={sceneRef}
           />
           </div>
