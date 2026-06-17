@@ -596,8 +596,11 @@ export default function ForestScene({
       const h = rect.height > 0 ? rect.height : 360;
       const dxPct = (dx / w) * 100;
       const dyPct = (dy / h) * 100;
+      // 拖动方向 = 画布内容跟随手指（drag mode）
+      // 向左拖 (dx<0) → panX 增大 → translate(-panX%) 内层向左移 → 看到画布右边内容
+      // 向上拖 (dy<0) → panY 增大 → translate(-panY%) 内层向上移 → 看到画布下方内容
       setPan(
-        clampPan(panStartRef.current.panX + dxPct, panStartRef.current.panY + dyPct)
+        clampPan(panStartRef.current.panX - dxPct, panStartRef.current.panY - dyPct)
       );
     },
     [panning, clampPan]
