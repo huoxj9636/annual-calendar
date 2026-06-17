@@ -676,7 +676,6 @@ export default function ForestScene({
     borderRadius: fillHeight ? 0 : 16,
     overflow: "hidden",
     position: "relative",
-    boxShadow: fillHeight ? "none" : "0 4px 20px -8px rgba(0,0,0,0.1)",
   };
 
   return (
