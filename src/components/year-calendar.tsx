@@ -20,6 +20,7 @@ import InsightPanel from '@/components/insight-panel';
 import { AnalogClock } from '@/components/analog-clock';
 import TrackPanel from '@/components/track-panel';
 import DailyReview from '@/components/daily-review';
+import KnowledgePanel from '@/components/knowledge-panel';
 import {
   precomputeYearData,
   getTwelveWeekBlocks,
@@ -78,6 +79,7 @@ export default function YearCalendar() {
   const scrollTimeout = useRef<ReturnType<typeof setTimeout>>(null);
   const timelineOpenRef = useRef(false);
   const [showLifeCalendar, setShowLifeCalendar] = useState(false);
+  const [showKnowledge, setShowKnowledge] = useState(false);
   const [birthYear, setBirthYear] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('calendar-birth-year');
@@ -1649,6 +1651,24 @@ export default function YearCalendar() {
         )}
         </div>{/* end gridInnerRef */}
         </div>{/* end gridContainerRef */}
+
+      {/* Right arrow for Knowledge Panel */}
+      <button
+        onClick={() => setShowKnowledge(true)}
+        className="flex-shrink-0 w-14 flex items-center justify-center transition-all group cursor-pointer z-10"
+        style={{ background: `linear-gradient(to left, ${skin.swatch}18, transparent)` }}
+        title="知识库"
+      >
+        <span className="transition-colors text-4xl font-bold tracking-tight group-hover:opacity-100 opacity-40 opacity-100 transition-opacity inline-block group-hover:-translate-x-1 transform" style={{ color: `${skin.swatch}bb` }}>
+          «
+        </span>
+      </button>
+
+      {/* Knowledge Panel */}
+      <KnowledgePanel
+        visible={showKnowledge}
+        onClose={() => setShowKnowledge(false)}
+      />
 
       {/* Note Popup - TickTick inspired */}
       {notePopup && mounted && (
