@@ -358,13 +358,13 @@ function ForestTree({
           }}
         />
       )}
-      {/* 树阴影（草地投影） */}
+      {/* 树阴影（草地投影）- 保持固定大小，不随树缩放 */}
       <div
         className="absolute left-1/2 -translate-x-1/2 rounded-full blur-[2px]"
         style={{
           bottom: -2,
-          width: sizes.crown * 0.7 * zoom * currentScale,
-          height: 6 * zoom * currentScale,
+          width: sizes.crown * 0.7 * zoom,
+          height: 6 * zoom,
           background: "rgba(0,0,0,0.18)",
         }}
       />
@@ -398,12 +398,12 @@ function ForestTree({
           />
         </div>
 
-        {/* 树名称徽章（常显，悬停态更突出） - 跟随 zoom 一起缩放 */}
+        {/* 树名称徽章（常显，悬停态更突出） - 保持固定大小，不随树缩放 */}
         <div
           className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap flex items-center gap-1.5 transition-all"
           style={{
-            top: -22 * zoom * currentScale,
-            fontSize: 11 * zoom * currentScale,
+            top: -22 * zoom,
+            fontSize: 11 * zoom,
             fontWeight: 500,
             padding: "2px 8px",
             borderRadius: 999,
@@ -434,8 +434,8 @@ function ForestTree({
               className="ml-0.5 rounded-full flex items-center justify-center pointer-events-auto transition-colors"
               style={{ 
                 background: "rgba(255,255,255,0.18)",
-                width: 16 * currentScale,
-                height: 16 * currentScale,
+                width: 16,
+                height: 16,
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background = "#dc2626";
@@ -445,7 +445,7 @@ function ForestTree({
               }}
               title="拔除这棵树"
             >
-              <X size={10 * currentScale} strokeWidth={2.5} />
+              <X size={10} strokeWidth={2.5} />
             </button>
           )}
         </div>
