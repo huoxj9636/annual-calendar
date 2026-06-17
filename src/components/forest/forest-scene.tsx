@@ -501,8 +501,8 @@ export default function ForestScene({
 
   // 画布平移状态（相对物理画布的偏移，单位 px）
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  // 画布缩放：1 = 原始 200%×200%，0.5 = 鸟瞰全图（看全整个画布边界）
-  const [zoom, setZoom] = useState(1);
+  // zoom 固定为 1（不再支持缩放）
+  const zoom = 1;
   const [panning, setPanning] = useState(false);
   // 焦点高亮 pulse：被 focus 的树 id（2.4s 后自动清空）
   const [focusPulseId, setFocusPulseId] = useState<string | null>(null);
@@ -514,50 +514,12 @@ export default function ForestScene({
   } | null>(null);
   const canvasPannedRef = useRef(false); // 画布本次按下-抬起是否发生实际平移
   const PAN_THRESHOLD_PX = 4; // 平移阈值（像素）
-  const ZOOM_STEP = 0.15; // 单次缩放步长
-
-  // 缩放控制（让画布支持 zoom in / zoom out）
-  const handleZoomIn = useCallback(() => {
-    setZoom((z) => {
-      const next = Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2));
-      try { localStorage.setItem("forest-canvas-zoom", String(next)); } catch {}
-      return next;
-    });
-  }, []);
-
-  const handleZoomOut = useCallback(() => {
-    setZoom((z) => {
-      const next = Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2));
-      try { localStorage.setItem("forest-canvas-zoom", String(next)); } catch {}
-      return next;
-    });
-  }, []);
-
-  // 滚轮缩放：向上滚动放大，向下滚动缩小
-  const handleCanvasWheel = useCallback(
-    (e: React.WheelEvent<HTMLDivElement>) => {
-      // 仅在 my 变体支持
-      if (variant !== "my") return;
-      // 阻止默认滚动行为
-      e.preventDefault();
-      // deltaY > 0 表示向下滚动（缩小），deltaY < 0 表示向上滚动（放大）
-      if (e.deltaY > 0) {
-        handleZoomOut();
-      } else if (e.deltaY < 0) {
-        handleZoomIn();
-      }
-    },
-    [variant, handleZoomIn, handleZoomOut]
-  );
 
   // 物理画布尺寸（比可视区大，给平移留空间）
   // 横向 200% 给左右平移空间，纵向 200% 给上下平移空间
   // zoom 缩放会等比调整 inner 实际尺寸，pan 范围也按 zoom 反比放大
   const CANVAS_W = 100; // % 相对外层可视区（inner = sceneRef，树永远在屏幕内）
   const CANVAS_H = 100; // % 相对外层可视区
-  const ZOOM_MIN = 1; // 最小缩放 1 倍 = 背景图完全铺满屏幕，不允许再小
-  const ZOOM_MAX = 2.5; // 最大放大 2.5 倍
-
 
   // 从 localStorage 读取画布平移和缩放（持久化）
   useEffect(() => {
@@ -574,13 +536,6 @@ export default function ForestScene({
           setPan({ x: saved.x, y: saved.y });
         }
       }
-      const rawZoom = localStorage.getItem("forest-canvas-zoom");
-      if (rawZoom) {
-        const z = parseFloat(rawZoom);
-        if (!isNaN(z) && z >= ZOOM_MIN && z <= ZOOM_MAX) {
-          setZoom(z);
-        }
-      }
     } catch {}
   }, []);
 
@@ -588,10 +543,8 @@ export default function ForestScene({
   useEffect(() => {
     if (resetTrigger === undefined) return;
     setPan({ x: 0, y: 0 });
-    setZoom(1);
     try {
       localStorage.removeItem("forest-canvas-pan");
-      localStorage.removeItem("forest-canvas-zoom");
     } catch {}
   }, [resetTrigger]);
 
@@ -624,14 +577,6 @@ export default function ForestScene({
   );
   const handleCanvasPointerMove = useCallback(() => {}, []);
   const handleCanvasPointerEnd = useCallback(() => {}, []);
-
-  // 重置缩放到默认 1 倍（背景图完全铺满屏幕）
-  const handleResetZoom = useCallback(() => {
-    setZoom(1);
-    try {
-      localStorage.setItem("forest-canvas-zoom", "1");
-    } catch {}
-  }, []);
 
   // 关键样式：画布背景跟日历主页主题色保持一致
   const sceneStyle: React.CSSProperties = {
@@ -674,7 +619,6 @@ export default function ForestScene({
         onPointerMove={handleCanvasPointerMove}
         onPointerUp={handleCanvasPointerEnd}
         onPointerCancel={handleCanvasPointerEnd}
-        onWheel={handleCanvasWheel}
       >
         {/* 内层物理画布：所有内容在内层，支持平移和缩放
             画布背景用主题色（跟日历主页背景保持一致） */}
@@ -737,25 +681,6 @@ export default function ForestScene({
         )}
         </div>
 
-        {/* 缩放百分比显示：放在刷新按钮下方 */}
-        {variant === "my" && items.length > 0 && (
-          <div
-            className="absolute z-40 pointer-events-none"
-            style={{
-              right: 12,
-              top: 56, // 刷新按钮 top-4 ≈ 16px + 高度 ≈ 40px = 56px 下方
-              padding: "4px 10px",
-              borderRadius: 999,
-              background: `${skin.swatch}cc`,
-              color: "white",
-              fontSize: 11,
-              fontWeight: 500,
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            缩放 {(zoom * 100).toFixed(0)}%
-          </div>
-        )}
       </div>
     </>
   );
