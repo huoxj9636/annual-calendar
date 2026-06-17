@@ -358,13 +358,13 @@ function ForestTree({
           }}
         />
       )}
-      {/* 树阴影（草地投影）- 保持固定大小，不随树缩放 */}
+      {/* 树阴影（草地投影）- 固定大小，不随树缩放、不随阶段变化 */}
       <div
         className="absolute left-1/2 -translate-x-1/2 rounded-full blur-[2px]"
         style={{
           bottom: -2,
-          width: sizes.crown * 0.7 * zoom,
-          height: 6 * zoom,
+          width: 28,
+          height: 4,
           background: "rgba(0,0,0,0.18)",
         }}
       />
