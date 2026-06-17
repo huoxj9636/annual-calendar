@@ -75,13 +75,15 @@ function hashStr(s: string): number {
 
 // 基础尺寸：固定为成树大小（不再随节点数变化）。古木/参天/成树都是这个尺寸，
 // 视觉差异由"分叉、苔藓、鸟巢"等装饰承担，整体仍保持单树苗 ~80×110 不重叠。
+// 基础尺寸：固定为成树大小（不再随节点数变化）。整体放大约 3 倍，
+// 树之间用 treeScale 等比缩放以避免 10+ 棵树重叠。
 const TREE_HEIGHTS: Record<number, { h: number; crown: number; trunk: number }> = {
-  0: { h: 26, crown: 12, trunk: 8 },  // 空地（树桩）
-  1: { h: 102, crown: 70, trunk: 32 }, // 幼苗及以上统一为成树尺寸
-  2: { h: 102, crown: 70, trunk: 32 },
-  3: { h: 102, crown: 70, trunk: 32 },
-  4: { h: 102, crown: 70, trunk: 32 },
-  5: { h: 102, crown: 70, trunk: 32 },
+  0: { h: 78, crown: 36, trunk: 24 },  // 空地（树桩）
+  1: { h: 306, crown: 210, trunk: 96 },
+  2: { h: 306, crown: 210, trunk: 96 },
+  3: { h: 306, crown: 210, trunk: 96 },
+  4: { h: 306, crown: 210, trunk: 96 },
+  5: { h: 306, crown: 210, trunk: 96 },
 };
 
 /** 单棵树 */
@@ -329,7 +331,8 @@ export default function ForestScene({
       const yJitter = (((h >> 8) % 80) / 10 - 4); // -4 ~ +4
       const y = Math.max(10, Math.min(48, yBase + yJitter));
       // 多棵树时整体缩放，避免重叠；基础大小固定为"成树"
-      const treeScale = total <= 1 ? 1 : total <= 2 ? 0.72 : total <= 3 ? 0.55 : total <= 5 ? 0.45 : total <= 8 ? 0.38 : total <= 12 ? 0.32 : 0.28;
+      // 树基础已放大约 3 倍，多棵树时按数量再等比缩放避免重叠
+      const treeScale = total <= 1 ? 1 : total <= 2 ? 0.55 : total <= 3 ? 0.4 : total <= 5 ? 0.32 : total <= 8 ? 0.26 : total <= 12 ? 0.22 : 0.19;
       return { item, x, y, treeScale };
     });
   }, [items]);
