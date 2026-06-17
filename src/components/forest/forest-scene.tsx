@@ -665,8 +665,19 @@ export default function ForestScene({
             height: `${CANVAS_H * zoom}%`,
             transform: `translate(-50%, -50%) translate(${-pan.x}%, ${-pan.y}%)`,
             transition: panning ? "none" : "transform 0.35s ease-out",
-            // inner 退化为纯 transform 容器：不画背景、不裁切、树的拖动范围不再受 inner 边界限制
+            // inner 退化为纯 transform 容器：不裁切、树的拖动范围不再受 inner 边界限制
             overflow: "visible",
+            // 草地斜面立体感背景：底部深（近处）→顶部浅（远处）
+            background: `
+              linear-gradient(170deg, rgba(0,0,0,0.05) 0%, transparent 15%),
+              linear-gradient(175deg, rgba(0,0,0,0.04) 5%, transparent 25%),
+              linear-gradient(to top, 
+                ${skin.swatch}2a 0%,
+                ${skin.swatch}18 40%,
+                transparent 100%
+              ),
+              ${skin.panelBg}
+            `,
           }}
         >
         {/* 树木 */}
