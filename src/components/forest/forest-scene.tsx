@@ -182,10 +182,10 @@ function ForestTree({
       const rawDx = px - startRef.current.pointerX;
       const rawDy = -(py - startRef.current.pointerY);
       // 实时边界限制：拖动过程中树不能飘出画布
-      const minX = 2;
-      const maxX = 98;
-      const minY = 2;
-      const maxY = 95;
+      const minX = 0;
+      const maxX = 100;
+      const minY = 0;
+      const maxY = 100;
       const targetX = Math.max(minX, Math.min(maxX, startRef.current.itemX + rawDx));
       const targetY = Math.max(minY, Math.min(maxY, startRef.current.itemY + rawDy));
       const dx = targetX - startRef.current.itemX;
@@ -223,9 +223,9 @@ function ForestTree({
       }
       const px = ((e.clientX - rect.left) / rect.width) * 100;
       const py = ((e.clientY - rect.top) / rect.height) * 100;
-      const newX = Math.max(2, Math.min(98, startRef.current.itemX + (px - startRef.current.pointerX)));
+      const newX = Math.max(0, Math.min(100, startRef.current.itemX + (px - startRef.current.pointerX)));
       // bottom 坐标系与屏幕 Y 反向：指针向下时 bottom 减小
-      const newY = Math.max(2, Math.min(95, startRef.current.itemY - (py - startRef.current.pointerY)));
+      const newY = Math.max(0, Math.min(100, startRef.current.itemY - (py - startRef.current.pointerY)));
       onPositionChange?.({ x: newX, y: newY });
       setDragging(false);
       setDragOffset(null);
