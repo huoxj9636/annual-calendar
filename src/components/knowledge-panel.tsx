@@ -1,548 +1,309 @@
-"use client";
+import { useState, useEffect, useRef } from 'react';
+import { X, Plus, Trash2, ExternalLink, Sprout } from 'lucide-react';
+import type { SkinTheme } from '@/lib/skins';
 
-import { useState, useEffect, useMemo } from "react";
-import { SKINS, NO_SKIN } from "@/lib/skins";
+type NodeType = 'root' | 'trunk' | 'branch' | 'leaf' | 'fruit';
 
-// 类型定义
 interface KnowledgeNode {
   id: string;
-  type: "root" | "trunk" | "branch" | "leaf" | "fruit";
+  type: NodeType;
   title: string;
   content: string;
-  createdAt: string;
+  url?: string;
+  createdAt: number;
 }
 
 interface KnowledgeTree {
   id: string;
   name: string;
+  industry: string;
   nodes: KnowledgeNode[];
-  createdAt: string;
+  createdAt: number;
 }
 
 interface Bookmark {
   id: string;
   name: string;
   url: string;
+  icon?: string;
 }
 
-const TREES_STORAGE_KEY = "knowledge-trees";
-const BOOKMARKS_STORAGE_KEY = "knowledge-bookmarks";
+const POSITION_CONFIG: Record<NodeType, { label: string; color: string; icon: string; question: string }> = {
+  root: { label: '树根', color: '#8B5A2B', icon: '🌱', question: '这个认知对你的人生有什么根基意义？' },
+  trunk: { label: '树干', color: '#A0522D', icon: '🌳', question: '这个目标是你人生的什么方向？' },
+  branch: { label: '树枝', color: '#CD853F', icon: '🌿', question: '这个方法是为了实现什么目标？' },
+  leaf: { label: '树叶', color: '#22C55E', icon: '🍃', question: '在你的具体场景中怎么用？' },
+  fruit: { label: '果实', color: '#EF4444', icon: '🍎', question: '这个成果是怎么实现的？' },
+};
 
-// 获取默认知识树
-function getDefaultTrees(): KnowledgeTree[] {
-  return [
-    { id: "tree-1", name: "工作事业", nodes: [], createdAt: new Date().toISOString() },
-    { id: "tree-2", name: "个人成长", nodes: [], createdAt: new Date().toISOString() },
-  ];
+const POSITION_LIST: NodeType[] = ['root', 'trunk', 'branch', 'leaf', 'fruit'];
+
+interface Props {
+  skin: SkinTheme;
+  onClose: () => void;
 }
 
-// 获取默认书签
-function getDefaultBookmarks(): Bookmark[] {
-  return [
-    { id: "bm-1", name: "Flomo", url: "https://flomoapp.com" },
-  ];
-}
-
-export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
+export default function KnowledgePanel({ skin, onClose }: Props) {
+  const [tab, setTab] = useState<'tree' | 'bookmarks'>('tree');
   const [trees, setTrees] = useState<KnowledgeTree[]>([]);
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [selectedTree, setSelectedTree] = useState<KnowledgeTree | null>(null);
-  const [activeTab, setActiveTab] = useState<"trees" | "friends">("trees");
   const [showAddTree, setShowAddTree] = useState(false);
-  const [showAddNode, setShowAddNode] = useState(false);
-  const [showAddBookmark, setShowAddBookmark] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [skinKey, setSkinKey] = useState<string>("");
-  const [panelWidth, setPanelWidth] = useState(0);
+  const [showAddNode, setShowAddNode] = useState<NodeType | null>(null);
+  const [editingNode, setEditingNode] = useState<KnowledgeNode | null>(null);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+
+  // 拖动调整宽度
+  const [panelWidth, setPanelWidth] = useState(640);
   const [isDragging, setIsDragging] = useState(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(0);
 
-  // 拖拽调整宽度
-  const handleDragStart = () => setIsDragging(true);
-  const handleDrag = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const newWidth = window.innerWidth - e.clientX;
-    setPanelWidth(Math.max(320, Math.min(800, newWidth)));
-  };
-  const handleDragEnd = () => setIsDragging(false);
-
-  // 获取当前主题
-  const skin = useMemo(() => {
-    if (!mounted) return NO_SKIN;
-    return skinKey ? (SKINS.find(s => s.key === skinKey) ?? NO_SKIN) : NO_SKIN;
-  }, [skinKey, mounted]);
-
-  // 初始化
   useEffect(() => {
-    setMounted(true);
-    // 读取主题
-    const savedSkin = localStorage.getItem("life-calendar-skin");
-    if (savedSkin && SKINS.find(s => s.key === savedSkin)) {
-      setSkinKey(savedSkin);
-    }
-    // 读取知识树
-    const storedTrees = localStorage.getItem(TREES_STORAGE_KEY);
-    if (storedTrees) {
+    const savedTrees = localStorage.getItem('knowledge-trees');
+    if (savedTrees) {
       try {
-        const parsed = JSON.parse(storedTrees);
-        const validTrees = parsed.map((t: KnowledgeTree) => ({
-          ...t,
-          nodes: t.nodes || [],
-        }));
-        setTrees(validTrees);
-      } catch {
-        setTrees(getDefaultTrees());
+        const parsed = JSON.parse(savedTrees);
+        if (Array.isArray(parsed)) {
+          setTrees(parsed.map((t: any) => ({ ...t, nodes: t.nodes || [] })));
+        }
+      } catch (e) {
+        console.error('解析知识树失败:', e);
       }
-    } else {
-      setTrees(getDefaultTrees());
     }
-    // 读取书签
-    const storedBookmarks = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
-    if (storedBookmarks) {
+    const savedBookmarks = localStorage.getItem('bookmarks');
+    if (savedBookmarks) {
       try {
-        setBookmarks(JSON.parse(storedBookmarks));
-      } catch {
-        setBookmarks(getDefaultBookmarks());
-      }
-    } else {
-      setBookmarks(getDefaultBookmarks());
+        setBookmarks(JSON.parse(savedBookmarks));
+      } catch (e) {}
     }
   }, []);
 
-  // 监听主题变化
   useEffect(() => {
-    const checkSkin = () => {
-      const savedSkin = localStorage.getItem("life-calendar-skin");
-      if (savedSkin !== skinKey) {
-        setSkinKey(savedSkin || "");
-      }
+    if (trees.length > 0) {
+      localStorage.setItem('knowledge-trees', JSON.stringify(trees));
+    }
+  }, [trees]);
+
+  // 全局拖动事件
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = dragStartX.current - e.clientX;
+      const newWidth = Math.max(320, Math.min(window.innerWidth - 100, dragStartWidth.current + delta));
+      setPanelWidth(newWidth);
     };
-    window.addEventListener("storage", checkSkin);
-    const interval = setInterval(checkSkin, 1000);
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
     return () => {
-      window.removeEventListener("storage", checkSkin);
-      clearInterval(interval);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [skinKey]);
+  }, [isDragging]);
 
-  // 保存知识树
-  const saveTrees = (newTrees: KnowledgeTree[]) => {
-    setTrees(newTrees);
-    localStorage.setItem(TREES_STORAGE_KEY, JSON.stringify(newTrees));
+  const handleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartX.current = e.clientX;
+    dragStartWidth.current = panelWidth;
   };
 
-  // 保存书签
-  const saveBookmarks = (newBookmarks: Bookmark[]) => {
-    setBookmarks(newBookmarks);
-    localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(newBookmarks));
-  };
-
-  // 添加知识树
-  const handleAddTree = (name: string) => {
+  const addTree = (name: string, industry: string) => {
     const newTree: KnowledgeTree = {
-      id: `tree-${Date.now()}`,
+      id: 'tree-' + Date.now(),
       name,
+      industry,
       nodes: [],
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(),
     };
-    saveTrees([...trees, newTree]);
+    setTrees([...trees, newTree]);
+    setSelectedTree(newTree);
     setShowAddTree(false);
   };
 
-  // 添加知识节点（果实）
-  const handleAddNode = (type: KnowledgeNode["type"], title: string, content: string) => {
+  const deleteTree = (id: string) => {
+    if (!confirm('确定要删除这棵知识树吗？')) return;
+    setTrees(trees.filter(t => t.id !== id));
+    if (selectedTree?.id === id) {
+      setSelectedTree(null);
+    }
+  };
+
+  const addNode = (type: NodeType, title: string, content: string, url?: string) => {
     if (!selectedTree) return;
     const newNode: KnowledgeNode = {
-      id: `node-${Date.now()}`,
+      id: 'node-' + Date.now(),
       type,
       title,
       content,
-      createdAt: new Date().toISOString(),
+      url,
+      createdAt: Date.now(),
     };
+    const updatedTree = { ...selectedTree, nodes: [...selectedTree.nodes, newNode] };
+    setTrees(trees.map(t => t.id === selectedTree.id ? updatedTree : t));
+    setSelectedTree(updatedTree);
+    setShowAddNode(null);
+  };
+
+  const updateNode = (id: string, title: string, content: string, url?: string) => {
+    if (!selectedTree) return;
+    const updatedNodes = selectedTree.nodes.map(n =>
+      n.id === id ? { ...n, title, content, url } : n
+    );
+    const updatedTree = { ...selectedTree, nodes: updatedNodes };
+    setTrees(trees.map(t => t.id === selectedTree.id ? updatedTree : t));
+    setSelectedTree(updatedTree);
+    setEditingNode(null);
+  };
+
+  const deleteNode = (id: string) => {
+    if (!selectedTree) return;
+    if (!confirm('确定要删除这个知识吗？')) return;
     const updatedTree = {
       ...selectedTree,
-      nodes: [...selectedTree.nodes, newNode],
+      nodes: selectedTree.nodes.filter(n => n.id !== id)
     };
-    saveTrees(trees.map(t => t.id === selectedTree.id ? updatedTree : t));
+    setTrees(trees.map(t => t.id === selectedTree.id ? updatedTree : t));
     setSelectedTree(updatedTree);
-    setShowAddNode(false);
   };
 
-  // 添加书签
-  const handleAddBookmark = (name: string, url: string) => {
-    const newBookmark: Bookmark = {
-      id: `bm-${Date.now()}`,
-      name,
-      url,
+  const getNodesByType = (type: NodeType) => {
+    if (!selectedTree) return [];
+    return selectedTree.nodes.filter(n => n.type === type);
+  };
+
+  const getStats = () => {
+    if (!selectedTree) return { root: 0, trunk: 0, branch: 0, leaf: 0, fruit: 0 };
+    return {
+      root: selectedTree.nodes.filter(n => n.type === 'root').length,
+      trunk: selectedTree.nodes.filter(n => n.type === 'trunk').length,
+      branch: selectedTree.nodes.filter(n => n.type === 'branch').length,
+      leaf: selectedTree.nodes.filter(n => n.type === 'leaf').length,
+      fruit: selectedTree.nodes.filter(n => n.type === 'fruit').length,
     };
-    saveBookmarks([...bookmarks, newBookmark]);
-    setShowAddBookmark(false);
   };
-
-  // 获取果实数量
-  const fruitCount = selectedTree?.nodes.filter(n => n.type === "fruit").length || 0;
-
-  if (!mounted) return null;
-
-  const { swatch, panelBg, cardBg, textPrimary, textSecondary, textMuted, divider, cardHover } = skin;
 
   return (
-    <div
-      className="fixed inset-0 z-[99999] flex justify-end"
-      style={{ backgroundColor: "rgba(0,0,0,0.3)" }}
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
       <div
-        className="h-full overflow-y-auto shadow-2xl animate-slide-in-right relative"
-        style={{ 
-          backgroundColor: panelBg,
-          width: panelWidth > 0 ? panelWidth : '100%',
-          maxWidth: '800px',
+        className="h-full overflow-y-auto shadow-2xl relative flex flex-col"
+        style={{
+          backgroundColor: skin.panelBg,
+          color: skin.textPrimary,
+          width: panelWidth,
           minWidth: '320px',
+          maxWidth: '90vw',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 拖拽手柄 */}
         <div
-          className="absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize z-50 hover:bg-black/5 transition-colors"
+          className="absolute left-0 top-0 bottom-0 w-3 z-50 cursor-ew-resize flex items-center justify-center group"
           onMouseDown={handleDragStart}
-          onMouseMove={handleDrag}
-          onMouseUp={handleDragEnd}
-          onMouseLeave={handleDragEnd}
-        />
-        
-        {/* 头部 */}
-        <div
-          className="flex items-center justify-between px-6 py-4"
-          style={{ borderBottom: `1px solid ${divider}` }}
         >
-          <h2 className="text-xl font-bold" style={{ color: textPrimary }}>
-            知识库
-          </h2>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
-            style={{ color: textMuted, backgroundColor: divider + "40" }}
-          >
-            ×
-          </button>
+          <div
+            className="w-0.5 h-12 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ backgroundColor: skin.swatch }}
+          />
         </div>
 
-        {/* Tab切换 */}
-        <div className="flex px-6 pt-4 gap-4">
+        {/* 头部 */}
+        <div
+          className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b backdrop-blur"
+          style={{ borderColor: skin.divider, backgroundColor: skin.panelBg + 'ee' }}
+        >
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setTab('tree'); setSelectedTree(null); }}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: tab === 'tree' ? skin.swatch : 'transparent',
+                color: tab === 'tree' ? 'white' : skin.textSecondary,
+              }}
+            >
+              知识树
+            </button>
+            <button
+              onClick={() => setTab('bookmarks')}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: tab === 'bookmarks' ? skin.swatch : 'transparent',
+                color: tab === 'bookmarks' ? 'white' : skin.textSecondary,
+              }}
+            >
+              朋友们
+            </button>
+          </div>
           <button
-            onClick={() => setActiveTab("trees")}
-            className="px-4 py-2 rounded-lg font-medium transition-colors"
-            style={{
-              backgroundColor: activeTab === "trees" ? swatch + "20" : "transparent",
-              color: activeTab === "trees" ? swatch : textSecondary,
-              border: activeTab === "trees" ? `1px solid ${swatch}40` : "1px solid transparent",
-            }}
+            onClick={onClose}
+            className="w-9 h-9 rounded-full flex items-center justify-center hover:opacity-70 transition-opacity"
+            style={{ backgroundColor: skin.cardBg }}
           >
-            知识树
-          </button>
-          <button
-            onClick={() => setActiveTab("friends")}
-            className="px-4 py-2 rounded-lg font-medium transition-colors"
-            style={{
-              backgroundColor: activeTab === "friends" ? swatch + "20" : "transparent",
-              color: activeTab === "friends" ? swatch : textSecondary,
-              border: activeTab === "friends" ? `1px solid ${swatch}40` : "1px solid transparent",
-            }}
-          >
-            朋友们
+            <X size={18} style={{ color: skin.textPrimary }} />
           </button>
         </div>
 
         {/* 内容区 */}
-        <div className="px-6 py-4">
-          {activeTab === "trees" && !selectedTree && (
+        <div className="flex-1 p-6">
+          {tab === 'tree' && (
             <>
-              {/* 知识树卡片列表 */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {trees.map((tree) => (
-                  <div
-                    key={tree.id}
-                    onClick={() => setSelectedTree(tree)}
-                    className="rounded-xl p-4 cursor-pointer transition-all hover:shadow-lg"
-                    style={{
-                      backgroundColor: cardBg,
-                      border: `1px solid ${divider}`,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = cardHover;
-                      e.currentTarget.style.borderColor = swatch + "40";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = cardBg;
-                      e.currentTarget.style.borderColor = divider;
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-12 h-12 rounded-lg flex items-center justify-center text-xl"
-                        style={{ backgroundColor: swatch + "20", color: swatch }}
-                      >
-                        🌳
-                      </div>
-                      <div>
-                        <h3 className="font-semibold" style={{ color: textPrimary }}>
-                          {tree.name}
-                        </h3>
-                        <p className="text-sm" style={{ color: textMuted }}>
-                          {tree.nodes.length} 条知识
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* 添加按钮 */}
-              <button
-                onClick={() => setShowAddTree(true)}
-                className="w-full py-3 rounded-xl font-medium transition-colors"
-                style={{
-                  backgroundColor: swatch + "10",
-                  color: swatch,
-                  border: `1px solid ${swatch}30`,
-                }}
-              >
-                + 新建知识树
-              </button>
-            </>
-          )}
-
-          {activeTab === "trees" && selectedTree && (
-            <>
-              {/* 返回按钮 */}
-              <button
-                onClick={() => setSelectedTree(null)}
-                className="mb-4 px-3 py-1.5 rounded-lg text-sm"
-                style={{ color: textSecondary, backgroundColor: divider + "40" }}
-              >
-                ← 返回
-              </button>
-
-              {/* 树标题 */}
-              <h3 className="text-lg font-bold mb-4" style={{ color: textPrimary }}>
-                {selectedTree.name}
-              </h3>
-
-              {/* 大树可视化区域 */}
-              <div
-                className="relative rounded-xl overflow-hidden mb-4"
-                style={{
-                  height: "280px",
-                  backgroundColor: "#f8fafc",
-                  border: `1px solid ${divider}`,
-                }}
-              >
-                {/* 大树背景图 */}
-                <img
-                  src="/tree-empty.jpeg"
-                  alt="知识树"
-                  className="w-full h-full object-contain"
+              {!selectedTree && (
+                <TreesList
+                  trees={trees}
+                  onSelect={setSelectedTree}
+                  onAdd={() => setShowAddTree(true)}
+                  onDelete={deleteTree}
+                  skin={skin}
                 />
-
-                {/* 动态果实标记 */}
-                {selectedTree.nodes
-                  .filter((n) => n.type === "fruit")
-                  .map((fruit, idx) => {
-                    // 根据果实数量分布位置
-                    const positions = [
-                      { left: "25%", top: "35%" },
-                      { left: "40%", top: "25%" },
-                      { left: "55%", top: "30%" },
-                      { left: "70%", top: "35%" },
-                      { left: "30%", top: "45%" },
-                      { left: "50%", top: "40%" },
-                      { left: "65%", top: "45%" },
-                      { left: "35%", top: "55%" },
-                      { left: "60%", top: "55%" },
-                      { left: "45%", top: "60%" },
-                    ];
-                    const pos = positions[idx % positions.length];
-                    return (
-                      <div
-                        key={fruit.id}
-                        className="absolute cursor-pointer transition-transform hover:scale-110"
-                        style={{
-                          left: pos.left,
-                          top: pos.top,
-                          transform: "translate(-50%, -50%)",
-                        }}
-                        title={fruit.title}
-                      >
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center shadow-md"
-                          style={{
-                            backgroundColor: swatch,
-                            color: "#fff",
-                            fontSize: "14px",
-                          }}
-                        >
-                          🍎
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              {/* 果实统计 */}
-              <div className="flex items-center gap-4 mb-4">
-                <div
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
-                  style={{ backgroundColor: swatch + "10" }}
-                >
-                  <span style={{ color: swatch }}>🍎</span>
-                  <span style={{ color: textSecondary }}>{fruitCount} 个果实</span>
-                </div>
-              </div>
-
-              {/* 知识列表 */}
-              <div className="space-y-3 mb-4">
-                {selectedTree.nodes.map((node) => (
-                  <div
-                    key={node.id}
-                    className="rounded-lg p-3"
-                    style={{
-                      backgroundColor: cardBg,
-                      border: `1px solid ${divider}`,
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className="px-2 py-1 rounded text-xs"
-                        style={{
-                          backgroundColor:
-                            node.type === "fruit"
-                              ? swatch + "20"
-                              : node.type === "leaf"
-                              ? "#22c55e20"
-                              : divider,
-                          color:
-                            node.type === "fruit"
-                              ? swatch
-                              : node.type === "leaf"
-                              ? "#22c55e"
-                              : textSecondary,
-                        }}
-                      >
-                        {node.type === "fruit" ? "果实" : node.type === "leaf" ? "树叶" : node.type}
-                      </span>
-                      <div className="flex-1">
-                        <h4 className="font-medium" style={{ color: textPrimary }}>
-                          {node.title}
-                        </h4>
-                        <p className="text-sm mt-1" style={{ color: textMuted }}>
-                          {node.content}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {selectedTree.nodes.length === 0 && (
-                  <p className="text-center py-8" style={{ color: textMuted }}>
-                    还没有知识，点击下方按钮添加
-                  </p>
-                )}
-              </div>
-
-              {/* 添加知识按钮 */}
-              <button
-                onClick={() => setShowAddNode(true)}
-                className="w-full py-3 rounded-xl font-medium transition-colors"
-                style={{
-                  backgroundColor: swatch,
-                  color: "#fff",
-                }}
-              >
-                + 添加知识
-              </button>
+              )}
+              {selectedTree && (
+                <TreeDetail
+                  tree={selectedTree}
+                  stats={getStats()}
+                  nodesByType={getNodesByType}
+                  onBack={() => setSelectedTree(null)}
+                  onAddNode={(type: NodeType) => setShowAddNode(type)}
+                  onEditNode={setEditingNode}
+                  onDeleteNode={deleteNode}
+                  onDeleteTree={() => deleteTree(selectedTree.id)}
+                  skin={skin}
+                />
+              )}
             </>
           )}
-
-          {activeTab === "friends" && (
-            <>
-              {/* 朋友们（书签）卡片列表 */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {bookmarks.map((bm) => (
-                  <a
-                    key={bm.id}
-                    href={bm.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-xl p-4 cursor-pointer transition-all hover:shadow-lg"
-                    style={{
-                      backgroundColor: cardBg,
-                      border: `1px solid ${divider}`,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = cardHover;
-                      e.currentTarget.style.borderColor = swatch + "40";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = cardBg;
-                      e.currentTarget.style.borderColor = divider;
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-12 h-12 rounded-lg flex items-center justify-center text-xl font-bold"
-                        style={{ backgroundColor: swatch + "20", color: swatch }}
-                      >
-                        {bm.name.charAt(0)}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold" style={{ color: textPrimary }}>
-                          {bm.name}
-                        </h3>
-                      </div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-
-              {/* 添加按钮 */}
-              <button
-                onClick={() => setShowAddBookmark(true)}
-                className="w-full py-3 rounded-xl font-medium transition-colors"
-                style={{
-                  backgroundColor: swatch + "10",
-                  color: swatch,
-                  border: `1px solid ${swatch}30`,
-                }}
-              >
-                + 添加朋友
-              </button>
-            </>
+          {tab === 'bookmarks' && (
+            <BookmarksList bookmarks={bookmarks} skin={skin} />
           )}
         </div>
 
-        {/* 添加知识树弹窗 */}
+        {/* 弹窗 */}
         {showAddTree && (
-          <AddTreeModal
-            skin={skin}
+          <AddTreeDialog
+            onAdd={addTree}
             onClose={() => setShowAddTree(false)}
-            onSubmit={handleAddTree}
+            skin={skin}
           />
         )}
-
-        {/* 添加知识节点弹窗 */}
         {showAddNode && (
-          <AddNodeModal
+          <AddNodeDialog
+            type={showAddNode}
+            onAdd={addNode}
+            onClose={() => setShowAddNode(null)}
             skin={skin}
-            onClose={() => setShowAddNode(false)}
-            onSubmit={handleAddNode}
           />
         )}
-
-        {/* 添加书签弹窗 */}
-        {showAddBookmark && (
-          <AddBookmarkModal
+        {editingNode && (
+          <EditNodeDialog
+            node={editingNode}
+            onUpdate={updateNode}
+            onClose={() => setEditingNode(null)}
             skin={skin}
-            onClose={() => setShowAddBookmark(false)}
-            onSubmit={handleAddBookmark}
           />
         )}
       </div>
@@ -550,56 +311,289 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-// 添加知识树弹窗
-function AddTreeModal({
-  skin,
-  onClose,
-  onSubmit,
-}: {
-  skin: typeof NO_SKIN;
-  onClose: () => void;
-  onSubmit: (name: string) => void;
-}) {
-  const [name, setName] = useState("");
+// 大树列表
+function TreesList({ trees, onSelect, onAdd, onDelete, skin }: any) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-sm" style={{ color: skin.textSecondary }}>
+          {trees.length} 棵知识树
+        </div>
+        <button
+          onClick={onAdd}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:opacity-90"
+          style={{ backgroundColor: skin.swatch, color: 'white' }}
+        >
+          <Plus size={14} /> 新建知识树
+        </button>
+      </div>
+
+      {trees.length === 0 ? (
+        <div
+          className="border-2 border-dashed rounded-2xl p-12 text-center"
+          style={{ borderColor: skin.divider }}
+        >
+          <Sprout size={40} className="mx-auto mb-3" style={{ color: skin.textSecondary }} />
+          <div className="text-sm mb-1" style={{ color: skin.textPrimary }}>还没有知识树</div>
+          <div className="text-xs" style={{ color: skin.textSecondary }}>
+            创建你的第一棵知识树，让碎片学习有体系
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3">
+          {trees.map((tree: KnowledgeTree) => (
+            <div
+              key={tree.id}
+              className="rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.01] group"
+              style={{ backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
+              onClick={() => onSelect(tree)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+                    style={{ backgroundColor: skin.swatch + '20', color: skin.swatch }}
+                  >
+                    🌳
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm" style={{ color: skin.textPrimary }}>{tree.name}</div>
+                    <div className="text-xs" style={{ color: skin.textSecondary }}>{tree.industry}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(tree.id); }}
+                  className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-50"
+                  style={{ color: skin.textSecondary }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <div className="mt-3 flex gap-2 text-xs" style={{ color: skin.textSecondary }}>
+                <span>根 {tree.nodes.filter((n: any) => n.type === 'root').length}</span>
+                <span>·</span>
+                <span>干 {tree.nodes.filter((n: any) => n.type === 'trunk').length}</span>
+                <span>·</span>
+                <span>枝 {tree.nodes.filter((n: any) => n.type === 'branch').length}</span>
+                <span>·</span>
+                <span>叶 {tree.nodes.filter((n: any) => n.type === 'leaf').length}</span>
+                <span>·</span>
+                <span>果 {tree.nodes.filter((n: any) => n.type === 'fruit').length}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 大树详情
+function TreeDetail({ tree, stats, nodesByType, onBack, onAddNode, onEditNode, onDeleteNode, onDeleteTree, skin }: any) {
+  const fruits = nodesByType('fruit');
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={onBack} className="text-sm flex items-center gap-1 hover:opacity-70" style={{ color: skin.textSecondary }}>
+          ← 返回
+        </button>
+        <button onClick={onDeleteTree} className="text-sm hover:opacity-70" style={{ color: skin.textSecondary }}>
+          删除这棵树
+        </button>
+      </div>
+
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold" style={{ color: skin.textPrimary }}>{tree.name}</h2>
+        <p className="text-xs" style={{ color: skin.textSecondary }}>{tree.industry}</p>
+      </div>
+
+      {/* 统计 */}
+      <div className="grid grid-cols-5 gap-2 mb-4">
+        {POSITION_LIST.map(type => {
+          const config = POSITION_CONFIG[type];
+          return (
+            <div
+              key={type}
+              className="rounded-lg p-2 text-center"
+              style={{ backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
+            >
+              <div className="text-base mb-0.5">{config.icon}</div>
+              <div className="text-xs" style={{ color: skin.textSecondary }}>{config.label}</div>
+              <div className="text-sm font-semibold" style={{ color: config.color }}>{stats[type]}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 大树展示 */}
+      <div
+        className="rounded-2xl p-4 mb-4 relative overflow-hidden"
+        style={{
+          backgroundColor: skin.cardBg,
+          border: `1px solid ${skin.divider}`,
+          minHeight: '240px',
+        }}
+      >
+        <div className="relative flex justify-center items-end h-[240px]">
+          <img src="/tree-empty.jpeg" alt="知识大树" className="h-full w-auto object-contain opacity-90" />
+          {fruits.length > 0 && (
+            <div className="absolute top-[15%] left-[35%] flex flex-wrap gap-1 justify-center max-w-[120px]">
+              {fruits.slice(0, 8).map((node: KnowledgeNode) => (
+                <div
+                  key={node.id}
+                  className="text-lg cursor-pointer hover:scale-125 transition-transform"
+                  title={node.title}
+                  onClick={() => onEditNode(node)}
+                >
+                  🍎
+                </div>
+              ))}
+              {fruits.length > 8 && (
+                <div className="text-xs" style={{ color: skin.textSecondary }}>+{fruits.length - 8}</div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 各部分知识卡片 */}
+      <div className="space-y-3">
+        {POSITION_LIST.map(type => {
+          const config = POSITION_CONFIG[type];
+          const nodes = nodesByType(type);
+          return (
+            <div
+              key={type}
+              className="rounded-xl p-4"
+              style={{ backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">{config.icon}</span>
+                  <span className="font-medium text-sm" style={{ color: skin.textPrimary }}>{config.label}</span>
+                  <span className="text-xs" style={{ color: skin.textSecondary }}>({nodes.length})</span>
+                </div>
+                <button
+                  onClick={() => onAddNode(type)}
+                  className="w-6 h-6 rounded-full flex items-center justify-center hover:opacity-80"
+                  style={{ backgroundColor: skin.swatch + '20', color: skin.swatch }}
+                >
+                  <Plus size={12} />
+                </button>
+              </div>
+
+              {nodes.length === 0 ? (
+                <div className="text-xs text-center py-3" style={{ color: skin.textSecondary }}>
+                  添加{config.label}知识，让知识树生长
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {nodes.map((node: KnowledgeNode) => (
+                    <div
+                      key={node.id}
+                      className="p-2.5 rounded-lg cursor-pointer transition-colors group"
+                      style={{ backgroundColor: skin.panelBg }}
+                      onClick={() => onEditNode(node)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate" style={{ color: skin.textPrimary }}>
+                            {node.title}
+                          </div>
+                          {node.content && (
+                            <div className="text-xs mt-0.5 line-clamp-1" style={{ color: skin.textSecondary }}>
+                              {node.content}
+                            </div>
+                          )}
+                          {node.url && (
+                            <a
+                              href={node.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs flex items-center gap-1 mt-0.5 hover:opacity-80"
+                              style={{ color: skin.swatch }}
+                            >
+                              <ExternalLink size={10} /> {node.url}
+                            </a>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDeleteNode(node.id); }}
+                          className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-full flex items-center justify-center"
+                          style={{ color: skin.textSecondary }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// 添加树弹窗
+function AddTreeDialog({ onAdd, onClose, skin }: any) {
+  const [name, setName] = useState('');
+  const [industry, setIndustry] = useState('');
 
   return (
     <div
-      className="fixed inset-0 z-[100000] flex items-center justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
       onClick={onClose}
     >
       <div
-        className="rounded-xl p-6 w-80"
-        style={{ backgroundColor: skin.panelBg, border: `1px solid ${skin.divider}` }}
+        className="rounded-2xl shadow-2xl p-6 w-full max-w-md"
+        style={{ backgroundColor: skin.panelBg }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-bold mb-4" style={{ color: skin.textPrimary }}>
-          新建知识树
-        </h3>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="知识树名称"
-          className="w-full px-3 py-2 rounded-lg mb-4"
-          style={{
-            backgroundColor: skin.cardBg,
-            color: skin.textPrimary,
-            border: `1px solid ${skin.divider}`,
-          }}
-        />
-        <div className="flex gap-3">
+        <h3 className="text-base font-semibold mb-4" style={{ color: skin.textPrimary }}>新建知识树</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: skin.textSecondary }}>树名称</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="例如：产品设计"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: skin.textSecondary }}>行业/领域</label>
+            <input
+              type="text"
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value)}
+              placeholder="例如：互联网"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-5">
           <button
             onClick={onClose}
-            className="flex-1 py-2 rounded-lg"
-            style={{ color: skin.textSecondary, backgroundColor: skin.divider + "40" }}
+            className="flex-1 px-4 py-2 rounded-lg text-sm"
+            style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
           >
             取消
           </button>
           <button
-            onClick={() => name && onSubmit(name)}
-            className="flex-1 py-2 rounded-lg"
-            style={{ backgroundColor: skin.swatch, color: "#fff" }}
+            onClick={() => name.trim() && onAdd(name.trim(), industry.trim() || '通用')}
+            disabled={!name.trim()}
+            className="flex-1 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+            style={{ backgroundColor: skin.swatch, color: 'white' }}
           >
             创建
           </button>
@@ -609,97 +603,80 @@ function AddTreeModal({
   );
 }
 
-// 添加知识节点弹窗
-function AddNodeModal({
-  skin,
-  onClose,
-  onSubmit,
-}: {
-  skin: typeof NO_SKIN;
-  onClose: () => void;
-  onSubmit: (type: KnowledgeNode["type"], title: string, content: string) => void;
-}) {
-  const [type, setType] = useState<KnowledgeNode["type"]>("fruit");
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-
-  const typeLabels = [
-    { key: "fruit", label: "果实", desc: "成果收获" },
-    { key: "leaf", label: "树叶", desc: "具体执行" },
-    { key: "branch", label: "树枝", desc: "实现路径" },
-    { key: "trunk", label: "树干", desc: "核心目标" },
-    { key: "root", label: "树根", desc: "底层认知" },
-  ];
+// 添加知识弹窗
+function AddNodeDialog({ type, onAdd, onClose, skin }: any) {
+  const config = POSITION_CONFIG[type as NodeType];
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [url, setUrl] = useState('');
 
   return (
     <div
-      className="fixed inset-0 z-[100000] flex items-center justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
       onClick={onClose}
     >
       <div
-        className="rounded-xl p-6 w-96"
-        style={{ backgroundColor: skin.panelBg, border: `1px solid ${skin.divider}` }}
+        className="rounded-2xl shadow-2xl p-6 w-full max-w-md"
+        style={{ backgroundColor: skin.panelBg }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-bold mb-4" style={{ color: skin.textPrimary }}>
-          添加知识
-        </h3>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-lg">{config.icon}</span>
+          <h3 className="text-base font-semibold" style={{ color: skin.textPrimary }}>添加{config.label}</h3>
+        </div>
+        <p className="text-xs mb-4" style={{ color: skin.textSecondary }}>{config.question}</p>
 
-        {/* 类型选择 */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {typeLabels.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setType(t.key as KnowledgeNode["type"])}
-              className="px-3 py-1.5 rounded-lg text-sm"
-              style={{
-                backgroundColor: type === t.key ? skin.swatch + "20" : skin.divider + "40",
-                color: type === t.key ? skin.swatch : skin.textSecondary,
-                border: type === t.key ? `1px solid ${skin.swatch}40` : "1px solid transparent",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: skin.textSecondary }}>标题</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="给这个知识起个名字"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: skin.textSecondary }}>内容/想法</label>
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="写下你的思考..."
+              rows={4}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
+              style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+            />
+          </div>
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: skin.textSecondary }}>来源链接（可选）</label>
+            <input
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+            />
+          </div>
         </div>
 
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="标题"
-          className="w-full px-3 py-2 rounded-lg mb-3"
-          style={{
-            backgroundColor: skin.cardBg,
-            color: skin.textPrimary,
-            border: `1px solid ${skin.divider}`,
-          }}
-        />
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="内容描述"
-          className="w-full px-3 py-2 rounded-lg mb-4 resize-none"
-          rows={3}
-          style={{
-            backgroundColor: skin.cardBg,
-            color: skin.textPrimary,
-            border: `1px solid ${skin.divider}`,
-          }}
-        />
-        <div className="flex gap-3">
+        <div className="flex gap-2 mt-5">
           <button
             onClick={onClose}
-            className="flex-1 py-2 rounded-lg"
-            style={{ color: skin.textSecondary, backgroundColor: skin.divider + "40" }}
+            className="flex-1 px-4 py-2 rounded-lg text-sm"
+            style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
           >
             取消
           </button>
           <button
-            onClick={() => title && onSubmit(type, title, content)}
-            className="flex-1 py-2 rounded-lg"
-            style={{ backgroundColor: skin.swatch, color: "#fff" }}
+            onClick={() => title.trim() && onAdd(type, title.trim(), content.trim(), url.trim() || undefined)}
+            disabled={!title.trim()}
+            className="flex-1 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+            style={{ backgroundColor: skin.swatch, color: 'white' }}
           >
             添加
           </button>
@@ -709,74 +686,129 @@ function AddNodeModal({
   );
 }
 
-// 添加书签弹窗
-function AddBookmarkModal({
-  skin,
-  onClose,
-  onSubmit,
-}: {
-  skin: typeof NO_SKIN;
-  onClose: () => void;
-  onSubmit: (name: string, url: string) => void;
-}) {
-  const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
+// 编辑知识弹窗
+function EditNodeDialog({ node, onUpdate, onClose, skin }: any) {
+  const config = POSITION_CONFIG[node.type as NodeType];
+  const [title, setTitle] = useState(node.title);
+  const [content, setContent] = useState(node.content);
+  const [url, setUrl] = useState(node.url || '');
 
   return (
     <div
-      className="fixed inset-0 z-[100000] flex items-center justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
       onClick={onClose}
     >
       <div
-        className="rounded-xl p-6 w-80"
-        style={{ backgroundColor: skin.panelBg, border: `1px solid ${skin.divider}` }}
+        className="rounded-2xl shadow-2xl p-6 w-full max-w-md"
+        style={{ backgroundColor: skin.panelBg }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-bold mb-4" style={{ color: skin.textPrimary }}>
-          添加朋友
-        </h3>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="名称"
-          className="w-full px-3 py-2 rounded-lg mb-3"
-          style={{
-            backgroundColor: skin.cardBg,
-            color: skin.textPrimary,
-            border: `1px solid ${skin.divider}`,
-          }}
-        />
-        <input
-          type="text"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="网址"
-          className="w-full px-3 py-2 rounded-lg mb-4"
-          style={{
-            backgroundColor: skin.cardBg,
-            color: skin.textPrimary,
-            border: `1px solid ${skin.divider}`,
-          }}
-        />
-        <div className="flex gap-3">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-lg">{config.icon}</span>
+          <h3 className="text-base font-semibold" style={{ color: skin.textPrimary }}>编辑{config.label}</h3>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: skin.textSecondary }}>标题</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+            />
+          </div>
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: skin.textSecondary }}>内容</label>
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
+              style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+            />
+          </div>
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: skin.textSecondary }}>来源链接</label>
+            <input
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-5">
           <button
             onClick={onClose}
-            className="flex-1 py-2 rounded-lg"
-            style={{ color: skin.textSecondary, backgroundColor: skin.divider + "40" }}
+            className="flex-1 px-4 py-2 rounded-lg text-sm"
+            style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, border: `1px solid ${skin.divider}` }}
           >
             取消
           </button>
           <button
-            onClick={() => name && url && onSubmit(name, url)}
-            className="flex-1 py-2 rounded-lg"
-            style={{ backgroundColor: skin.swatch, color: "#fff" }}
+            onClick={() => title.trim() && onUpdate(node.id, title.trim(), content.trim(), url.trim() || undefined)}
+            disabled={!title.trim()}
+            className="flex-1 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+            style={{ backgroundColor: skin.swatch, color: 'white' }}
           >
-            添加
+            保存
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// 书签列表
+function BookmarksList({ bookmarks, skin }: any) {
+  return (
+    <div>
+      <div className="text-sm mb-4" style={{ color: skin.textSecondary }}>
+        {bookmarks.length} 个朋友
+      </div>
+
+      {bookmarks.length === 0 ? (
+        <div className="border-2 border-dashed rounded-2xl p-12 text-center" style={{ borderColor: skin.divider }}>
+          <ExternalLink size={40} className="mx-auto mb-3" style={{ color: skin.textSecondary }} />
+          <div className="text-sm" style={{ color: skin.textSecondary }}>还没有朋友链接</div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {bookmarks.map((bookmark: Bookmark) => (
+            <a
+              key={bookmark.id}
+              href={bookmark.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl p-4 transition-all hover:scale-[1.02]"
+              style={{ backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-base font-semibold"
+                  style={{ backgroundColor: skin.swatch + '20', color: skin.swatch }}
+                >
+                  {bookmark.icon || bookmark.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate" style={{ color: skin.textPrimary }}>
+                    {bookmark.name}
+                  </div>
+                  <div className="text-xs truncate" style={{ color: skin.textSecondary }}>
+                    {bookmark.url}
+                  </div>
+                </div>
+                <ExternalLink size={12} style={{ color: skin.textSecondary }} />
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
