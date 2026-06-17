@@ -275,6 +275,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         count: t.nodes.length,
         species: t.species,
         position: t.position,
+        scale: t.scale,
       })),
     [trees]
   );
