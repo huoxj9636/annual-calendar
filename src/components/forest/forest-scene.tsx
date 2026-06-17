@@ -60,6 +60,11 @@ export type ForestSceneProps = {
    * 焦点树 id：变化时画布自动 pan 到让该树在可视区中央，并触发短暂视觉高亮（pulse）。
    */
   focusTreeId?: string | null;
+  /**
+   * 鸟瞰触发器：每次变化时画布自动 pan 让所有树的总中心对齐可视区中心 + zoom 归 1。
+   * 用于"拖完树后找不到树了"的场景，一键回到所有树都能看到的视图。
+   */
+  birdseyeTrigger?: number;
 };
 
 /**
@@ -450,6 +455,7 @@ export default function ForestScene({
   draggable = true,
   resetTrigger,
   focusTreeId,
+  birdseyeTrigger,
 }: ForestSceneProps) {
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
@@ -625,6 +631,46 @@ export default function ForestScene({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusTreeId, items]);
 
+  // 外部触发"鸟瞰"：计算所有树的总中心，pan 让总中心对齐可视区中心 + zoom 归 1
+  // 用于"拖完树后找不到树了"的一键复位
+  useEffect(() => {
+    if (birdseyeTrigger === undefined) return;
+    if (items.length === 0) {
+      // 没树时：直接归位
+      setPan({ x: 0, y: 0 });
+      setZoom(1);
+      try {
+        localStorage.setItem("forest-canvas-pan", JSON.stringify({ x: 0, y: 0 }));
+        localStorage.setItem("forest-canvas-zoom", "1");
+      } catch {}
+      return;
+    }
+    // 计算所有树的平均位置（inner 坐标内的 0-100%）
+    const avgX = items.reduce((sum, it) => sum + (it.position?.x ?? 50), 0) / items.length;
+    const avgY = items.reduce((sum, it) => sum + (it.position?.y ?? 50), 0) / items.length;
+    // 鸟瞰 zoom 归 1
+    setZoom(1);
+    try {
+      localStorage.setItem("forest-canvas-zoom", "1");
+    } catch {}
+    // pan 计算：与 focus 树相同公式（zoom=1）
+    // pan.x = zoom * (2 * pos.x - 100)
+    const px = 1 * (2 * avgX - 100);
+    const py = -1 * (2 * avgY - 100);
+    const clamped = clampPan(px, py);
+    setPan(clamped);
+    try {
+      localStorage.setItem("forest-canvas-pan", JSON.stringify(clamped));
+    } catch {}
+    // 触发所有树短暂高亮 pulse，让用户能看到所有树的位置
+    setFocusPulseId("__all__");
+    const t = setTimeout(() => {
+      setFocusPulseId((cur) => (cur === "__all__" ? null : cur));
+    }, 1800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [birdseyeTrigger, items]);
+
   // 平移限制：保证物理画布始终有内容覆盖可视区
   // 物理画布 200%，pan 范围 [-50, 50]（pan=0 是中心）
   // pan=+50：可视区看到物理画布 0-50% 区域（左边）
@@ -796,7 +842,7 @@ export default function ForestScene({
             x={x}
             y={y}
             selected={item.id === selectedId}
-            focused={item.id === focusPulseId}
+            focused={item.id === focusPulseId || focusPulseId === "__all__"}
             onClick={onItemClick ? () => onItemClick(item.id) : undefined}
             onDelete={onItemDelete ? () => onItemDelete(item.id) : undefined}
             onPositionChange={

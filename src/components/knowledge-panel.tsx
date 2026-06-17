@@ -729,6 +729,7 @@ function MyForestView({
   const [listOpen, setListOpen] = useState(true);
   // focus 树 id：点击列表项时设置，ForestScene 内部 pan 到该树
   const [focusTreeId, setFocusTreeId] = useState<string | null>(null);
+  const [birdseyeTrigger, setBirdseyeTrigger] = useState<number>(0);
 
   // 按节点数倒序排（参天古木在前）
   const sortedItems = useMemo(
@@ -753,7 +754,25 @@ function MyForestView({
         fillHeight
         resetTrigger={panResetKey}
         focusTreeId={focusTreeId}
+        birdseyeTrigger={birdseyeTrigger}
       />
+
+      {/* 鸟瞰按钮：左上角统计 chip 下方，一键看全所有树 */}
+      <button
+        onClick={() => setBirdseyeTrigger((k) => k + 1)}
+        className="absolute top-16 left-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:scale-105 active:scale-95"
+        style={{
+          background: "rgba(255,255,255,0.85)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          border: `1px solid ${skin.swatch}40`,
+          color: "var(--foreground)",
+        }}
+        title="鸟瞰全图：所有树的总中心对齐可视区中心 + zoom 归 1"
+      >
+        <Crosshair className="h-3.5 w-3.5" style={{ color: skin.swatch }} />
+        鸟瞰全图
+      </button>
 
       {/* 左上角统计 chip（玻璃拟态） */}
       <div
