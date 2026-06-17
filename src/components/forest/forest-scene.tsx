@@ -8,8 +8,8 @@
  * 树苗按节点数量成长为不同阶段
  */
 
-import { useMemo, useRef, useState, useCallback } from "react";
-import { Cloud, Sun, X, TreeDeciduous } from "lucide-react";
+import { useMemo, useRef, useState, useCallback, useEffect } from "react";
+import { Cloud, Sun, X, TreeDeciduous, Move, RotateCcw } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import { SpeciesTree, TREE_SPECIES, type TreeSpeciesId } from "./tree-species";
 
@@ -487,6 +487,131 @@ export default function ForestScene({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, itemsKey]);
 
+  // 画布平移状态（相对物理画布的偏移，单位 px）
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [panning, setPanning] = useState(false);
+  const panStartRef = useRef<{
+    pointerX: number;
+    pointerY: number;
+    panX: number;
+    panY: number;
+  } | null>(null);
+  const canvasPannedRef = useRef(false); // 画布本次按下-抬起是否发生实际平移
+  const PAN_THRESHOLD_PX = 4; // 平移阈值（像素）
+
+  // 物理画布尺寸（比可视区大，给平移留空间）
+  // 横向 200% 给左右平移空间，纵向 200% 给上下平移空间
+  const CANVAS_W = 200; // % 相对外层可视区
+  const CANVAS_H = 200; // % 相对外层可视区
+
+  // 从 localStorage 读取画布平移（持久化）
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("forest-canvas-pan");
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (
+          typeof saved?.x === "number" &&
+          typeof saved?.y === "number" &&
+          Math.abs(saved.x) < 2000 &&
+          Math.abs(saved.y) < 2000
+        ) {
+          setPan({ x: saved.x, y: saved.y });
+        }
+      }
+    } catch {}
+  }, []);
+
+  // 平移限制：保证物理画布始终有内容覆盖可视区
+  const clampPan = useCallback((x: number, y: number) => {
+    // 物理画布 200%，可视区 100%
+    // 最远平移：物理画布的边缘到可视区的边缘
+    // 物理画布 200% 表示 (可视区宽度 * 2) 宽
+    // 可视区 100% 在物理画布中的位置 = [pan, pan + 100%]
+    // 限制：pan >= 0（不超出左/上边界）且 pan <= 100%（不超出右/下边界）
+    const max = 100; // % 单位（相对于可视区宽度）
+    return {
+      x: Math.max(0, Math.min(max, x)),
+      y: Math.max(0, Math.min(max, y)),
+    };
+  }, []);
+
+  // 画布拖拽处理
+  const handleCanvasPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // 仅在 my 变体支持画布拖动
+      if (variant !== "my") return;
+      // 仅主按钮（左键 / touch）
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      // 排除树和删除按钮（树的 pointerdown 会 stopPropagation，所以这里能进来说明按的是空白处）
+      // 但保险起见再检查一次
+      if (target.closest("[data-forest-tree]") || target.closest("[data-forest-delete]")) {
+        return;
+      }
+      e.preventDefault();
+      panStartRef.current = {
+        pointerX: e.clientX,
+        pointerY: e.clientY,
+        panX: pan.x,
+        panY: pan.y,
+      };
+      canvasPannedRef.current = false;
+      setPanning(true);
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {}
+    },
+    [pan, variant]
+  );
+
+  const handleCanvasPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!panning || !panStartRef.current) return;
+      const dx = e.clientX - panStartRef.current.pointerX;
+      const dy = e.clientY - panStartRef.current.pointerY;
+      if (Math.hypot(dx, dy) > PAN_THRESHOLD_PX) {
+        canvasPannedRef.current = true;
+      }
+      // 把像素转成 %（外层可视区宽/高）
+      const rect = sceneRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const dxPct = (dx / rect.width) * 100;
+      const dyPct = (dy / rect.height) * 100;
+      setPan(
+        clampPan(panStartRef.current.panX + dxPct, panStartRef.current.panY + dyPct)
+      );
+    },
+    [panning, clampPan]
+  );
+
+  const handleCanvasPointerEnd = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!panning) {
+        panStartRef.current = null;
+        return;
+      }
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+      setPanning(false);
+      panStartRef.current = null;
+      // 持久化
+      try {
+        localStorage.setItem("forest-canvas-pan", JSON.stringify(pan));
+      } catch {}
+    },
+    [panning, pan]
+  );
+
+  // 复位画布
+  const resetPan = useCallback(() => {
+    setPan({ x: 0, y: 0 });
+    try {
+      localStorage.removeItem("forest-canvas-pan");
+    } catch {}
+  }, []);
+
   // 关键样式
   const sceneStyle: React.CSSProperties = {
     ...(fillHeight ? { height: "100%" } : { height }),
@@ -518,13 +643,37 @@ export default function ForestScene({
         }
       `}</style>
 
-      <div ref={sceneRef} style={sceneStyle} className={fillHeight ? "w-full h-full" : "w-full"}>
+      <div
+        ref={sceneRef}
+        style={{
+          ...sceneStyle,
+          cursor: panning ? "grabbing" : "grab",
+          touchAction: "none",
+        }}
+        className={fillHeight ? "w-full h-full" : "w-full"}
+        onPointerDown={handleCanvasPointerDown}
+        onPointerMove={handleCanvasPointerMove}
+        onPointerUp={handleCanvasPointerEnd}
+        onPointerCancel={handleCanvasPointerEnd}
+      >
+        {/* 内层物理画布：所有内容在内层，支持平移 */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: `${CANVAS_W}%`,
+            height: `${CANVAS_H}%`,
+            transform: `translate(${-pan.x}%, ${-pan.y}%)`,
+            transition: panning ? "none" : "transform 0.2s ease-out",
+          }}
+        >
         {/* 晨曦太阳 */}
         <div
           className="absolute pointer-events-none"
           style={{
-            right: 32,
-            top: 24,
+            left: "85%",
+            top: "12%",
             color: "#FFD27A",
             filter: "drop-shadow(0 0 16px rgba(255, 210, 122, 0.5))",
             animation: "sunbeamPulse 6s ease-in-out infinite",
@@ -577,6 +726,11 @@ export default function ForestScene({
 
         {/* 树木 */}
         {layout.map(({ item, x, y }, i) => (
+          <div
+            key={`wrap-${item.id}`}
+            data-forest-tree
+            style={{ display: "contents" }}
+          >
           <ForestTree
             key={item.id}
             item={item}
@@ -596,6 +750,7 @@ export default function ForestScene({
             index={i}
             sceneRect={sceneRef}
           />
+          </div>
         ))}
 
         {/* 空状态 */}
@@ -607,6 +762,49 @@ export default function ForestScene({
             <TreeDeciduous size={56} strokeWidth={1} className="opacity-40 mb-2" />
             <p className="text-sm opacity-70">这里还是一片荒地</p>
             <p className="text-xs opacity-50 mt-1">点击右下角种下第一棵树</p>
+          </div>
+        )}
+        </div>
+
+        {/* 画布平移指示 + 复位按钮（覆盖在内层之上，不受 transform 影响） */}
+        {variant === "my" && (pan.x !== 0 || pan.y !== 0) && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              resetPan();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="absolute z-50 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs shadow-md hover:scale-105 transition-transform"
+            style={{
+              left: 12,
+              top: 12,
+              background: `${skin.swatch}cc`,
+              color: "white",
+              backdropFilter: "blur(8px)",
+            }}
+            aria-label="复位画布"
+            title="复位画布"
+          >
+            <RotateCcw size={12} />
+            <span>复位画布</span>
+          </button>
+        )}
+
+        {/* 拖动提示（首次平移时） */}
+        {variant === "my" && pan.x === 0 && pan.y === 0 && items.length > 0 && (
+          <div
+            className="absolute z-40 pointer-events-none flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs"
+            style={{
+              right: 12,
+              top: 12,
+              background: `${skin.swatch}30`,
+              color: skin.textSecondary,
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <Move size={12} />
+            <span>拖动画布查看更多</span>
           </div>
         )}
       </div>
