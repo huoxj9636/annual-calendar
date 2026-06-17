@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronRight,
   Crosshair,
+  RefreshCw,
   TreePine,
   TreeDeciduous,
   Sprout,
@@ -757,7 +758,7 @@ function MyForestView({
         birdseyeTrigger={birdseyeTrigger}
       />
 
-      {/* 鸟瞰按钮：左上角统计 chip 下方，一键看全所有树 */}
+      {/* 刷新定位按钮：左上角统计 chip 下方，一键看全所有树 */}
       <button
         onClick={() => setBirdseyeTrigger((k) => k + 1)}
         className="absolute top-16 left-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:scale-105 active:scale-95"
@@ -768,10 +769,10 @@ function MyForestView({
           border: `1px solid ${skin.swatch}40`,
           color: "var(--foreground)",
         }}
-        title="鸟瞰全图：所有树的总中心对齐可视区中心 + zoom 归 1"
+        title="刷新定位：自动 pan 到所有树的总中心 + zoom 归 1，1.8s 短暂高亮所有树"
       >
-        <Crosshair className="h-3.5 w-3.5" style={{ color: skin.swatch }} />
-        鸟瞰全图
+        <RefreshCw className="h-3.5 w-3.5" style={{ color: skin.swatch }} />
+        刷新
       </button>
 
       {/* 左上角统计 chip（玻璃拟态） */}
