@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useRef, useState, useCallback, useEffect } from "react";
-import { Cloud, Sun, X, TreeDeciduous, Move, RotateCcw } from "lucide-react";
+import { Cloud, Sun, X, TreeDeciduous, Maximize2 } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import { SpeciesTree, TREE_SPECIES, type TreeSpeciesId } from "./tree-species";
 
@@ -630,13 +630,41 @@ export default function ForestScene({
     [panning, pan]
   );
 
-  // 复位画布
-  const resetPan = useCallback(() => {
-    setPan({ x: 0, y: 0 });
-    try {
-      localStorage.removeItem("forest-canvas-pan");
-    } catch {}
-  }, []);
+  // 鸟瞰全图：自动计算所有树的 bounding box，把视口中心定位到 bbox 中心
+  // 公式：视口中心对应的物理画布 % 位置 = 75 - pan（相对当前 transform 公式）
+  // 反过来：要让视口中心 = 物理画布 P% 位置，pan = 75 - P
+  const handleBirdseye = useCallback(() => {
+    // 收集所有有效树的位置
+    const positions: { x: number; y: number }[] = [];
+    for (const it of items) {
+      const pos = it.position;
+      if (
+        pos &&
+        typeof pos.x === "number" &&
+        typeof pos.y === "number" &&
+        pos.x >= 0 && pos.x <= 100 &&
+        pos.y >= 0 && pos.y <= 100
+      ) {
+        positions.push(pos);
+      }
+    }
+    if (positions.length === 0) return;
+    // 计算 bounding box 中心
+    const minX = Math.min(...positions.map((p) => p.x));
+    const maxX = Math.max(...positions.map((p) => p.x));
+    const minY = Math.min(...positions.map((p) => p.y));
+    const maxY = Math.max(...positions.map((p) => p.y));
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    // 反推 pan：让视口中心对准 bbox 中心
+    // 视口中心对应物理画布 % = 75 - pan
+    // 75 - pan = centerX → panX = 75 - centerX
+    const targetPanX = 75 - centerX;
+    const targetPanY = 75 - centerY;
+    setPan(
+      clampPan(targetPanX, targetPanY)
+    );
+  }, [items, clampPan]);
 
   // 关键样式
   const sceneStyle: React.CSSProperties = {
@@ -793,13 +821,13 @@ export default function ForestScene({
         )}
         </div>
 
-        {/* 画布平移指示 + 复位按钮（覆盖在内层之上，不受 transform 影响） */}
-        {variant === "my" && (Math.abs(pan.x) > 0.5 || Math.abs(pan.y) > 0.5) && (
+        {/* 鸟瞰全图按钮：自动定位到能看到所有树的位置 */}
+        {variant === "my" && items.length > 0 && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              resetPan();
+              handleBirdseye();
             }}
             onPointerDown={(e) => e.stopPropagation()}
             className="absolute z-50 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs shadow-md hover:scale-105 transition-transform"
@@ -810,29 +838,12 @@ export default function ForestScene({
               color: "white",
               backdropFilter: "blur(8px)",
             }}
-            aria-label="复位画布"
-            title="复位画布"
+            aria-label="鸟瞰全图"
+            title="鸟瞰全图：自动定位到能看到所有树的位置"
           >
-            <RotateCcw size={12} />
-            <span>复位画布</span>
+            <Maximize2 size={12} />
+            <span>鸟瞰全图</span>
           </button>
-        )}
-
-        {/* 拖动提示（首次平移时） */}
-        {variant === "my" && Math.abs(pan.x) < 0.5 && Math.abs(pan.y) < 0.5 && items.length > 0 && (
-          <div
-            className="absolute z-40 pointer-events-none flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs"
-            style={{
-              right: 12,
-              top: 12,
-              background: `${skin.swatch}30`,
-              color: skin.textSecondary,
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            <Move size={12} />
-            <span>拖动画布查看更多</span>
-          </div>
         )}
       </div>
     </>
