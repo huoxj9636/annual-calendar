@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useRef, useState, useCallback, useEffect } from "react";
-import { Cloud, Sun, X, TreeDeciduous, Maximize2, Minimize2, Plus, Minus } from "lucide-react";
+import { X, TreeDeciduous, Plus, Minus, RotateCcw } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import { SpeciesTree, TREE_SPECIES, type TreeSpeciesId } from "./tree-species";
 
@@ -311,14 +311,12 @@ function ForestTree({
           />
         </div>
 
-        {/* 树名称徽章（常显，悬停态更突出） - 不随 zoom 缩放，保持固定大小 */}
+        {/* 树名称徽章（常显，悬停态更突出） - 跟随 zoom 一起缩放 */}
         <div
           className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap flex items-center gap-1.5 transition-all"
           style={{
-            top: -22 / zoom, // 反向补偿，让徽章始终在树上方固定距离
-            fontSize: 11,
-            transform: zoom !== 1 ? `scale(${1 / zoom})` : undefined, // 反向缩放，保持固定大小
-            transformOrigin: "bottom center",
+            top: -22 * zoom,
+            fontSize: 11 * zoom,
             fontWeight: 500,
             padding: "2px 8px",
             borderRadius: 999,
@@ -380,71 +378,8 @@ function ForestTree({
 }
 
 /** 漂浮云朵 */
-function DriftingClouds() {
-  const clouds = useMemo(
-    () =>
-      [
-        { top: 8, delay: 0, duration: 38, scale: 1 },
-        { top: 18, delay: 12, duration: 52, scale: 0.7 },
-        { top: 5, delay: 26, duration: 44, scale: 1.2 },
-        { top: 12, delay: 6, duration: 46, scale: 0.85 },
-        { top: 22, delay: 20, duration: 50, scale: 0.6 },
-        { top: 4, delay: 32, duration: 42, scale: 1.1 },
-      ],
-    []
-  );
-  return (
-    <>
-      {clouds.map((c, i) => (
-        <div
-          key={i}
-          className="absolute pointer-events-none"
-          style={{
-            left: -300,
-            top: `${c.top}%`,
-            color: "rgba(255,255,255,0.7)",
-            transform: `scale(${c.scale})`,
-            filter: "blur(0.5px)",
-            animation: `cloudDrift ${c.duration}s linear ${c.delay}s infinite`,
-          }}
-        >
-          <Cloud size={56} fill="currentColor" strokeWidth={0.5} />
-        </div>
-      ))}
-    </>
-  );
-}
 
 /** 阳光光斑 */
-function Sunbeams() {
-  const beams = [
-    { left: 12, top: 22, size: 120, delay: 0 },
-    { left: 35, top: 12, size: 160, delay: 1.5 },
-    { left: 55, top: 30, size: 100, delay: 3 },
-    { left: 72, top: 18, size: 140, delay: 0.8 },
-    { left: 88, top: 28, size: 110, delay: 2.2 },
-  ];
-  return (
-    <>
-      {beams.map((b, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            left: `${b.left}%`,
-            top: `${b.top}%`,
-            width: b.size,
-            height: b.size,
-            background:
-              "radial-gradient(circle, rgba(255,250,230,0.35) 0%, rgba(255,250,230,0.1) 40%, transparent 70%)",
-            filter: "blur(8px)",
-            animation: `sunbeamPulse 5s ease-in-out ${b.delay}s infinite`,
-          }}
-        />
-      ))}
-    </>
-  );
-}
 
 export default function ForestScene({
   items,
@@ -557,9 +492,9 @@ export default function ForestScene({
   // zoom 缩放会等比调整 inner 实际尺寸，pan 范围也按 zoom 反比放大
   const CANVAS_W = 200; // % 相对外层可视区
   const CANVAS_H = 200; // % 相对外层可视区
-  const ZOOM_MIN = 0.3; // 最大缩小 0.3 倍（让 200% 画布缩小到 60% 视口，留出四周空白）
-  const ZOOM_MAX = 1.5; // 最大放大 1.5 倍
-  const isBirdseye = zoom <= 0.55; // 鸟瞰模式（缩到最小看全画布）
+  const ZOOM_MIN = 1; // 最小缩放 1 倍 = 背景图完全铺满屏幕，不允许再小
+  const ZOOM_MAX = 2.5; // 最大放大 2.5 倍
+
 
   // 从 localStorage 读取画布平移和缩放（持久化）
   useEffect(() => {
@@ -618,8 +553,6 @@ export default function ForestScene({
     (e: React.PointerEvent<HTMLDivElement>) => {
       // 仅在 my 变体支持画布拖动
       if (variant !== "my") return;
-      // 鸟瞰模式：已看全画布，禁止拖动（虚线边框标识边界）
-      if (isBirdseye) return;
       // 仅主按钮（左键 / touch）
       if (e.button !== 0) return;
       const target = e.target as HTMLElement;
@@ -641,7 +574,7 @@ export default function ForestScene({
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       } catch {}
     },
-    [pan, variant, isBirdseye]
+    [pan, variant]
   );
 
   const handleCanvasPointerMove = useCallback(
@@ -690,52 +623,28 @@ export default function ForestScene({
     [panning, pan, zoom]
   );
 
-  // 鸟瞰全图：把画布缩到最小（最大视图范围），让整个 200% 物理画布都能看到
-  const handleBirdseye = useCallback(() => {
-    setZoom(ZOOM_MIN);
-    setPan({ x: 0, y: 0 });
-    try {
-      localStorage.setItem("forest-canvas-zoom", String(ZOOM_MIN));
-      localStorage.setItem(
-        "forest-canvas-pan",
-        JSON.stringify({ x: 0, y: 0 })
-      );
-    } catch {}
-  }, []);
-
-  // 退出鸟瞰：恢复 zoom=1（pan 保持）
-  const handleExitBirdseye = useCallback(() => {
+  // 重置缩放到默认 1 倍（背景图完全铺满屏幕）
+  const handleResetZoom = useCallback(() => {
     setZoom(1);
     try {
       localStorage.setItem("forest-canvas-zoom", "1");
     } catch {}
   }, []);
 
-  // 关键样式
+  // 关键样式：画布背景跟日历主页主题色保持一致
   const sceneStyle: React.CSSProperties = {
     ...(fillHeight ? { height: "100%" } : { height }),
-    background: `linear-gradient(180deg,
-      oklch(0.97 0.02 85) 0%,
-      oklch(0.94 0.04 95) 35%,
-      ${skin.swatch}10 75%,
-      ${skin.swatch}25 100%)`,
+    background: skin.panelBg,
     borderRadius: fillHeight ? 0 : 16,
     overflow: "hidden",
     position: "relative",
-    boxShadow: fillHeight ? "none" : "0 10px 30px -10px rgba(0,0,0,0.15)",
+    border: `1px solid ${skin.swatch}22`,
+    boxShadow: fillHeight ? "none" : "0 4px 20px -8px rgba(0,0,0,0.1)",
   };
 
   return (
     <>
       <style>{`
-@keyframes cloudDrift {
-          0%   { transform: translateX(0) scale(var(--s, 1)); }
-          100% { transform: translateX(calc(200vw + 400px)) scale(var(--s, 1)); }
-        }
-        @keyframes sunbeamPulse {
-          0%, 100% { opacity: 0.5; transform: scale(1); }
-          50%      { opacity: 0.9; transform: scale(1.08); }
-        }
         @keyframes pulseRing {
           0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
           50%      { opacity: 0.2; transform: translateX(-50%) scale(1.2); }
@@ -757,8 +666,7 @@ export default function ForestScene({
         onWheel={handleCanvasWheel}
       >
         {/* 内层物理画布：所有内容在内层，支持平移和缩放
-            物理画布 200%×200%，zoom=1 时正常显示，zoom=ZOOM_MIN 时鸟瞰全图
-            鸟瞰模式时画布四周显示虚线边框，标识画布拖动最大范围 */}
+            画布背景用主题色（跟日历主页背景保持一致） */}
         <div
           style={{
             position: "absolute",
@@ -768,69 +676,13 @@ export default function ForestScene({
             height: `${CANVAS_H * zoom}%`,
             transform: `translate(-50%, -50%) translate(${-pan.x}%, ${-pan.y}%)`,
             transition: panning ? "none" : "transform 0.35s ease-out",
-            // 鸟瞰模式时画布四周显示虚线边框（标识画布能拖到的最大边界）
-            boxShadow: isBirdseye
-              ? `inset 0 0 0 2px ${skin.swatch}, inset 0 0 0 6px ${skin.swatch}22`
-              : "none",
-            pointerEvents: isBirdseye ? "none" : "auto",
+            // 画布背景色：跟日历主页主题色保持一致
+            background: skin.panelBg,
+            borderRadius: 12,
+            border: `1px solid ${skin.swatch}33`,
+            overflow: "hidden",
           }}
         >
-        {/* 晨曦太阳 */}
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            left: "85%",
-            top: "6%",
-            color: "#FFD27A",
-            filter: "drop-shadow(0 0 16px rgba(255, 210, 122, 0.5))",
-            animation: "sunbeamPulse 6s ease-in-out infinite",
-          }}
-        >
-          <Sun size={48} fill="currentColor" strokeWidth={1} />
-        </div>
-
-        {/* 漂浮云朵 */}
-        <DriftingClouds />
-
-        {/* 远山（三层叠加，从远到近）—— 扩展到整个物理画布宽度（200%×200%） */}
-        <svg
-          className="absolute inset-x-0 bottom-0 w-full pointer-events-none"
-          viewBox="0 0 2000 220"
-          preserveAspectRatio="none"
-          style={{ height: "85%" }}
-        >
-          {/* 最远山：连绵圆润的低矮山脊（横跨整个物理画布） */}
-          <path
-            d="M0,180 Q40,150 80,160 Q140,135 200,150 Q260,125 320,145 Q400,120 480,135 Q560,115 640,130 Q720,110 800,135 Q880,125 960,140 Q1040,118 1120,140 Q1180,128 1240,145 Q1300,125 1360,142 Q1420,120 1480,135 Q1540,115 1600,130 Q1660,108 1720,128 Q1780,118 1840,135 Q1900,122 1960,138 L2000,142 L2000,220 L0,220 Z"
-            fill={skin.swatch}
-            opacity={0.14}
-          />
-          {/* 中景山：连绵圆润 + 多座不对称多棱角山峰 */}
-          <path
-            d="M0,200 Q60,170 130,185 Q200,160 280,175 Q360,140 440,170 Q500,158 540,168 L555,148 L570,128 L585,112 L600,100 L615,118 L628,138 L640,160 L660,168 Q740,150 820,170 Q880,160 940,178 Q1000,155 1080,172 Q1140,142 1200,168 Q1260,158 1320,172 L1340,148 L1360,128 L1380,108 L1400,92 L1420,112 L1438,135 L1452,158 L1475,168 Q1540,150 1620,170 Q1700,160 1780,175 Q1860,160 1940,170 L2000,175 L2000,220 L0,220 Z"
-            fill={skin.swatch}
-            opacity={0.22}
-          />
-          {/* 近山：圆润丘陵 + 多座不对称多棱角山峰（重复覆盖整个物理画布） */}
-          <path
-            d="M0,215 Q60,195 130,205 Q190,185 250,200 Q280,180 300,188 L315,160 L330,138 L345,118 L362,132 L378,150 L395,170 Q420,188 480,205 Q510,195 540,205 Q570,180 590,192 L605,158 L620,138 L635,118 L650,108 L665,128 L680,148 L695,168 Q720,188 770,205 Q800,195 850,205 Q890,180 920,195 L935,168 L950,148 L965,128 L980,118 L995,138 L1010,158 L1025,178 Q1050,195 1100,205 Q1140,195 1180,200 Q1215,180 1240,192 L1255,160 L1270,138 L1285,118 L1300,108 L1315,128 L1330,148 L1345,168 Q1370,188 1420,205 Q1460,195 1500,205 Q1535,180 1555,192 L1570,158 L1585,138 L1600,118 L1615,108 L1630,128 L1645,148 L1660,168 Q1685,188 1740,205 Q1780,195 1820,205 Q1860,180 1880,192 L1895,160 L1910,138 L1925,118 L1940,108 L1955,128 L1970,148 L1985,168 L2000,200 L2000,220 L0,220 Z"
-            fill={skin.swatch}
-            opacity={0.32}
-          />
-        </svg>
-
-        {/* 草地（覆盖整个物理画布宽度） */}
-        <div
-          className="absolute inset-x-0 bottom-0 pointer-events-none"
-          style={{
-            height: "45%",
-            background: `linear-gradient(180deg, ${skin.swatch}30 0%, ${skin.swatch}50 100%)`,
-          }}
-        />
-
-        {/* 阳光光斑 */}
-        <Sunbeams />
-
         {/* 树木 */}
         {layout.map(({ item, x, y }, i) => (
           <div
@@ -874,53 +726,24 @@ export default function ForestScene({
         )}
         </div>
 
-        {/* 鸟瞰全图 / 退出鸟瞰 按钮：缩放画布到刚好能看全 200% 物理画布边界 */}
-        {variant === "my" && items.length > 0 && !isBirdseye && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleBirdseye();
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="absolute z-50 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs shadow-md hover:scale-105 transition-transform"
+        {/* 缩放百分比显示 */}
+        {variant === "my" && items.length > 0 && (
+          <div
+            className="absolute z-50 pointer-events-none"
             style={{
-              left: 12,
+              right: 12,
               top: 12,
+              padding: "4px 10px",
+              borderRadius: 999,
               background: `${skin.swatch}cc`,
               color: "white",
+              fontSize: 11,
+              fontWeight: 500,
               backdropFilter: "blur(8px)",
             }}
-            aria-label="鸟瞰全图"
-            title="鸟瞰全图：缩小到能看全画布边界"
           >
-            <Maximize2 size={12} />
-            <span>鸟瞰全图</span>
-          </button>
-        )}
-
-        {variant === "my" && isBirdseye && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleExitBirdseye();
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="absolute z-50 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs shadow-md hover:scale-105 transition-transform"
-            style={{
-              left: 12,
-              top: 12,
-              background: `${skin.swatch}cc`,
-              color: "white",
-              backdropFilter: "blur(8px)",
-            }}
-            aria-label="退出鸟瞰"
-            title="退出鸟瞰：恢复正常缩放"
-          >
-            <Minimize2 size={12} />
-            <span>退出鸟瞰</span>
-          </button>
+            缩放 {(zoom * 100).toFixed(0)}%
+          </div>
         )}
 
         {/* 缩放控制按钮（+ / -）放在右下角 */}
