@@ -301,374 +301,175 @@ export default function KnowledgePanel({
               />
             </div>
 
-            {/* 大树可视化 - 真实的大树效果 */}
+            {/* 大树可视化 - AI生成图片背景 + 动态果实 */}
             <div className="flex-1 overflow-y-auto px-6">
-              {/* 真实大树容器 */}
-              <div className="relative flex flex-col items-center py-8 min-h-[500px]">
-                {/* 地面 */}
-                <div className="absolute bottom-0 w-full h-16 bg-gradient-to-t from-[#3d2817] via-[#5a3d2b] to-transparent rounded-b-xl" />
-
-                {/* 整棵大树 */}
-                <div className="relative w-[400px] h-[450px] flex flex-col items-center">
-                  {/* 树冠区域 - 包含树枝、树叶、果实 */}
-                  <div className="relative w-full h-[280px] flex items-start justify-center">
-                    {/* 左侧主树枝 */}
-                    <div
-                      className="absolute left-[60px] top-[80px] w-[80px] h-[120px] origin-bottom-right"
-                      style={{
-                        transform: 'rotate(-35deg)',
-                        background: 'linear-gradient(90deg, #4a3728 0%, #6b5344 50%, #4a3728 100%)',
-                        borderRadius: '20px 8px 8px 20px',
-                        boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.3), inset 2px 0 4px rgba(255,255,255,0.1)',
-                      }}
-                    >
-                      {/* 左侧树叶群 */}
-                      <div className="absolute -top-[40px] left-0 w-[100px] h-[80px]">
-                        {nodes.filter(n => n.type === 'leaf').slice(0, 3).map((leaf, i) => (
-                          <div
-                            key={leaf.id}
-                            onClick={() => setExpandedNode(leaf)}
-                            className="absolute cursor-pointer hover:scale-110 transition-transform animate-sway"
-                            style={{
-                              left: `${i * 30}px`,
-                              top: `${10 + i * 15}px`,
-                              animationDelay: `${i * 0.5}s`,
-                            }}
-                            title={leaf.title}
-                          >
-                            <div
-                              className="w-[24px] h-[32px] rounded-[50% 50% 50% 50% / 60% 60% 40% 40%]"
-                              style={{
-                                background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%)',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.2), inset 0 -2px 4px rgba(0,0,0,0.1)',
-                              }}
-                            >
-                              <span className="absolute inset-0 flex items-center justify-center text-[10px] text-white/80 font-medium">
-                                {leaf.title.slice(0, 2)}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                        {/* 空位树叶 */}
-                        {nodes.filter(n => n.type === 'leaf').length < 3 && Array.from({ length: 3 - nodes.filter(n => n.type === 'leaf').length }).map((_, i) => (
-                          <div
-                            key={`empty-leaf-left-${i}`}
-                            className="absolute animate-sway"
-                            style={{
-                              left: `${(nodes.filter(n => n.type === 'leaf').length + i) * 30}px`,
-                              top: `${10 + (nodes.filter(n => n.type === 'leaf').length + i) * 15}px`,
-                              animationDelay: `${(nodes.filter(n => n.type === 'leaf').length + i) * 0.5}s`,
-                            }}
-                          >
-                            <div
-                              className="w-[24px] h-[32px] rounded-[50% 50% 50% 50% / 60% 60% 40% 40%] opacity-30"
-                              style={{
-                                background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%)',
-                                border: '1px dashed rgba(255,255,255,0.3)',
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      {/* 左侧果实 */}
-                      {nodes.filter(n => n.type === 'fruit').slice(0, 2).map((fruit, i) => (
+              {/* 大树容器 */}
+              <div className="relative flex flex-col items-center py-4 min-h-[400px]">
+                {/* 大树背景图 */}
+                <div className="relative w-full max-w-[500px] h-[400px] rounded-xl overflow-hidden shadow-lg">
+                  <img
+                    src="/tree-background.jpeg"
+                    alt="知识大树"
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* 动态果实层 - 挂在树上的果实 */}
+                  <div className="absolute inset-0">
+                    {/* 果实位置预设 - 树枝末端的多个位置 */}
+                    {[
+                      { left: '15%', top: '25%' },   // 左下枝
+                      { left: '8%', top: '35%' },    // 左下枝2
+                      { left: '25%', top: '20%' },   // 左中枝
+                      { left: '18%', top: '15%' },   // 左上枝
+                      { left: '50%', top: '12%' },   // 顶枝
+                      { left: '75%', top: '20%' },   // 右中枝
+                      { left: '85%', top: '25%' },   // 右下枝
+                      { left: '92%', top: '35%' },   // 右下枝2
+                      { left: '68%', top: '15%' },   // 右上枝
+                    ].map((pos, index) => {
+                      const fruit = nodes.filter(n => n.type === 'fruit')[index];
+                      return (
                         <div
-                          key={fruit.id}
-                          onClick={() => setExpandedNode(fruit)}
-                          className="absolute cursor-pointer hover:scale-110 transition-transform animate-sway"
+                          key={`fruit-pos-${index}`}
+                          className="absolute cursor-pointer hover:scale-120 transition-transform duration-200"
                           style={{
-                            left: `${20 + i * 25}px`,
-                            top: '-10px',
-                            animationDelay: `${i * 0.3}s`,
+                            left: pos.left,
+                            top: pos.top,
+                            transform: 'translate(-50%, -50%)',
                           }}
-                          title={fruit.title}
                         >
-                          <div
-                            className="w-[28px] h-[28px] rounded-full relative"
-                            style={{
-                              background: 'radial-gradient(circle at 30% 30%, #ff6b6b 0%, #ee5a24 50%, #c0392b 100%)',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset -2px -2px 4px rgba(0,0,0,0.2), inset 2px 2px 4px rgba(255,255,255,0.3)',
-                            }}
-                          >
-                            <span className="absolute inset-0 flex items-center justify-center text-[8px] text-white font-bold">
-                              {TYPE_LABELS.fruit.icon}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* 右侧主树枝 */}
-                    <div
-                      className="absolute right-[60px] top-[80px] w-[80px] h-[120px] origin-bottom-left"
-                      style={{
-                        transform: 'rotate(35deg)',
-                        background: 'linear-gradient(90deg, #4a3728 0%, #6b5344 50%, #4a3728 100%)',
-                        borderRadius: '8px 20px 20px 8px',
-                        boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.3), inset 2px 0 4px rgba(255,255,255,0.1)',
-                      }}
-                    >
-                      {/* 右侧树叶群 */}
-                      <div className="absolute -top-[40px] right-0 w-[100px] h-[80px]">
-                        {nodes.filter(n => n.type === 'leaf').slice(3, 6).map((leaf, i) => (
-                          <div
-                            key={leaf.id}
-                            onClick={() => setExpandedNode(leaf)}
-                            className="absolute cursor-pointer hover:scale-110 transition-transform animate-sway-reverse"
-                            style={{
-                              right: `${i * 30}px`,
-                              top: `${10 + i * 15}px`,
-                              animationDelay: `${i * 0.7}s`,
-                            }}
-                            title={leaf.title}
-                          >
+                          {fruit ? (
+                            // 有果实 - 显示果实图片和标题
                             <div
-                              className="w-[24px] h-[32px] rounded-[50% 50% 50% 50% / 60% 60% 40% 40%]"
-                              style={{
-                                background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%)',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.2), inset 0 -2px 4px rgba(0,0,0,0.1)',
-                              }}
+                              onClick={() => setExpandedNode(fruit)}
+                              className="relative group"
+                              title={fruit.title}
                             >
-                              <span className="absolute inset-0 flex items-center justify-center text-[10px] text-white/80 font-medium">
-                                {leaf.title.slice(0, 2)}
-                              </span>
+                              <img
+                                src="/fruit-icon.jpeg"
+                                alt="果实"
+                                className="w-[36px] h-[36px] rounded-full object-cover shadow-lg border-2 border-white/30"
+                              />
+                              {/* 果实标题提示 */}
+                              <div className="absolute -bottom-[20px] left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/60 rounded text-white text-xs truncate max-w-[60px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                {fruit.title.slice(0, 4)}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                        {/* 空位树叶 */}
-                        {nodes.filter(n => n.type === 'leaf').slice(3).length < 3 && Array.from({ length: Math.max(0, 3 - nodes.filter(n => n.type === 'leaf').slice(3).length) }).map((_, i) => (
-                          <div
-                            key={`empty-leaf-right-${i}`}
-                            className="absolute animate-sway-reverse"
-                            style={{
-                              right: `${i * 30}px`,
-                              top: `${10 + i * 15}px`,
-                              animationDelay: `${i * 0.7}s`,
-                            }}
-                          >
+                          ) : (
+                            // 空位 - 虚线圆圈
                             <div
-                              className="w-[24px] h-[32px] rounded-[50% 50% 50% 50% / 60% 60% 40% 40%] opacity-30"
-                              style={{
-                                background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%)',
-                                border: '1px dashed rgba(255,255,255,0.3)',
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      {/* 右侧果实 */}
-                      {nodes.filter(n => n.type === 'fruit').slice(2, 4).map((fruit, i) => (
-                        <div
-                          key={fruit.id}
-                          onClick={() => setExpandedNode(fruit)}
-                          className="absolute cursor-pointer hover:scale-110 transition-transform animate-sway-reverse"
-                          style={{
-                            right: `${20 + i * 25}px`,
-                            top: '-10px',
-                            animationDelay: `${i * 0.4}s`,
-                          }}
-                          title={fruit.title}
-                        >
-                          <div
-                            className="w-[28px] h-[28px] rounded-full relative"
-                            style={{
-                              background: 'radial-gradient(circle at 30% 30%, #ff6b6b 0%, #ee5a24 50%, #c0392b 100%)',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset -2px -2px 4px rgba(0,0,0,0.2), inset 2px 2px 4px rgba(255,255,255,0.3)',
-                            }}
-                          >
-                            <span className="absolute inset-0 flex items-center justify-center text-[8px] text-white font-bold">
-                              {TYPE_LABELS.fruit.icon}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* 顶部中央树枝 */}
-                    <div
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-[60px] h-[100px]"
-                      style={{
-                        background: 'linear-gradient(90deg, #4a3728 0%, #6b5344 50%, #4a3728 100%)',
-                        borderRadius: '10px',
-                        boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.3), inset 2px 0 4px rgba(255,255,255,0.1)',
-                      }}
-                    >
-                      {/* 顶部树叶 */}
-                      <div className="absolute -top-[30px] left-1/2 -translate-x-1/2 flex gap-2">
-                        {nodes.filter(n => n.type === 'leaf').slice(6, 8).map((leaf, i) => (
-                          <div
-                            key={leaf.id}
-                            onClick={() => setExpandedNode(leaf)}
-                            className="cursor-pointer hover:scale-110 transition-transform animate-sway"
-                            style={{ animationDelay: `${i * 0.6}s` }}
-                            title={leaf.title}
-                          >
-                            <div
-                              className="w-[24px] h-[32px] rounded-[50% 50% 50% 50% / 60% 60% 40% 40%]"
-                              style={{
-                                background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%)',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.2), inset 0 -2px 4px rgba(0,0,0,0.1)',
-                              }}
+                              onClick={() => setShowAddNode(true)}
+                              className="w-[30px] h-[30px] rounded-full border-2 border-dashed border-white/40 flex items-center justify-center hover:border-white/60 hover:bg-white/10 transition-colors cursor-pointer"
+                              title="点击添加果实"
                             >
-                              <span className="absolute inset-0 flex items-center justify-center text-[10px] text-white/80 font-medium">
-                                {leaf.title.slice(0, 2)}
-                              </span>
+                              <span className="text-white/40 text-xs">+</span>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                      {/* 顶部果实 */}
-                      {nodes.filter(n => n.type === 'fruit').slice(4, 5).map((fruit) => (
-                        <div
-                          key={fruit.id}
-                          onClick={() => setExpandedNode(fruit)}
-                          className="absolute left-1/2 -translate-x-1/2 -top-[15px] cursor-pointer hover:scale-110 transition-transform"
-                          title={fruit.title}
-                        >
-                          <div
-                            className="w-[28px] h-[28px] rounded-full relative"
-                            style={{
-                              background: 'radial-gradient(circle at 30% 30%, #ff6b6b 0%, #ee5a24 50%, #c0392b 100%)',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset -2px -2px 4px rgba(0,0,0,0.2), inset 2px 2px 4px rgba(255,255,255,0.3)',
-                            }}
-                          >
-                            <span className="absolute inset-0 flex items-center justify-center text-[8px] text-white font-bold">
-                              {TYPE_LABELS.fruit.icon}
-                            </span>
-                          </div>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 树干 - 有木质纹理 */}
-                  <div
-                    className="relative w-[80px] h-[160px] flex flex-col items-center justify-start pt-4"
-                    style={{
-                      background: `
-                        repeating-linear-gradient(
-                          90deg,
-                          #4a3728 0px,
-                          #5a4235 2px,
-                          #6b5344 4px,
-                          #5a4235 6px,
-                          #4a3728 8px
-                        ),
-                        linear-gradient(180deg, #6b5344 0%, #4a3728 30%, #3d2817 100%)
-                      `,
-                      borderRadius: '10px 10px 0 0',
-                      boxShadow: `
-                        inset -4px 0 8px rgba(0,0,0,0.4),
-                        inset 4px 0 8px rgba(255,255,255,0.1),
-                        0 0 20px rgba(0,0,0,0.3)
-                      `,
-                    }}
-                  >
-                    {/* 树干顶部纹理细节 */}
-                    <div
-                      className="absolute top-0 left-0 right-0 h-[20px]"
-                      style={{
-                        background: 'radial-gradient(ellipse at center, #5a4235 0%, #4a3728 100%)',
-                        borderRadius: '10px 10px 0 0',
-                      }}
-                    />
-                    {/* 树干标题 */}
-                    {nodes.filter(n => n.type === 'trunk').length > 0 ? (
-                      <div
-                        onClick={() => setExpandedNode(nodes.filter(n => n.type === 'trunk')[0])}
-                        className="relative z-10 px-2 py-1 rounded bg-white/10 backdrop-blur cursor-pointer hover:bg-white/20 transition-colors mt-2"
-                        title={nodes.filter(n => n.type === 'trunk')[0].title}
-                      >
-                        <span className="text-white text-xs font-medium truncate max-w-[60px] block">
-                          {nodes.filter(n => n.type === 'trunk')[0].title}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="text-white/40 text-xs mt-2 px-2">暂无目标</div>
-                    )}
-                    {nodes.filter(n => n.type === 'trunk').length > 1 && (
-                      <div className="text-white/50 text-xs mt-1">+{nodes.filter(n => n.type === 'trunk').length - 1}</div>
-                    )}
-                  </div>
-
-                  {/* 树根 - 地下蜿蜒的根系 */}
-                  <div className="relative w-[200px] h-[60px] flex items-end justify-center">
-                    {/* 主根 */}
-                    <div
-                      className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[40px] h-[50px]"
-                      style={{
-                        background: 'linear-gradient(180deg, #3d2817 0%, #2a1a0f 100%)',
-                        borderRadius: '0 0 20px 20px',
-                        boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.3)',
-                      }}
-                    />
-                    {/* 左侧根 */}
-                    <div
-                      className="absolute bottom-[10px] left-[20px] w-[60px] h-[20px] origin-right"
-                      style={{
-                        transform: 'rotate(-25deg)',
-                        background: 'linear-gradient(90deg, #3d2817 0%, #2a1a0f 100%)',
-                        borderRadius: '10px',
-                        boxShadow: 'inset -1px 0 2px rgba(0,0,0,0.3)',
-                      }}
-                    />
-                    {/* 右侧根 */}
-                    <div
-                      className="absolute bottom-[10px] right-[20px] w-[60px] h-[20px] origin-left"
-                      style={{
-                        transform: 'rotate(25deg)',
-                        background: 'linear-gradient(90deg, #2a1a0f 0%, #3d2817 100%)',
-                        borderRadius: '10px',
-                        boxShadow: 'inset 1px 0 2px rgba(0,0,0,0.3)',
-                      }}
-                    />
-                    {/* 树根知识节点 */}
-                    {nodes.filter(n => n.type === 'root').slice(0, 3).map((root, i) => (
+                      );
+                    })}
+                    
+                    {/* 其他知识类型标记 */}
+                    {/* 树根标记 */}
+                    {nodes.filter(n => n.type === 'root').map((root, i) => (
                       <div
                         key={root.id}
                         onClick={() => setExpandedNode(root)}
                         className="absolute cursor-pointer hover:scale-110 transition-transform"
                         style={{
-                          left: i === 0 ? '30px' : i === 1 ? '80px' : '130px',
-                          bottom: '5px',
+                          left: `${20 + i * 15}%`,
+                          bottom: '8%',
+                          transform: 'translateX(-50%)',
                         }}
                         title={root.title}
                       >
-                        <div
-                          className="w-[28px] h-[16px] rounded-[8px] relative"
-                          style={{
-                            background: 'linear-gradient(180deg, #6b5344 0%, #3d2817 100%)',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                          }}
-                        >
-                          <span className="absolute inset-0 flex items-center justify-center text-[8px] text-white/70">
-                            {TYPE_LABELS.root.icon}
+                        <div className="w-[28px] h-[28px] rounded-full bg-gradient-to-br from-[#6b5344] to-[#3d2817] flex items-center justify-center shadow-md border border-white/20">
+                          <span className="text-white text-xs">🪨</span>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* 树干标记 - 核心目标 */}
+                    {nodes.filter(n => n.type === 'trunk').slice(0, 1).map((trunk) => (
+                      <div
+                        key={trunk.id}
+                        onClick={() => setExpandedNode(trunk)}
+                        className="absolute cursor-pointer hover:scale-105 transition-transform"
+                        style={{
+                          left: '50%',
+                          top: '60%',
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                        title={trunk.title}
+                      >
+                        <div className="px-3 py-1.5 rounded-lg bg-white/90 backdrop-blur shadow-lg border border-white/30">
+                          <span className="text-[#4a3728] text-sm font-medium truncate max-w-[80px] block">
+                            {trunk.title.slice(0, 6)}
                           </span>
                         </div>
                       </div>
                     ))}
-                    {/* 空位树根 */}
-                    {nodes.filter(n => n.type === 'root').length < 3 && Array.from({ length: Math.max(0, 3 - nodes.filter(n => n.type === 'root').length) }).map((_, i) => (
+                    
+                    {/* 树枝标记 */}
+                    {nodes.filter(n => n.type === 'branch').slice(0, 4).map((branch, i) => (
                       <div
-                        key={`empty-root-${i}`}
-                        className="absolute opacity-30"
+                        key={branch.id}
+                        onClick={() => setExpandedNode(branch)}
+                        className="absolute cursor-pointer hover:scale-110 transition-transform"
                         style={{
-                          left: `${(nodes.filter(n => n.type === 'root').length + i) * 50 + 30}px`,
-                          bottom: '5px',
+                          left: `${30 + i * 20}%`,
+                          top: '45%',
+                          transform: 'translateX(-50%)',
                         }}
+                        title={branch.title}
                       >
-                        <div
-                          className="w-[28px] h-[16px] rounded-[8px]"
-                          style={{
-                            background: 'linear-gradient(180deg, #6b5344 0%, #3d2817 100%)',
-                            border: '1px dashed rgba(255,255,255,0.3)',
-                          }}
-                        />
+                        <div className="w-[24px] h-[24px] rounded-full bg-gradient-to-br from-[#8b7355] to-[#5a4235] flex items-center justify-center shadow-md border border-white/20">
+                          <span className="text-white/80 text-xs">🌿</span>
+                        </div>
                       </div>
                     ))}
+                    
+                    {/* 树叶标记 */}
+                    {nodes.filter(n => n.type === 'leaf').slice(0, 6).map((leaf, i) => {
+                      const positions = [
+                        { left: '12%', top: '30%' },
+                        { left: '22%', top: '28%' },
+                        { left: '35%', top: '25%' },
+                        { left: '65%', top: '25%' },
+                        { left: '78%', top: '28%' },
+                        { left: '88%', top: '30%' },
+                      ];
+                      return (
+                        <div
+                          key={leaf.id}
+                          onClick={() => setExpandedNode(leaf)}
+                          className="absolute cursor-pointer hover:scale-110 transition-transform animate-sway"
+                          style={{
+                            left: positions[i]?.left || '50%',
+                            top: positions[i]?.top || '30%',
+                            transform: 'translate(-50%, -50%)',
+                            animationDelay: `${i * 0.3}s`,
+                          }}
+                          title={leaf.title}
+                        >
+                          <div className="w-[22px] h-[28px] rounded-[50% 50% 50% 50% / 60% 60% 40% 40%] bg-gradient-to-br from-[#4ade80] to-[#16a34a] flex items-center justify-center shadow-md">
+                            <span className="text-white/80 text-[8px] font-medium">
+                              {leaf.title.slice(0, 2)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* 树名称标签 */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/50 backdrop-blur rounded-lg">
+                    <span className="text-white font-medium">{selectedTree.name}</span>
                   </div>
                 </div>
               </div>
+
+
 
               {/* 统计 */}
               <div className="grid grid-cols-5 gap-2 mb-6 pb-6 border-b border-white/10">
