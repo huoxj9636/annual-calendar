@@ -179,8 +179,17 @@ function ForestTree({
       const py = ((e.clientY - rect.top) / rect.height) * 100;
       // left: 0% 在画布最左 → 指针向右 px 增大 → dx 应为 + (left 增大)
       // bottom: 0% 在画布最底 → 指针向下 py 增大 → bottom 应减小 → dy 应为 - (py 增量取反)
-      const dx = px - startRef.current.pointerX;
-      const dy = -(py - startRef.current.pointerY);
+      const rawDx = px - startRef.current.pointerX;
+      const rawDy = -(py - startRef.current.pointerY);
+      // 实时边界限制：拖动过程中树不能飘出画布
+      const minX = 2;
+      const maxX = 98;
+      const minY = 2;
+      const maxY = 95;
+      const targetX = Math.max(minX, Math.min(maxX, startRef.current.itemX + rawDx));
+      const targetY = Math.max(minY, Math.min(maxY, startRef.current.itemY + rawDy));
+      const dx = targetX - startRef.current.itemX;
+      const dy = targetY - startRef.current.itemY;
       // 用像素距离判断是否真的在拖动（避免抖动被识别为点击失败）
       const rectForDist = sceneRect.current?.getBoundingClientRect();
       if (rectForDist) {
@@ -638,7 +647,6 @@ export default function ForestScene({
     borderRadius: fillHeight ? 0 : 16,
     overflow: "hidden",
     position: "relative",
-    border: `1px solid ${skin.swatch}22`,
     boxShadow: fillHeight ? "none" : "0 4px 20px -8px rgba(0,0,0,0.1)",
   };
 
@@ -679,7 +687,6 @@ export default function ForestScene({
             // 画布背景色：跟日历主页主题色保持一致
             background: skin.panelBg,
             borderRadius: 12,
-            border: `1px solid ${skin.swatch}33`,
             overflow: "hidden",
           }}
         >
