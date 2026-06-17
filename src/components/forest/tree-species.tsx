@@ -127,14 +127,7 @@ export function SpeciesTree({
       height="100%"
       style={{ overflow: "visible" }}
     >
-      {/* 树影（地面投影） */}
-      <ellipse
-        cx="30"
-        cy="58.5"
-        rx={truncated ? 8 : 16 + tier * 1.5}
-        ry="2"
-        fill="rgba(0,0,0,0.14)"
-      />
+      {/* 草地投影已移到 ForestTree 中渲染，固定尺寸 */}
 
       {truncated ? (
         // 空地：一个小土堆 + 一根小枝
