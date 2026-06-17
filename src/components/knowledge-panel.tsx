@@ -8,7 +8,7 @@
  *      5 种知识类型（root/trunk/branch/leaf/fruit）保持兼容
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Plus,
   Trees,
@@ -48,6 +48,8 @@ export interface KnowledgeTree {
   species?: TreeSpeciesId;
   nodes: KnowledgeNode[];
   createdAt: number;
+  /** 可选：自定义画布位置（拖拽后的位置，百分比 0-100） */
+  position?: { x: number; y: number };
 }
 
 export interface Bookmark {
@@ -251,8 +253,19 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         name: t.name,
         count: t.nodes.length,
         species: t.species,
+        position: t.position,
       })),
     [trees]
+  );
+
+  // 拖拽结束：更新单棵树位置并持久化
+  const handleTreePositionChange = useCallback(
+    (id: string, position: { x: number; y: number }) => {
+      setTrees((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, position } : t))
+      );
+    },
+    []
   );
 
   // 统计数据
@@ -385,6 +398,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               }}
               onAddTree={() => setShowAddTree(true)}
               onDeleteTree={setPendingDeleteTreeId}
+              onTreePositionChange={handleTreePositionChange}
               skin={skin}
             />
           )}
@@ -670,6 +684,7 @@ function MyForestView({
   onSelectTree,
   onAddTree,
   onDeleteTree,
+  onTreePositionChange,
   skin,
 }: {
   forestItems: ForestItem[];
@@ -678,6 +693,7 @@ function MyForestView({
   onSelectTree: (id: string) => void;
   onAddTree: () => void;
   onDeleteTree: (id: string) => void;
+  onTreePositionChange: (id: string, position: { x: number; y: number }) => void;
   skin: SkinTheme;
 }) {
   return (
@@ -689,6 +705,7 @@ function MyForestView({
         variant="my"
         onItemClick={onSelectTree}
         onItemDelete={onDeleteTree}
+        onItemPositionChange={onTreePositionChange}
         fillHeight
       />
 

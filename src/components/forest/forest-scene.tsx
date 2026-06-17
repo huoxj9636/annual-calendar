@@ -8,7 +8,7 @@
  * 树苗按节点数量成长为不同阶段
  */
 
-import { useMemo } from "react";
+import { useMemo, useRef, useState, useCallback } from "react";
 import { Cloud, Sun, X, TreeDeciduous } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import { SpeciesTree, TREE_SPECIES, type TreeSpeciesId } from "./tree-species";
@@ -28,6 +28,8 @@ export type ForestItem = {
   speciesColor?: string;
   /** 可选：物种自定义深色覆盖 */
   speciesColorDeep?: string;
+  /** 可选：自定义位置（画布坐标，百分比 0-100）；未提供时使用自动布局 */
+  position?: { x: number; y: number };
 };
 
 export type ForestSceneProps = {
@@ -45,6 +47,10 @@ export type ForestSceneProps = {
   selectedId?: string;
   /** 变体：my = 我的森林，friends = 好友森林 */
   variant?: "my" | "friends";
+  /** 拖动树木结束回调（持久化新位置） */
+  onItemPositionChange?: (id: string, position: { x: number; y: number }) => void;
+  /** 是否允许拖拽（默认 true，仅 my 变体可拖） */
+  draggable?: boolean;
 };
 
 /**
@@ -73,17 +79,15 @@ function hashStr(s: string): number {
   return Math.abs(h);
 }
 
-// 基础尺寸：固定为成树大小（不再随节点数变化）。古木/参天/成树都是这个尺寸，
-// 视觉差异由"分叉、苔藓、鸟巢"等装饰承担，整体仍保持单树苗 ~80×110 不重叠。
-// 基础尺寸：固定为成树大小（不再随节点数变化）。整体放大约 3 倍，
+// 基础尺寸：固定为成树大小（不再随节点数变化）。整体放大约 6 倍，
 // 树之间用 treeScale 等比缩放以避免 10+ 棵树重叠。
 const TREE_HEIGHTS: Record<number, { h: number; crown: number; trunk: number }> = {
-  0: { h: 78, crown: 36, trunk: 24 },  // 空地（树桩）
-  1: { h: 306, crown: 210, trunk: 96 },
-  2: { h: 306, crown: 210, trunk: 96 },
-  3: { h: 306, crown: 210, trunk: 96 },
-  4: { h: 306, crown: 210, trunk: 96 },
-  5: { h: 306, crown: 210, trunk: 96 },
+  0: { h: 156, crown: 72, trunk: 48 },  // 空地（树桩）
+  1: { h: 612, crown: 420, trunk: 192 },
+  2: { h: 612, crown: 420, trunk: 192 },
+  3: { h: 612, crown: 420, trunk: 192 },
+  4: { h: 612, crown: 420, trunk: 192 },
+  5: { h: 612, crown: 420, trunk: 192 },
 };
 
 /** 单棵树 */
@@ -94,10 +98,13 @@ function ForestTree({
   selected,
   onClick,
   onDelete,
+  onPositionChange,
+  draggable,
   skin,
   variant,
   index,
   treeScale = 1,
+  sceneRect,
 }: {
   item: ForestItem;
   x: number;
@@ -105,32 +112,121 @@ function ForestTree({
   selected: boolean;
   onClick?: () => void;
   onDelete?: () => void;
+  onPositionChange?: (position: { x: number; y: number }) => void;
+  draggable?: boolean;
   skin: SkinTheme;
   variant: "my" | "friends";
   index: number;
   treeScale?: number;
+  sceneRect: React.RefObject<HTMLDivElement | null>;
 }) {
   const stage = getStage(item.count);
   const sizes = TREE_HEIGHTS[stage.size] || TREE_HEIGHTS[1];
   const accent = item.accentColor || skin.swatch;
+
+  // 拖拽状态
+  const [dragging, setDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState<{ dx: number; dy: number } | null>(null);
+  const startRef = useRef<{ pointerX: number; pointerY: number; itemX: number; itemY: number } | null>(null);
 
   // 树冠颜色：从主题色到略深渐变
   // 用 mix-blend 不可靠，直接用主色 + alpha 表示深浅
   const crownOpacity = 0.55 + stage.size * 0.05; // 越大越浓
   const crownDeep = 0.85 + stage.size * 0.03;
 
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (!draggable) return;
+      // 仅响应主键（左键 / 触屏）
+      if (e.button !== 0) return;
+      const btn = e.currentTarget;
+      const rect = sceneRect.current?.getBoundingClientRect();
+      if (!rect) return;
+      // 计算指针在画布中的位置（百分比）
+      const px = ((e.clientX - rect.left) / rect.width) * 100;
+      const py = ((e.clientY - rect.top) / rect.height) * 100;
+      // 当前树的底部锚点位置
+      const itemX = x;
+      const itemY = y;
+      startRef.current = { pointerX: px, pointerY: py, itemX, itemY };
+      setDragOffset({ dx: 0, dy: 0 });
+      setDragging(true);
+      btn.setPointerCapture(e.pointerId);
+      e.stopPropagation();
+    },
+    [draggable, sceneRect, x, y]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (!dragging || !startRef.current) return;
+      const rect = sceneRect.current?.getBoundingClientRect();
+      if (!rect) return;
+      const px = ((e.clientX - rect.left) / rect.width) * 100;
+      const py = ((e.clientY - rect.top) / rect.height) * 100;
+      const dx = px - startRef.current.pointerX;
+      const dy = py - startRef.current.pointerY;
+      setDragOffset({ dx, dy });
+    },
+    [dragging, sceneRect]
+  );
+
+  const endDrag = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (!dragging || !startRef.current) {
+        setDragging(false);
+        setDragOffset(null);
+        startRef.current = null;
+        return;
+      }
+      const rect = sceneRect.current?.getBoundingClientRect();
+      if (!rect) {
+        setDragging(false);
+        setDragOffset(null);
+        startRef.current = null;
+        return;
+      }
+      const px = ((e.clientX - rect.left) / rect.width) * 100;
+      const py = ((e.clientY - rect.top) / rect.height) * 100;
+      const newX = Math.max(2, Math.min(98, startRef.current.itemX + (px - startRef.current.pointerX)));
+      const newY = Math.max(2, Math.min(95, startRef.current.itemY + (py - startRef.current.pointerY)));
+      onPositionChange?.({ x: newX, y: newY });
+      setDragging(false);
+      setDragOffset(null);
+      startRef.current = null;
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
+    },
+    [dragging, onPositionChange, sceneRect]
+  );
+
+  // 计算当前实际显示位置（拖拽中 = 原始 + 偏移）
+  const displayX = dragging && dragOffset ? x + dragOffset.dx : x;
+  const displayY = dragging && dragOffset ? y + dragOffset.dy : y;
+
   return (
     <button
       type="button"
-      onClick={onClick}
-      className="absolute group focus:outline-none"
+      onClick={(e) => {
+        // 拖拽中不触发点击
+        if (dragging) return;
+        onClick?.();
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      className="absolute group focus:outline-none select-none"
       style={{
-        left: `${x}%`,
-        bottom: `${y}%`,
+        left: `${displayX}%`,
+        bottom: `${displayY}%`,
         transform: "translateX(-50%)",
         width: (sizes.crown + 16) * treeScale,
         height: (sizes.h + 8) * treeScale,
-        cursor: onClick ? "pointer" : "default",
+        cursor: draggable ? (dragging ? "grabbing" : "grab") : onClick ? "pointer" : "default",
+        touchAction: "none",
+        zIndex: dragging ? 50 : selected ? 10 : 1,
       }}
       title={`${item.name} · ${stage.label} · ${item.count} 个知识`}
     >
@@ -299,9 +395,14 @@ export default function ForestScene({
   fillHeight = false,
   onItemClick,
   onItemDelete,
+  onItemPositionChange,
   selectedId,
   variant = "my",
+  draggable = true,
 }: ForestSceneProps) {
+  const sceneRef = useRef<HTMLDivElement | null>(null);
+  const itemsKey = useMemo(() => items.map((i) => i.id).join(","), [items]);
+
   // 树木位置：均匀分布 + 稳定 hash 抖动；数量越多，缩放越小以保持 10+ 棵不重叠
   const treeScale = useMemo(() => {
     const n = items.length;
@@ -317,22 +418,30 @@ export default function ForestScene({
   const layout = useMemo(() => {
     const total = items.length;
     if (total === 0) return [];
+    // 计算未自定义位置的树数量，用于自动分布
+    const autoItems = items.filter((it) => !it.position);
+    const placed = new Set<string>();
     return items.map((item, i) => {
-      // 等分 + 8% 左右边距，再加 hash 抖动避免完全等分
-      const baseX = 8 + ((i + 0.5) / total) * 84;
+      // 自定义位置：直接使用（用户拖拽后的结果）
+      if (item.position) {
+        placed.add(item.id);
+        const treeScale = total <= 1 ? 1 : total <= 2 ? 0.55 : total <= 3 ? 0.4 : total <= 5 ? 0.32 : total <= 8 ? 0.26 : total <= 12 ? 0.22 : 0.19;
+        return { item, x: item.position.x, y: item.position.y, treeScale };
+      }
+      // 自动分布：使用稳定 hash 抖动
+      const autoIndex = Array.from(items.slice(0, i + 1).filter((it) => !it.position)).length - 1;
+      const baseX = 8 + ((autoIndex + 0.5) / Math.max(1, autoItems.length)) * 84;
       const h = hashStr(item.id);
-      const xJitter = (((h % 200) / 100) - 1) * 1.5; // -1.5 ~ +1.5
+      const xJitter = (((h % 200) / 100) - 1) * 1.5;
       const x = Math.max(6, Math.min(94, baseX + xJitter));
-      // y 随 index 微调，让多棵树错落有致
-      const yBase = 30 + (i % 3) * 5; // 30 / 35 / 40
-      const yJitter = (((h >> 8) % 80) / 10 - 4); // -4 ~ +4
+      const yBase = 30 + (autoIndex % 3) * 5;
+      const yJitter = (((h >> 8) % 80) / 10 - 4);
       const y = Math.max(10, Math.min(48, yBase + yJitter));
-      // 多棵树时整体缩放，避免重叠；基础大小固定为"成树"
-      // 树基础已放大约 3 倍，多棵树时按数量再等比缩放避免重叠
       const treeScale = total <= 1 ? 1 : total <= 2 ? 0.55 : total <= 3 ? 0.4 : total <= 5 ? 0.32 : total <= 8 ? 0.26 : total <= 12 ? 0.22 : 0.19;
       return { item, x, y, treeScale };
     });
-  }, [items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, itemsKey]);
 
   // 关键样式
   const sceneStyle: React.CSSProperties = {
@@ -365,7 +474,7 @@ export default function ForestScene({
         }
       `}</style>
 
-      <div style={sceneStyle} className={fillHeight ? "w-full h-full" : "w-full"}>
+      <div ref={sceneRef} style={sceneStyle} className={fillHeight ? "w-full h-full" : "w-full"}>
         {/* 晨曦太阳 */}
         <div
           className="absolute pointer-events-none"
@@ -432,9 +541,16 @@ export default function ForestScene({
             selected={item.id === selectedId}
             onClick={onItemClick ? () => onItemClick(item.id) : undefined}
             onDelete={onItemDelete ? () => onItemDelete(item.id) : undefined}
+            onPositionChange={
+              onItemPositionChange
+                ? (p) => onItemPositionChange(item.id, p)
+                : undefined
+            }
+            draggable={draggable && variant === "my"}
             skin={skin}
             variant={variant}
             index={i}
+            sceneRect={sceneRef}
           />
         ))}
 

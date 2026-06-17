@@ -506,12 +506,12 @@ function PineShape({
         strokeWidth="0.6"
         fill="none"
       />
-      {/* 古木加雪花点 */}
+      {/* 古木加一点苔藓暗纹（避免大块纯色） */}
       {ancient && (
-        <g opacity="0.7">
-          <circle cx="22" cy="14" r="0.7" fill="#fff" />
-          <circle cx="36" cy="18" r="0.6" fill="#fff" />
-          <circle cx="28" cy="22" r="0.7" fill="#fff" />
+        <g opacity="0.45">
+          <ellipse cx="22" cy="14" rx="1.2" ry="0.8" fill={accentDeep} />
+          <ellipse cx="36" cy="18" rx="1.0" ry="0.7" fill={accentDeep} />
+          <ellipse cx="28" cy="22" rx="1.1" ry="0.7" fill={accentDeep} />
         </g>
       )}
     </g>
