@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useRef, useState, useCallback, useEffect } from "react";
-import { Cloud, Sun, X, TreeDeciduous, Maximize2 } from "lucide-react";
+import { Cloud, Sun, X, TreeDeciduous, Maximize2, Minimize2 } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import { SpeciesTree, TREE_SPECIES, type TreeSpeciesId } from "./tree-species";
 
@@ -501,6 +501,8 @@ export default function ForestScene({
 
   // 画布平移状态（相对物理画布的偏移，单位 px）
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  // 画布缩放：1 = 原始 200%×200%，0.5 = 鸟瞰全图（看全整个画布边界）
+  const [zoom, setZoom] = useState(1);
   const [panning, setPanning] = useState(false);
   const panStartRef = useRef<{
     pointerX: number;
@@ -513,33 +515,46 @@ export default function ForestScene({
 
   // 物理画布尺寸（比可视区大，给平移留空间）
   // 横向 200% 给左右平移空间，纵向 200% 给上下平移空间
+  // zoom 缩放会等比调整 inner 实际尺寸，pan 范围也按 zoom 反比放大
   const CANVAS_W = 200; // % 相对外层可视区
   const CANVAS_H = 200; // % 相对外层可视区
+  const ZOOM_MIN = 0.4; // 最大缩小 0.4 倍（让 200% 画布缩小到 80% 视口）
+  const ZOOM_MAX = 1.2; // 最大放大 1.2 倍
+  const isBirdseye = zoom <= 0.55; // 鸟瞰模式（缩到刚好能看全画布）
 
-  // 从 localStorage 读取画布平移（持久化）
+  // 从 localStorage 读取画布平移和缩放（持久化）
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("forest-canvas-pan");
-      if (raw) {
-        const saved = JSON.parse(raw);
+      const rawPan = localStorage.getItem("forest-canvas-pan");
+      if (rawPan) {
+        const saved = JSON.parse(rawPan);
         if (
           typeof saved?.x === "number" &&
           typeof saved?.y === "number" &&
-          Math.abs(saved.x) <= 50 &&
-          Math.abs(saved.y) <= 50
+          Math.abs(saved.x) <= 200 &&
+          Math.abs(saved.y) <= 200
         ) {
           setPan({ x: saved.x, y: saved.y });
+        }
+      }
+      const rawZoom = localStorage.getItem("forest-canvas-zoom");
+      if (rawZoom) {
+        const z = parseFloat(rawZoom);
+        if (!isNaN(z) && z >= ZOOM_MIN && z <= ZOOM_MAX) {
+          setZoom(z);
         }
       }
     } catch {}
   }, []);
 
-  // 外部触发画布复位：resetTrigger 每次变化时把画布 pan 归零
+  // 外部触发画布复位：resetTrigger 每次变化时把画布 pan 归零并恢复 zoom
   useEffect(() => {
     if (resetTrigger === undefined) return;
     setPan({ x: 0, y: 0 });
+    setZoom(1);
     try {
       localStorage.removeItem("forest-canvas-pan");
+      localStorage.removeItem("forest-canvas-zoom");
     } catch {}
   }, [resetTrigger]);
 
@@ -547,14 +562,17 @@ export default function ForestScene({
   // 物理画布 200%，pan 范围 [-50, 50]（pan=0 是中心）
   // pan=+50：可视区看到物理画布 0-50% 区域（左边）
   // pan=-50：可视区看到物理画布 50-100% 区域（右边）
-  const PAN_MIN = -50;
-  const PAN_MAX = 50;
+  // pan 范围随 zoom 反比放大：zoom 越小（画布越小），允许的 pan 范围越大
+  // 物理画布 200%×200%，zoom 缩放后 inner 实际尺寸 200%×zoom
+  // 视口只能看到 100% 视口宽，要让 inner 任意边界对齐视口边界，pan 范围 = 50 / zoom
+  const panRange = 50 / zoom;
   const clampPan = useCallback((x: number, y: number) => {
+    const r = 50 / zoom;
     return {
-      x: Math.max(PAN_MIN, Math.min(PAN_MAX, x)),
-      y: Math.max(PAN_MIN, Math.min(PAN_MAX, y)),
+      x: Math.max(-r, Math.min(r, x)),
+      y: Math.max(-r, Math.min(r, y)),
     };
-  }, []);
+  }, [zoom]);
 
   // 画布拖拽处理
   const handleCanvasPointerDown = useCallback(
@@ -625,46 +643,34 @@ export default function ForestScene({
       // 持久化
       try {
         localStorage.setItem("forest-canvas-pan", JSON.stringify(pan));
+        localStorage.setItem("forest-canvas-zoom", String(zoom));
       } catch {}
     },
-    [panning, pan]
+    [panning, pan, zoom]
   );
 
-  // 鸟瞰全图：自动计算所有树的 bounding box，把视口中心定位到 bbox 中心
-  // 公式：视口中心对应的物理画布 % 位置 = 75 - pan（相对当前 transform 公式）
-  // 反过来：要让视口中心 = 物理画布 P% 位置，pan = 75 - P
+  // 鸟瞰全图：把画布缩放到刚好能看全 200%×200% 物理画布边界
+  // 物理画布 200%×200% = 720×720，视口 360×360
+  // 要看全 → 缩放比例 360/720 = 0.5，加上 pan=0 让画布居中
   const handleBirdseye = useCallback(() => {
-    // 收集所有有效树的位置
-    const positions: { x: number; y: number }[] = [];
-    for (const it of items) {
-      const pos = it.position;
-      if (
-        pos &&
-        typeof pos.x === "number" &&
-        typeof pos.y === "number" &&
-        pos.x >= 0 && pos.x <= 100 &&
-        pos.y >= 0 && pos.y <= 100
-      ) {
-        positions.push(pos);
-      }
-    }
-    if (positions.length === 0) return;
-    // 计算 bounding box 中心
-    const minX = Math.min(...positions.map((p) => p.x));
-    const maxX = Math.max(...positions.map((p) => p.x));
-    const minY = Math.min(...positions.map((p) => p.y));
-    const maxY = Math.max(...positions.map((p) => p.y));
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    // 反推 pan：让视口中心对准 bbox 中心
-    // 视口中心对应物理画布 % = 75 - pan
-    // 75 - pan = centerX → panX = 75 - centerX
-    const targetPanX = 75 - centerX;
-    const targetPanY = 75 - centerY;
-    setPan(
-      clampPan(targetPanX, targetPanY)
-    );
-  }, [items, clampPan]);
+    setZoom(0.5);
+    setPan({ x: 0, y: 0 });
+    try {
+      localStorage.setItem("forest-canvas-zoom", "0.5");
+      localStorage.setItem(
+        "forest-canvas-pan",
+        JSON.stringify({ x: 0, y: 0 })
+      );
+    } catch {}
+  }, []);
+
+  // 退出鸟瞰：恢复 zoom=1（pan 保持）
+  const handleExitBirdseye = useCallback(() => {
+    setZoom(1);
+    try {
+      localStorage.setItem("forest-canvas-zoom", "1");
+    } catch {}
+  }, []);
 
   // 关键样式
   const sceneStyle: React.CSSProperties = {
@@ -710,17 +716,18 @@ export default function ForestScene({
         onPointerUp={handleCanvasPointerEnd}
         onPointerCancel={handleCanvasPointerEnd}
       >
-        {/* 内层物理画布：所有内容在内层，支持平移
-            物理画布 200%×200%，pan 范围 [-50, 50]，pan=0 时画布居中（看到物理画布中点） */}
+        {/* 内层物理画布：所有内容在内层，支持平移和缩放
+            物理画布 200%×200%，zoom=1 时正常显示，zoom=0.5 时鸟瞰全图
+            pan 范围 [-50/zoom, 50/zoom]，pan=0 时画布居中（看到画布中点） */}
         <div
           style={{
             position: "absolute",
             left: "50%",
             top: "50%",
-            width: `${CANVAS_W}%`,
-            height: `${CANVAS_H}%`,
+            width: `${CANVAS_W * zoom}%`,
+            height: `${CANVAS_H * zoom}%`,
             transform: `translate(-50%, -50%) translate(${-pan.x}%, ${-pan.y}%)`,
-            transition: panning ? "none" : "transform 0.2s ease-out",
+            transition: panning ? "none" : "transform 0.35s ease-out",
           }}
         >
         {/* 晨曦太阳 */}
@@ -821,8 +828,8 @@ export default function ForestScene({
         )}
         </div>
 
-        {/* 鸟瞰全图按钮：自动定位到能看到所有树的位置 */}
-        {variant === "my" && items.length > 0 && (
+        {/* 鸟瞰全图 / 退出鸟瞰 按钮：缩放画布到刚好能看全 200% 物理画布边界 */}
+        {variant === "my" && items.length > 0 && !isBirdseye && (
           <button
             type="button"
             onClick={(e) => {
@@ -839,10 +846,34 @@ export default function ForestScene({
               backdropFilter: "blur(8px)",
             }}
             aria-label="鸟瞰全图"
-            title="鸟瞰全图：自动定位到能看到所有树的位置"
+            title="鸟瞰全图：缩小到能看全画布边界"
           >
             <Maximize2 size={12} />
             <span>鸟瞰全图</span>
+          </button>
+        )}
+
+        {variant === "my" && isBirdseye && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleExitBirdseye();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="absolute z-50 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs shadow-md hover:scale-105 transition-transform"
+            style={{
+              left: 12,
+              top: 12,
+              background: `${skin.swatch}cc`,
+              color: "white",
+              backdropFilter: "blur(8px)",
+            }}
+            aria-label="退出鸟瞰"
+            title="退出鸟瞰：恢复正常缩放"
+          >
+            <Minimize2 size={12} />
+            <span>退出鸟瞰</span>
           </button>
         )}
       </div>
