@@ -16,6 +16,12 @@ import {
   X,
   Sparkles,
   Trash2,
+  ChevronDown,
+  ChevronRight,
+  Crosshair,
+  TreePine,
+  TreeDeciduous,
+  Sprout,
 } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import ForestScene, { type ForestItem } from "./forest/forest-scene";
@@ -24,6 +30,16 @@ import FriendsForest from "./forest/friends-forest";
 import { TREE_SPECIES, SpeciesPreview, type TreeSpeciesId } from "./forest/tree-species";
 
 // === 数据类型（保持兼容）===
+
+/** 树阶段（与 forest-scene.tsx 中的 getStage 保持一致） */
+function getStage(count: number) {
+  if (count === 0) return { tier: 0, label: "空地", size: 0 };
+  if (count <= 2) return { tier: 1, label: "幼苗", size: 1 };
+  if (count <= 7) return { tier: 2, label: "小树", size: 2 };
+  if (count <= 15) return { tier: 3, label: "成树", size: 3 };
+  if (count <= 30) return { tier: 4, label: "参天", size: 4 };
+  return { tier: 5, label: "古木", size: 5 };
+}
 
 export interface KnowledgePanelProps {
   open: boolean;
@@ -709,6 +725,21 @@ function MyForestView({
     prevCountRef.current = forestItems.length;
   }, [forestItems.length]);
 
+  // 树列表折叠状态（默认展开）
+  const [listOpen, setListOpen] = useState(true);
+  // focus 树 id：点击列表项时设置，ForestScene 内部 pan 到该树
+  const [focusTreeId, setFocusTreeId] = useState<string | null>(null);
+
+  // 按节点数倒序排（参天古木在前）
+  const sortedItems = useMemo(
+    () => [...forestItems].sort((a, b) => b.count - a.count),
+    [forestItems]
+  );
+
+  const handleFocusTree = useCallback((id: string) => {
+    setFocusTreeId(id);
+  }, []);
+
   return (
     <div className="relative h-full">
       {/* 森林全景：铺满整个详情页 */}
@@ -721,6 +752,7 @@ function MyForestView({
         onItemPositionChange={onTreePositionChange}
         fillHeight
         resetTrigger={panResetKey}
+        focusTreeId={focusTreeId}
       />
 
       {/* 左上角统计 chip（玻璃拟态） */}
@@ -765,6 +797,117 @@ function MyForestView({
             个
           </span>
         </div>
+      </div>
+
+      {/* 左侧树列表（可折叠）—— 点击树名 → 画布 pan 到该树 */}
+      <div
+        className="absolute top-4 left-4 z-10 mt-12 w-56 rounded-2xl overflow-hidden"
+        style={{
+          background: "rgba(255,255,255,0.86)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          border: `1px solid ${skin.divider}`,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
+        }}
+      >
+        {/* 列表标题（点击折叠/展开） */}
+        <button
+          type="button"
+          onClick={() => setListOpen((o) => !o)}
+          className="w-full flex items-center gap-2 px-3.5 py-2.5 text-left"
+          style={{ color: skin.textPrimary }}
+        >
+          {listOpen ? (
+            <ChevronDown size={14} style={{ color: skin.textSecondary }} />
+          ) : (
+            <ChevronRight size={14} style={{ color: skin.textSecondary }} />
+          )}
+          <Trees size={14} style={{ color: skin.swatch }} />
+          <span className="text-sm font-medium">我的树</span>
+          <span
+            className="ml-auto text-[11px] font-mono tabular-nums"
+            style={{ color: skin.textMuted }}
+          >
+            {forestItems.length}
+          </span>
+        </button>
+
+        {/* 列表项（折叠时隐藏） */}
+        {listOpen && (
+          <div
+            className="border-t"
+            style={{ borderColor: skin.divider, maxHeight: 320, overflowY: "auto" }}
+          >
+            {sortedItems.length === 0 ? (
+              <div
+                className="px-3.5 py-4 text-center text-[12px]"
+                style={{ color: skin.textMuted }}
+              >
+                还没有树，去右下角种一棵吧
+              </div>
+            ) : (
+              sortedItems.map((item) => {
+                const stage = getStage(item.count);
+                const StageIcon =
+                  stage.size === 0
+                    ? Sprout
+                    : stage.size <= 2
+                    ? TreePine
+                    : TreeDeciduous;
+                const accent = item.accentColor || skin.swatch;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleFocusTree(item.id)}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left transition-colors"
+                    style={{
+                      color: skin.textPrimary,
+                      borderBottom: `1px solid ${skin.divider}`,
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        `${skin.swatch}10`;
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "transparent";
+                    }}
+                    title={`点击定位到「${item.name}」`}
+                  >
+                    <span
+                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: `${accent}22` }}
+                    >
+                      <StageIcon size={14} style={{ color: accent }} />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-medium truncate">
+                        {item.name}
+                      </div>
+                      <div
+                        className="text-[11px] flex items-center gap-1.5"
+                        style={{ color: skin.textMuted }}
+                      >
+                        <span>{stage.label}</span>
+                        <span>·</span>
+                        <span className="font-mono tabular-nums">
+                          {item.count}
+                        </span>
+                        <span>个</span>
+                      </div>
+                    </div>
+                    <Crosshair
+                      size={13}
+                      style={{ color: skin.textMuted }}
+                      className="shrink-0"
+                    />
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
       </div>
 
       {/* 右下角"种新树"按钮 */}

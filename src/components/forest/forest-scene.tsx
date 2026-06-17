@@ -56,6 +56,10 @@ export type ForestSceneProps = {
    * 用于"创建新树后自动把画布定位到让新树在中心"。
    */
   resetTrigger?: number;
+  /**
+   * 焦点树 id：变化时画布自动 pan 到让该树在可视区中央，并触发短暂视觉高亮（pulse）。
+   */
+  focusTreeId?: string | null;
 };
 
 /**
@@ -101,6 +105,7 @@ function ForestTree({
   x,
   y,
   selected,
+  focused,
   onClick,
   onDelete,
   onPositionChange,
@@ -117,6 +122,7 @@ function ForestTree({
   x: number;
   y: number;
   selected: boolean;
+  focused?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
   onPositionChange?: (position: { x: number; y: number }) => void;
@@ -305,9 +311,22 @@ function ForestTree({
         cursor: draggable ? (dragging ? "grabbing" : "grab") : onClick ? "pointer" : "default",
         touchAction: "none",
         zIndex: dragging ? 50 : selected ? 10 : 1,
+        animation: focused ? "focusPulse 1.2s ease-out 2" : undefined,
       }}
       title={`${item.name} · ${stage.label} · ${item.count} 个知识`}
     >
+      {/* focus pulse 光环：在树外圈扩散的高亮圆环 */}
+      {focused && (
+        <div
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
+          style={{
+            width: sizes.crown * 1.6 * zoom,
+            height: sizes.crown * 1.6 * zoom,
+            border: `2px solid ${skin.swatch}`,
+            animation: "focusRing 1.2s ease-out 2",
+          }}
+        />
+      )}
       {/* 树阴影（草地投影） */}
       <div
         className="absolute left-1/2 -translate-x-1/2 rounded-full blur-[2px]"
@@ -430,6 +449,7 @@ export default function ForestScene({
   variant = "my",
   draggable = true,
   resetTrigger,
+  focusTreeId,
 }: ForestSceneProps) {
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
@@ -481,6 +501,8 @@ export default function ForestScene({
   // 画布缩放：1 = 原始 200%×200%，0.5 = 鸟瞰全图（看全整个画布边界）
   const [zoom, setZoom] = useState(1);
   const [panning, setPanning] = useState(false);
+  // 焦点高亮 pulse：被 focus 的树 id（2.4s 后自动清空）
+  const [focusPulseId, setFocusPulseId] = useState<string | null>(null);
   const panStartRef = useRef<{
     pointerX: number;
     pointerY: number;
@@ -569,6 +591,39 @@ export default function ForestScene({
       localStorage.removeItem("forest-canvas-zoom");
     } catch {}
   }, [resetTrigger]);
+
+  // 外部触发 focus 树：focusTreeId 变化时，pan 调整到让该树在可视区中央 + 短暂高亮 pulse
+  useEffect(() => {
+    if (!focusTreeId) return;
+    const target = items.find((it) => it.id === focusTreeId);
+    if (!target) return;
+    const pos = target.position || { x: 50, y: 50 };
+    // 目标：让树的视觉位置 = sceneRef 中心
+    // inner 实际宽度 = sceneRef.width * (CANVAS_W * zoom / 100) = sceneRef.width * 2 * zoom
+    // inner.left = sceneRef.width/2 - inner.width/2 = sceneRef.width * (0.5 - zoom)
+    // 树视觉位置 = inner.left + pos.x% * inner.width/100 - pan.x% * sceneRef.width/100
+    //            = sceneRef.width * (0.5 - zoom + pos.x% * 2 * zoom / 100 - pan.x/100)
+    // 令其 = sceneRef.width / 2：
+    //   pan.x = zoom * (2 * pos.x - 100)  （pos.x 是 0-100 的百分数）
+    const px = zoom * (2 * pos.x - 100);
+    // bottom 坐标系：屏幕 Y 与 bottom 反向
+    // 树视觉位置 = sceneRef.width * (0.5 - zoom + pos.y% * 2 * zoom / 100 + pan.y/100) = sceneRef.height/2
+    //   pan.y = -zoom * (2 * pos.y - 100)
+    const py = -zoom * (2 * pos.y - 100);
+    const clamped = clampPan(px, py);
+    setPan(clamped);
+    try {
+      localStorage.setItem("forest-canvas-pan", JSON.stringify(clamped));
+    } catch {}
+    // 触发高亮 pulse：2.4s 后清除
+    setFocusPulseId(focusTreeId);
+    const t = setTimeout(() => {
+      setFocusPulseId((cur) => (cur === focusTreeId ? null : cur));
+    }, 2400);
+    return () => clearTimeout(t);
+    // 依赖 focusTreeId 和 items.position（树移动时重算）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTreeId, items]);
 
   // 平移限制：保证物理画布始终有内容覆盖可视区
   // 物理画布 200%，pan 范围 [-50, 50]（pan=0 是中心）
@@ -686,6 +741,16 @@ export default function ForestScene({
           0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
           50%      { opacity: 0.2; transform: translateX(-50%) scale(1.2); }
         }
+        @keyframes focusPulse {
+          0%   { transform: translateX(-50%) scale(1); }
+          40%  { transform: translateX(-50%) scale(1.06); }
+          100% { transform: translateX(-50%) scale(1); }
+        }
+        @keyframes focusRing {
+          0%   { opacity: 0.85; transform: translate(-50%, -50%) scale(0.5); }
+          80%  { opacity: 0;    transform: translate(-50%, -50%) scale(1.6); }
+          100% { opacity: 0;    transform: translate(-50%, -50%) scale(1.6); }
+        }
       `}</style>
 
       <div
@@ -731,6 +796,7 @@ export default function ForestScene({
             x={x}
             y={y}
             selected={item.id === selectedId}
+            focused={item.id === focusPulseId}
             onClick={onItemClick ? () => onItemClick(item.id) : undefined}
             onDelete={onItemDelete ? () => onItemDelete(item.id) : undefined}
             onPositionChange={
