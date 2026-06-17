@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useRef, useState, useCallback, useEffect } from "react";
-import { X, TreeDeciduous, Plus, Minus, RotateCcw } from "lucide-react";
+import { X, TreeDeciduous } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import { SpeciesTree, TREE_SPECIES, type TreeSpeciesId } from "./tree-species";
 
@@ -754,52 +754,6 @@ export default function ForestScene({
             }}
           >
             缩放 {(zoom * 100).toFixed(0)}%
-          </div>
-        )}
-
-        {/* 缩放控制按钮（+ / -）放在右下角 */}
-        {variant === "my" && items.length > 0 && (
-          <div
-            className="absolute z-50 flex flex-col gap-1.5"
-            style={{ right: 12, bottom: 12 }}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleZoomIn();
-              }}
-              disabled={zoom >= ZOOM_MAX}
-              className="w-9 h-9 rounded-full text-base shadow-md hover:scale-105 transition-transform flex items-center justify-center disabled:opacity-40 disabled:hover:scale-100"
-              style={{
-                background: `${skin.swatch}cc`,
-                color: "white",
-                backdropFilter: "blur(8px)",
-              }}
-              aria-label="放大"
-              title={`放大（当前 ${(zoom * 100).toFixed(0)}%）`}
-            >
-              <Plus size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleZoomOut();
-              }}
-              disabled={zoom <= ZOOM_MIN}
-              className="w-9 h-9 rounded-full text-base shadow-md hover:scale-105 transition-transform flex items-center justify-center disabled:opacity-40 disabled:hover:scale-100"
-              style={{
-                background: `${skin.swatch}cc`,
-                color: "white",
-                backdropFilter: "blur(8px)",
-              }}
-              aria-label="缩小"
-              title={`缩小（当前 ${(zoom * 100).toFixed(0)}%）`}
-            >
-              <Minus size={16} />
-            </button>
           </div>
         )}
       </div>
