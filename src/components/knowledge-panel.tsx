@@ -758,21 +758,22 @@ function MyForestView({
         birdseyeTrigger={birdseyeTrigger}
       />
 
-      {/* 刷新定位按钮：左上角统计 chip 下方，一键看全所有树 */}
+      {/* 刷新定位按钮：右上角浮窗，一键看全所有树 */}
       <button
         onClick={() => setBirdseyeTrigger((k) => k + 1)}
-        className="absolute top-16 left-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:scale-105 active:scale-95"
+        className="absolute top-4 right-4 z-20 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all hover:scale-105 active:scale-95"
         style={{
-          background: "rgba(255,255,255,0.85)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          border: `1px solid ${skin.swatch}40`,
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          border: `1.5px solid ${skin.swatch}80`,
           color: "var(--foreground)",
+          boxShadow: `0 4px 16px ${skin.swatch}30`,
         }}
-        title="刷新定位：自动 pan 到所有树的总中心 + zoom 归 1，1.8s 短暂高亮所有树"
+        title="刷新定位：自动 pan 到所有树的总中心 + zoom 归 1，所有树短暂高亮"
       >
-        <RefreshCw className="h-3.5 w-3.5" style={{ color: skin.swatch }} />
-        刷新
+        <RefreshCw className="h-4 w-4" style={{ color: skin.swatch }} />
+        刷新定位
       </button>
 
       {/* 左上角统计 chip（玻璃拟态） */}
