@@ -674,7 +674,8 @@ export default function ForestScene({
     ...(fillHeight ? { height: "100%" } : { height }),
     background: skin.panelBg,
     borderRadius: fillHeight ? 0 : 16,
-    overflow: "hidden",
+    // 不裁切：树的拖动范围不限于可视区
+    overflow: "visible",
     position: "relative",
   };
 
@@ -713,10 +714,8 @@ export default function ForestScene({
             height: `${CANVAS_H * zoom}%`,
             transform: `translate(-50%, -50%) translate(${-pan.x}%, ${-pan.y}%)`,
             transition: panning ? "none" : "transform 0.35s ease-out",
-            // 画布背景色：跟日历主页主题色保持一致
-            background: skin.panelBg,
-            borderRadius: 12,
-            overflow: "hidden",
+            // inner 退化为纯 transform 容器：不画背景、不裁切、树的拖动范围不再受 inner 边界限制
+            overflow: "visible",
           }}
         >
         {/* 树木 */}
