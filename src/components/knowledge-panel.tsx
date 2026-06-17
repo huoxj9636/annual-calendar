@@ -90,7 +90,8 @@ export default function KnowledgePanel({ skin, onClose }: Props) {
 
     const handleMouseMove = (e: MouseEvent) => {
       const delta = dragStartX.current - e.clientX;
-      const newWidth = Math.max(320, Math.min(window.innerWidth - 100, dragStartWidth.current + delta));
+      // 面板从右侧打开，向左拖动delta为正，宽度增加
+      const newWidth = Math.max(320, Math.min(window.innerWidth - 50, dragStartWidth.current + delta));
       setPanelWidth(newWidth);
     };
 
