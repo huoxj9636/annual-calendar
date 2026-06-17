@@ -334,81 +334,97 @@ function OakShape({
   const crownY = 32 - trunkH;
   const crownSize = 10 + sizeTier * 2.4;
 
-  // 树冠 blob 数
-  const blobs: Array<[number, number, number]> = [
-    [30, crownY, crownSize],
-    [20, crownY + 2, crownSize * 0.78],
-    [40, crownY + 2, crownSize * 0.78],
-    [25, crownY + 5, crownSize * 0.7],
-    [35, crownY + 5, crownSize * 0.7],
+  // 树冠轮廓（用 cubic Bézier 绘制不规则自然云朵）
+  // crownY 是树冠顶部 y 坐标，crownSize 是中心半径
+  const top = crownY;
+  const baseY = crownY + crownSize * 0.95; // 树冠底部
+  const cx = 30;
+  const cs = crownSize;
+  // 自然起伏的伞形云朵轮廓，底部有凸起/凹陷
+  const canopyPath = `
+    M ${cx - cs * 0.95},${top + cs * 0.4}
+    C ${cx - cs * 1.05},${top - cs * 0.1} ${cx - cs * 0.7},${top - cs * 0.5} ${cx - cs * 0.35},${top - cs * 0.35}
+    C ${cx - cs * 0.25},${top - cs * 0.85} ${cx + cs * 0.05},${top - cs * 0.95} ${cx + cs * 0.2},${top - cs * 0.55}
+    C ${cx + cs * 0.45},${top - cs * 0.85} ${cx + cs * 0.8},${top - cs * 0.6} ${cx + cs * 0.85},${top - cs * 0.15}
+    C ${cx + cs * 1.1},${top + cs * 0.1} ${cx + cs * 1.0},${top + cs * 0.55} ${cx + cs * 0.75},${top + cs * 0.6}
+    C ${cx + cs * 0.65},${top + cs * 0.85} ${cx + cs * 0.35},${top + cs * 0.8} ${cx + cs * 0.15},${top + cs * 0.7}
+    C ${cx - cs * 0.1},${top + cs * 0.9} ${cx - cs * 0.45},${top + cs * 0.85} ${cx - cs * 0.6},${top + cs * 0.65}
+    C ${cx - cs * 0.85},${top + cs * 0.7} ${cx - cs * 1.0},${top + cs * 0.55} ${cx - cs * 0.95},${top + cs * 0.4}
+    Z`.replace(/\s+/g, " ").trim();
+
+  // 树冠内的层次色块（深→浅，模拟叶簇的明暗）
+  const innerBlobs: Array<[number, number, number, string, number]> = [
+    [cx - cs * 0.45, top + cs * 0.0, cs * 0.55, accent, 0.95],
+    [cx + cs * 0.4, top + cs * 0.05, cs * 0.5, accent, 0.85],
+    [cx - cs * 0.15, top + cs * 0.35, cs * 0.45, accentDeep, 0.7],
+    [cx + cs * 0.55, top + cs * 0.35, cs * 0.32, accentDeep, 0.75],
+    [cx - cs * 0.55, top + cs * 0.4, cs * 0.3, accentDeep, 0.7],
+    [cx + cs * 0.05, top + cs * 0.55, cs * 0.28, accentDeep, 0.65],
   ];
-  // 古木多一个底冠
   if (ancient) {
-    blobs.push([30, crownY + 8, crownSize * 0.6]);
+    innerBlobs.push([cx - cs * 0.3, top + cs * 0.7, cs * 0.32, accentDeep, 0.6]);
+    innerBlobs.push([cx + cs * 0.35, top + cs * 0.7, cs * 0.3, accentDeep, 0.6]);
   }
+
+  // 树干（略带弯曲的锥形，自然不绝对对称）
+  const trunkBaseL = 30 - trunkW * 0.6;
+  const trunkBaseR = 30 + trunkW * 0.6;
+  const trunkTopL = 30 - trunkW / 2;
+  const trunkTopR = 30 + trunkW / 2;
+  // 树干中段轻微弯曲
+  const midL = trunkBaseL + 0.6;
+  const midR = trunkBaseR - 0.6;
+  const trunkPath = `
+    M ${trunkTopL},32
+    C ${trunkTopL - 0.3},${32 + trunkH * 0.4} ${midL + 0.5},${32 + trunkH * 0.6} ${trunkBaseL - 0.8},${32 + trunkH}
+    L ${trunkBaseR + 0.8},${32 + trunkH}
+    C ${midR - 0.5},${32 + trunkH * 0.6} ${trunkTopR + 0.3},${32 + trunkH * 0.4} ${trunkTopR},32
+    Z`.replace(/\s+/g, " ").trim();
 
   return (
     <g>
-      {/* 树干（梯形） */}
-      <path
-        d={`M${30 - trunkW / 2 - 0.5},32 L${30 + trunkW / 2 + 0.5},32 L${30 + trunkW / 2 + 1.5},${32 + trunkH} L${30 - trunkW / 2 - 1.5},${32 + trunkH} Z`}
-        fill="#6B4423"
-      />
-      {/* 树皮纹路 */}
-      <line
-        x1={30 - trunkW * 0.25}
-        y1="33"
-        x2={30 - trunkW * 0.25}
-        y2={32 + trunkH - 0.5}
-        stroke="#3D2415"
-        strokeWidth="0.5"
-        opacity="0.7"
-      />
-      <line
-        x1={30 + trunkW * 0.2}
-        y1="33"
-        x2={30 + trunkW * 0.2}
-        y2={32 + trunkH - 0.5}
-        stroke="#3D2415"
-        strokeWidth="0.4"
-        opacity="0.6"
-      />
+      {/* 树干 */}
+      <path d={trunkPath} fill="#6B4423" />
+      {/* 树皮纹路（多条不规则竖线） */}
+      <g stroke="#3D2415" strokeLinecap="round" opacity="0.55">
+        <line x1={trunkBaseL + 1.2} y1={33} x2={trunkBaseL + 1.0} y2={32 + trunkH - 0.5} strokeWidth="0.5" />
+        <line x1={30 - trunkW * 0.2} y1={33} x2={30 - trunkW * 0.25} y2={32 + trunkH - 0.5} strokeWidth="0.45" />
+        <line x1={30 + trunkW * 0.15} y1={33} x2={30 + trunkW * 0.18} y2={32 + trunkH - 0.5} strokeWidth="0.5" />
+        <line x1={trunkBaseR - 1.0} y1={33} x2={trunkBaseR - 1.2} y2={32 + trunkH - 0.5} strokeWidth="0.4" />
+      </g>
+      {/* 根部的小土堆 */}
+      <ellipse cx="30" cy={32 + trunkH + 0.3} rx={trunkW * 0.95} ry="0.8" fill="#5C3818" opacity="0.4" />
       {/* 主分叉（成树及以上） */}
       {mature && (
-        <g
-          fill="none"
-          stroke="#5C3818"
-          strokeWidth={ancient ? 1 : 0.8}
-          strokeLinecap="round"
-        >
-          <path d={`M30,${32 + trunkH * 0.4} L${24 - sizeTier * 0.4},${crownY + 4}`} />
-          <path d={`M30,${32 + trunkH * 0.4} L${36 + sizeTier * 0.4},${crownY + 4}`} />
+        <g fill="none" stroke="#5C3818" strokeWidth={ancient ? 1.0 : 0.7} strokeLinecap="round" opacity="0.85">
+          <path d={`M30,${32 + trunkH * 0.45} Q${24},${32 + trunkH * 0.2} ${20 - sizeTier * 0.2},${crownY + cs * 0.4}`} />
+          <path d={`M30,${32 + trunkH * 0.45} Q${36},${32 + trunkH * 0.2} ${40 + sizeTier * 0.2},${crownY + cs * 0.4}`} />
           {giant && (
-            <path
-              d={`M30,${32 + trunkH * 0.5} L${30 - sizeTier * 0.6},${crownY + 6}`}
-            />
+            <path d={`M30,${32 + trunkH * 0.5} Q${30 - 1},${32 + trunkH * 0.1} ${28},${crownY + cs * 0.15}`} />
           )}
         </g>
       )}
-      {/* 树冠（云朵 blob 叠加） */}
-      {blobs.map(([cx, cy, r], i) => (
-        <circle
-          key={i}
-          cx={cx}
-          cy={cy}
-          r={r}
-          fill={i === 0 ? accent : accentDeep}
-          opacity={0.88 - i * 0.05}
-        />
+      {/* 树冠轮廓 */}
+      <path d={canopyPath} fill={accent} />
+      {/* 树冠内层叶簇（深浅叠加） */}
+      {innerBlobs.map(([bx, by, br, color, op], i) => (
+        <circle key={i} cx={bx} cy={by} r={br} fill={color} opacity={op} />
       ))}
-      {/* 树冠高光 */}
+      {/* 树冠高光（左上受光） */}
       <ellipse
-        cx={crownY > 20 ? 22 : 22}
-        cy={crownY + 2}
-        rx={crownSize * 0.32}
-        ry={crownSize * 0.18}
+        cx={cx - cs * 0.35}
+        cy={top + cs * 0.05}
+        rx={cs * 0.32}
+        ry={cs * 0.18}
         fill="rgba(255,255,255,0.18)"
       />
+      {/* 古木：垂挂藤蔓 */}
+      {ancient && (
+        <g fill="none" stroke={accentDeep} strokeWidth="0.5" opacity="0.6">
+          <path d={`M${cx - cs * 0.4},${baseY} Q${cx - cs * 0.5},${baseY + cs * 0.25} ${cx - cs * 0.45},${baseY + cs * 0.45}`} />
+          <path d={`M${cx + cs * 0.3},${baseY - cs * 0.05} Q${cx + cs * 0.35},${baseY + cs * 0.2} ${cx + cs * 0.25},${baseY + cs * 0.4}`} />
+        </g>
+      )}
     </g>
   );
 }
@@ -542,56 +558,64 @@ function MapleShape({
     </g>
   );
 
+  // 树冠轮廓：不规则云朵（多个凸起，底部起伏）
+  const top = crownY;
+  const cs = crownR;
+  const canopyPath = `
+    M ${30 - cs * 0.95},${top + cs * 0.35}
+    C ${30 - cs * 1.05},${top - cs * 0.1} ${30 - cs * 0.7},${top - cs * 0.55} ${30 - cs * 0.3},${top - cs * 0.4}
+    C ${30 - cs * 0.15},${top - cs * 0.85} ${30 + cs * 0.1},${top - cs * 0.95} ${30 + cs * 0.25},${top - cs * 0.5}
+    C ${30 + cs * 0.5},${top - cs * 0.8} ${30 + cs * 0.85},${top - cs * 0.5} ${30 + cs * 0.95},${top - cs * 0.1}
+    C ${30 + cs * 1.1},${top + cs * 0.15} ${30 + cs * 1.0},${top + cs * 0.55} ${30 + cs * 0.75},${top + cs * 0.65}
+    C ${30 + cs * 0.6},${top + cs * 0.9} ${30 + cs * 0.3},${top + cs * 0.85} ${30 + cs * 0.15},${top + cs * 0.75}
+    C ${30 - cs * 0.1},${top + cs * 0.95} ${30 - cs * 0.45},${top + cs * 0.85} ${30 - cs * 0.6},${top + cs * 0.65}
+    C ${30 - cs * 0.9},${top + cs * 0.65} ${30 - cs * 1.05},${top + cs * 0.5} ${30 - cs * 0.95},${top + cs * 0.35}
+    Z`.replace(/\s+/g, " ").trim();
+
+  // 树干（弯曲 + 树皮）
+  const trunkBaseL = 30 - trunkW * 0.6;
+  const trunkBaseR = 30 + trunkW * 0.6;
+  const trunkTopL = 30 - trunkW / 2;
+  const trunkTopR = 30 + trunkW / 2;
+  const trunkPath = `
+    M ${trunkTopL},32
+    C ${trunkTopL - 0.3},${32 + trunkH * 0.4} ${trunkBaseL + 0.5},${32 + trunkH * 0.65} ${trunkBaseL - 0.6},${32 + trunkH}
+    L ${trunkBaseR + 0.6},${32 + trunkH}
+    C ${trunkBaseR - 0.5},${32 + trunkH * 0.65} ${trunkTopR + 0.3},${32 + trunkH * 0.4} ${trunkTopR},32
+    Z`.replace(/\s+/g, " ").trim();
+
   return (
     <g>
       {/* 树干 */}
-      <rect
-        x={30 - trunkW / 2}
-        y={32}
-        width={trunkW}
-        height={trunkH}
-        fill="#6B4423"
-      />
+      <path d={trunkPath} fill="#6B4423" />
+      <g stroke="#3D2415" strokeLinecap="round" opacity="0.5">
+        <line x1={trunkBaseL + 0.8} y1={33} x2={trunkBaseL + 0.6} y2={32 + trunkH - 0.5} strokeWidth="0.4" />
+        <line x1={30} y1={33} x2={30} y2={32 + trunkH - 0.5} strokeWidth="0.5" />
+        <line x1={trunkBaseR - 0.6} y1={33} x2={trunkBaseR - 0.8} y2={32 + trunkH - 0.5} strokeWidth="0.4" />
+      </g>
+      <ellipse cx="30" cy={32 + trunkH + 0.3} rx={trunkW * 0.9} ry="0.7" fill="#5C3818" opacity="0.4" />
+      {/* 主分叉 */}
       {mature && (
-        <g
-          fill="none"
-          stroke="#5C3818"
-          strokeWidth="0.7"
-          strokeLinecap="round"
-        >
-          <path d={`M30,${32 + trunkH * 0.5} L${26},${crownY + 3}`} />
-          <path d={`M30,${32 + trunkH * 0.5} L${34},${crownY + 3}`} />
+        <g fill="none" stroke="#5C3818" strokeWidth="0.6" strokeLinecap="round" opacity="0.85">
+          <path d={`M30,${32 + trunkH * 0.45} Q${25},${32 + trunkH * 0.15} ${22},${top + cs * 0.4}`} />
+          <path d={`M30,${32 + trunkH * 0.45} Q${35},${32 + trunkH * 0.15} ${38},${top + cs * 0.4}`} />
         </g>
       )}
-      {/* 球形树冠 */}
-      <circle cx={30} cy={crownY + 1} r={crownR} fill={accent} opacity="0.88" />
-      <circle cx={22} cy={crownY + 3} r={crownR * 0.7} fill={accent} opacity="0.85" />
-      <circle cx={38} cy={crownY + 3} r={crownR * 0.7} fill={accent} opacity="0.85" />
-      <circle cx={30} cy={crownY - 3} r={crownR * 0.65} fill={accentDeep} opacity="0.7" />
-      {/* 树冠上的掌状叶点缀（成树及以上） */}
-      {mature && (
-        <g>
-          <MapleLeaf x={24} y={crownY - 2} r={3 + sizeTier * 0.3} rot={-15} />
-          <MapleLeaf x={36} y={crownY - 1} r={3 + sizeTier * 0.3} rot={20} />
-          <MapleLeaf x={30} y={crownY + 4} r={2.6 + sizeTier * 0.25} rot={170} />
-        </g>
-      )}
-      {giant && (
-        <MapleLeaf
-          x={20}
-          y={crownY + 5}
-          r={2.6 + sizeTier * 0.2}
-          rot={-30}
-        />
-      )}
-      {ancient && (
-        <MapleLeaf
-          x={40}
-          y={crownY + 5}
-          r={2.6 + sizeTier * 0.2}
-          rot={45}
-        />
-      )}
+      {/* 树冠轮廓 */}
+      <path d={canopyPath} fill={accent} />
+      {/* 树冠内层明暗 */}
+      <circle cx={30 - cs * 0.3} cy={top + cs * 0.15} r={cs * 0.45} fill={accent} opacity="0.85" />
+      <circle cx={30 + cs * 0.35} cy={top + cs * 0.25} r={cs * 0.4} fill={accentDeep} opacity="0.7" />
+      <circle cx={30 - cs * 0.4} cy={top + cs * 0.5} r={cs * 0.32} fill={accentDeep} opacity="0.65" />
+      <circle cx={30 + cs * 0.2} cy={top + cs * 0.55} r={cs * 0.3} fill={accentDeep} opacity="0.6" />
+      {/* 树冠高光 */}
+      <ellipse cx={30 - cs * 0.35} cy={top + cs * 0.0} rx={cs * 0.3} ry={cs * 0.15} fill="rgba(255,255,255,0.18)" />
+      {/* 掌状叶点缀（散落在树冠外缘） */}
+      <MapleLeaf x={28 - cs * 0.55} y={top + cs * 0.2} r={2.4 + sizeTier * 0.3} rot={-20} />
+      <MapleLeaf x={32 + cs * 0.55} y={top + cs * 0.1} r={2.4 + sizeTier * 0.3} rot={30} />
+      <MapleLeaf x={30} y={top - cs * 0.65} r={2.2 + sizeTier * 0.25} rot={-5} />
+      {giant && <MapleLeaf x={30 - cs * 0.65} y={top + cs * 0.6} r={2.0} rot={-50} />}
+      {ancient && <MapleLeaf x={30 + cs * 0.65} y={top + cs * 0.55} r={2.0} rot={55} />}
     </g>
   );
 }
@@ -732,59 +756,92 @@ function BanyanShape({
     roots.push([18, crownY + 3, 11], [42, crownY + 3, 11]);
   }
 
+  // 树冠轮廓：超宽伞形（不规则起伏）
+  const cs = crownR;
+  const top = crownY;
+  const canopyPath = `
+    M ${30 - cs * 1.0},${top + cs * 0.6}
+    C ${30 - cs * 1.15},${top + cs * 0.2} ${30 - cs * 1.0},${top - cs * 0.2} ${30 - cs * 0.7},${top - cs * 0.25}
+    C ${30 - cs * 0.55},${top - cs * 0.55} ${30 - cs * 0.15},${top - cs * 0.65} ${30 + cs * 0.0},${top - cs * 0.5}
+    C ${30 + cs * 0.15},${top - cs * 0.8} ${30 + cs * 0.5},${top - cs * 0.7} ${30 + cs * 0.7},${top - cs * 0.4}
+    C ${30 + cs * 0.95},${top - cs * 0.35} ${30 + cs * 1.1},${top - cs * 0.05} ${30 + cs * 1.15},${top + cs * 0.25}
+    C ${30 + cs * 1.15},${top + cs * 0.55} ${30 + cs * 0.95},${top + cs * 0.75} ${30 + cs * 0.7},${top + cs * 0.8}
+    C ${30 + cs * 0.5},${top + cs * 0.95} ${30 + cs * 0.15},${top + cs * 0.95} ${30 + cs * 0.0},${top + cs * 0.85}
+    C ${30 - cs * 0.2},${top + cs * 0.95} ${30 - cs * 0.55},${top + cs * 0.95} ${30 - cs * 0.75},${top + cs * 0.85}
+    C ${30 - cs * 0.95},${top + cs * 0.8} ${30 - cs * 1.1},${top + cs * 0.75} ${30 - cs * 1.0},${top + cs * 0.6}
+    Z`.replace(/\s+/g, " ").trim();
+
+  // 粗壮主干（略带弧度）
+  const trunkPath = `
+    M ${30 - trunkW / 2 - 0.5},32
+    C ${30 - trunkW / 2 - 0.8},${32 + trunkH * 0.5} ${30 - trunkW / 2 - 1.5},${32 + trunkH * 0.75} ${30 - trunkW / 2 - 2},${32 + trunkH}
+    L ${30 + trunkW / 2 + 2},${32 + trunkH}
+    C ${30 + trunkW / 2 + 1.5},${32 + trunkH * 0.75} ${30 + trunkW / 2 + 0.8},${32 + trunkH * 0.5} ${30 + trunkW / 2 + 0.5},32
+    Z`.replace(/\s+/g, " ").trim();
+
   return (
     <g>
-      {/* 主干（粗壮） */}
-      <path
-        d={`M${30 - trunkW / 2 - 0.5},32 L${30 + trunkW / 2 + 0.5},32 L${30 + trunkW / 2 + 2},${32 + trunkH} L${30 - trunkW / 2 - 2},${32 + trunkH} Z`}
-        fill="#5C3818"
-      />
-      {/* 树皮裂纹（深） */}
-      <line
-        x1={30 - trunkW * 0.15}
-        y1="33"
-        x2={30 - trunkW * 0.15}
-        y2={32 + trunkH - 0.5}
-        stroke="#2D1A0A"
-        strokeWidth="0.6"
-        opacity="0.7"
-      />
-      <line
-        x1={30 + trunkW * 0.1}
-        y1="33"
-        x2={30 + trunkW * 0.15}
-        y2={32 + trunkH - 0.5}
-        stroke="#2D1A0A"
-        strokeWidth="0.5"
-        opacity="0.6"
-      />
-      <line
-        x1={30 - trunkW * 0.35}
-        y1="36"
-        x2={30 - trunkW * 0.3}
-        y2={32 + trunkH - 0.5}
-        stroke="#2D1A0A"
-        strokeWidth="0.4"
-        opacity="0.5"
-      />
-      {/* 气根（从树冠垂下到树干） */}
+      {/* 主干 */}
+      <path d={trunkPath} fill="#5C3818" />
+      {/* 树皮纹路（深） */}
+      <g stroke="#2D1A0A" strokeLinecap="round">
+        <line x1={30 - trunkW * 0.2} y1="33" x2={30 - trunkW * 0.25} y2={32 + trunkH - 0.3} strokeWidth="0.6" opacity="0.75" />
+        <line x1={30 + trunkW * 0.1} y1="33" x2={30 + trunkW * 0.15} y2={32 + trunkH - 0.3} strokeWidth="0.5" opacity="0.65" />
+        <line x1={30 - trunkW * 0.4} y1="36" x2={30 - trunkW * 0.35} y2={32 + trunkH - 0.3} strokeWidth="0.4" opacity="0.55" />
+        <line x1={30 + trunkW * 0.35} y1="36" x2={30 + trunkW * 0.4} y2={32 + trunkH - 0.3} strokeWidth="0.4" opacity="0.5" />
+      </g>
+      {/* 根部土堆 */}
+      <ellipse cx="30" cy={32 + trunkH + 0.4} rx={trunkW * 1.1} ry="0.9" fill="#4A2E18" opacity="0.45" />
+      {/* 气根（从树冠下垂到地面/树干，弧形自然） */}
       {roots.map(([x, yTop, h], i) => (
-        <path
-          key={i}
-          d={`M${x},${yTop} Q${x - 1 + (i % 2) * 2},${yTop + h * 0.5} ${x + (i % 2 === 0 ? -0.5 : 0.5)},${yTop + h}`}
-          stroke="#5C3818"
-          strokeWidth={ancient ? 1 : 0.7}
-          fill="none"
-          opacity="0.7"
-        />
+        <g key={i}>
+          <path
+            d={`M${x},${yTop} C${x - 1.2 + (i % 2) * 2.4},${yTop + h * 0.35} ${x - 0.6 + (i % 2) * 1.2},${yTop + h * 0.7} ${x + (i % 2 === 0 ? -0.4 : 0.4)},${yTop + h}`}
+            stroke="#4A2E18"
+            strokeWidth={ancient ? 1.2 : 0.8}
+            fill="none"
+            opacity="0.85"
+            strokeLinecap="round"
+          />
+          {/* 气根到地面后的小凸起 */}
+          {mature && (
+            <ellipse
+              cx={x + (i % 2 === 0 ? -0.4 : 0.4)}
+              cy={yTop + h}
+              rx="0.6"
+              ry="0.4"
+              fill="#3D2415"
+              opacity="0.6"
+            />
+          )}
+        </g>
       ))}
-      {/* 大伞形树冠（多层） */}
-      <ellipse cx={30} cy={crownY + 3} rx={crownR} ry={crownR * 0.78} fill={accent} opacity="0.86" />
-      <ellipse cx={22} cy={crownY + 1} rx={crownR * 0.6} ry={crownR * 0.55} fill={accent} opacity="0.85" />
-      <ellipse cx={38} cy={crownY + 1} rx={crownR * 0.6} ry={crownR * 0.55} fill={accent} opacity="0.85" />
-      <ellipse cx={30} cy={crownY - 2} rx={crownR * 0.65} ry={crownR * 0.45} fill={accentDeep} opacity="0.65" />
+      {/* 主分叉（成树起） */}
+      {mature && (
+        <g fill="none" stroke="#4A2E18" strokeWidth="0.7" strokeLinecap="round" opacity="0.85">
+          <path d={`M30,${32 + trunkH * 0.4} Q${22},${32 + trunkH * 0.1} ${18},${top + cs * 0.4}`} />
+          <path d={`M30,${32 + trunkH * 0.4} Q${38},${32 + trunkH * 0.1} ${42},${top + cs * 0.4}`} />
+          <path d={`M30,${32 + trunkH * 0.3} Q${30},${32 - 1} ${30},${top + cs * 0.0}`} />
+        </g>
+      )}
+      {/* 树冠轮廓 */}
+      <path d={canopyPath} fill={accent} />
+      {/* 树冠内层明暗 */}
+      <ellipse cx={30 - cs * 0.4} cy={top + cs * 0.3} rx={cs * 0.4} ry={cs * 0.3} fill={accentDeep} opacity="0.55" />
+      <ellipse cx={30 + cs * 0.45} cy={top + cs * 0.35} rx={cs * 0.45} ry={cs * 0.3} fill={accentDeep} opacity="0.5" />
+      <ellipse cx={30 - cs * 0.55} cy={top + cs * 0.55} rx={cs * 0.35} ry={cs * 0.25} fill={accentDeep} opacity="0.5" />
+      <ellipse cx={30 + cs * 0.55} cy={top + cs * 0.55} rx={cs * 0.35} ry={cs * 0.25} fill={accentDeep} opacity="0.5" />
+      <ellipse cx={30} cy={top + cs * 0.7} rx={cs * 0.5} ry={cs * 0.15} fill={accentDeep} opacity="0.45" />
       {/* 树冠高光 */}
-      <ellipse cx={22} cy={crownY + 1} rx={crownR * 0.25} ry={crownR * 0.12} fill="rgba(255,255,255,0.2)" />
+      <ellipse cx={30 - cs * 0.3} cy={top + cs * 0.0} rx={cs * 0.35} ry={cs * 0.12} fill="rgba(255,255,255,0.18)" />
+      <ellipse cx={30 + cs * 0.2} cy={top + cs * 0.15} rx={cs * 0.25} ry={cs * 0.1} fill="rgba(255,255,255,0.15)" />
+      {/* 古木垂挂藤蔓 */}
+      {ancient && (
+        <g fill="none" stroke="#3D2415" strokeWidth="0.5" strokeLinecap="round" opacity="0.7">
+          <path d={`M${30 - cs * 0.5},${top + cs * 0.6} Q${30 - cs * 0.55},${top + cs * 0.9} ${30 - cs * 0.6},${top + cs * 1.1}`} />
+          <path d={`M${30 + cs * 0.6},${top + cs * 0.7} Q${30 + cs * 0.7},${top + cs * 1.0} ${30 + cs * 0.65},${top + cs * 1.25}`} />
+        </g>
+      )}
     </g>
   );
 }

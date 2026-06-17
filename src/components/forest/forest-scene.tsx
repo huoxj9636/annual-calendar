@@ -112,8 +112,6 @@ function ForestTree({
 }) {
   const stage = getStage(item.count);
   const sizes = TREE_HEIGHTS[stage.size] || TREE_HEIGHTS[1];
-  const swayDelay = `${(index % 7) * 0.4}s`;
-  const swayDuration = `${4 + (index % 4) * 0.5}s`;
   const accent = item.accentColor || skin.swatch;
 
   // 树冠颜色：从主题色到略深渐变
@@ -147,16 +145,12 @@ function ForestTree({
         }}
       />
 
-      {/* 整树摇摆容器 */}
       <div
-        className="absolute left-1/2 -translate-x-1/2 origin-bottom"
+        className="absolute left-1/2 -translate-x-1/2"
         style={{
           bottom: 0,
           width: sizes.crown,
           height: sizes.h,
-          animation: onClick
-            ? `treeSway ${swayDuration} ease-in-out ${swayDelay} infinite alternate`
-            : undefined,
         }}
       >
         {/* 波纹树（真实树木：有云朵状树冠 + 梯形树干 + 树皮纹路） */}
@@ -180,20 +174,23 @@ function ForestTree({
           />
         </div>
 
-        {/* 阶段/数量徽章（仅悬停显示） */}
+        {/* 树名称徽章（常显，悬停态更突出） */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none flex items-center gap-1.5"
+          className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap flex items-center gap-1.5 transition-all"
           style={{
-            bottom: sizes.h + 4,
+            top: -22,
             fontSize: 11,
-            padding: "3px 6px 3px 10px",
+            fontWeight: 500,
+            padding: "2px 8px",
             borderRadius: 999,
-            background: "rgba(0,0,0,0.6)",
-            color: "#fff",
+            background: "rgba(255,255,255,0.78)",
+            color: "rgba(40,30,20,0.85)",
             letterSpacing: "0.04em",
+            backdropFilter: "blur(6px)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
           }}
         >
-          <span>{item.name} · {item.count}</span>
+          <span>{item.name}</span>
           {onDelete && (
             <button
               onClick={(e) => {
@@ -354,11 +351,7 @@ export default function ForestScene({
   return (
     <>
       <style>{`
-        @keyframes treeSway {
-          0%   { transform: translateX(-50%) rotate(-1.4deg); }
-          100% { transform: translateX(-50%) rotate(1.4deg); }
-        }
-        @keyframes cloudDrift {
+@keyframes cloudDrift {
           0%   { transform: translateX(0) scale(var(--s, 1)); }
           100% { transform: translateX(calc(100vw + 200px)) scale(var(--s, 1)); }
         }
