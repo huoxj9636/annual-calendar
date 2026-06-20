@@ -93,8 +93,8 @@ export function UserMenu() {
           title="点击登录账号,数据自动同步到云端"
           aria-label="数据同步"
         >
-          <CloudOff className="h-4 w-4 shrink-0" />
-          <span className="text-sm font-medium">数据同步</span>
+          <CloudOff className="h-3.5 w-3.5 shrink-0" />
+          <span className="text-xs font-medium">数据同步</span>
         </button>
       </div>
     );
@@ -184,8 +184,8 @@ export function UserMenu() {
         title="账号菜单"
         aria-label="账号菜单"
       >
-        <Cloud className="h-4 w-4 shrink-0" />
-        <span className="text-sm font-medium">已同步</span>
+        <Cloud className="h-3.5 w-3.5 shrink-0" />
+        <span className="text-xs font-medium">已同步</span>
         {maskedPhone && <span className="text-xs opacity-80">· {maskedPhone}</span>}
       </button>
     </div>
