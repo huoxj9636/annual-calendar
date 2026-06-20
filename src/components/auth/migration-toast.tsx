@@ -20,7 +20,7 @@ export function MigrationToast() {
 
   return (
     <div
-      className="fixed bottom-20 left-4 z-50 max-w-sm rounded-2xl border-2 bg-card p-4 shadow-2xl"
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] max-w-sm rounded-2xl border-2 bg-card p-4 shadow-2xl animate-in slide-in-from-top-4 fade-in duration-300"
       style={{ borderColor: swatch, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}
       role="alertdialog"
       aria-label="本地数据迁移提示"

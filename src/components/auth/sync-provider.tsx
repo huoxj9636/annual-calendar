@@ -60,7 +60,9 @@ export function SyncProvider({ children }: SyncProviderProps) {
   const dismissedRef = useRef(false);
 
   // 重新检测 localStorage 已迁库 key 的待迁移条数
+  // 注意:dismiss 后不应该再弹 toast,即使有新数据写入
   const refreshPendingCount = useCallback(() => {
+    if (dismissedRef.current) return;
     try {
       setPendingCount(countLocalMigratableData());
     } catch {
