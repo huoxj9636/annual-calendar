@@ -131,8 +131,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     }
     return rows;
   });
-  const ganttColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899'];
-
   // Add a new gantt row
   const addGanttRow = () => {
     const newId = ganttRows.length > 0 ? Math.max(...ganttRows.map(r => r.id)) + 1 : 1;
@@ -140,8 +138,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       id: newId,
       task: '',
       startHour: 0,
-      endHour: 24,
-      color: ganttColors[newId % ganttColors.length]
+      endHour: 1,
     }]);
   };
 
@@ -603,7 +600,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   row={row}
                   idx={idx}
                   skin={skin}
-                  ganttColors={ganttColors}
                   onUpdateRow={(r) => {
                     const next = [...ganttRows];
                     next[idx] = r;
@@ -624,7 +620,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               <button
                 onClick={() => {
                   const newId = ganttRows.length > 0 ? Math.max(...ganttRows.map(r => r.id)) + 1 : 1;
-                  const next = [...ganttRows, { id: newId, task: '', startHour: 0, endHour: 24, color: ganttColors[newId % ganttColors.length] }];
+                  const next = [...ganttRows, { id: newId, task: '', startHour: 0, endHour: 1 }];
                   setGanttRows(next);
                   saveGanttRows(year, month, day, next);
                 }}
@@ -1065,7 +1061,6 @@ type GanttRowData = {
   task: string;
   startHour: number;
   endHour: number;
-  color: string;
 };
 
 type DailyReviewSkin = {
@@ -1083,7 +1078,7 @@ function GanttRow({ row, idx, skin, onUpdateRow, onDelete }: {
   row: GanttRowData;
   idx: number;
   skin: DailyReviewSkin;
-  ganttColors: string[];
+
   onUpdateRow: (row: GanttRowData) => void;
   onDelete: () => void;
 }) {
@@ -1107,7 +1102,8 @@ function GanttRow({ row, idx, skin, onUpdateRow, onDelete }: {
           style={{
             left: `${(row.startHour / 24) * 100}%`,
             width: `${((row.endHour - row.startHour) / 24) * 100}%`,
-            backgroundColor: row.color,
+            backgroundColor: skin.swatch,
+            opacity: 0.7,
             minWidth: '4px',
           }}
           title={`${row.startHour}:00 - ${row.endHour}:00`}
