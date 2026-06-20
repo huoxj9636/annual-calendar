@@ -126,7 +126,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   // Gantt hover & current time indicator (depends on ganttScale)
   const [hoverHour, setHoverHour] = useState<number | null>(null);
   const [hoverY, setHoverY] = useState<number | null>(null);
-  const cellWidth = 48 / ganttScale;
+  // cellWidth: 每个刻度格子的宽度（固定48px，和GanttRow一致）
+  const cellWidth = 48;
   // Is this day "today"? (for showing current time line)
   const today = new Date();
   const isToday = year === today.getFullYear() && month === today.getMonth() + 1 && day === today.getDate();
@@ -665,7 +666,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     onClick={() => {
                       if (ganttScrollRef.current) {
                         const containerWidth = ganttScrollRef.current.clientWidth;
-                        const targetX = taskColumnWidth + currentHour * cellWidth - containerWidth / 2;
+                        const targetX = taskColumnWidth + currentHour * 48 / ganttScale - containerWidth / 2;
                         ganttScrollRef.current.scrollTo({ left: Math.max(0, targetX), behavior: 'smooth' });
                       }
                     }}
@@ -710,8 +711,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     const trackX = x - taskColumnWidth;
                     if (trackX >= 0) {
                       // 考虑滚动偏移：trackX是鼠标相对于容器的时间网格区域的位置
-                      // 但时间网格可能已滚动，所以实际小时数需要加上滚动偏移
-                      const hour = (trackX + ganttScrollLeft) / cellWidth;
+                      // cellWidth=48px是每个格子的宽度，每个格子代表scale小时
+                      // 所以小时数 = (像素位置 / 48) * scale
+                      const hour = ((trackX + ganttScrollLeft) / cellWidth) * ganttScale;
                       const clampedHour = Math.max(0, Math.min(24, hour));
                       setHoverHour(clampedHour);
                       setHoverY(y);
@@ -838,7 +840,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <div 
                     className="absolute top-0 bottom-0"
                     style={{ 
-                      left: `${taskColumnWidth + hoverHour * cellWidth - ganttScrollLeft}px`,
+                      left: `${taskColumnWidth + hoverHour * 48 / ganttScale - ganttScrollLeft}px`,
                       width: '1px',
                       backgroundColor: skin.textMuted,
                       opacity: 0.5,
@@ -863,7 +865,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <div 
                     className="absolute top-0 bottom-0"
                     style={{ 
-                      left: `${taskColumnWidth + currentHour * cellWidth - ganttScrollLeft}px`,
+                      left: `${taskColumnWidth + currentHour * 48 / ganttScale - ganttScrollLeft}px`,
                       width: '2px',
                       backgroundColor: '#ef4444',
                     }}
@@ -1559,8 +1561,8 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
           <div
             className="absolute top-0 bottom-0 rounded-lg cursor-pointer"
             style={{
-              left: `${row.startHour * cellWidth}px`,
-              width: `${(row.endHour - row.startHour) * cellWidth}px`,
+              left: `${row.startHour * cellWidth / scale}px`,
+              width: `${(row.endHour - row.startHour) * cellWidth / scale}px`,
               backgroundColor: skin.swatch,
               opacity: 0.85,
               minWidth: '3px',
