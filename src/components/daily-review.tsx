@@ -727,8 +727,12 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
                     {/* 事项名称列占位 - sticky left so it doesn't scroll horizontally, covers time bars */}
                     <div 
-                      className="shrink-0 relative sticky left-0 z-50" 
-                      style={{ width: `${taskColumnWidth}px`, backgroundColor: skin.panelBg }}
+                      className="shrink-0 relative sticky left-0 z-50 flex items-center" 
+                      style={{ 
+                        width: `${taskColumnWidth}px`, 
+                        backgroundColor: skin.panelBg,
+                        minHeight: '36px', // Same height as task input row for alignment
+                      }}
                     >
                       {/* 拖拽手柄 - 移到列右侧边缘，始终可见 */}
                       <div 
@@ -1461,8 +1465,12 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
     <div className="flex mb-1 items-center group">
       {/* Task name input - sticky left so it doesn't scroll horizontally, covers time bars */}
       <div 
-        className="shrink-0 px-2 sticky left-0 z-50" 
-        style={{ width: `${taskColumnWidth}px`, backgroundColor: skin.panelBg }}
+        className="shrink-0 px-2 sticky left-0 z-50 flex items-center" 
+        style={{ 
+          width: `${taskColumnWidth}px`, 
+          backgroundColor: skin.panelBg,
+          minHeight: '36px', // Same height as header row for alignment
+        }}
       >
         <input
           type="text"
@@ -1470,7 +1478,11 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
           onChange={e => onUpdateRow({ ...row, task: e.target.value })}
           placeholder={`事项 ${idx + 1}`}
           className="w-full px-2 py-1.5 rounded-lg text-sm outline-none border"
-          style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, borderColor: skin.cellBorder }}
+          style={{ 
+            backgroundColor: skin.cardBg, 
+            color: skin.textPrimary, 
+            borderColor: skin.swatch, // Theme color border
+          }}
         />
       </div>
       {/* Time bar track - fixed pixel width based on scale */}
