@@ -5,8 +5,10 @@ import { Lock, X, Loader2, CheckCircle2 } from 'lucide-react';
 import { getSupabaseBrowserClientWithRetry } from '@/lib/supabase-browser';
 import {
   flushPendingWrites,
+  flushPendingNavigations,
   clearPendingWrites,
   getPendingWritesCount,
+  getPendingNavigationsCount,
   setInterceptorAuthStatus,
   registerRequireLoginHandler,
 } from '@/lib/auth-interceptor';
@@ -24,7 +26,7 @@ export function LoginPromptDialog() {
   // 监听拦截器:未登录时操作需要保存数据的功能 → 弹窗
   useEffect(() => {
     const unregister = registerRequireLoginHandler(() => {
-      setPendingCount(getPendingWritesCount());
+      setPendingCount(getPendingWritesCount() + getPendingNavigationsCount());
       setOpen(true);
       setError(null);
     });
@@ -104,11 +106,12 @@ export function LoginPromptDialog() {
       // 1. 打开拦截器
       setInterceptorAuthStatus(true);
       // 2. 补写所有被拦截的操作(写入 localStorage,SyncProvider 会自动同步上云)
-      const flushed = flushPendingWrites();
+      const flushedWrites = flushPendingWrites();
+      const flushedNavigations = flushPendingNavigations();
       // 3. 关闭弹窗
       close();
       // 4. 通知 SyncProvider 重新触发首次同步(由 user-context 的 auth listener 处理)
-      console.info('[LoginPromptDialog] 登录成功,补写', flushed, '项操作');
+      console.info('[LoginPromptDialog] 登录成功,补写', flushedWrites, '项数据 + 跳转', flushedNavigations, '个链接');
     } catch (err) {
       console.error('[LoginPromptDialog]', err);
       setError(err instanceof Error ? err.message : '登录失败,请重试');

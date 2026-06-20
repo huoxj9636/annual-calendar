@@ -22,14 +22,16 @@ const SYNCED_KEY_PATTERNS: Array<string | RegExp> = [
   /^calendar-notes-\d{4}$/,
   // 涂鸦
   /^calendar-drawing-\d{4}$/,
-  // 甘特图
-  /^gantt-rows-\d{4}-\d{1,2}$/,
+  // 甘特图（年-月-日，3 段）
+  /^gantt-rows-\d{4}-\d{1,2}-\d{1,2}$/,
   // 精确匹配的 key
   'calendar-bookmarks',
   'knowledge-trees',
   'knowledge-bookmarks',
   'life-calendar-okr', // OKR 目标/关键结果/任务
   'life-calendar-progress', // 人生旅途 9 阶段进度
+  // 成果面板（achievements-${key}）
+  /^achievements-[\w-]+$/,
   // life-calendar-* 其他（除 skin/panel 时钟模式外）
   /^life-calendar-(?!skin$|panel)./,
 ];
@@ -55,6 +57,8 @@ let _originalSetItem: ((key: string, value: string) => void) | null = null;
 
 // 被拦截的写入队列 - 登录成功后补写
 const pendingWrites: Array<{ key: string; value: string }> = [];
+// 被拦截的跳转队列 - 登录成功后打开新标签页
+const pendingNavigations: Array<{ url: string; target: string }> = [];
 
 function isSyncedKey(key: string): boolean {
   if (UI_PREFERENCE_KEYS.has(key)) return false;
@@ -124,11 +128,38 @@ export function installAuthInterceptor(): void {
       console.warn('[auth-interceptor] removeItem error', err);
     }
   };
+
+  // ── 拦截 window.open ──
+  // 拦截所有"打开新标签页"操作:未登录时入队,登录后跳转
+  const originalOpen = window.open;
+  window.open = function (url?: string | URL, target?: string, features?: string): WindowProxy | null {
+    try {
+      const urlString = url === undefined ? '' : String(url);
+      // 允许的内部跳转/空 URL 直接放行
+      if (!urlString || urlString === 'about:blank') {
+        return originalOpen.call(this, url as any, target, features);
+      }
+      if (!_isLoggedIn) {
+        // 未登录 → 拦截,入队
+        pendingNavigations.push({ url: urlString, target: target ?? '_blank' });
+        if (_onRequireLogin) _onRequireLogin();
+        return null;
+      }
+    } catch (err) {
+      console.warn('[auth-interceptor] window.open error', err);
+    }
+    return originalOpen.call(this, url as any, target, features);
+  };
 }
 
 /** 获取当前被拦截的写入数(用于 UI 展示) */
 export function getPendingWritesCount(): number {
   return pendingWrites.length;
+}
+
+/** 获取当前被拦截的导航数(用于 UI 展示) */
+export function getPendingNavigationsCount(): number {
+  return pendingNavigations.length;
 }
 
 /** 登录成功后调用:补写所有被拦截的操作 */
@@ -145,7 +176,22 @@ export function flushPendingWrites(): number {
   return writes.length;
 }
 
+/** 登录成功后调用:补跳所有被拦截的新标签页 */
+export function flushPendingNavigations(): number {
+  if (typeof window === 'undefined') return 0;
+  const navs = pendingNavigations.splice(0, pendingNavigations.length);
+  for (const n of navs) {
+    try {
+      window.open(n.url, n.target);
+    } catch (err) {
+      console.warn('[auth-interceptor] flush nav failed', n.url, err);
+    }
+  }
+  return navs.length;
+}
+
 /** 取消登录时调用:清空被拦截的队列 */
 export function clearPendingWrites(): void {
   pendingWrites.length = 0;
+  pendingNavigations.length = 0;
 }

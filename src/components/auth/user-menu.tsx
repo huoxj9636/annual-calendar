@@ -53,11 +53,11 @@ export function UserMenu() {
     window.dispatchEvent(new CustomEvent('open-login-dialog', { detail: { reason: 'manual' } }));
   };
 
-  // ── 未登录:右上角登录入口 ──
+  // ── 未登录:左下角登录入口 ──
   if (!user) {
     return (
       <div
-        className="fixed top-4 right-4 z-50 select-none"
+        className="fixed bottom-4 left-4 z-50 select-none"
         style={{ fontFamily: 'inherit' }}
       >
         <button
@@ -79,7 +79,7 @@ export function UserMenu() {
   return (
     <div
       ref={menuRef}
-      className="fixed top-4 right-4 z-50 select-none"
+      className="fixed bottom-4 left-4 z-50 select-none"
       style={{ fontFamily: 'inherit' }}
     >
       {open && (
