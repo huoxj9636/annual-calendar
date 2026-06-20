@@ -644,16 +644,16 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                           <span className="relative">{i}</span>
                           {/* 15-minute tick marks for detailed scales */}
                           {(ganttScale === 0.25 || ganttScale === 0.5) && (
-                            <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.55 }}>
+                            <div className="absolute inset-0 pointer-events-none">
                               {/* :15 */}
-                              <div className="absolute top-0 bottom-0 left-1/4 w-px bg-current" style={{ opacity: 0.15 }} />
-                              <span className="absolute bottom-px left-1/4 text-[8px] leading-none tracking-tight" style={{ transform: 'translateX(-50%)' }}>15</span>
+                              <div className="absolute top-0 bottom-0 left-1/4 w-px bg-current" style={{ opacity: 0.14 }} />
+                              <span className="absolute bottom-px left-1/4 text-[8px] leading-none tracking-tight opacity-40" style={{ transform: 'translateX(-50%)' }}>15</span>
                               {/* :30 */}
-                              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-current" style={{ opacity: 0.22 }} />
-                              <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight" style={{ transform: 'translateX(-50%)', opacity: 0.65 }}>30</span>
+                              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-current" style={{ opacity: 0.28 }} />
+                              <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-65" style={{ transform: 'translateX(-50%)' }}>30</span>
                               {/* :45 */}
-                              <div className="absolute top-0 bottom-0 left-3/4 w-px bg-current" style={{ opacity: 0.15 }} />
-                              <span className="absolute bottom-px left-3/4 text-[8px] leading-none tracking-tight" style={{ transform: 'translateX(-50%)' }}>45</span>
+                              <div className="absolute top-0 bottom-0 left-3/4 w-px bg-current" style={{ opacity: 0.14 }} />
+                              <span className="absolute bottom-px left-3/4 text-[8px] leading-none tracking-tight opacity-40" style={{ transform: 'translateX(-50%)' }}>45</span>
                             </div>
                           )}
                         </div>
