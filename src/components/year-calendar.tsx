@@ -653,7 +653,8 @@ export default function YearCalendar() {
     (month: number, day: number): 'checked' | 'crossed' | 'auto' | 'none' => {
       const key = `${year}-${month}-${day}`;
       if (overrides[key]) return overrides[key];
-      if (isDatePast(year, month, day) || isToday(year, month, day)) {
+      // 当天不默认状态，只有昨天及之前才默认判断
+      if (isDatePast(year, month, day)) {
         // If reviewStartDate is set and date >= startDate, default to crossed (✗) when no review content
         if (reviewStartDate) {
           const [sy, sm, sd] = reviewStartDate.split('-').map(Number);
@@ -666,6 +667,10 @@ export default function YearCalendar() {
           }
         }
         return 'auto';
+      }
+      // 今天保持空白，等待用户填写
+      if (isToday(year, month, day)) {
+        return 'none';
       }
       return 'none';
     },

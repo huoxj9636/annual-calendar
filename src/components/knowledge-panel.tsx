@@ -773,53 +773,9 @@ function MyForestView({
         focusTreeId={focusTreeId}
       />
 
-      {/* 左上角统计 chip（玻璃拟态） */}
+      {/* 左侧树列表（可折叠）—— 点击树名 → 高亮该树 */}
       <div
-        className="absolute top-4 left-4 z-10 flex items-center gap-3 px-3.5 py-2 rounded-full"
-        style={{
-          background: "rgba(255,255,255,0.78)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          border: `1px solid ${skin.divider}`,
-          boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
-        }}
-      >
-        <div className="flex items-center gap-1.5">
-          <Trees size={14} style={{ color: skin.swatch }} />
-          <span
-            className="font-mono font-semibold text-sm tabular-nums"
-            style={{ color: skin.textPrimary }}
-          >
-            {totalTrees}
-          </span>
-          <span
-            className="text-[11px] tracking-wide"
-            style={{ color: skin.textMuted }}
-          >
-            棵
-          </span>
-        </div>
-        <div className="w-px h-3.5" style={{ background: skin.divider }} />
-        <div className="flex items-center gap-1.5">
-          <Sparkles size={14} style={{ color: skin.swatch }} />
-          <span
-            className="font-mono font-semibold text-sm tabular-nums"
-            style={{ color: skin.textPrimary }}
-          >
-            {totalNodes}
-          </span>
-          <span
-            className="text-[11px] tracking-wide"
-            style={{ color: skin.textMuted }}
-          >
-            个
-          </span>
-        </div>
-      </div>
-
-      {/* 左侧树列表（可折叠）—— 点击树名 → 画布 pan 到该树 */}
-      <div
-        className="absolute top-4 left-4 z-10 mt-12 w-56 rounded-2xl overflow-hidden"
+        className="absolute top-4 left-4 z-10 w-56 rounded-2xl overflow-hidden"
         style={{
           background: "rgba(255,255,255,0.86)",
           backdropFilter: "blur(10px)",
