@@ -181,6 +181,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const streamRef = useRef<MediaStream | null>(null);
   // Gantt chart horizontal scroll container — wheel handler maps vertical wheel to horizontal scroll
   const ganttScrollRef = useRef<HTMLDivElement>(null);
+  const [ganttScrollLeft, setGanttScrollLeft] = useState(0);
   // Drag state for voice modal
   const [modalPos, setModalPos] = useState<{ x: number; y: number } | null>(null);
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -663,28 +664,33 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 )}
               </div>
               {/* Scrollable rows area (horizontal + vertical) — includes hour header + rows together so they scroll in sync */}
-              <div 
-                ref={ganttScrollRef} 
-                className="flex-1 overflow-auto relative" 
-                style={{ scrollbarGutter: 'stable' }}
-                onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  // Task name column is 140px wide; time grid starts after that
-                  const trackX = x - 140;
-                  if (trackX >= 0) {
-                    const hour = trackX / cellWidth;
-                    const clampedHour = Math.max(0, Math.min(24, hour));
-                    setHoverHour(clampedHour);
-                    setHoverY(y);
-                  } else {
-                    setHoverHour(null);
-                    setHoverY(null);
-                  }
-                }}
-                onMouseLeave={() => { setHoverHour(null); setHoverY(null); }}
-              >
+              {/* Wrapper to enable fixed overlay positioning */}
+              <div className="flex-1 relative min-h-0">
+                <div 
+                  ref={ganttScrollRef} 
+                  className="absolute inset-0 overflow-auto" 
+                  style={{ scrollbarGutter: 'stable' }}
+                  onScroll={(e) => {
+                    setGanttScrollLeft(e.currentTarget.scrollLeft);
+                  }}
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    // Task name column is 140px wide; time grid starts after that
+                    const trackX = x - 140;
+                    if (trackX >= 0) {
+                      const hour = trackX / cellWidth;
+                      const clampedHour = Math.max(0, Math.min(24, hour));
+                      setHoverHour(clampedHour);
+                      setHoverY(y);
+                    } else {
+                      setHoverHour(null);
+                      setHoverY(null);
+                    }
+                  }}
+                  onMouseLeave={() => { setHoverHour(null); setHoverY(null); }}
+                >
                 <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 40px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
@@ -714,46 +720,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     </div>
                     <div className="w-[40px] shrink-0" />
                   </div>
-                  {/* Hover time indicator - vertical line showing hovered time position */}
-                  {hoverHour !== null && (
-                    <div 
-                      className="absolute top-[36px] bottom-0 z-20 pointer-events-none"
-                      style={{ 
-                        left: `${140 + hoverHour * cellWidth}px`,
-                        width: '1px',
-                        backgroundColor: skin.textMuted,
-                        opacity: 0.5,
-                      }}
-                    >
-                      {/* Time label near mouse */}
-                      {hoverY !== null && hoverY > 36 && (
-                        <div 
-                          className="absolute left-0 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
-                          style={{ 
-                            top: `${hoverY - 36}px`,
-                            backgroundColor: skin.cardBg,
-                            color: skin.textPrimary,
-                            transform: 'translateY(-50%) translateX(8px)',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                          }}
-                        >
-                          {formatHour(hoverHour)}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {/* Current time indicator - red line showing "now" (only for today) */}
-                  {isToday && (
-                    <div 
-                      className="absolute top-[36px] bottom-0 z-15 pointer-events-none"
-                      style={{ 
-                        left: `${140 + currentHour * cellWidth}px`,
-                        width: '2px',
-                        backgroundColor: '#ef4444',
-                      }}
-                      title={`当前时间 ${formatHour(currentHour)}`}
-                    />
-                  )}
                   {/* Rows */}
                   {ganttRows.map((row, idx) => (
                     <GanttRow
@@ -780,8 +746,52 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   ))}
                 </div>
               </div>
-              {/* Add row button */}
-              <button
+              {/* Fixed overlay for time indicators - stays on top regardless of scrolling */}
+              <div className="absolute inset-0 z-30 pointer-events-none" style={{ top: '36px' }}>
+                {/* Hover time indicator - vertical line showing hovered time position */}
+                {hoverHour !== null && (
+                  <div 
+                    className="absolute top-0 bottom-0"
+                    style={{ 
+                      left: `${140 + hoverHour * cellWidth - ganttScrollLeft}px`,
+                      width: '1px',
+                      backgroundColor: skin.textMuted,
+                      opacity: 0.5,
+                    }}
+                  >
+                    {/* Time label near mouse */}
+                    {hoverY !== null && hoverY > 36 && (
+                      <div 
+                        className="absolute left-0 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
+                        style={{ 
+                          top: `${hoverY - 36}px`,
+                          backgroundColor: skin.cardBg,
+                          color: skin.textPrimary,
+                          transform: 'translateY(-50%) translateX(8px)',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                        }}
+                      >
+                        {formatHour(hoverHour)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Current time indicator - red line showing "now" (only for today) */}
+                {isToday && (
+                  <div 
+                    className="absolute top-0 bottom-0"
+                    style={{ 
+                      left: `${140 + currentHour * cellWidth - ganttScrollLeft}px`,
+                      width: '2px',
+                      backgroundColor: '#ef4444',
+                    }}
+                    title={`当前时间 ${formatHour(currentHour)}`}
+                  />
+                )}
+              </div>
+            </div>
+            {/* Add row button */}
+            <button
                 onClick={() => {
                   const newId = ganttRows.length > 0 ? Math.max(...ganttRows.map(r => r.id)) + 1 : 1;
                   const next = [...ganttRows, { id: newId, task: '', startHour: 0, endHour: 0 }];
@@ -1278,11 +1288,12 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
 
   // Active drag state (which edge, where the drag started)
   const dragState = useRef<{
-    edge: 'left' | 'right';
+    edge: 'left' | 'right' | 'move';
     startX: number;
     startStartHour: number;
     startEndHour: number;
   } | null>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Window-level mouse listeners for the active drag — only re-bind when cellWidth/snap changes
   useEffect(() => {
@@ -1297,15 +1308,28 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
         const snapped = Math.round(candidate / snap) * snap;
         const newStart = Math.max(0, Math.min(ds.startEndHour - snap, snapped));
         onUpdateRowRef.current({ ...rowRef.current, startHour: newStart });
-      } else {
+      } else if (ds.edge === 'right') {
         // Move the right edge: clamp to [startHour + snap, 24]
         const candidate = ds.startEndHour + dh;
         const snapped = Math.round(candidate / snap) * snap;
         const newEnd = Math.min(24, Math.max(ds.startStartHour + snap, snapped));
         onUpdateRowRef.current({ ...rowRef.current, endHour: newEnd });
+      } else if (ds.edge === 'move') {
+        // Move the entire bar: shift both start and end together, preserve length
+        const barLength = ds.startEndHour - ds.startStartHour;
+        const candidate = ds.startStartHour + dh;
+        const snapped = Math.round(candidate / snap) * snap;
+        const newStart = Math.max(0, Math.min(24 - barLength, snapped));
+        const newEnd = newStart + barLength;
+        onUpdateRowRef.current({ ...rowRef.current, startHour: newStart, endHour: newEnd });
       }
     };
     const onUp = () => {
+      // Cancel long press timer if still running
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
       if (dragState.current) {
         dragState.current = null;
         document.body.style.cursor = '';
@@ -1320,17 +1344,35 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
     };
   }, [cellWidth, snap]);
 
-  const startDrag = (edge: 'left' | 'right', e: React.MouseEvent) => {
+  const startDrag = (edge: 'left' | 'right' | 'move', e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Cancel any pending long press timer
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
     dragState.current = {
       edge,
       startX: e.clientX,
       startStartHour: row.startHour,
       startEndHour: row.endHour,
     };
-    document.body.style.cursor = 'ew-resize';
+    document.body.style.cursor = edge === 'move' ? 'grabbing' : 'ew-resize';
     document.body.style.userSelect = 'none';
+  };
+
+  // Long press handler for moving the entire bar
+  const handleLongPressStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Set cursor to grab immediately for visual feedback
+    document.body.style.cursor = 'grab';
+    document.body.style.userSelect = 'none';
+    // Start timer for long press detection (400ms)
+    longPressTimer.current = setTimeout(() => {
+      startDrag('move', e);
+    }, 400);
   };
 
   return (
@@ -1407,6 +1449,21 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
             >
               <div className="absolute inset-y-0 left-[3px] w-[2px] rounded-full bg-white/50" />
             </div>
+            {/* Middle section for long-press to move entire bar */}
+            <div
+              className="absolute top-0 bottom-0 left-2 right-2 cursor-grab"
+              onMouseDown={handleLongPressStart}
+              onMouseUp={() => {
+                // Cancel long press timer if released early
+                if (longPressTimer.current) {
+                  clearTimeout(longPressTimer.current);
+                  longPressTimer.current = null;
+                  document.body.style.cursor = '';
+                  document.body.style.userSelect = '';
+                }
+              }}
+              title="长按可移动整个时间条"
+            />
             {/* Right edge drag handle */}
             <div
               className="absolute top-0 bottom-0 right-0 w-2 cursor-ew-resize"
@@ -1418,11 +1475,29 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
           </div>
         )}
       </div>
-      {/* Delete button — sticky to right edge of visible area, appears on row hover */}
+      {/* Delete & Clear buttons — sticky to right edge of visible area, appears on row hover */}
       <div
-        className="w-[40px] shrink-0 flex items-center justify-end pr-2 opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ position: 'sticky', right: 0, zIndex: 5 }}
+        className="w-[60px] shrink-0 flex items-center justify-end gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ position: 'sticky', right: 0, zIndex: 5, backgroundColor: skin.panelBg }}
       >
+        {/* Clear button - only show when row has time */}
+        {!isEmpty && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpdateRow({ ...row, startHour: 0, endHour: 0 });
+            }}
+            className="w-6 h-6 rounded-full flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform"
+            style={{ backgroundColor: skin.swatch + '30', color: skin.swatch }}
+            title="清除时间（保留行）"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
+              <path d="M9 12l2 2l4 -4" />
+            </svg>
+          </button>
+        )}
+        {/* Delete button */}
         <button
           onClick={onDelete}
           className="w-7 h-7 rounded-full flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform"
