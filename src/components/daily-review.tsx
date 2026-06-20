@@ -132,9 +132,17 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const isToday = year === today.getFullYear() && month === today.getMonth() + 1 && day === today.getDate();
   const currentHour = today.getHours() + today.getMinutes() / 60;
   
-  // Task input column width (can be dragged to resize)
-  const [taskColumnWidth, setTaskColumnWidth] = useState(140);
+  // Task input column width (can be dragged to resize, saved to localStorage)
+  const [taskColumnWidth, setTaskColumnWidth] = useState(() => {
+    const saved = localStorage.getItem('gantt-task-column-width');
+    return saved ? parseInt(saved, 10) : 140;
+  });
   const taskColumnDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  
+  // Save width to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('gantt-task-column-width', String(taskColumnWidth));
+  }, [taskColumnWidth]);
   
   const [ganttRows, setGanttRows] = useState<Array<{ id: number; task: string; startHour: number; endHour: number }>>(() => {
     // Default: empty rows (startHour === endHour means "no bar yet")
@@ -717,10 +725,10 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 <div style={{ minWidth: `calc(${taskColumnWidth}px + ${(48 / ganttScale) * 24}px + 24px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
-                    {/* 事项名称列占位 */}
+                    {/* 事项名称列占位 - sticky left so it doesn't scroll horizontally */}
                     <div 
-                      className="shrink-0 relative" 
-                      style={{ width: `${taskColumnWidth}px` }}
+                      className="shrink-0 relative sticky left-0 z-20" 
+                      style={{ width: `${taskColumnWidth}px`, backgroundColor: skin.panelBg }}
                     >
                       {/* 拖拽手柄 - 移到列右侧边缘，始终可见 */}
                       <div 
@@ -1450,8 +1458,11 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
 
   return (
     <div className="flex mb-1 items-center group">
-      {/* Task name input */}
-      <div className="shrink-0 px-2" style={{ width: `${taskColumnWidth}px` }}>
+      {/* Task name input - sticky left so it doesn't scroll horizontally */}
+      <div 
+        className="shrink-0 px-2 sticky left-0 z-20" 
+        style={{ width: `${taskColumnWidth}px`, backgroundColor: skin.panelBg }}
+      >
         <input
           type="text"
           value={row.task}
