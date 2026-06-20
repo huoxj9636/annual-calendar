@@ -34,8 +34,8 @@ export default function RootLayout({
             <AuthGuard>
               {children}
               <LoginPromptDialog />
+              <UserMenu />
             </AuthGuard>
-      <UserMenu />
           </UserProvider>
         </SupabaseConfigProvider>
       </body>
