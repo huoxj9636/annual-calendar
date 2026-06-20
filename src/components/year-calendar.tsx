@@ -15,6 +15,7 @@ import LifeCalendar from '@/components/life-calendar';
 import AchievementPanel from '@/components/achievement-panel';
 import { SKINS, NO_SKIN, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
+import { LoginButton } from '@/components/auth/login-button';
 import DrawingOverlay, { DrawingOverlayHandle } from '@/components/drawing-overlay';
 import TimelinePanel from '@/components/timeline-panel';
 import InsightPanel from '@/components/insight-panel';
@@ -756,7 +757,7 @@ export default function YearCalendar() {
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
         <ParticleEffect color={skin.swatch} count={50} />
 
-        <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2 pr-[107px]">
+        <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2 ">
           <div className="flex items-center gap-3 px-5 py-2.5">
             <button
               onClick={() => setYear((y) => y - 1)}
@@ -957,6 +958,8 @@ export default function YearCalendar() {
                     ›
                   </button>
                 </div>
+
+                <LoginButton />
 
               </div>
             </div>
