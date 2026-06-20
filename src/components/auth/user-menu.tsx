@@ -4,14 +4,16 @@ import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { User as UserIcon, LogOut, Cloud, CloudOff } from 'lucide-react';
 import { useUser } from '@/components/auth/user-context';
+import { SKINS, NO_SKIN, DEFAULT_SKIN } from '@/lib/skins';
 
 /**
- * 浮动登录同步入口 - 左下角
+ * 浮动数据同步入口 - 左下角
  *
  * 设计意图:
- * - 始终可见,让用户随时知道"云同步功能在左下角"
- * - 游客模式:CloudOff 图标 + "登录同步" 文字(点击弹登录窗)
- * - 已登录:Cloud 图标 + "已同步" + 手机号(点击展开菜单)
+ * - 始终可见,让用户随时知道"数据云同步功能在左下角"
+ * - 颜色跟随当前皮肤主题(skin.swatch),与日历内"设置按钮"风格保持一致
+ * - 游客模式:CloudOff 图标(带斜杠) + 主题色半透明背景 + "数据同步" 文字
+ * - 已登录:Cloud 图标(无斜杠) + 主题色实色背景 + "已同步" 文字
  * - 右上角另有独立的 <LoginButton /> 作为另一个登录入口
  */
 export function UserMenu() {
@@ -20,6 +22,30 @@ export function UserMenu() {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // 读取当前皮肤主题色(skin.swatch) - 跟随设置面板切换皮肤时实时更新
+  const [swatch, setSwatch] = useState<string>(NO_SKIN.swatch);
+  useEffect(() => {
+    const apply = () => {
+      try {
+        const stored = localStorage.getItem('life-calendar-skin');
+        const key = stored ?? DEFAULT_SKIN;
+        const found = key ? SKINS.find((s) => s.key === key) : NO_SKIN;
+        setSwatch(found?.swatch || NO_SKIN.swatch);
+      } catch {
+        setSwatch(NO_SKIN.swatch);
+      }
+    };
+    apply();
+    // 跨标签页同步
+    window.addEventListener('storage', apply);
+    // 同标签页切换皮肤时实时同步(由设置面板 dispatch)
+    window.addEventListener('life-calendar-skin-changed', apply);
+    return () => {
+      window.removeEventListener('storage', apply);
+      window.removeEventListener('life-calendar-skin-changed', apply);
+    };
+  }, []);
 
   // 点外部关闭(所有 hooks 必须在 early return 之前)
   useEffect(() => {
@@ -41,7 +67,14 @@ export function UserMenu() {
   // 等登录态检查完
   if (!authChecked) return null;
 
-  // ── 游客模式:CloudOff + "登录同步" ──
+  // swatch 透明度工具:与设置按钮风格保持一致(swatch + '18' 背景, swatch 文字)
+  const guestBg = swatch + '18';
+  const guestBorder = swatch + '40';
+  const guestText = swatch;
+  const loggedBg = swatch;
+  const loggedText = '#ffffff';
+
+  // ── 游客模式:CloudOff + "数据同步" ──
   if (!user) {
     return (
       <div
@@ -51,12 +84,17 @@ export function UserMenu() {
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent('open-login-dialog'))}
-          className="group flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-primary shadow-md hover:bg-primary/20 transition-all hover:shadow-lg dark:bg-primary/15 dark:hover:bg-primary/25"
+          className="group flex items-center gap-2 rounded-full px-4 py-2 shadow-md hover:shadow-lg transition-all"
+          style={{
+            backgroundColor: guestBg,
+            color: guestText,
+            border: `1px solid ${guestBorder}`,
+          }}
           title="点击登录账号,数据自动同步到云端"
-          aria-label="登录同步"
+          aria-label="数据同步"
         >
           <CloudOff className="h-4 w-4 shrink-0" />
-          <span className="text-sm font-medium">登录同步</span>
+          <span className="text-sm font-medium">数据同步</span>
         </button>
       </div>
     );
@@ -77,16 +115,25 @@ export function UserMenu() {
       style={{ fontFamily: 'inherit' }}
     >
       {open && (
-        <div className="mb-2 w-64 rounded-xl border border-border bg-card p-3 shadow-lg">
+        <div
+          className="mb-2 w-64 rounded-xl border bg-card p-3 shadow-lg"
+          style={{ borderColor: swatch + '30' }}
+        >
           <div className="flex items-center gap-2 pb-2 border-b border-border">
-            <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center text-primary">
+            <div
+              className="h-8 w-8 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: swatch + '20', color: swatch }}
+            >
               <UserIcon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-foreground truncate">
                 {maskedPhone || '已登录'}
               </div>
-              <div className="text-xs text-muted-foreground flex items-center gap-1">
+              <div
+                className="text-xs flex items-center gap-1"
+                style={{ color: swatch }}
+              >
                 <Cloud className="h-3 w-3" />
                 云端同步已启用
               </div>
@@ -129,7 +176,11 @@ export function UserMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="group flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-primary-foreground shadow-lg hover:opacity-90 transition-all hover:shadow-xl"
+        className="group flex items-center gap-2 rounded-full px-4 py-2 shadow-lg hover:shadow-xl hover:opacity-95 transition-all"
+        style={{
+          backgroundColor: loggedBg,
+          color: loggedText,
+        }}
         title="账号菜单"
         aria-label="账号菜单"
       >

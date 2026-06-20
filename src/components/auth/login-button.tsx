@@ -8,7 +8,7 @@ import { useUser } from '@/components/auth/user-context';
  * 顶部工具栏登录按钮 - 主页右上角(始终可见)
  *
  * 设计意图:
- * - 位置:右下角(bottom-6 right-6),贴近日历最后一行的右下角
+ * - 位置:右上角 fixed top-4 right-4(与设置按钮同区域,弹窗打开时会被弹窗覆盖)
  * - **不**融入主题色——用主色(primary) + 文字标签 + 阴影,确保"一眼能看到"
  * - 行为:
  *   - 未登录:显示「登录」文字+图标 → 点击唤起弹窗
@@ -33,7 +33,7 @@ export function LoginButton() {
   if (user) {
     return (
       <div
-        className="fixed bottom-6 right-6 z-40 select-none"
+        className="fixed top-4 right-4 z-40 select-none"
         style={{ fontFamily: 'inherit' }}
       >
         <div
@@ -50,7 +50,7 @@ export function LoginButton() {
   // ── 未登录:醒目的「登录」按钮(主色 + 阴影 + 文字) ──
   return (
     <div
-      className="fixed bottom-6 right-6 z-40 select-none"
+      className="fixed top-4 right-4 z-40 select-none"
       style={{ fontFamily: 'inherit' }}
     >
       <button
