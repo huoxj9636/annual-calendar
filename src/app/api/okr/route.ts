@@ -1,18 +1,22 @@
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { requireUser } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const userIdOrResp = await requireUser(request);
+  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
+  const userId = userIdOrResp;
+
   const client = getSupabaseClient();
 
-  // Fetch all objectives with nested KRs and tasks
   const { data: objectives, error: oErr } = await client
     .from('okr_objectives')
     .select('*, okr_key_results(*, okr_tasks(*))')
+    .eq('user_id', userId)
     .order('created_at', { ascending: true });
 
   if (oErr) return NextResponse.json({ error: oErr.message }, { status: 500 });
 
-  // Transform to match existing localStorage structure
   const result = (objectives || []).map((o: Record<string, unknown>) => ({
     id: o.id,
     title: o.title,
@@ -38,6 +42,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const userIdOrResp = await requireUser(request);
+  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
+  const userId = userIdOrResp;
+
   const body = await request.json();
   const { objectives } = body as {
     objectives: {
@@ -51,15 +59,15 @@ export async function POST(request: NextRequest) {
 
   const client = getSupabaseClient();
 
-  // Get existing IDs for diff
-  const { data: existingO } = await client.from('okr_objectives').select('id');
+  // Get existing IDs for current user only
+  const { data: existingO } = await client.from('okr_objectives').select('id').eq('user_id', userId);
   const existingOIds = new Set<string>((existingO || []).map((o: Record<string, string>) => o.id));
 
-  const { data: existingKR } = await client.from('okr_key_results').select('id');
-  const existingKRIds = new Set<string>((existingKR || []).map((kr: Record<string, string>) => kr.id));
+  const { data: existingKR } = await client.from('okr_key_results').select('id, okr_objectives!inner(user_id)').eq('okr_objectives.user_id', userId);
+  const existingKRIds = new Set<string>(((existingKR || []) as Array<{ id: string }>).map((kr) => kr.id));
 
-  const { data: existingTask } = await client.from('okr_tasks').select('id');
-  const existingTaskIds = new Set<string>((existingTask || []).map((t: Record<string, string>) => t.id));
+  const { data: existingTask } = await client.from('okr_tasks').select('id, okr_key_results!inner(user_id)').eq('okr_key_results.okr_objectives.user_id', userId);
+  const existingTaskIds = new Set<string>(((existingTask || []) as Array<{ id: string }>).map((t) => t.id));
 
   const currentOIds = new Set<string>();
   const currentKRIds = new Set<string>();
@@ -75,10 +83,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Delete removed items
-  const oToDelete = [...existingOIds].filter(id => !currentOIds.has(id));
-  const krToDelete = [...existingKRIds].filter(id => !currentKRIds.has(id));
   const taskToDelete = [...existingTaskIds].filter(id => !currentTaskIds.has(id));
+  const krToDelete = [...existingKRIds].filter(id => !currentKRIds.has(id));
+  const oToDelete = [...existingOIds].filter(id => !currentOIds.has(id));
 
   if (taskToDelete.length > 0) {
     await client.from('okr_tasks').delete().in('id', taskToDelete);
@@ -90,11 +97,11 @@ export async function POST(request: NextRequest) {
     await client.from('okr_objectives').delete().in('id', oToDelete);
   }
 
-  // Upsert objectives, KRs, tasks
   for (const o of objectives) {
     const { error: oErr } = await client
       .from('okr_objectives')
       .upsert({
+        user_id: userId,
         id: o.id,
         title: o.title,
         period: o.period,
@@ -107,6 +114,7 @@ export async function POST(request: NextRequest) {
       const { error: krErr } = await client
         .from('okr_key_results')
         .upsert({
+          user_id: userId,
           id: kr.id,
           objective_id: o.id,
           title: kr.title,
@@ -120,6 +128,7 @@ export async function POST(request: NextRequest) {
         const { error: tErr } = await client
           .from('okr_tasks')
           .upsert({
+            user_id: userId,
             id: t.id,
             key_result_id: kr.id,
             title: t.title,

@@ -1,7 +1,12 @@
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { requireUser } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
+  const userIdOrResp = await requireUser(request);
+  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
+  const userId = userIdOrResp;
+
   const { searchParams } = new URL(request.url);
   const year = Number(searchParams.get('year'));
   const action = searchParams.get('action');
@@ -12,6 +17,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await client
       .from('daily_reviews')
       .select('month, day, completed, good_things, problems, mood, reflections, tomorrow_todo')
+      .eq('user_id', userId)
       .eq('year', year);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     const days = (data || [])
@@ -36,6 +42,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await client
     .from('daily_reviews')
     .select('completed, good_things, problems, mood, reflections, tomorrow_todo, mood_score, energy, updated_at')
+    .eq('user_id', userId)
     .eq('year', year)
     .eq('month', month)
     .eq('day', day)
@@ -64,6 +71,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const userIdOrResp = await requireUser(request);
+  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
+  const userId = userIdOrResp;
+
   const body = await request.json();
   const { year, month, day, completed, goodThings, problems, mood, reflections, tomorrowTodo, moodScore, energy } = body as {
     year: number; month: number; day: number;
@@ -78,6 +89,7 @@ export async function POST(request: NextRequest) {
 
   const client = getSupabaseClient();
   const row = {
+    user_id: userId,
     year, month, day,
     completed: completed || '',
     good_things: goodThings || '',
@@ -92,13 +104,17 @@ export async function POST(request: NextRequest) {
 
   const { error } = await client
     .from('daily_reviews')
-    .upsert(row, { onConflict: 'year,month,day' });
+    .upsert(row, { onConflict: 'user_id,year,month,day' });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
 
 export async function DELETE(request: NextRequest) {
+  const userIdOrResp = await requireUser(request);
+  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
+  const userId = userIdOrResp;
+
   const { searchParams } = new URL(request.url);
   const year = Number(searchParams.get('year'));
   const month = Number(searchParams.get('month'));
@@ -112,6 +128,7 @@ export async function DELETE(request: NextRequest) {
   const { error } = await client
     .from('daily_reviews')
     .delete()
+    .eq('user_id', userId)
     .eq('year', year)
     .eq('month', month)
     .eq('day', day);

@@ -11,6 +11,7 @@ import {
   dispatchDataSyncedEvent,
 } from '@/lib/user-kv';
 import { countLocalMigratableData, migrateLocalToCloud } from '@/lib/migration';
+import { getSessionToken } from '@/lib/supabase-browser';
 
 // ── Migration Context：把"待迁移数据"状态 + 一键迁移函数暴露给 toast ──
 interface MigrationContextValue {
@@ -18,6 +19,13 @@ interface MigrationContextValue {
   running: boolean;
   runMigration: () => Promise<void>;
   dismiss: () => void;
+  // 旧数据(数据库里 user_id='legacy')接管/清空
+  legacyCount: number;
+  legacyLoading: boolean;
+  legacyRunning: boolean;
+  claimLegacy: () => Promise<void>;
+  clearLegacy: () => Promise<void>;
+  dismissLegacy: () => void;
 }
 
 const MigrationContext = createContext<MigrationContextValue | null>(null);
@@ -26,7 +34,18 @@ export function useMigration(): MigrationContextValue {
   const ctx = useContext(MigrationContext);
   if (!ctx) {
     // 未在 Provider 内时返回 no-op，避免其他组件误用崩溃
-    return { pendingCount: 0, running: false, runMigration: async () => {}, dismiss: () => {} };
+    return {
+      pendingCount: 0,
+      running: false,
+      runMigration: async () => {},
+      dismiss: () => {},
+      legacyCount: 0,
+      legacyLoading: false,
+      legacyRunning: false,
+      claimLegacy: async () => {},
+      clearLegacy: async () => {},
+      dismissLegacy: () => {},
+    };
   }
   return ctx;
 }
@@ -46,6 +65,7 @@ interface SyncProviderProps {
  * 4. 登出时：清空 localStorage 中所有同步 keys（让游客会话无残留）
  * 5. 切换账号：先清空旧账号 localStorage → 拉取新账号云端合并 → 推送
  * 6. 登录后检测已迁库 key 残留：弹 toast 提示一键迁移
+ * 7. 登录后检测数据库 legacy 数据(老访客):弹 toast 提示"接管"或"清空"
  */
 export function SyncProvider({ children }: SyncProviderProps) {
   const { user, getToken } = useUser();
@@ -54,10 +74,16 @@ export function SyncProvider({ children }: SyncProviderProps) {
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadedRef = useRef(false);
 
-  // ── 迁移状态 ──
+  // ── 迁移状态(localStorage 残留) ──
   const [pendingCount, setPendingCount] = useState(0);
   const [running, setRunning] = useState(false);
   const dismissedRef = useRef(false);
+
+  // ── Legacy 状态(数据库中 user_id='legacy' 的旧访客数据) ──
+  const [legacyCount, setLegacyCount] = useState(0);
+  const [legacyLoading, setLegacyLoading] = useState(false);
+  const [legacyRunning, setLegacyRunning] = useState(false);
+  const legacyDismissedRef = useRef(false);
 
   // 重新检测 localStorage 已迁库 key 的待迁移条数
   // 注意:dismiss 后不应该再弹 toast,即使有新数据写入
@@ -70,7 +96,33 @@ export function SyncProvider({ children }: SyncProviderProps) {
     }
   }, []);
 
-  // 执行一键迁移
+  // 检测数据库 legacy 数据条数
+  const refreshLegacyCount = useCallback(async () => {
+    if (legacyDismissedRef.current) return;
+    setLegacyLoading(true);
+    try {
+      const token = await getSessionToken();
+      if (!token) {
+        setLegacyCount(0);
+        return;
+      }
+      const res = await fetch('/api/migrate-legacy', {
+        headers: { 'x-session': token },
+      });
+      if (!res.ok) {
+        setLegacyCount(0);
+        return;
+      }
+      const data = await res.json();
+      setLegacyCount(data?.total || 0);
+    } catch {
+      setLegacyCount(0);
+    } finally {
+      setLegacyLoading(false);
+    }
+  }, []);
+
+  // 执行一键迁移(localStorage → 云端)
   const runMigration = useCallback(async () => {
     if (running) return;
     setRunning(true);
@@ -88,7 +140,6 @@ export function SyncProvider({ children }: SyncProviderProps) {
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
           if (!k) continue;
-          // 用 auth-interceptor 中的清空范围（已迁库 key）
           if (/^calendar-overrides-\d{4}$/.test(k)) keysToRemove.push(k);
           else if (/^calendar-notes-\d{4}$/.test(k)) keysToRemove.push(k);
           else if (/^calendar-drawing-\d{4}$/.test(k)) keysToRemove.push(k);
@@ -118,6 +169,73 @@ export function SyncProvider({ children }: SyncProviderProps) {
     setPendingCount(0);
   }, []);
 
+  // 接管 legacy 数据
+  const claimLegacy = useCallback(async () => {
+    if (legacyRunning) return;
+    setLegacyRunning(true);
+    try {
+      const token = await getSessionToken();
+      if (!token) {
+        setLegacyRunning(false);
+        return;
+      }
+      const res = await fetch('/api/migrate-legacy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-session': token },
+        body: JSON.stringify({ action: 'claim' }),
+      });
+      if (res.ok) {
+        console.log('[Legacy] claimed');
+        setLegacyCount(0);
+        legacyDismissedRef.current = true;
+        // 接管后重新拉云端数据
+        const cloudItems = await pullUserData(token);
+        if (cloudItems) mergeCloudToLocal(cloudItems);
+        dispatchDataSyncedEvent();
+      } else {
+        console.warn('[Legacy] claim failed', res.status);
+      }
+    } catch (e) {
+      console.warn('[Legacy] claim failed', e);
+    } finally {
+      setLegacyRunning(false);
+    }
+  }, [legacyRunning]);
+
+  // 清空 legacy 数据
+  const clearLegacy = useCallback(async () => {
+    if (legacyRunning) return;
+    setLegacyRunning(true);
+    try {
+      const token = await getSessionToken();
+      if (!token) {
+        setLegacyRunning(false);
+        return;
+      }
+      const res = await fetch('/api/migrate-legacy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-session': token },
+        body: JSON.stringify({ action: 'clear' }),
+      });
+      if (res.ok) {
+        console.log('[Legacy] cleared');
+        setLegacyCount(0);
+        legacyDismissedRef.current = true;
+      } else {
+        console.warn('[Legacy] clear failed', res.status);
+      }
+    } catch (e) {
+      console.warn('[Legacy] clear failed', e);
+    } finally {
+      setLegacyRunning(false);
+    }
+  }, [legacyRunning]);
+
+  const dismissLegacy = useCallback(() => {
+    legacyDismissedRef.current = true;
+    setLegacyCount(0);
+  }, []);
+
   // ── 监听 user 变化：登录/登出/切账号 ──
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -130,7 +248,9 @@ export function SyncProvider({ children }: SyncProviderProps) {
       prevUserIdRef.current = null;
       initialLoadedRef.current = false;
       setPendingCount(0);
+      setLegacyCount(0);
       dismissedRef.current = false;
+      legacyDismissedRef.current = false;
       return;
     }
 
@@ -141,6 +261,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
         clearAllSyncedLocalData();
         initialLoadedRef.current = false;
         dismissedRef.current = false;
+        legacyDismissedRef.current = false;
       }
       // 首次登录或切账号：拉取云端数据 → 合并到 localStorage → 推送 localStorage 到云端
       if (!initialLoadedRef.current) {
@@ -173,6 +294,11 @@ export function SyncProvider({ children }: SyncProviderProps) {
               if (cancelled || dismissedRef.current) return;
               refreshPendingCount();
             }, 500);
+
+            // 5. 检测数据库 legacy 数据(老访客) → 弹接管/清空提示
+            if (!cancelled && !legacyDismissedRef.current) {
+              void refreshLegacyCount();
+            }
           } catch (err) {
             console.warn('[SyncProvider] sync on login failed', err);
           }
@@ -184,7 +310,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
     }
 
     prevUserIdRef.current = userId;
-  }, [userId, getToken, refreshPendingCount]);
+  }, [userId, getToken, refreshPendingCount, refreshLegacyCount]);
 
   // ── 拦截器装载(全局只装一次) + 监听 local-storage-changed 事件触发同步 ──
   useEffect(() => {
@@ -233,7 +359,20 @@ export function SyncProvider({ children }: SyncProviderProps) {
   }, [userId, getToken, refreshPendingCount]);
 
   return (
-    <MigrationContext.Provider value={{ pendingCount, running, runMigration, dismiss }}>
+    <MigrationContext.Provider
+      value={{
+        pendingCount,
+        running,
+        runMigration,
+        dismiss,
+        legacyCount,
+        legacyLoading,
+        legacyRunning,
+        claimLegacy,
+        clearLegacy,
+        dismissLegacy,
+      }}
+    >
       {children}
     </MigrationContext.Provider>
   );

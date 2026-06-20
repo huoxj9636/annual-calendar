@@ -1,8 +1,13 @@
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { requireUser } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/calendar-data?type=overrides|notes|month-review|drawing&year=2025[&month=7][&sectionKey=goals]
 export async function GET(request: NextRequest) {
+  const userIdOrResp = await requireUser(request);
+  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
+  const userId = userIdOrResp;
+
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type');
   const year = Number(searchParams.get('year'));
@@ -17,6 +22,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await client
       .from('calendar_overrides')
       .select('date_key, value')
+      .eq('user_id', userId)
       .eq('year', year);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -32,6 +38,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await client
       .from('calendar_notes')
       .select('date_key, content')
+      .eq('user_id', userId)
       .eq('year', year);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -50,6 +57,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await client
       .from('month_reviews')
       .select('section_key, content')
+      .eq('user_id', userId)
       .eq('year', year)
       .eq('month', month);
 
@@ -66,8 +74,9 @@ export async function GET(request: NextRequest) {
     const { data, error } = await client
       .from('calendar_drawings')
       .select('strokes')
+      .eq('user_id', userId)
       .eq('year', year)
-      .single();
+      .maybeSingle();
 
     if (error && error.code !== 'PGRST116') return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ strokes: (data as Record<string, unknown>)?.strokes || [] });
@@ -78,6 +87,10 @@ export async function GET(request: NextRequest) {
 
 // POST /api/calendar-data
 export async function POST(request: NextRequest) {
+  const userIdOrResp = await requireUser(request);
+  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
+  const userId = userIdOrResp;
+
   const body = await request.json();
   const { type, year, data, month, sectionKey } = body as {
     type: 'overrides' | 'notes' | 'month-review' | 'drawing';
@@ -95,11 +108,13 @@ export async function POST(request: NextRequest) {
 
   if (type === 'overrides') {
     const overrideData = data as Record<string, string>;
-    await client.from('calendar_overrides').delete().eq('year', year);
+    // 只删当前用户的数据
+    await client.from('calendar_overrides').delete().eq('user_id', userId).eq('year', year);
 
     const entries = Object.entries(overrideData);
     if (entries.length > 0) {
       const rows = entries.map(([dateKey, value]) => ({
+        user_id: userId,
         year,
         date_key: dateKey,
         value,
@@ -112,11 +127,12 @@ export async function POST(request: NextRequest) {
 
   if (type === 'notes') {
     const notesData = data as Record<string, string>;
-    await client.from('calendar_notes').delete().eq('year', year);
+    await client.from('calendar_notes').delete().eq('user_id', userId).eq('year', year);
 
     const entries = Object.entries(notesData).filter(([, v]) => v && v.trim());
     if (entries.length > 0) {
       const rows = entries.map(([dateKey, content]) => ({
+        user_id: userId,
         year,
         date_key: dateKey,
         content,
@@ -133,15 +149,17 @@ export async function POST(request: NextRequest) {
     }
     const content = (data as string) || '';
 
-    // Upsert: delete existing then insert
+    // Upsert: delete existing then insert (限定当前用户)
     await client
       .from('month_reviews')
       .delete()
+      .eq('user_id', userId)
       .eq('year', year)
       .eq('month', month)
       .eq('section_key', sectionKey);
 
     const { error } = await client.from('month_reviews').insert({
+      user_id: userId,
       year,
       month,
       section_key: sectionKey,
@@ -153,21 +171,24 @@ export async function POST(request: NextRequest) {
 
   if (type === 'drawing') {
     const strokes = data;
-    // Upsert
+    // Upsert (限定当前用户)
     const { data: existing } = await client
       .from('calendar_drawings')
       .select('id')
+      .eq('user_id', userId)
       .eq('year', year)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       const { error } = await client
         .from('calendar_drawings')
         .update({ strokes, updated_at: new Date().toISOString() })
+        .eq('user_id', userId)
         .eq('year', year);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     } else {
       const { error } = await client.from('calendar_drawings').insert({
+        user_id: userId,
         year,
         strokes,
       });

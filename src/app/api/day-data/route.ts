@@ -1,7 +1,12 @@
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { requireUser } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
+  const userIdOrResp = await requireUser(request);
+  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
+  const userId = userIdOrResp;
+
   const { searchParams } = new URL(request.url);
   const year = Number(searchParams.get('year'));
   const month = Number(searchParams.get('month'));
@@ -13,8 +18,8 @@ export async function GET(request: NextRequest) {
 
   const client = getSupabaseClient();
   const [eventsRes, todosRes] = await Promise.all([
-    client.from('day_events').select('*').eq('year', year).eq('month', month).eq('day', day).order('start_hour', { ascending: true }),
-    client.from('day_todos').select('*').eq('year', year).eq('month', month).eq('day', day).order('created_at', { ascending: true }),
+    client.from('day_events').select('*').eq('user_id', userId).eq('year', year).eq('month', month).eq('day', day).order('start_hour', { ascending: true }),
+    client.from('day_todos').select('*').eq('user_id', userId).eq('year', year).eq('month', month).eq('day', day).order('created_at', { ascending: true }),
   ]);
 
   if (eventsRes.error) return NextResponse.json({ error: eventsRes.error.message }, { status: 500 });
@@ -40,6 +45,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const userIdOrResp = await requireUser(request);
+  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
+  const userId = userIdOrResp;
+
   const body = await request.json();
   const { year, month, day, type, data: rawData } = body as {
     year: number; month: number; day: number;
@@ -49,7 +58,6 @@ export async function POST(request: NextRequest) {
     todos?: { id: string; text: string; done: boolean }[];
   };
 
-  // Support both old format (type+data) and new format (events+todos)
   type EventInput = { id: string; title: string; time?: string; endTime?: string; startHour?: number; startMin?: number; endHour?: number; endMin?: number };
   type TodoInput = { id: string; text: string; done: boolean };
   const events: EventInput[] | undefined = body.events || (type === 'events' ? rawData as EventInput[] : undefined);
@@ -61,11 +69,10 @@ export async function POST(request: NextRequest) {
 
   const client = getSupabaseClient();
 
-  // Delete existing events and todos for this date
-  await client.from('day_events').delete().eq('year', year).eq('month', month).eq('day', day);
-  await client.from('day_todos').delete().eq('year', year).eq('month', month).eq('day', day);
+  // Delete existing events and todos for this user on this date
+  await client.from('day_events').delete().eq('user_id', userId).eq('year', year).eq('month', month).eq('day', day);
+  await client.from('day_todos').delete().eq('user_id', userId).eq('year', year).eq('month', month).eq('day', day);
 
-  // Insert new events
   if (events && events.length > 0) {
     const parseTime = (t?: string) => {
       if (!t) return { h: 0, m: 0 };
@@ -76,6 +83,7 @@ export async function POST(request: NextRequest) {
       const start = e.startHour != null ? { h: e.startHour, m: e.startMin ?? 0 } : parseTime(e.time);
       const end = e.endHour != null ? { h: e.endHour, m: e.endMin ?? 0 } : parseTime(e.endTime);
       return {
+        user_id: userId,
         id: e.id, year, month, day,
         title: e.title,
         start_hour: start.h,
@@ -89,9 +97,9 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Insert new todos
   if (todos && todos.length > 0) {
     const rows = todos.map(t => ({
+      user_id: userId,
       id: t.id, year, month, day,
       text: t.text,
       done: t.done ?? false,
