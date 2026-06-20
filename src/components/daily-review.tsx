@@ -110,6 +110,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 
   // Import state
   const [showImport, setShowImport] = useState(false);
+
   const [importHtml, setImportHtml] = useState('');
   const [importMode, setImportMode] = useState<'text' | 'html'>('text');
   const [importing, setImporting] = useState(false);
@@ -120,6 +121,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const [viewMode, setViewMode] = useState<'review' | 'gantt'>('review');
   // Gantt scale: 1 = 1 hour per cell, 0.5 = 30 min per cell, 0.25 = 15 min per cell
   const [ganttScale, setGanttScale] = useState<1 | 0.5 | 0.25>(1);
+
+  // Gantt hover & current time indicator (depends on ganttScale)
+  const [hoverHour, setHoverHour] = useState<number | null>(null);
+  const cellWidth = 48 / ganttScale;
+  // Is this day "today"? (for showing current time line)
+  const today = new Date();
+  const isToday = year === today.getFullYear() && month === today.getMonth() + 1 && day === today.getDate();
+  const currentHour = today.getHours() + today.getMinutes() / 60;
   const [ganttRows, setGanttRows] = useState<Array<{ id: number; task: string; startHour: number; endHour: number }>>(() => {
     // Default: empty rows (startHour === endHour means "no bar yet")
     // The user clicks a cell to create a 1-hour bar, then drags the edges to resize.
@@ -633,7 +642,25 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 </div>
               </div>
               {/* Scrollable rows area (horizontal + vertical) — includes hour header + rows together so they scroll in sync */}
-              <div ref={ganttScrollRef} className="flex-1 overflow-auto" style={{ scrollbarGutter: 'stable' }}>
+              <div 
+                ref={ganttScrollRef} 
+                className="flex-1 overflow-auto relative" 
+                style={{ scrollbarGutter: 'stable' }}
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  // Task name column is 140px wide; time grid starts after that
+                  const trackX = x - 140;
+                  if (trackX >= 0) {
+                    const hour = trackX / cellWidth;
+                    const clampedHour = Math.max(0, Math.min(24, hour));
+                    setHoverHour(clampedHour);
+                  } else {
+                    setHoverHour(null);
+                  }
+                }}
+                onMouseLeave={() => setHoverHour(null)}
+              >
                 <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 40px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
@@ -663,6 +690,63 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     </div>
                     <div className="w-[40px] shrink-0" />
                   </div>
+                  {/* Hover time indicator - vertical line showing hovered time position */}
+                  {hoverHour !== null && (
+                    <div 
+                      className="absolute top-[36px] bottom-0 z-20 pointer-events-none"
+                      style={{ 
+                        left: `${140 + hoverHour * cellWidth}px`,
+                        width: '1px',
+                        backgroundColor: skin.textMuted,
+                        opacity: 0.5,
+                      }}
+                    >
+                      {/* Time label at top */}
+                      <div 
+                        className="absolute -top-[36px] left-0 px-1 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
+                        style={{ 
+                          backgroundColor: skin.cardBg,
+                          color: skin.textPrimary,
+                          transform: 'translateX(-50%)',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                        }}
+                      >
+                        {formatHour(hoverHour)}
+                      </div>
+                    </div>
+                  )}
+                  {/* Current time indicator - red line showing "now" (only for today) */}
+                  {isToday && (
+                    <div 
+                      className="absolute top-[36px] bottom-0 z-15 pointer-events-none"
+                      style={{ 
+                        left: `${140 + currentHour * cellWidth}px`,
+                        width: '2px',
+                        backgroundColor: '#ef4444',
+                      }}
+                      title={`当前时间 ${formatHour(currentHour)}`}
+                    >
+                      {/* Red dot marker at top */}
+                      <div 
+                        className="absolute -top-[2px] left-1/2 w-3 h-3 rounded-full"
+                        style={{ 
+                          backgroundColor: '#ef4444',
+                          transform: 'translateX(-50%)',
+                          boxShadow: '0 0 4px rgba(239,68,68,0.5)',
+                        }}
+                      />
+                      {/* Time label */}
+                      <div 
+                        className="absolute -top-[36px] left-0 px-1 py-0.5 rounded text-[10px] font-medium text-white whitespace-nowrap"
+                        style={{ 
+                          backgroundColor: '#ef4444',
+                          transform: 'translateX(-50%)',
+                        }}
+                      >
+                        现在
+                      </div>
+                    </div>
+                  )}
                   {/* Rows */}
                   {ganttRows.map((row, idx) => (
                     <GanttRow
