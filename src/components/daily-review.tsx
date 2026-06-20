@@ -680,7 +680,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               {/* Scrollable rows area (horizontal + vertical) — includes hour header + rows together so they scroll in sync */}
               {/* Wrapper to enable fixed overlay positioning */}
               <div className="flex-1 relative min-h-0">
-                {/* Return to start button - slim vertical bar on left edge */}
+                {/* Return to start button - aligned with handle position */}
                 <button
                   onClick={() => {
                     if (ganttScrollRef.current) {
@@ -688,7 +688,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     }
                   }}
                   className="absolute top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-2 h-16 rounded-r transition-all hover:w-3 active:scale-95"
-                  style={{ backgroundColor: skin.swatch + '40', left: '-20px' }}
+                  style={{ backgroundColor: skin.swatch + '40', left: `${taskColumnWidth - 4}px` }}
                   title="返回起点"
                 >
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ color: skin.swatch, marginLeft: '-1px' }}>
