@@ -124,6 +124,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
 
   // Gantt hover & current time indicator (depends on ganttScale)
   const [hoverHour, setHoverHour] = useState<number | null>(null);
+  const [hoverY, setHoverY] = useState<number | null>(null);
   const cellWidth = 48 / ganttScale;
   // Is this day "today"? (for showing current time line)
   const today = new Date();
@@ -640,6 +641,24 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     >{opt.l}</button>
                   ))}
                 </div>
+                {/* Locate current time button */}
+                {isToday && (
+                  <button
+                    onClick={() => {
+                      if (ganttScrollRef.current) {
+                        const containerWidth = ganttScrollRef.current.clientWidth;
+                        const targetX = 140 + currentHour * cellWidth - containerWidth / 2;
+                        ganttScrollRef.current.scrollTo({ left: Math.max(0, targetX), behavior: 'smooth' });
+                      }
+                    }}
+                    className="text-xs px-2.5 py-1.5 rounded-full font-medium transition-all flex items-center gap-1 shrink-0"
+                    style={{ backgroundColor: '#ef444420', color: '#ef4444' }}
+                    title="定位到当前时间"
+                  >
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444]" />
+                    定位
+                  </button>
+                )}
               </div>
               {/* Scrollable rows area (horizontal + vertical) — includes hour header + rows together so they scroll in sync */}
               <div 
@@ -649,17 +668,20 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 onMouseMove={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
                   // Task name column is 140px wide; time grid starts after that
                   const trackX = x - 140;
                   if (trackX >= 0) {
                     const hour = trackX / cellWidth;
                     const clampedHour = Math.max(0, Math.min(24, hour));
                     setHoverHour(clampedHour);
+                    setHoverY(y);
                   } else {
                     setHoverHour(null);
+                    setHoverY(null);
                   }
                 }}
-                onMouseLeave={() => setHoverHour(null)}
+                onMouseLeave={() => { setHoverHour(null); setHoverY(null); }}
               >
                 <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 40px)` }}>
                   {/* Hour header row (scrolls with rows) */}
@@ -701,18 +723,21 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         opacity: 0.5,
                       }}
                     >
-                      {/* Time label at top */}
-                      <div 
-                        className="absolute -top-[36px] left-0 px-1 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
-                        style={{ 
-                          backgroundColor: skin.cardBg,
-                          color: skin.textPrimary,
-                          transform: 'translateX(-50%)',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                        }}
-                      >
-                        {formatHour(hoverHour)}
-                      </div>
+                      {/* Time label near mouse */}
+                      {hoverY !== null && hoverY > 36 && (
+                        <div 
+                          className="absolute left-0 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
+                          style={{ 
+                            top: `${hoverY - 36}px`,
+                            backgroundColor: skin.cardBg,
+                            color: skin.textPrimary,
+                            transform: 'translateY(-50%) translateX(8px)',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                          }}
+                        >
+                          {formatHour(hoverHour)}
+                        </div>
+                      )}
                     </div>
                   )}
                   {/* Current time indicator - red line showing "now" (only for today) */}
@@ -725,27 +750,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         backgroundColor: '#ef4444',
                       }}
                       title={`当前时间 ${formatHour(currentHour)}`}
-                    >
-                      {/* Red dot marker at top */}
-                      <div 
-                        className="absolute -top-[2px] left-1/2 w-3 h-3 rounded-full"
-                        style={{ 
-                          backgroundColor: '#ef4444',
-                          transform: 'translateX(-50%)',
-                          boxShadow: '0 0 4px rgba(239,68,68,0.5)',
-                        }}
-                      />
-                      {/* Time label */}
-                      <div 
-                        className="absolute -top-[36px] left-0 px-1 py-0.5 rounded text-[10px] font-medium text-white whitespace-nowrap"
-                        style={{ 
-                          backgroundColor: '#ef4444',
-                          transform: 'translateX(-50%)',
-                        }}
-                      >
-                        现在
-                      </div>
-                    </div>
+                    />
                   )}
                   {/* Rows */}
                   {ganttRows.map((row, idx) => (
@@ -1365,7 +1370,6 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
               <div
                 key={slot}
                 className={`h-full ${isEmpty ? 'cursor-pointer hover:bg-black/5' : 'cursor-default'}`}
-                title={isEmpty ? `点击创建 ${formatHour(slotHour)} - ${formatHour(Math.min(24, slotHour + 0.5))}` : undefined}
                 onClick={() => {
                   if (isEmpty) {
                     onUpdateRow({ ...row, startHour: slotHour, endHour: Math.min(24, slotHour + 0.5) });
