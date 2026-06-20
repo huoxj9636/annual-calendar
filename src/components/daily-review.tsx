@@ -121,7 +121,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   // View mode: 'review' or 'gantt'
   const [viewMode, setViewMode] = useState<'review' | 'gantt'>('review');
   // Gantt scale: 1 = 1 hour per cell, 0.5 = 30 min per cell, 0.25 = 15 min per cell
-  const [ganttScale, setGanttScale] = useState<1 | 0.5 | 0.25>(1);
+  // 默认以15分钟档为主展示
+  const [ganttScale, setGanttScale] = useState<1 | 0.5 | 0.25>(0.25);
 
   // Gantt hover & current time indicator (depends on ganttScale)
   const [hoverHour, setHoverHour] = useState<number | null>(null);
