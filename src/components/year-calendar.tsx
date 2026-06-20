@@ -1102,7 +1102,7 @@ export default function YearCalendar() {
         {/* Left arrow for Life Calendar */}
         <button
           onClick={() => { setShowLifeCalendar(true); }}
-          className="absolute left-0 top-[calc(50%-43px)] -translate-y-1/2 w-14 flex items-center justify-center transition-all group cursor-pointer z-10"
+          className="flex-shrink-0 w-14 flex items-center justify-center transition-all group cursor-pointer z-10"
           style={{ background: `linear-gradient(to right, ${skin.swatch}18, transparent)` }}
           title="人生旅途"
         >
