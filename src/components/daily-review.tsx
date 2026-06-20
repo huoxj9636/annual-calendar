@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { MapPin } from 'lucide-react';
 
 interface DailyReviewProps {
   year: number;
@@ -621,27 +622,29 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
           {viewMode === 'gantt' ? (
             /* Gantt View */
             <div className="flex flex-col gap-2 flex-1 min-h-0">
-              {/* Top row: back button + scale control */}
-              <div className="flex items-center mb-2 gap-3">
-                <button onClick={() => setViewMode('review')}
+              {/* Top row: back button + scale control + locate button */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setViewMode('review')}
                     className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1 shrink-0"
                     style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
                   >← 返回复盘</button>
-                {/* Scale control buttons */}
-                <div className="flex items-center gap-1 shrink-0 rounded-full p-0.5" style={{ backgroundColor: skin.cardHover }}>
-                  {([{ v: 1 as const, l: '1小时' }, { v: 0.5 as const, l: '30分' }, { v: 0.25 as const, l: '15分' }]).map(opt => (
-                    <button
-                      key={opt.v}
-                      onClick={() => setGanttScale(opt.v)}
-                      className="text-xs px-2.5 py-1 rounded-full font-medium transition-all"
-                      style={{
-                        backgroundColor: ganttScale === opt.v ? skin.swatch : 'transparent',
-                        color: ganttScale === opt.v ? '#fff' : skin.textMuted,
-                      }}
-                    >{opt.l}</button>
-                  ))}
+                  {/* Scale control buttons */}
+                  <div className="flex items-center gap-1 shrink-0 rounded-full p-0.5" style={{ backgroundColor: skin.cardHover }}>
+                    {([{ v: 1 as const, l: '1小时' }, { v: 0.5 as const, l: '30分' }, { v: 0.25 as const, l: '15分' }]).map(opt => (
+                      <button
+                        key={opt.v}
+                        onClick={() => setGanttScale(opt.v)}
+                        className="text-xs px-2.5 py-1 rounded-full font-medium transition-all"
+                        style={{
+                          backgroundColor: ganttScale === opt.v ? skin.swatch : 'transparent',
+                          color: ganttScale === opt.v ? '#fff' : skin.textMuted,
+                        }}
+                      >{opt.l}</button>
+                    ))}
+                  </div>
                 </div>
-                {/* Locate current time button */}
+                {/* Locate current time button - on the right */}
                 {isToday && (
                   <button
                     onClick={() => {
@@ -651,12 +654,11 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         ganttScrollRef.current.scrollTo({ left: Math.max(0, targetX), behavior: 'smooth' });
                       }
                     }}
-                    className="text-xs px-2.5 py-1.5 rounded-full font-medium transition-all flex items-center gap-1 shrink-0"
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 hover:scale-110 active:scale-95"
                     style={{ backgroundColor: '#ef444420', color: '#ef4444' }}
                     title="定位到当前时间"
                   >
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444]" />
-                    定位
+                    <MapPin className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -760,6 +762,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                       idx={idx}
                       skin={skin}
                       scale={ganttScale}
+                      hoverHour={hoverHour}
                       onUpdateRow={(r) => {
                         const next = [...ganttRows];
                         next[idx] = r;
@@ -1250,12 +1253,12 @@ type DailyReviewSkin = {
   tabActive: string;
 };
 
-function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
+function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
   row: GanttRowData;
   idx: number;
   skin: DailyReviewSkin;
   scale: 1 | 0.5 | 0.25;
-
+  hoverHour: number | null;  // 鼠标悬浮位置的时间（用于点击创建时的起点）
   onUpdateRow: (row: GanttRowData) => void;
   onDelete: () => void;
 }) {
@@ -1372,7 +1375,11 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
                 className={`h-full ${isEmpty ? 'cursor-pointer hover:bg-black/5' : 'cursor-default'}`}
                 onClick={() => {
                   if (isEmpty) {
-                    onUpdateRow({ ...row, startHour: slotHour, endHour: Math.min(24, slotHour + 0.5) });
+                    // 使用悬浮时间作为起点（如果有的话），否则用格子时间
+                    const startHour = hoverHour ?? slotHour;
+                    // 将起点四舍五入到最近的 snap 精度
+                    const roundedStart = Math.round(startHour / snap) * snap;
+                    onUpdateRow({ ...row, startHour: roundedStart, endHour: Math.min(24, roundedStart + 0.5) });
                   }
                 }}
               />
