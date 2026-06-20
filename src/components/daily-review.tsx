@@ -725,12 +725,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   onMouseLeave={() => { setHoverHour(null); setHoverY(null); }}
                 >
                 <div style={{ minWidth: `calc(${taskColumnWidth}px + ${(() => {
-                  // 格子数量和GanttRow一致：30分档位47格子，15分档位95格子
+                  // 格子数量和GanttRow一致：截止在24点
                   const cellWidth = 48;
-                  const showQuarterScale = ganttScale === 0.25 || ganttScale === 0.5;
-                  const totalSlots = showQuarterScale 
-                    ? Math.floor(24 / ganttScale) - 1 
-                    : 24;
+                  const totalSlots = Math.floor(24 / ganttScale);
                   return cellWidth * totalSlots;
                 })()}px + 8px)` }}>
                   {/* Hour header row (scrolls with rows) */}
@@ -772,13 +769,11 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     </div>
                     {/* Time scale container - z-index lower than task column so it gets covered when scrolling left */}
                     <div className="flex relative z-0">
-                      {/* 格子数量和GanttRow一致：30分档位47格子，15分档位95格子 */}
+                      {/* 格子数量和GanttRow一致：截止在24点 */}
                       {(() => {
                         const cellWidth = 48;
+                        const totalSlots = Math.floor(24 / ganttScale); // 30分档位48格子，15分档位96格子
                         const showQuarterScale = ganttScale === 0.25 || ganttScale === 0.5;
-                        const totalSlots = showQuarterScale 
-                          ? Math.floor(24 / ganttScale) - 1 
-                          : 24;
                         
                         return Array.from({ length: totalSlots }, (_, slotIdx) => {
                           const slotHour = slotIdx * ganttScale; // 每个格子代表的时间（小时）
@@ -1360,13 +1355,9 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
   // cellWidth: 每个时间格子的宽度（每个刻度单位48px）
   // scale=1: 1格子=1小时, scale=0.5: 1格子=30分钟, scale=0.25: 1格子=15分钟
   const cellWidth = 48;
-  // 格子数量：24小时 / scale（30分档位48格子，15分档位96格子）
-  // 在精细档位下，截止在23:45（去掉最后15分钟）
-  const showQuarterScale = scale === 0.25 || scale === 0.5;
-  const totalSlots = showQuarterScale 
-    ? Math.floor(24 / scale) - 1 // 30分档位47格子，15分档位95格子
-    : 24; // 1小时档位24格子
-  const trackWidth = cellWidth * totalSlots; // 30分档位2256px，15分档位4560px
+  // 格子数量：24小时 / scale，截止在24点
+  const totalSlots = Math.floor(24 / scale); // 30分档位48格子，15分档位96格子
+  const trackWidth = cellWidth * totalSlots; // 30分档位2304px，15分档位4608px
   const snap = scale; // snap to slot
   // Empty row = startHour === endHour → no bar visible, click a cell to create a 30min bar
   const isEmpty = row.startHour === row.endHour;
