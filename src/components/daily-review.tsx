@@ -121,13 +121,15 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   // Gantt scale: 1 = 1 hour per cell, 0.5 = 30 min per cell, 0.25 = 15 min per cell
   const [ganttScale, setGanttScale] = useState<1 | 0.5 | 0.25>(1);
   const [ganttRows, setGanttRows] = useState<Array<{ id: number; task: string; startHour: number; endHour: number }>>(() => {
+    // Default: empty rows (startHour === endHour means "no bar yet")
+    // The user clicks a cell to create a 1-hour bar, then drags the edges to resize.
     const rows = [];
     for (let i = 0; i < 15; i++) {
       rows.push({
         id: i + 1,
         task: '',
         startHour: 0,
-        endHour: 24,
+        endHour: 0,
       });
     }
     return rows;
@@ -139,7 +141,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       id: newId,
       task: '',
       startHour: 0,
-      endHour: 1,
+      endHour: 0,
     }]);
   };
 
@@ -672,7 +674,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               <button
                 onClick={() => {
                   const newId = ganttRows.length > 0 ? Math.max(...ganttRows.map(r => r.id)) + 1 : 1;
-                  const next = [...ganttRows, { id: newId, task: '', startHour: 0, endHour: 1 }];
+                  const next = [...ganttRows, { id: newId, task: '', startHour: 0, endHour: 0 }];
                   setGanttRows(next);
                   saveGanttRows(year, month, day, next);
                 }}
@@ -1145,6 +1147,73 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
   const totalSlots = 24 / scale; // total number of slots
   const trackWidth = cellWidth * totalSlots; // 24h total width
   const snap = scale; // snap to slot
+  // Empty row = startHour === endHour → no bar visible, click a cell to create a 1h bar
+  const isEmpty = row.startHour === row.endHour;
+
+  // Refs so the window-level drag listeners always read the latest row and onUpdateRow
+  // (avoids re-binding the listeners on every parent re-render)
+  const rowRef = useRef(row);
+  const onUpdateRowRef = useRef(onUpdateRow);
+  useEffect(() => { rowRef.current = row; }, [row]);
+  useEffect(() => { onUpdateRowRef.current = onUpdateRow; }, [onUpdateRow]);
+
+  // Active drag state (which edge, where the drag started)
+  const dragState = useRef<{
+    edge: 'left' | 'right';
+    startX: number;
+    startStartHour: number;
+    startEndHour: number;
+  } | null>(null);
+
+  // Window-level mouse listeners for the active drag — only re-bind when cellWidth/snap changes
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const ds = dragState.current;
+      if (!ds) return;
+      const dx = e.clientX - ds.startX;
+      const dh = dx / cellWidth;
+      if (ds.edge === 'left') {
+        // Move the left edge: clamp to [0, endHour - snap] so the bar is always ≥ snap wide
+        const candidate = ds.startStartHour + dh;
+        const snapped = Math.round(candidate / snap) * snap;
+        const newStart = Math.max(0, Math.min(ds.startEndHour - snap, snapped));
+        onUpdateRowRef.current({ ...rowRef.current, startHour: newStart });
+      } else {
+        // Move the right edge: clamp to [startHour + snap, 24]
+        const candidate = ds.startEndHour + dh;
+        const snapped = Math.round(candidate / snap) * snap;
+        const newEnd = Math.min(24, Math.max(ds.startStartHour + snap, snapped));
+        onUpdateRowRef.current({ ...rowRef.current, endHour: newEnd });
+      }
+    };
+    const onUp = () => {
+      if (dragState.current) {
+        dragState.current = null;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [cellWidth, snap]);
+
+  const startDrag = (edge: 'left' | 'right', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragState.current = {
+      edge,
+      startX: e.clientX,
+      startStartHour: row.startHour,
+      startEndHour: row.endHour,
+    };
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+  };
+
   return (
     <div className="flex mb-1 items-center group">
       {/* Task name input */}
@@ -1163,18 +1232,7 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
         className="relative h-8 rounded-lg mx-0.5 shrink-0"
         style={{ backgroundColor: skin.cardHover, width: `${trackWidth}px` }}
       >
-        <div
-          className="absolute top-0 bottom-0 rounded-lg cursor-pointer transition-all hover:opacity-90"
-          style={{
-            left: `${row.startHour * cellWidth}px`,
-            width: `${(row.endHour - row.startHour) * cellWidth}px`,
-            backgroundColor: skin.swatch,
-            opacity: 0.75,
-            minWidth: '3px',
-          }}
-          title={`${formatHour(row.startHour)} - ${formatHour(row.endHour)}`}
-        />
-        {/* Hour grid lines */}
+        {/* Hour grid lines (pointer-events: none, doesn't block clicks/drag) */}
         <div className="absolute inset-0 pointer-events-none" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlots}, ${cellWidth}px)` }}>
           {Array.from({ length: totalSlots }, (_, i) => (
             <div
@@ -1187,30 +1245,57 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
             />
           ))}
         </div>
-        {/* Click handlers - one per slot */}
+        {/* Cell click layer — when the row is empty, clicking creates a 1h bar at that slot.
+            When the row already has a bar, this layer is covered by the bar and is a no-op. */}
         <div className="absolute inset-0" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlots}, ${cellWidth}px)` }}>
           {Array.from({ length: totalSlots }, (_, slot) => {
             const slotHour = slot * snap;
             return (
               <div
                 key={slot}
-                className="cursor-pointer hover:bg-black/5 h-full"
-                onClick={(e) => {
-                  const startPx = row.startHour * cellWidth;
-                  const endPx = row.endHour * cellWidth;
-                  const clickHour = slotHour;
-                  const startDist = Math.abs(clickHour - row.startHour);
-                  const endDist = Math.abs(clickHour - row.endHour);
-                  if (startDist < endDist && clickHour < row.endHour) {
-                    onUpdateRow({ ...row, startHour: clickHour });
-                  } else if (clickHour > row.startHour) {
-                    onUpdateRow({ ...row, endHour: Math.min(24, clickHour + snap) });
+                className={`h-full ${isEmpty ? 'cursor-pointer hover:bg-black/5' : 'cursor-default'}`}
+                title={isEmpty ? `点击创建 ${formatHour(slotHour)} - ${formatHour(Math.min(24, slotHour + snap))}` : undefined}
+                onClick={() => {
+                  if (isEmpty) {
+                    onUpdateRow({ ...row, startHour: slotHour, endHour: Math.min(24, slotHour + snap) });
                   }
                 }}
               />
             );
           })}
         </div>
+        {/* Bar — drawn on top of the click layer so the edge handles can receive drag events.
+            Only rendered when the row has an actual time range. */}
+        {!isEmpty && (
+          <div
+            className="absolute top-0 bottom-0 rounded-lg"
+            style={{
+              left: `${row.startHour * cellWidth}px`,
+              width: `${(row.endHour - row.startHour) * cellWidth}px`,
+              backgroundColor: skin.swatch,
+              opacity: 0.85,
+              minWidth: '3px',
+            }}
+            title={`${formatHour(row.startHour)} - ${formatHour(row.endHour)}（拖动两端调整时长）`}
+          >
+            {/* Left edge drag handle */}
+            <div
+              className="absolute top-0 bottom-0 left-0 w-2 cursor-ew-resize"
+              onMouseDown={(e) => startDrag('left', e)}
+              title="拖动调整起点"
+            >
+              <div className="absolute inset-y-0 left-[3px] w-[2px] rounded-full bg-white/50" />
+            </div>
+            {/* Right edge drag handle */}
+            <div
+              className="absolute top-0 bottom-0 right-0 w-2 cursor-ew-resize"
+              onMouseDown={(e) => startDrag('right', e)}
+              title="拖动调整终点"
+            >
+              <div className="absolute inset-y-0 right-[3px] w-[2px] rounded-full bg-white/50" />
+            </div>
+          </div>
+        )}
       </div>
       {/* Delete button — sticky to right edge of visible area, appears on row hover */}
       <div
