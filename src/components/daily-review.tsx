@@ -1367,9 +1367,15 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
   onUpdateRow: (row: GanttRowData) => void;
   onDelete: () => void;
 }) {
-  const cellWidth = 48 / scale; // 1h=48px, 30m=24px, 15m=12px
-  const totalSlots = 24 / scale; // total number of slots
-  const trackWidth = cellWidth * totalSlots; // 24h total width
+  // cellWidth: 每小时的基准宽度48px，格子数量始终24个（代表24小时）
+  // 在精细档位下，网格内部会有更细的分割线（由grid渲染）
+  const cellWidth = 48; // 固定每小时48px
+  // 在30分/15分档位下，最后一小时格子截止在23:45，宽度为3/4
+  const showQuarterScale = scale === 0.25 || scale === 0.5;
+  const totalSlots = 24; // 24小时格子
+  const trackWidth = showQuarterScale 
+    ? 48 * 23.75 // 精细档位：23完整小时 + 最后一小时的3/4 = 1140px
+    : 48 * 24; // 1小时档位：完整24小时 = 1152px
   const snap = scale; // snap to slot
   // Empty row = startHour === endHour → no bar visible, click a cell to create a 1h bar
   const isEmpty = row.startHour === row.endHour;
@@ -1523,23 +1529,37 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
         style={{ backgroundColor: skin.cardHover, width: `${trackWidth}px` }}
       >
         {/* Hour grid lines (pointer-events: none, doesn't block clicks/drag) */}
-        <div className="absolute inset-0 pointer-events-none" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlots}, ${cellWidth}px)` }}>
-          {Array.from({ length: totalSlots }, (_, i) => (
+        <div className="absolute inset-0 pointer-events-none" style={{ display: 'grid', gridTemplateColumns: (() => {
+          // 在精细档位下，最后一小时格子宽度为3/4
+          if (showQuarterScale) {
+            const cols = Array.from({ length: 24 }, (_, i) => i === 23 ? '36px' : '48px').join(' ');
+            return cols;
+          }
+          return `repeat(24, 48px)`;
+        })() }}>
+          {Array.from({ length: 24 }, (_, i) => (
             <div
               key={i}
               className="border-r opacity-20"
               style={{
                 borderColor: skin.cellBorder,
-                borderRightWidth: i % (1 / scale) === 0 ? '1.5px' : '0.5px',
+                borderRightWidth: i === 23 && showQuarterScale ? '0' : '1.5px', // 最后一格在精细档位下无右边框
               }}
             />
           ))}
         </div>
-        {/* Cell click layer — when the row is empty, clicking creates a 1h bar at that slot.
+        {/* Cell click layer — when the row is empty, clicking creates a 30min bar at that slot.
             When the row already has a bar, this layer is covered by the bar and is a no-op. */}
-        <div className="absolute inset-0" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlots}, ${cellWidth}px)` }}>
-          {Array.from({ length: totalSlots }, (_, slot) => {
-            const slotHour = slot * snap;
+        <div className="absolute inset-0" style={{ display: 'grid', gridTemplateColumns: (() => {
+          // 在精细档位下，最后一小时格子宽度为3/4
+          if (showQuarterScale) {
+            const cols = Array.from({ length: 24 }, (_, i) => i === 23 ? '36px' : '48px').join(' ');
+            return cols;
+          }
+          return `repeat(24, 48px)`;
+        })() }}>
+          {Array.from({ length: 24 }, (_, slot) => {
+            const slotHour = slot; // 每个格子代表1小时
             return (
               <div
                 key={slot}
@@ -1549,7 +1569,9 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
                     // 使用悬浮时间作为起点（如果有的话），否则用格子时间
                     const startHour = hoverHour ?? slotHour;
                     // 直接使用悬浮时间创建 30 分钟条，不四舍五入
-                    onUpdateRow({ ...row, startHour: startHour, endHour: Math.min(24, startHour + 0.5) });
+                    // 但不能超过23.75（23:45）的限制
+                    const actualStartHour = Math.min(startHour, 23.25);
+                    onUpdateRow({ ...row, startHour: actualStartHour, endHour: Math.min(23.75, actualStartHour + 0.5) });
                   }
                 }}
               />
