@@ -34,6 +34,7 @@ import {
   Award,
   BookOpen,
   Briefcase,
+  LayoutDashboard,
 } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import ForestScene, { type ForestItem } from "./forest/forest-scene";
@@ -100,7 +101,7 @@ function groupNodesByType(nodes: KnowledgeNode[]) {
 
 // === 主组件 ===
 export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelProps) {
-  const [activeTab, setActiveTab] = useState<"my" | "friends">("my");
+  const [activeTab, setActiveTab] = useState<"os" | "my" | "friends">("os");
   const [trees, setTrees] = useState<KnowledgeTree[]>([]);
   const [selectedTree, setSelectedTree] = useState<KnowledgeTree | null>(null);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
@@ -408,16 +409,27 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
             style={{ borderColor: skin.divider }}
           >
           <TabButton
-            active={activeTab === "my"}
-            onClick={() => {
-              setActiveTab("my");
-              setSelectedTree(null);
-            }}
-            skin={skin}
-            icon={<Trees size={14} />}
-            label="我的森林"
-            subLabel={`${stats.totalTrees} 棵`}
-          />
+              active={activeTab === "os"}
+              onClick={() => {
+                setActiveTab("os");
+                setSelectedTree(null);
+              }}
+              skin={skin}
+              icon={<LayoutDashboard size={14} />}
+              label="森林OS"
+              subLabel="概览"
+            />
+          <TabButton
+              active={activeTab === "my"}
+              onClick={() => {
+                setActiveTab("my");
+                setSelectedTree(null);
+              }}
+              skin={skin}
+              icon={<Trees size={14} />}
+              label="我的森林"
+              subLabel={`${stats.totalTrees} 棵`}
+            />
           <TabButton
             active={activeTab === "friends"}
             onClick={() => {
@@ -470,6 +482,94 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               onDelete={handleDeleteBookmark}
               skin={skin}
             />
+          )}
+
+          {activeTab === "os" && (
+            <div className="p-6 space-y-6">
+              {/* 概览统计 */}
+              <div className="grid grid-cols-4 gap-4">
+                <div
+                  className="p-4 rounded-lg bg-card border"
+                  style={{ borderColor: skin.divider }}
+                >
+                  <div className="text-sm text-muted-foreground mb-1">项目总数</div>
+                  <div className="text-2xl font-bold" style={{ color: skin.swatch }}>
+                    {stats.totalTrees}
+                  </div>
+                </div>
+                <div
+                  className="p-4 rounded-lg bg-card border"
+                  style={{ borderColor: skin.divider }}
+                >
+                  <div className="text-sm text-muted-foreground mb-1">节点总数</div>
+                  <div className="text-2xl font-bold" style={{ color: skin.swatch }}>
+                    {stats.totalNodes}
+                  </div>
+                </div>
+                <div
+                  className="p-4 rounded-lg bg-card border"
+                  style={{ borderColor: skin.divider }}
+                >
+                  <div className="text-sm text-muted-foreground mb-1">好友数量</div>
+                  <div className="text-2xl font-bold" style={{ color: skin.swatch }}>
+                    {bookmarks.length}
+                  </div>
+                </div>
+                <div
+                  className="p-4 rounded-lg bg-card border"
+                  style={{ borderColor: skin.divider }}
+                >
+                  <div className="text-sm text-muted-foreground mb-1">最高阶段</div>
+                  <div className="text-2xl font-bold" style={{ color: skin.swatch }}>
+                    {stats.highestLabel}
+                  </div>
+                </div>
+              </div>
+
+              {/* 快捷入口 */}
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  className="p-4 rounded-lg bg-card border flex items-center gap-3 hover:bg-muted/50 transition-colors"
+                  style={{ borderColor: skin.divider }}
+                  onClick={() => setActiveTab("my")}
+                >
+                  <Trees size={24} style={{ color: skin.swatch }} />
+                  <div>
+                    <div className="font-medium">我的森林</div>
+                    <div className="text-sm text-muted-foreground">管理项目与知识节点</div>
+                  </div>
+                </button>
+                <button
+                  className="p-4 rounded-lg bg-card border flex items-center gap-3 hover:bg-muted/50 transition-colors"
+                  style={{ borderColor: skin.divider }}
+                  onClick={() => setActiveTab("friends")}
+                >
+                  <Users size={24} style={{ color: skin.swatch }} />
+                  <div>
+                    <div className="font-medium">好友森林</div>
+                    <div className="text-sm text-muted-foreground">查看好友的公开项目</div>
+                  </div>
+                </button>
+              </div>
+
+              {/* 大树模型说明 */}
+              <div
+                className="p-4 rounded-lg bg-muted/30 border"
+                style={{ borderColor: skin.divider }}
+              >
+                <div className="font-medium mb-2 flex items-center gap-2">
+                  <BookOpen size={16} style={{ color: skin.swatch }} />
+                  大树模型
+                </div>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p>根 → 找到问题的根源</p>
+                  <p>干 → 设定明确的目标</p>
+                  <p>枝 → 设计实现方案</p>
+                  <p>叶 → 分解执行步骤</p>
+                  <p>果 → 验收成果并复盘</p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
