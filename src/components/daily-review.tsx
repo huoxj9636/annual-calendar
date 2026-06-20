@@ -239,6 +239,22 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     };
   }, [viewMode]);
 
+  // 打开甘特图时，默认定位到当前时间，让红线显示在弹窗中间
+  useEffect(() => {
+    if (viewMode !== 'gantt') return;
+    // 等DOM更新后再滚动
+    const timer = setTimeout(() => {
+      const el = ganttScrollRef.current;
+      if (!el) return;
+      const containerWidth = el.clientWidth;
+      const now = new Date();
+      const currentHour = now.getHours() + now.getMinutes() / 60;
+      const targetX = currentHour * 48 / ganttScale - containerWidth / 2;
+      el.scrollTo({ left: Math.max(0, targetX), behavior: 'auto' });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [viewMode, ganttScale]);
+
   // Drag handlers for voice modal
   const onDragMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
