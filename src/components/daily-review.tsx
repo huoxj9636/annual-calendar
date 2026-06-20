@@ -701,7 +701,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     // Task name column width is dynamic (taskColumnWidth); time grid starts after that
                     const trackX = x - taskColumnWidth;
                     if (trackX >= 0) {
-                      const hour = trackX / cellWidth;
+                      // 考虑滚动偏移：trackX是鼠标相对于容器的时间网格区域的位置
+                      // 但时间网格可能已滚动，所以实际小时数需要加上滚动偏移
+                      const hour = (trackX + ganttScrollLeft) / cellWidth;
                       const clampedHour = Math.max(0, Math.min(24, hour));
                       setHoverHour(clampedHour);
                       setHoverY(y);
@@ -715,33 +717,34 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 <div style={{ minWidth: `calc(${taskColumnWidth}px + ${(48 / ganttScale) * 24}px + 24px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
-                    {/* 事项名称列占位 - 带拖拽手柄 */}
+                    {/* 事项名称列占位 */}
                     <div 
                       className="shrink-0 relative" 
                       style={{ width: `${taskColumnWidth}px` }}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        taskColumnDragRef.current = { startX: e.clientX, startWidth: taskColumnWidth };
-                        const onMove = (ev: MouseEvent) => {
-                          if (taskColumnDragRef.current) {
-                            const newWidth = Math.max(80, Math.min(300, taskColumnDragRef.current.startWidth + (ev.clientX - taskColumnDragRef.current.startX)));
-                            setTaskColumnWidth(newWidth);
-                          }
-                        };
-                        const onUp = () => {
-                          taskColumnDragRef.current = null;
-                          window.removeEventListener('mousemove', onMove);
-                          window.removeEventListener('mouseup', onUp);
-                        };
-                        window.addEventListener('mousemove', onMove);
-                        window.addEventListener('mouseup', onUp);
-                      }}
                     >
-                      {/* 拖拽手柄 */}
+                      {/* 拖拽手柄 - 移到列右侧边缘，始终可见 */}
                       <div 
-                        className="absolute right-0 top-0 bottom-0 w-4 cursor-ew-resize z-20 flex items-center justify-center"
+                        className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-8 cursor-ew-resize z-30 flex items-center justify-center rounded-sm hover:bg-black/10 transition-colors"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          taskColumnDragRef.current = { startX: e.clientX, startWidth: taskColumnWidth };
+                          const onMove = (ev: MouseEvent) => {
+                            if (taskColumnDragRef.current) {
+                              const newWidth = Math.max(80, Math.min(300, taskColumnDragRef.current.startWidth + (ev.clientX - taskColumnDragRef.current.startX)));
+                              setTaskColumnWidth(newWidth);
+                            }
+                          };
+                          const onUp = () => {
+                            taskColumnDragRef.current = null;
+                            window.removeEventListener('mousemove', onMove);
+                            window.removeEventListener('mouseup', onUp);
+                          };
+                          window.addEventListener('mousemove', onMove);
+                          window.addEventListener('mouseup', onUp);
+                        }}
                       >
-                        <div className="w-1 h-6 rounded-full opacity-40 hover:opacity-80 transition-opacity" style={{ backgroundColor: skin.swatch }} />
+                        <div className="w-1 h-5 rounded-full" style={{ backgroundColor: skin.swatch, opacity: 0.6 }} />
                       </div>
                     </div>
                     <div className="flex">
