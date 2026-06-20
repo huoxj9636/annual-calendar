@@ -1670,19 +1670,19 @@ export default function YearCalendar() {
         )}
         </div>{/* end gridInnerRef */}
         </div>{/* end gridContainerRef */}
-
-        {/* Right arrow for Knowledge Panel - aligned with Life Calendar arrow */}
-        <button
-          onClick={() => setShowKnowledge(true)}
-          className="flex-shrink-0 w-14 flex items-center justify-center transition-all group cursor-pointer z-20"
-          style={{ background: `linear-gradient(to left, ${skin.swatch}18, transparent)` }}
-          title="知识库"
-        >
-          <span className="text-4xl font-bold tracking-tight opacity-40 group-hover:opacity-100 transition-opacity inline-block group-hover:-translate-x-1 transform" style={{ color: `${skin.swatch}bb` }}>
-            «
-          </span>
-        </button>
       </div>{/* end flex-1 container (line 1101) */}
+
+      {/* Right arrow for Knowledge Panel - fixed at top right */}
+      <button
+        onClick={() => setShowKnowledge(true)}
+        className="fixed right-0 top-20 z-20 w-14 h-14 flex items-center justify-center transition-all group cursor-pointer"
+        style={{ background: `linear-gradient(to left, ${skin.swatch}18, transparent)` }}
+        title="知识库"
+      >
+        <span className="text-4xl font-bold tracking-tight opacity-40 group-hover:opacity-100 transition-opacity inline-block group-hover:-translate-x-1 transform" style={{ color: `${skin.swatch}bb` }}>
+          «
+        </span>
+      </button>
 
       {/* Knowledge Panel */}
       {showKnowledge && (
