@@ -23,6 +23,17 @@ import {
   TreePine,
   TreeDeciduous,
   Sprout,
+  Folder,
+  File,
+  Leaf,
+  Apple,
+  GitBranch,
+  Layers,
+  Target,
+  Search,
+  Award,
+  BookOpen,
+  Briefcase,
 } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import ForestScene, { type ForestItem } from "./forest/forest-scene";
@@ -93,6 +104,8 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   const [trees, setTrees] = useState<KnowledgeTree[]>([]);
   const [selectedTree, setSelectedTree] = useState<KnowledgeTree | null>(null);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  // 视图模式：森林 / 知识库
+  const [viewMode, setViewMode] = useState<"forest" | "library">("forest");
 
   // 弹窗状态
   const [showAddTree, setShowAddTree] = useState(false);
@@ -417,9 +430,48 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
           />
         </div>
 
+        {/* 二级切换：森林 / 知识库（仅在我的森林 tab 下显示） */}
+        {activeTab === "my" && !selectedTree && (
+          <div
+            className="flex items-center gap-3 px-6 py-2 border-b"
+            style={{ borderColor: skin.divider }}
+          >
+            <div
+              className="flex rounded-md p-0.5"
+              style={{ background: skin.cardBg }}
+            >
+              <button
+                onClick={() => setViewMode("forest")}
+                className="flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-all"
+                style={{
+                  background: viewMode === "forest" ? skin.swatch : "transparent",
+                  color: viewMode === "forest" ? "#fff" : skin.textSecondary,
+                }}
+              >
+                <Trees size={12} />
+                森林视图
+              </button>
+              <button
+                onClick={() => setViewMode("library")}
+                className="flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-all"
+                style={{
+                  background: viewMode === "library" ? skin.swatch : "transparent",
+                  color: viewMode === "library" ? "#fff" : skin.textSecondary,
+                }}
+              >
+                <Layers size={12} />
+                知识库
+              </button>
+            </div>
+            <span className="text-[10px]" style={{ color: skin.textMuted }}>
+              {viewMode === "forest" ? "树木全景与成长" : "理论库/实践库双层管理"}
+            </span>
+          </div>
+        )}
+
         {/* 内容区 */}
         <div className="flex-1" style={{ overflow: "visible" }}>
-          {activeTab === "my" && !selectedTree && (
+          {activeTab === "my" && !selectedTree && viewMode === "forest" && (
             <MyForestView
               forestItems={forestItems}
               totalNodes={stats.totalNodes}
@@ -432,6 +484,18 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               onDeleteTree={setPendingDeleteTreeId}
               onTreePositionChange={handleTreePositionChange}
               onTreeScaleChange={handleTreeScaleChange}
+              skin={skin}
+            />
+          )}
+
+          {activeTab === "my" && !selectedTree && viewMode === "library" && (
+            <KnowledgeLibraryView
+              trees={trees}
+              onSelectTree={(id) => {
+                const t = trees.find((x) => x.id === id);
+                if (t) setSelectedTree(t);
+              }}
+              onAddTree={() => setShowAddTree(true)}
               skin={skin}
             />
           )}
@@ -709,6 +773,340 @@ function TabButton({
   );
 }
 
+/** 知识库视图 - 理论库/实践库双层结构 */
+function KnowledgeLibraryView({
+  trees,
+  onSelectTree,
+  onAddTree,
+  skin,
+}: {
+  trees: KnowledgeTree[];
+  onSelectTree: (id: string) => void;
+  onAddTree: () => void;
+  skin: SkinTheme;
+}) {
+  // 库类型切换：理论库 / 实践库
+  const [libraryType, setLibraryType] = useState<"theory" | "practice">("practice");
+  // 理论库：展开的层级
+  const [expandedTheoryType, setExpandedTheoryType] = useState<NodeType | null>(null);
+  // 实践库：展开的项目
+  const [expandedProject, setExpandedProject] = useState<string | null>(null);
+
+  // 大树模型5个层级的信息（用于理论库）
+  const TYPE_INFO: Record<NodeType, { label: string; desc: string; Icon: React.ElementType }> = {
+    root: { label: "根 - 找到根源", desc: "问题是什么？烦恼的根源", Icon: Search },
+    trunk: { label: "干 - 找到目标", desc: "想要实现什么目标", Icon: Target },
+    branch: { label: "枝 - 如何实现", desc: "实现路径与方法论", Icon: GitBranch },
+    leaf: { label: "叶 - 落地执行", desc: "具体执行步骤", Icon: Leaf },
+    fruit: { label: "果 - 开花结果", desc: "成果验收与复盘", Icon: Award },
+  };
+
+  // 理论库模拟数据（方法论的通用框架）
+  const theoryFiles: Record<NodeType, { name: string; desc: string }[]> = {
+    root: [
+      { name: "问题分析方法论.md", desc: "如何发现问题的真正根源" },
+      { name: "5Why分析法.md", desc: "追问5次找到核心问题" },
+      { name: "根本原因分析框架.md", desc: "系统性定位问题源头" },
+    ],
+    trunk: [
+      { name: "SMART目标法则.md", desc: "设定可量化可达成的目标" },
+      { name: "目标拆解方法.md", desc: "将大目标拆解为小里程碑" },
+      { name: "OKR目标管理.md", desc: "目标与关键结果管理法" },
+    ],
+    branch: [
+      { name: "方案设计框架.md", desc: "从目标到方案的转化逻辑" },
+      { name: "路径规划方法论.md", desc: "多路径对比与选择策略" },
+      { name: "MVP最小可行方案.md", desc: "快速验证方案可行性" },
+    ],
+    leaf: [
+      { name: "时间管理技巧.md", desc: "高效安排执行时间" },
+      { name: "任务清单方法论.md", desc: "任务拆解与优先级排序" },
+      { name: "执行习惯养成.md", desc: "如何坚持执行计划" },
+    ],
+    fruit: [
+      { name: "OKR复盘方法.md", desc: "定期验收目标达成情况" },
+      { name: "成果量化框架.md", desc: "如何衡量学习成果" },
+      { name: "迭代优化方法论.md", desc: "从结果反馈到方案改进" },
+    ],
+  };
+
+  return (
+    <div className="h-full flex flex-col p-6">
+      {/* 顶部切换：理论库 / 实践库 */}
+      <div className="flex items-center gap-3 mb-6">
+        <div
+          className="flex rounded-lg p-1"
+          style={{
+            background: skin.cardBg,
+            border: `1px solid ${skin.divider}`,
+          }}
+        >
+          <button
+            onClick={() => setLibraryType("theory")}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all"
+            style={{
+              background: libraryType === "theory" ? skin.swatch : "transparent",
+              color: libraryType === "theory" ? "#fff" : skin.textSecondary,
+            }}
+          >
+            <BookOpen size={14} />
+            理论库
+          </button>
+          <button
+            onClick={() => setLibraryType("practice")}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all"
+            style={{
+              background: libraryType === "practice" ? skin.swatch : "transparent",
+              color: libraryType === "practice" ? "#fff" : skin.textSecondary,
+            }}
+          >
+            <Briefcase size={14} />
+            实践库
+          </button>
+        </div>
+        <div className="text-xs" style={{ color: skin.textMuted }}>
+          {libraryType === "theory" ? "方法论、通用框架、知识原理" : "具体项目的完整闭环"}
+        </div>
+      </div>
+
+      {/* 理论库视图 */}
+      {libraryType === "theory" && (
+        <div className="flex-1 overflow-auto">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {(Object.keys(TYPE_INFO) as NodeType[]).map((type) => {
+              const info = TYPE_INFO[type];
+              const files = theoryFiles[type];
+              const isExpanded = expandedTheoryType === type;
+
+              return (
+                <div
+                  key={type}
+                  className="rounded-xl overflow-hidden transition-all"
+                  style={{
+                    background: skin.cardBg,
+                    border: `1px solid ${skin.divider}`,
+                    boxShadow: isExpanded ? `0 8px 24px ${skin.swatch}20` : "none",
+                  }}
+                >
+                  {/* 层级头部 */}
+                  <button
+                    onClick={() => setExpandedTheoryType(isExpanded ? null : type)}
+                    className="w-full flex items-center gap-2 px-4 py-3 text-left"
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ background: `${skin.swatch}15` }}
+                    >
+                      <info.Icon size={16} style={{ color: skin.swatch }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate" style={{ color: skin.textPrimary }}>
+                        {info.label}
+                      </div>
+                      <div className="text-[11px] truncate" style={{ color: skin.textMuted }}>
+                        {info.desc}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ background: `${skin.swatch}15`, color: skin.swatch }}
+                      >
+                        {files.length}
+                      </span>
+                      {isExpanded ? (
+                        <ChevronDown size={14} style={{ color: skin.textMuted }} />
+                      ) : (
+                        <ChevronRight size={14} style={{ color: skin.textMuted }} />
+                      )}
+                    </div>
+                  </button>
+
+                  {/* 展开的文件列表 */}
+                  {isExpanded && (
+                    <div className="px-4 pb-3 space-y-2">
+                      {files.map((file, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all hover:scale-[1.02] cursor-pointer"
+                          style={{ background: `${skin.swatch}08` }}
+                        >
+                          <File size={12} style={{ color: skin.swatch }} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13px] truncate" style={{ color: skin.textPrimary }}>
+                              {file.name}
+                            </div>
+                            <div className="text-[10px] truncate" style={{ color: skin.textMuted }}>
+                              {file.desc}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 实践库视图 */}
+      {libraryType === "practice" && (
+        <div className="flex-1 overflow-auto">
+          {trees.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center"
+                style={{ background: `${skin.swatch}15` }}
+              >
+                <Folder size={28} style={{ color: skin.swatch }} />
+              </div>
+              <div className="text-sm" style={{ color: skin.textMuted }}>
+                还没有实践项目
+              </div>
+              <button
+                onClick={onAddTree}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
+                style={{
+                  background: skin.swatch,
+                  color: "#fff",
+                }}
+              >
+                <Plus size={14} />
+                创建第一个项目
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {trees.map((tree) => {
+                const isExpanded = expandedProject === tree.id;
+                const nodesByType = tree.nodes.reduce((acc, n) => {
+                  if (!acc[n.type]) acc[n.type] = [];
+                  acc[n.type].push(n);
+                  return acc;
+                }, {} as Record<string, KnowledgeNode[]>);
+
+                return (
+                  <div
+                    key={tree.id}
+                    className="rounded-xl overflow-hidden transition-all"
+                    style={{
+                      background: skin.cardBg,
+                      border: `1px solid ${skin.divider}`,
+                      boxShadow: isExpanded ? `0 8px 24px ${skin.swatch}20` : "none",
+                    }}
+                  >
+                    {/* 项目头部 */}
+                    <button
+                      onClick={() => setExpandedProject(isExpanded ? null : tree.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left"
+                    >
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center"
+                        style={{ background: `${skin.swatch}15` }}
+                      >
+                        <Folder size={18} style={{ color: skin.swatch }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate" style={{ color: skin.textPrimary }}>
+                          {tree.name}
+                        </div>
+                        <div className="text-[11px] truncate" style={{ color: skin.textMuted }}>
+                          {tree.description || tree.industry || "完整闭环项目"}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded"
+                          style={{ background: `${skin.swatch}15`, color: skin.swatch }}
+                        >
+                          {tree.nodes.length} 节点
+                        </span>
+                        {isExpanded ? (
+                          <ChevronDown size={14} style={{ color: skin.textMuted }} />
+                        ) : (
+                          <ChevronRight size={14} style={{ color: skin.textMuted }} />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* 展开的5个子文件夹 */}
+                    {isExpanded && (
+                      <div className="px-4 pb-4">
+                        <div className="grid grid-cols-5 gap-2">
+                          {(Object.keys(TYPE_INFO) as NodeType[]).map((type) => {
+                            const info = TYPE_INFO[type];
+                            const nodes = nodesByType[type] || [];
+
+                            return (
+                              <div
+                                key={type}
+                                className="rounded-lg p-2 text-center transition-all hover:scale-[1.02] cursor-pointer"
+                                style={{ background: `${skin.swatch}08` }}
+                                onClick={() => onSelectTree(tree.id)}
+                              >
+                                <div
+                                  className="w-6 h-6 rounded mx-auto mb-1 flex items-center justify-center"
+                                  style={{ background: `${skin.swatch}15` }}
+                                >
+                                  <info.Icon size={12} style={{ color: skin.swatch }} />
+                                </div>
+                                <div className="text-[10px] font-medium truncate" style={{ color: skin.textPrimary }}>
+                                  {type === "root" ? "根" : type === "trunk" ? "干" : type === "branch" ? "枝" : type === "leaf" ? "叶" : "果"}
+                                </div>
+                                <div
+                                  className="text-[9px] mt-0.5"
+                                  style={{ color: skin.textMuted }}
+                                >
+                                  {nodes.length}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* 进入详情按钮 */}
+                        <button
+                          onClick={() => onSelectTree(tree.id)}
+                          className="w-full mt-3 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium"
+                          style={{
+                            background: skin.swatch,
+                            color: "#fff",
+                          }}
+                        >
+                          <Layers size={12} />
+                          进入项目详情
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 右下角新建项目按钮 */}
+          {trees.length > 0 && (
+            <button
+              onClick={onAddTree}
+              className="fixed bottom-8 right-8 flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-medium transition-all hover:scale-105"
+              style={{
+                background: skin.swatch,
+                color: "#fff",
+                boxShadow: `0 8px 24px ${skin.swatch}55`,
+              }}
+            >
+              <Plus size={14} />
+              新建项目
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** 我的森林主视图：森林全景铺满整个内容区 + 统计 chip + 种新树入口 */
 function MyForestView({
   forestItems,
@@ -860,15 +1258,10 @@ function MyForestView({
                         {item.name}
                       </div>
                       <div
-                        className="text-[11px] flex items-center gap-1.5"
+                        className="text-[11px]"
                         style={{ color: skin.textMuted }}
                       >
-                        <span>{stage.label}</span>
-                        <span>·</span>
-                        <span className="font-mono tabular-nums">
-                          {item.count}
-                        </span>
-                        <span>个</span>
+                        {stage.label}
                       </div>
                     </div>
                     <Crosshair
