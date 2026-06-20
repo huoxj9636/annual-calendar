@@ -124,13 +124,13 @@ export function LoginPromptDialog() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in-0"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-transparent p-4 animate-in fade-in-0"
       onClick={handleCancel}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-2xl animate-in fade-in-0 zoom-in-95"
+        className="w-full max-w-sm rounded-xl border-2 bg-card p-6 shadow-[0_20px_60px_rgba(0,0,0,0.25)] animate-in fade-in-0 zoom-in-95"
         onClick={(e: MouseEvent) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-4">
