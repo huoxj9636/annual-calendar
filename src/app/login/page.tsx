@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense, FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseBrowserClientWithRetry } from '@/lib/supabase-browser';
 
 // 把"手机号"映射为 supabase auth 使用的内部 email
@@ -16,8 +16,19 @@ function isValidPhone(phone: string): boolean {
   return /^1\d{10}$/.test(phone);
 }
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // 登录后回到 from 参数指定的页面（默认首页）
+  const getRedirectPath = (): string => {
+    const from = searchParams?.get('from');
+    if (from && from.startsWith('/') && !from.startsWith('//') && from !== '/login') {
+      return from;
+    }
+    return '/';
+  };
+
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -26,7 +37,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 已经在登录态的访问 /login 时直接跳到首页
+  // 已经在登录态的访问 /login 时直接跳到目标页
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -34,7 +45,7 @@ export default function LoginPage() {
         const supabase = await getSupabaseBrowserClientWithRetry();
         const { data } = await supabase.auth.getSession();
         if (!cancelled && data.session) {
-          router.replace('/');
+          router.replace(getRedirectPath());
         }
       } catch {
         // ignore
@@ -82,7 +93,7 @@ export default function LoginPage() {
         }
         // mailer_autoconfirm: true 时注册成功直接得到 session
         if (data.session) {
-          router.replace('/');
+          router.replace(getRedirectPath());
           return;
         }
         // 兜底：尝试登录
@@ -95,7 +106,7 @@ export default function LoginPage() {
           setMode('signin');
           return;
         }
-        router.replace('/');
+        router.replace(getRedirectPath());
       } else {
         const { error: signInErr } = await supabase.auth.signInWithPassword({
           email,
@@ -105,7 +116,7 @@ export default function LoginPage() {
           setError(mapAuthError(signInErr.message));
           return;
         }
-        router.replace('/');
+        router.replace(getRedirectPath());
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : '未知错误';
@@ -265,6 +276,19 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// Suspense wrapper — useSearchParams 必须在 Suspense 内使用
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen w-full flex items-center justify-center bg-background">
+        <div className="text-sm text-muted-foreground">正在加载…</div>
+      </div>
+    }>
+      <LoginPageInner />
+    </Suspense>
   );
 }
 

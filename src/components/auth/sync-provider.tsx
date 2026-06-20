@@ -10,7 +10,6 @@ import {
   setSyncedUserId,
   mergeCloudToLocal,
   dispatchDataSyncedEvent,
-  isSyncedKey,
 } from '@/lib/user-kv';
 
 interface SyncProviderProps {
@@ -73,43 +72,33 @@ export function SyncProvider({ children }: SyncProviderProps) {
     };
   }, [userId, getToken]);
 
-  // ── 监听 localStorage 变化：批量同步到 DB ──
+  // ── 拦截器装载(全局只装一次) + 监听 local-storage-changed 事件触发同步 ──
   useEffect(() => {
-    if (!userId) return;
+    if (typeof window === 'undefined') return;
+    let cancelled = false;
 
-    const handleStorageChange = (e: StorageEvent) => {
-      if (!e.key) return;
-      if (!isSyncedKey(e.key)) return;
+    // 异步安装拦截器(确保 supabase config 已就绪)
+    (async () => {
+      const mod = await import('@/lib/auth-interceptor');
+      mod.installAuthInterceptor();
+    })();
+
+    const handleLocalChange = (e: Event) => {
+      if (cancelled) return;
+      const detail = (e as CustomEvent<{ key: string; op: string }>).detail;
+      if (!detail?.key) return;
       scheduleSync();
     };
 
-    // 同一标签页内，原生 storage 事件不会触发
-    // 用 monkey-patch setItem/removeItem 方式触发同步
-    const originalSetItem = Storage.prototype.setItem;
-    const originalRemoveItem = Storage.prototype.removeItem;
-
-    Storage.prototype.setItem = function (key: string, value: string) {
-      originalSetItem.call(this, key, value);
-      if (isSyncedKey(key)) {
-        scheduleSync();
-      }
-    };
-    Storage.prototype.removeItem = function (key: string) {
-      originalRemoveItem.call(this, key);
-      if (isSyncedKey(key)) {
-        scheduleSync();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('local-storage-changed', handleLocalChange);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      Storage.prototype.setItem = originalSetItem;
-      Storage.prototype.removeItem = originalRemoveItem;
+      cancelled = true;
+      window.removeEventListener('local-storage-changed', handleLocalChange);
     };
 
     function scheduleSync() {
+      if (!userId) return; // 未登录不触发云端同步
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
       syncTimerRef.current = setTimeout(() => {
         void doSync();

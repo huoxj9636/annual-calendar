@@ -3,6 +3,7 @@ import './globals.css';
 import { SupabaseConfigProvider } from '@/lib/supabase-config-inject';
 import { UserProvider } from '@/components/auth/user-context';
 import { AuthGuard } from '@/components/auth/auth-guard';
+import { LoginPromptDialog } from '@/components/auth/login-prompt-dialog';
 
 export const metadata: Metadata = {
   title: {
@@ -29,7 +30,10 @@ export default function RootLayout({
       <body className={`antialiased`}>
         <SupabaseConfigProvider>
           <UserProvider>
-            <AuthGuard>{children}</AuthGuard>
+            <AuthGuard>
+              {children}
+              <LoginPromptDialog />
+            </AuthGuard>
           </UserProvider>
         </SupabaseConfigProvider>
       </body>

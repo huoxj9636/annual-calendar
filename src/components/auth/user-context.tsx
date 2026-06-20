@@ -16,6 +16,7 @@ export interface UserInfo {
 interface UserContextValue {
   user: UserInfo | null;
   isLoading: boolean;
+  authChecked: boolean;
   // 获取最新 access token（每次调用都从 supabase client 取最新值，不做缓存）
   getToken: () => Promise<string | null>;
   signOut: () => Promise<void>;
@@ -24,6 +25,7 @@ interface UserContextValue {
 const UserContext = createContext<UserContextValue>({
   user: null,
   isLoading: true,
+  authChecked: false,
   getToken: async () => null,
   signOut: async () => undefined,
 });
@@ -63,11 +65,17 @@ export function UserProvider({ children }: UserProviderProps) {
         const supabase = await getSupabaseBrowserClientWithRetry();
         const { data } = await supabase.auth.getSession();
         if (cancelled) return;
-        setUser(toUserInfo(data.session?.user ?? null));
+        const sessionUser = data.session?.user ?? null;
+        setUser(toUserInfo(sessionUser));
+        // 联动拦截器:登录态变化 → 打开/关闭拦截
+        const { setInterceptorAuthStatus } = await import('@/lib/auth-interceptor');
+        setInterceptorAuthStatus(!!sessionUser);
 
         const { data: subData } = supabase.auth.onAuthStateChange((_event, session) => {
           if (cancelled) return;
-          setUser(toUserInfo(session?.user ?? null));
+          const u = session?.user ?? null;
+          setUser(toUserInfo(u));
+          setInterceptorAuthStatus(!!u);
         });
         sub = subData.subscription;
       } catch {
@@ -125,7 +133,7 @@ export function UserProvider({ children }: UserProviderProps) {
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, isLoading, getToken, signOut }}>
+    <UserContext.Provider value={{ user, isLoading, authChecked: !isLoading, getToken, signOut }}>
       {children}
     </UserContext.Provider>
   );
