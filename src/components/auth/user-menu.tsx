@@ -83,6 +83,8 @@ export function UserMenu() {
     await signOut();
     setOpen(false);
     setConfirming(false);
+    // 登出后清空了 localStorage 中的用户数据，刷新页面让所有组件从空白重新读取
+    window.location.reload();
   };
 
   const maskedPhone = maskPhone(user.phone);

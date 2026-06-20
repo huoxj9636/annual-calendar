@@ -163,3 +163,56 @@ export function mergeCloudToLocal(
   }
   return merged;
 }
+
+// 用云端数据覆盖 localStorage（清掉旧同步数据，写入云端最新值）
+// 适用场景：登录后、登出后、切换账号后
+// 返回被写入的 key 数量
+export function replaceLocalWithCloud(
+  cloudItems: Array<{ key: string; value: unknown }>,
+): number {
+  if (typeof window === 'undefined') return 0;
+  // 先清掉所有同步 keys 的 localStorage 项
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && isSyncedKey(key)) keysToRemove.push(key);
+  }
+  for (const key of keysToRemove) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
+  }
+  // 再写入云端数据
+  let written = 0;
+  for (const item of cloudItems) {
+    if (!item || typeof item.key !== 'string') continue;
+    try {
+      localStorage.setItem(item.key, JSON.stringify(item.value));
+      written++;
+    } catch {
+      // ignore quota
+    }
+  }
+  return written;
+}
+
+// 清空 localStorage 中所有同步 keys（登出时调用：让 localStorage 不留登录用户数据）
+// 返回被清掉的 key 数量
+export function clearAllSyncedLocalData(): number {
+  if (typeof window === 'undefined') return 0;
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && isSyncedKey(key)) keysToRemove.push(key);
+  }
+  for (const key of keysToRemove) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
+  }
+  return keysToRemove.length;
+}

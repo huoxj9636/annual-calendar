@@ -6,9 +6,8 @@ import {
   collectSyncedItems,
   pushUserData,
   pullUserData,
-  getSyncedUserId,
-  setSyncedUserId,
-  mergeCloudToLocal,
+  replaceLocalWithCloud,
+  clearAllSyncedLocalData,
   dispatchDataSyncedEvent,
 } from '@/lib/user-kv';
 
@@ -19,57 +18,64 @@ interface SyncProviderProps {
 /**
  * 数据同步 Provider
  *
- * 核心策略（保护已有数据，绝不丢）：
- * 1. 首登（设备首次绑定该账号）：先把 localStorage 现有数据**全部上传**到云端
- *    → 用户此前的所有数据（即使没有账号时积累的）都被保留到云端
- * 2. 同账号二次登录：拉取云端数据**合并**到 localStorage（不覆盖本地已有）
- * 3. 切账号（标记存在但 userId 不同）：把 localStorage 上传到**新**账号云端
- *    → 新账号立刻拥有此前的所有数据
- * 4. 登录后任何 setItem 改动：800ms 防抖批量上传
+ * 核心策略（游客 vs 登录 严格隔离）：
+ * 1. 游客模式：所有写操作只走 localStorage，不触发云端同步
+ * 2. 登录时：拉取云端数据 → 覆盖 localStorage（不保留游客数据）
+ * 3. 已登录状态下写数据：写 localStorage（让组件读取立即生效）+ 800ms 防抖同步到云端
+ * 4. 登出时：清空 localStorage 中所有同步 keys（让游客会话无残留）
+ * 5. 切换账号：新登录账号的云端数据覆盖 localStorage
  */
 export function SyncProvider({ children }: SyncProviderProps) {
   const { user, getToken } = useUser();
   const userId = user?.id ?? null;
+  const prevUserIdRef = useRef<string | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initialSyncedRef = useRef(false);
+  const initialLoadedRef = useRef(false);
 
-  // ── 登录后：首登上传 / 合并拉取 ──
+  // ── 监听 user 变化：登录/登出/切账号 ──
   useEffect(() => {
-    if (!userId || initialSyncedRef.current) return;
-    initialSyncedRef.current = true;
+    if (typeof window === 'undefined') return;
+    const prevUserId = prevUserIdRef.current;
 
-    let cancelled = false;
-    (async () => {
-      try {
-        const token = await getToken();
-        if (!token || cancelled) return;
+    // 场景 A：登出（prev 有 userId → current 为 null）
+    if (prevUserId && !userId) {
+      clearAllSyncedLocalData();
+      dispatchDataSyncedEvent();
+      prevUserIdRef.current = null;
+      initialLoadedRef.current = false;
+      return;
+    }
 
-        const previousUserId = getSyncedUserId();
-        const localItems = collectSyncedItems();
-
-        // 场景 A：设备未绑定过此账号（首登 / 切账号）→ 先上传本地数据
-        if (previousUserId !== userId) {
-          if (localItems.length > 0) {
-            await pushUserData(token, localItems);
-          }
-          setSyncedUserId(userId);
-          dispatchDataSyncedEvent();
-          return;
-        }
-
-        // 场景 B：同账号二次登录 → 拉取云端，合并到 local（不覆盖）
-        const cloudItems = await pullUserData(token);
-        if (cancelled || !cloudItems) return;
-        mergeCloudToLocal(cloudItems);
-        dispatchDataSyncedEvent();
-      } catch (err) {
-        console.warn('[SyncProvider] initial sync failed', err);
+    // 场景 B：登录或切账号（current 有 userId）
+    if (userId) {
+      // 切账号场景：先清空旧账号在 localStorage 的数据
+      if (prevUserId && prevUserId !== userId) {
+        clearAllSyncedLocalData();
+        initialLoadedRef.current = false;
       }
-    })();
+      // 首次登录或切账号：拉取云端数据覆盖 localStorage
+      if (!initialLoadedRef.current) {
+        initialLoadedRef.current = true;
+        let cancelled = false;
+        (async () => {
+          try {
+            const token = await getToken();
+            if (!token || cancelled) return;
+            const cloudItems = await pullUserData(token);
+            if (cancelled) return;
+            replaceLocalWithCloud(cloudItems ?? []);
+            dispatchDataSyncedEvent();
+          } catch (err) {
+            console.warn('[SyncProvider] pull from DB failed', err);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      }
+    }
 
-    return () => {
-      cancelled = true;
-    };
+    prevUserIdRef.current = userId;
   }, [userId, getToken]);
 
   // ── 拦截器装载(全局只装一次) + 监听 local-storage-changed 事件触发同步 ──
@@ -98,7 +104,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
     };
 
     function scheduleSync() {
-      if (!userId) return; // 未登录不触发云端同步
+      if (!userId) return; // 游客模式不触发云端同步
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
       syncTimerRef.current = setTimeout(() => {
         void doSync();
