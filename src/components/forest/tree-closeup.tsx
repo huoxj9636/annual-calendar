@@ -501,6 +501,8 @@ export default function TreeCloseup({
 }) {
   const totalNodes = tree.nodes.length;
   const stage = getStage(totalNodes);
+  // 库类型切换：理论库 / 项目库
+  const [libType, setLibType] = useState<"theory" | "project">("project");
   // 展开的文件夹
   const [expandedType, setExpandedType] = useState<NodeType | null>(null);
 
@@ -511,6 +513,30 @@ export default function TreeCloseup({
       return { type, nodes, info: TYPE_LABELS[type] };
     });
   }, [nodesByType]);
+
+  // 理论库模拟数据（方法论文件）
+  const theoryFiles: Record<NodeType, { name: string }[]> = {
+    root: [
+      { name: "问题分析方法论.md" },
+      { name: "5Why分析法.md" },
+    ],
+    trunk: [
+      { name: "SMART目标法则.md" },
+      { name: "OKR目标管理.md" },
+    ],
+    branch: [
+      { name: "方案设计框架.md" },
+      { name: "MVP最小可行方案.md" },
+    ],
+    leaf: [
+      { name: "时间管理技巧.md" },
+      { name: "执行习惯养成.md" },
+    ],
+    fruit: [
+      { name: "OKR复盘方法.md" },
+      { name: "迭代优化方法论.md" },
+    ],
+  };
 
   return (
     <div className="h-full overflow-y-auto">
@@ -545,18 +571,20 @@ export default function TreeCloseup({
             </h2>
           </div>
         </div>
-        <button
-          onClick={onAddNode}
-          className="px-3 py-1.5 rounded-full flex items-center gap-1 text-xs font-medium transition-transform hover:scale-105"
-          style={{ background: skin.swatch, color: "#fff" }}
-        >
-          <Plus size={12} />
-          添加
-        </button>
+        {libType === "project" && (
+          <button
+            onClick={onAddNode}
+            className="px-3 py-1.5 rounded-full flex items-center gap-1 text-xs font-medium transition-transform hover:scale-105"
+            style={{ background: skin.swatch, color: "#fff" }}
+          >
+            <Plus size={12} />
+            添加
+          </button>
+        )}
       </div>
 
       {/* 项目信息 */}
-      <div className="px-5 py-3">
+      <div className="px-5 py-2">
         <div
           className="flex items-center gap-2 text-xs"
           style={{ color: skin.textMuted }}
@@ -568,22 +596,51 @@ export default function TreeCloseup({
           <span>·</span>
           <span>{stage.label}</span>
         </div>
-        {tree.description && (
-          <div
-            className="text-sm mt-2 truncate"
-            style={{ color: skin.textSecondary }}
-          >
-            {tree.description}
-          </div>
-        )}
       </div>
 
-      {/* 5个层级文件夹 - 紧凑网格布局 */}
+      {/* 理论库/项目库切换 */}
+      <div className="px-5 py-2">
+        <div
+          className="flex rounded-lg p-0.5"
+          style={{ background: skin.cardBg, border: `1px solid ${skin.divider}` }}
+        >
+          <button
+            onClick={() => setLibType("theory")}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+            style={{
+              background: libType === "theory" ? skin.swatch : "transparent",
+              color: libType === "theory" ? "#fff" : skin.textSecondary,
+            }}
+          >
+            <BookOpen size={12} />
+            理论库
+          </button>
+          <button
+            onClick={() => setLibType("project")}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+            style={{
+              background: libType === "project" ? skin.swatch : "transparent",
+              color: libType === "project" ? "#fff" : skin.textSecondary,
+            }}
+          >
+            <Layers size={12} />
+            项目库
+          </button>
+        </div>
+        <div className="text-[10px] mt-1.5" style={{ color: skin.textMuted }}>
+          {libType === "theory" ? "方法论、通用框架" : "当前项目的完整闭环"}
+        </div>
+      </div>
+
+      {/* 5个层级文件夹 */}
       <div className="px-5 pb-5">
         <div className="grid grid-cols-5 gap-2">
           {typeStats.map(({ type, nodes, info }) => {
             const isExpanded = expandedType === type;
-            const count = nodes.length;
+            // 理论库显示模拟文件数，项目库显示实际节点数
+            const count = libType === "theory" 
+              ? (theoryFiles[type]?.length || 0) 
+              : nodes.length;
 
             return (
               <div key={type}>
@@ -628,7 +685,7 @@ export default function TreeCloseup({
                   </div>
                 </button>
 
-                {/* 展开的文件列表 - 浮动面板 */}
+                {/* 展开的文件列表 */}
                 {isExpanded && (
                   <div
                     className="mt-2 rounded-lg overflow-hidden"
@@ -650,51 +707,73 @@ export default function TreeCloseup({
                     </div>
                     {/* 文件列表 */}
                     <div className="p-2 space-y-1 max-h-48 overflow-auto">
-                      {count === 0 ? (
-                        <div
-                          className="text-center text-[10px] py-3"
-                          style={{ color: skin.textMuted }}
-                        >
-                          空
-                        </div>
-                      ) : (
-                        nodes.map((n) => (
+                      {libType === "theory" ? (
+                        // 理论库：显示方法论文件
+                        theoryFiles[type]?.map((f, idx) => (
                           <div
-                            key={n.id}
-                            className="flex items-center gap-1.5 px-2 py-1.5 rounded transition-colors group"
+                            key={idx}
+                            className="flex items-center gap-1.5 px-2 py-1.5 rounded"
                             style={{ background: `${skin.swatch}08` }}
                           >
                             <File size={10} style={{ color: skin.swatch }} />
-                            <div className="flex-1 min-w-0">
-                              <div
-                                className="text-[11px] truncate"
-                                style={{ color: skin.textPrimary }}
-                              >
-                                {n.title}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => onDeleteNode(n.id)}
-                              className="opacity-0 group-hover:opacity-100 text-[9px] px-1 py-0.5 rounded"
-                              style={{ color: "#ef4444" }}
+                            <div
+                              className="text-[11px] truncate"
+                              style={{ color: skin.textPrimary }}
                             >
-                              ×
-                            </button>
+                              {f.name}
+                            </div>
                           </div>
                         ))
+                      ) : (
+                        // 项目库：显示实际节点
+                        count === 0 ? (
+                          <div
+                            className="text-center text-[10px] py-3"
+                            style={{ color: skin.textMuted }}
+                          >
+                            空
+                          </div>
+                        ) : (
+                          nodes.map((n) => (
+                            <div
+                              key={n.id}
+                              className="flex items-center gap-1.5 px-2 py-1.5 rounded transition-colors group"
+                              style={{ background: `${skin.swatch}08` }}
+                            >
+                              <File size={10} style={{ color: skin.swatch }} />
+                              <div className="flex-1 min-w-0">
+                                <div
+                                  className="text-[11px] truncate"
+                                  style={{ color: skin.textPrimary }}
+                                >
+                                  {n.title}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => onDeleteNode(n.id)}
+                                className="opacity-0 group-hover:opacity-100 text-[9px] px-1 py-0.5 rounded"
+                                style={{ color: "#ef4444" }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))
+                        )
                       )}
-                      {/* 添加按钮 */}
-                      <button
-                        onClick={() => onAddTypeNode(type)}
-                        className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] font-medium"
-                        style={{
-                          background: skin.swatch,
-                          color: "#fff",
-                        }}
-                      >
-                        <Plus size={10} />
-                        添加
-                      </button>
+                      {/* 添加按钮（仅项目库） */}
+                      {libType === "project" && (
+                        <button
+                          onClick={() => onAddTypeNode(type)}
+                          className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] font-medium"
+                          style={{
+                            background: skin.swatch,
+                            color: "#fff",
+                          }}
+                        >
+                          <Plus size={10} />
+                          添加
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
