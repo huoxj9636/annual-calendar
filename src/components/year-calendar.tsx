@@ -757,7 +757,7 @@ export default function YearCalendar() {
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
         <ParticleEffect color={skin.swatch} count={50} />
 
-        <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2 ">
+        <div className="relative px-8 py-2 pr-[107px] flex items-center justify-between flex-wrap gap-2 ">
           <div className="flex items-center gap-3 px-5 py-2.5">
             <button
               onClick={() => setYear((y) => y - 1)}
@@ -959,10 +959,14 @@ export default function YearCalendar() {
                   </button>
                 </div>
 
-                <LoginButton />
 
               </div>
             </div>
+          </div>
+          
+          {/* 登录按钮 - 绝对定位在右边 */}
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-50">
+            <LoginButton />
           </div>
 
           {/* 居中标语 */}
