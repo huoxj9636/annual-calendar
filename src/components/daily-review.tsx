@@ -648,13 +648,13 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                             <div className="absolute inset-0 pointer-events-none">
                               {/* 刻度线只在上半部分 */}
                               {/* :15 */}
-                              <div className="absolute top-0 left-1/4 w-px h-3 bg-current opacity-35" />
+                              <div className="absolute top-0 left-1/4 w-px h-2 bg-current opacity-35" />
                               <span className="absolute bottom-px left-1/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>
                               {/* :30 */}
-                              <div className="absolute top-0 left-1/2 w-px h-3 bg-current opacity-50" />
+                              <div className="absolute top-0 left-1/2 w-px h-2 bg-current opacity-50" />
                               <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>
                               {/* :45 */}
-                              <div className="absolute top-0 left-3/4 w-px h-3 bg-current opacity-35" />
+                              <div className="absolute top-0 left-3/4 w-px h-2 bg-current opacity-35" />
                               <span className="absolute bottom-px left-3/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>
                             </div>
                           )}
