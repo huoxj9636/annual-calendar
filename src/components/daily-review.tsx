@@ -131,6 +131,11 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const today = new Date();
   const isToday = year === today.getFullYear() && month === today.getMonth() + 1 && day === today.getDate();
   const currentHour = today.getHours() + today.getMinutes() / 60;
+  
+  // Task input column width (can be dragged to resize)
+  const [taskColumnWidth, setTaskColumnWidth] = useState(140);
+  const taskColumnDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  
   const [ganttRows, setGanttRows] = useState<Array<{ id: number; task: string; startHour: number; endHour: number }>>(() => {
     // Default: empty rows (startHour === endHour means "no bar yet")
     // The user clicks a cell to create a 1-hour bar, then drags the edges to resize.
@@ -188,8 +193,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const [isDragging, setIsDragging] = useState(false);
 
   // Map vertical mouse wheel to horizontal/vertical scroll inside the gantt area based on mouse X position.
-  // Left side (task name column area, ~140px) → wheel = horizontal scroll (slide the time axis left/right)
-  // Right side (time grid area) → wheel = vertical scroll (scroll through rows / page)
+  // Left half of visible area → wheel = horizontal scroll (slide the time axis left/right)
+  // Right half of visible area → wheel = vertical scroll (scroll through rows / page)
   // React's onWheel is passive (can't preventDefault), so we use a native listener with { passive: false }.
   useEffect(() => {
     const el = ganttScrollRef.current;
@@ -200,14 +205,13 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       if (e.deltaX === 0 && e.deltaY !== 0) {
         const rect = el.getBoundingClientRect();
         const mouseXInContainer = e.clientX - rect.left;
-        // 事项名称列宽度约140px，该区域为水平滑动区域
-        const taskColumnWidth = 140;
-        const isTaskColumnArea = mouseXInContainer < taskColumnWidth;
-        if (isTaskColumnArea) {
+        // 左半边区域水平滑动，右半边区域垂直滑动
+        const isLeftHalf = mouseXInContainer < rect.width / 2;
+        if (isLeftHalf) {
           e.preventDefault();
           el.scrollLeft += e.deltaY;
         }
-        // Right side: let default vertical scroll happen (rows or page)
+        // Right half: let default vertical scroll happen (rows or page)
       }
     };
     el.addEventListener('wheel', onWheel, { passive: false });
@@ -653,7 +657,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     onClick={() => {
                       if (ganttScrollRef.current) {
                         const containerWidth = ganttScrollRef.current.clientWidth;
-                        const targetX = 140 + currentHour * cellWidth - containerWidth / 2;
+                        const targetX = taskColumnWidth + currentHour * cellWidth - containerWidth / 2;
                         ganttScrollRef.current.scrollTo({ left: Math.max(0, targetX), behavior: 'smooth' });
                       }
                     }}
@@ -708,10 +712,39 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   }}
                   onMouseLeave={() => { setHoverHour(null); setHoverY(null); }}
                 >
-                <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 24px)` }}>
+                <div style={{ minWidth: `calc(${taskColumnWidth}px + ${(48 / ganttScale) * 24}px + 24px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
-                    <div className="w-[140px] shrink-0" />
+                    {/* 事项名称列占位 - 带拖拽手柄 */}
+                    <div 
+                      className="shrink-0 relative" 
+                      style={{ width: `${taskColumnWidth}px` }}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        taskColumnDragRef.current = { startX: e.clientX, startWidth: taskColumnWidth };
+                        const onMove = (ev: MouseEvent) => {
+                          if (taskColumnDragRef.current) {
+                            const newWidth = Math.max(80, Math.min(300, taskColumnDragRef.current.startWidth + (ev.clientX - taskColumnDragRef.current.startX)));
+                            setTaskColumnWidth(newWidth);
+                          }
+                        };
+                        const onUp = () => {
+                          taskColumnDragRef.current = null;
+                          window.removeEventListener('mousemove', onMove);
+                          window.removeEventListener('mouseup', onUp);
+                        };
+                        window.addEventListener('mousemove', onMove);
+                        window.addEventListener('mouseup', onUp);
+                      }}
+                    >
+                      {/* 拖拽手柄 */}
+                      <div 
+                        className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-8 cursor-ew-resize z-20 group/handle"
+                        style={{ backgroundColor: 'transparent' }}
+                      >
+                        <div className="w-1 h-4 rounded-full opacity-0 group-hover/handle:opacity-60 transition-opacity" style={{ backgroundColor: skin.swatch }} />
+                      </div>
+                    </div>
                     <div className="flex">
                       {Array.from({ length: 24 }, (_, i) => (
                         <div key={i} className="text-left text-xs font-medium shrink-0 border-r relative" style={{ width: `${48 / ganttScale}px`, color: skin.textMuted, borderColor: skin.cellBorder }}>
@@ -746,6 +779,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                       skin={skin}
                       scale={ganttScale}
                       hoverHour={hoverHour}
+                      taskColumnWidth={taskColumnWidth}
                       onUpdateRow={(r) => {
                         const next = [...ganttRows];
                         next[idx] = r;
@@ -770,7 +804,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <div 
                     className="absolute top-0 bottom-0"
                     style={{ 
-                      left: `${140 + hoverHour * cellWidth - ganttScrollLeft}px`,
+                      left: `${taskColumnWidth + hoverHour * cellWidth - ganttScrollLeft}px`,
                       width: '1px',
                       backgroundColor: skin.textMuted,
                       opacity: 0.5,
@@ -795,7 +829,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <div 
                     className="absolute top-0 bottom-0"
                     style={{ 
-                      left: `${140 + currentHour * cellWidth - ganttScrollLeft}px`,
+                      left: `${taskColumnWidth + currentHour * cellWidth - ganttScrollLeft}px`,
                       width: '2px',
                       backgroundColor: '#ef4444',
                     }}
@@ -1277,12 +1311,13 @@ type DailyReviewSkin = {
   tabActive: string;
 };
 
-function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
+function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateRow, onDelete }: {
   row: GanttRowData;
   idx: number;
   skin: DailyReviewSkin;
   scale: 1 | 0.5 | 0.25;
   hoverHour: number | null;  // 鼠标悬浮位置的时间（用于点击创建时的起点）
+  taskColumnWidth: number;  // 事项名称列宽度
   onUpdateRow: (row: GanttRowData) => void;
   onDelete: () => void;
 }) {
@@ -1414,7 +1449,7 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
   return (
     <div className="flex mb-1 items-center group">
       {/* Task name input */}
-      <div className="w-[140px] shrink-0 px-2">
+      <div className="shrink-0 px-2" style={{ width: `${taskColumnWidth}px` }}>
         <input
           type="text"
           value={row.task}
