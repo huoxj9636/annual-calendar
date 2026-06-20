@@ -393,7 +393,7 @@ export default function YearCalendar() {
         // Load overrides from DB
         const overridesRes = await apiFetch(`/api/calendar-data?type=overrides&year=${year}`);
         if (overridesRes) {
-          const overridesData = overridesRes;
+          const overridesData = overridesRes.data || overridesRes;
           if (Object.keys(overridesData).length > 0) {
             setOverrides(overridesData);
             // eslint-disable-next-line react-hooks/immutability
@@ -423,7 +423,7 @@ export default function YearCalendar() {
         // Load notes from DB
         const notesRes = await apiFetch(`/api/calendar-data?type=notes&year=${year}`);
         if (notesRes) {
-          const notesData = notesRes;
+          const notesData = notesRes.data || notesRes;
           if (Object.keys(notesData).length > 0) {
             setNotes(notesData);
             // eslint-disable-next-line react-hooks/immutability
