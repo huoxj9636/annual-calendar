@@ -145,9 +145,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     }]);
   };
 
-  // Timeline indicator state
-  const [ganttTimeline, setGanttTimeline] = useState<{ left: number; time: string } | null>(null);
-
   // Update a gantt row
   const updateGanttRow = (id: number, field: 'task' | 'startHour' | 'endHour', value: string | number) => {
     setGanttRows(ganttRows.map(row => row.id === id ? { ...row, [field]: value } : row));
@@ -613,24 +610,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         <div className="px-6 py-3 flex-1 flex flex-col min-h-0">
           {viewMode === 'gantt' ? (
             /* Gantt View */
-            <div className="flex flex-col gap-2 flex-1 min-h-0"
-              onMouseMove={useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const viewportX = e.clientX - rect.left;
-                const scrollLeft = ganttScrollRef.current?.scrollLeft ?? 0;
-                const cellW = 48 / ganttScale;
-                const contentX = viewportX + scrollLeft - 140;
-                if (contentX >= 0 && contentX <= 24 * cellW) {
-                  const totalH = contentX / cellW;
-                  const h = Math.floor(totalH);
-                  const m = Math.min(59, Math.floor((totalH - h) * 60));
-                  setGanttTimeline({ left: viewportX, time: `${h}:${m.toString().padStart(2, '0')}` });
-                } else {
-                  setGanttTimeline(null);
-                }
-              }, [ganttScale])}
-              onMouseLeave={() => setGanttTimeline(null)}
-            >
+            <div className="flex flex-col gap-2 flex-1 min-h-0">
               {/* Top row: back button + scale control */}
               <div className="flex items-center mb-2 gap-3">
                 <button onClick={() => setViewMode('review')}
@@ -653,20 +633,10 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 </div>
               </div>
               {/* Scrollable rows area (horizontal + vertical) — includes hour header + rows together so they scroll in sync */}
-              <div ref={ganttScrollRef} className="flex-1 overflow-auto" style={{ scrollbarGutter: 'stable', position: 'relative' }}>
-                {/* Timeline indicator */}
-                {ganttTimeline && (
-                  <div className="absolute inset-y-0 pointer-events-none z-20" style={{ left: ganttTimeline.left }}>
-                    <div className="absolute top-0 bottom-0 w-px" style={{ backgroundColor: skin.swatch, opacity: 0.4 }} />
-                    <div className="absolute top-0 left-1/2 text-xs font-medium px-[5px] py-[2px] rounded-b-sm whitespace-nowrap"
-                      style={{ transform: 'translateX(-50%)', backgroundColor: skin.swatch, color: '#fff' }}>
-                      {ganttTimeline.time}
-                    </div>
-                  </div>
-                )}
+              <div ref={ganttScrollRef} className="flex-1 overflow-auto" style={{ scrollbarGutter: 'stable' }}>
                 <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 40px)` }}>
                   {/* Hour header row (scrolls with rows) */}
-                  <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
+                  <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: 'transparent' }}>
                     <div className="w-[140px] shrink-0" />
                     <div className="flex">
                       {Array.from({ length: 24 }, (_, i) => (
@@ -676,15 +646,13 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                           {/* 15 分钟刻度，仅 30min / 15min 刻度下显示 */}
                           {(ganttScale === 0.25 || ganttScale === 0.5) && (
                             <div className="absolute inset-0 pointer-events-none">
-                              {/* 刻度线只在上半部分 */}
-                              {/* :15 */}
-                              <div className="absolute top-0 left-1/4 w-px h-1 bg-current opacity-35" />
+                              {/* :15 — 刻度线 + 标签 */}
+                              <div className="absolute top-0 bottom-0 left-1/4 w-px bg-current opacity-35" />
                               <span className="absolute bottom-px left-1/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>
-                              {/* :30 */}
-                              <div className="absolute top-0 left-1/2 w-px h-1 bg-current opacity-50" />
-                              <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>
-                              {/* :45 */}
-                              <div className="absolute top-0 left-3/4 w-px h-1 bg-current opacity-35" />
+                              {/* :30 — 仅刻度线（标签去掉，小时数字已在对应位置） */}
+                              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-current opacity-50" />
+                              {/* :45 — 刻度线 + 标签 */}
+                              <div className="absolute top-0 bottom-0 left-3/4 w-px bg-current opacity-35" />
                               <span className="absolute bottom-px left-3/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>
                             </div>
                           )}
@@ -1171,15 +1139,6 @@ function formatHour(h: number): string {
   return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
 }
 
-function formatDuration(start: number, end: number): string {
-  const diff = end - start;
-  const hours = Math.floor(diff);
-  const mins = Math.round((diff - hours) * 60);
-  if (hours === 0) return `${mins}分钟`;
-  if (mins === 0) return `${hours}小时`;
-  return `${hours}小时${mins}分`;
-}
-
 type DailyReviewSkin = {
   swatch: string;
   panelBg: string;
@@ -1311,10 +1270,10 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
               <div
                 key={slot}
                 className={`h-full ${isEmpty ? 'cursor-pointer hover:bg-black/5' : 'cursor-default'}`}
-                title={isEmpty ? `点击创建 ${formatHour(slotHour)} - ${formatHour(Math.min(24, slotHour + 0.5))}` : undefined}
+                title={isEmpty ? `点击创建 ${formatHour(slotHour)} - ${formatHour(Math.min(24, slotHour + snap))}` : undefined}
                 onClick={() => {
                   if (isEmpty) {
-                    onUpdateRow({ ...row, startHour: slotHour, endHour: Math.min(24, slotHour + 0.5) });
+                    onUpdateRow({ ...row, startHour: slotHour, endHour: Math.min(24, slotHour + snap) });
                   }
                 }}
               />
@@ -1333,7 +1292,7 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
               opacity: 0.85,
               minWidth: '3px',
             }}
-            title={`${formatDuration(row.startHour, row.endHour)}（${formatHour(row.startHour)}～${formatHour(row.endHour)}）`}
+            title={`${formatHour(row.startHour)} - ${formatHour(row.endHour)}（拖动两端调整时长）`}
           >
             {/* Left edge drag handle */}
             <div
