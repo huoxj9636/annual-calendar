@@ -1674,7 +1674,7 @@ export default function YearCalendar() {
       {/* Right arrow for Knowledge Panel - floating, no layout impact */}
       <button
         onClick={() => setShowKnowledge(true)}
-        className="fixed right-0 top-[calc(50%+25px)] -translate-y-1/2 w-14 h-32 flex items-center justify-center transition-all group cursor-pointer z-20"
+        className="fixed right-0 top-[calc(50%+33px)] -translate-y-1/2 w-14 h-32 flex items-center justify-center transition-all group cursor-pointer z-20"
         style={{ background: `linear-gradient(to left, ${skin.swatch}18, transparent)` }}
         title="知识库"
       >
