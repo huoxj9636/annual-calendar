@@ -4,15 +4,18 @@ import { usePathname } from 'next/navigation';
 import { LogIn, CheckCircle2 } from 'lucide-react';
 import { useUser } from '@/components/auth/user-context';
 
+// 默认皮肤色 fallback(读不到 skin 时用)
+const DEFAULT_SWATCH = '#34d399';
+
 /**
- * 浮动登录按钮 - 主页右上角(始终可见)
+ * 顶部工具栏登录按钮 - 主页右上角(始终可见)
  *
  * 设计意图:
- * - 这是用户**主动**登录的入口
- * - 位置:右上角,和年历的"设置"按钮并列
+ * - 视觉上**融入年历顶图**(和"设置/更多/皮肤/视角"按钮同款)
+ * - 风格:圆形 36×36,背景 = 当前皮肤色 + 18% 透明度,前景 = 当前皮肤色
  * - 行为:
- *   - 未登录:显示「登录同步」按钮 → 点击唤起弹窗
- *   - 已登录:显示「已同步 ✓」标识(只读,不展开菜单)
+ *   - 未登录:显示「登录」图标 → 点击唤起弹窗
+ *   - 已登录:显示「已同步 ✓」徽章(只读,不展开菜单)
  * - 真正可操作的用户菜单在左下角的 <UserMenu /> 里
  *
  * 弹窗唤起方式:dispatch 'open-login-dialog' 自定义事件
@@ -33,7 +36,20 @@ export function LoginButton() {
     window.dispatchEvent(new CustomEvent('open-login-dialog', { detail: { reason: 'manual' } }));
   };
 
-  // ── 已登录:显示"已同步"只读标识 ──
+  // 读取当前皮肤色(从 localStorage['life-calendar-skin'] 拿)
+  // 与年历内部"设置"按钮的样式保持一致
+  const swatch = (() => {
+    try {
+      const raw = localStorage.getItem('life-calendar-skin');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.swatch) return parsed.swatch as string;
+      }
+    } catch {}
+    return DEFAULT_SWATCH;
+  })();
+
+  // ── 已登录:显示"已同步"只读徽章(同样的圆形主题色样式) ──
   if (user) {
     return (
       <div
@@ -41,31 +57,37 @@ export function LoginButton() {
         style={{ fontFamily: 'inherit' }}
       >
         <div
-          className="h-9 px-3.5 rounded-full bg-card border border-border shadow-md flex items-center gap-2 text-sm text-muted-foreground"
+          className="h-9 px-3.5 rounded-full flex items-center gap-1.5 text-sm font-medium shadow-sm"
+          style={{
+            backgroundColor: `${swatch}18`,
+            color: swatch,
+          }}
           title="数据已同步到云端"
         >
-          <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+          <CheckCircle2 className="h-3.5 w-3.5" />
           <span>已同步</span>
         </div>
       </div>
     );
   }
 
-  // ── 未登录:显示"登录"按钮 ──
+  // ── 未登录:显示"登录"按钮(和"设置"按钮同款圆形主题色) ──
   return (
     <div
       className="fixed top-4 right-4 z-40 select-none"
       style={{ fontFamily: 'inherit' }}
     >
       <button
-        type="button"
         onClick={handleLogin}
-        className="h-9 px-3.5 rounded-full bg-card border border-border shadow-md hover:bg-muted transition-colors flex items-center gap-2 text-sm text-foreground"
-        title="登录后可跨设备同步数据"
+        className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
+        style={{
+          backgroundColor: `${swatch}18`,
+          color: swatch,
+        }}
+        title="登录(可同步数据到云端,跨设备共享)"
         aria-label="登录"
       >
-        <LogIn className="h-3.5 w-3.5 text-muted-foreground" />
-        <span>登录</span>
+        <LogIn className="h-4 w-4" strokeWidth={2.2} />
       </button>
     </div>
   );
