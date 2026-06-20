@@ -16,6 +16,7 @@ import { SKINS, NO_SKIN, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
 import DrawingOverlay, { DrawingOverlayHandle } from '@/components/drawing-overlay';
 import TimelinePanel from '@/components/timeline-panel';
+import GanttPanel from '@/components/gantt-panel';
 import InsightPanel from '@/components/insight-panel';
 import { AnalogClock } from '@/components/analog-clock';
 import TrackPanel from '@/components/track-panel';
@@ -98,6 +99,7 @@ export default function YearCalendar() {
   const [, setDrawingHasStrokes] = useState(false);
   const [drawingVisible, setDrawingVisible] = useState(true);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  const [ganttOpen, setGanttOpen] = useState(false);
 
   const [drawingColor, setDrawingColor] = useState('#ef4444');
   const [drawingTool, setDrawingTool] = useState<'pen' | 'eraser'>('pen');
@@ -1364,7 +1366,7 @@ export default function YearCalendar() {
                       <div className="relative" style={{ height: '33%' }}>
 
                         <div className="flex h-full">
-                          {/* Left half: click for timeline */}
+                          {/* Left half: click for gantt */}
                           <div
                             className="flex-1 flex flex-col items-start pl-1.5 pt-1 cursor-pointer transition-colors rounded-tl-md"
                             onClick={() => {
@@ -1374,7 +1376,7 @@ export default function YearCalendar() {
                               setDailyReviewOpen(false);
                                             setTimelineMonth(cell.month);
                               setTimelineDay(cell.day);
-                              if (!timelineOpen) {
+                              if (!ganttOpen) {
                                 isSnapping.current = false;
                                 if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
                                 if (scrollContainerRef.current) {
@@ -1386,11 +1388,10 @@ export default function YearCalendar() {
                                   const targetPage = Math.round(currentScroll / pageH) * pageH;
                                   container.scrollTop = targetPage;
                                 }
-                                timelineOpenRef.current = true;
-                                setTimelineOpen(true);
+                                setGanttOpen(true);
                               }
                             }}
-                            title="日程"
+                            title="甘特图"
                           >
                             <span
                               className="text-[15px] font-bold leading-none"
@@ -1469,6 +1470,22 @@ export default function YearCalendar() {
               onClose={() => {
                 timelineOpenRef.current = false;
                 setTimelineOpen(false);
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.style.overflowY = 'scroll';
+                }
+              }}
+              skin={skin}
+            />
+          )}
+
+          {/* Gantt panel overlay */}
+          {ganttOpen && (
+            <GanttPanel
+              year={year}
+              month={timelineMonth}
+              day={timelineDay}
+              onClose={() => {
+                setGanttOpen(false);
                 if (scrollContainerRef.current) {
                   scrollContainerRef.current.style.overflowY = 'scroll';
                 }
