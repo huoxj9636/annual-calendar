@@ -521,7 +521,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
          onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-[1320px] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
+      <div className="w-[1320px] h-[820px] max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
           <div className="flex items-center gap-3">
