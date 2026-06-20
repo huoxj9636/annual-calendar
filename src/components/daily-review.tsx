@@ -640,7 +640,23 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     <div className="w-[140px] shrink-0" />
                     <div className="flex">
                       {Array.from({ length: 24 }, (_, i) => (
-                        <div key={i} className="text-center text-xs font-medium shrink-0 border-r" style={{ width: `${48 / ganttScale}px`, color: skin.textMuted, borderColor: skin.cellBorder, opacity: 0.6 }}>{i}</div>
+                        <div key={i} className="text-center text-xs font-medium shrink-0 border-r relative" style={{ width: `${48 / ganttScale}px`, color: skin.textMuted, borderColor: skin.cellBorder, opacity: 0.6 }}>
+                          <span className="relative">{i}</span>
+                          {/* 15-minute tick marks for detailed scales */}
+                          {(ganttScale === 0.25 || ganttScale === 0.5) && (
+                            <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.55 }}>
+                              {/* :15 */}
+                              <div className="absolute top-0 bottom-0 left-1/4 w-px bg-current" style={{ opacity: 0.15 }} />
+                              <span className="absolute bottom-px left-1/4 text-[8px] leading-none tracking-tight" style={{ transform: 'translateX(-50%)' }}>15</span>
+                              {/* :30 */}
+                              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-current" style={{ opacity: 0.22 }} />
+                              <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight" style={{ transform: 'translateX(-50%)', opacity: 0.65 }}>30</span>
+                              {/* :45 */}
+                              <div className="absolute top-0 bottom-0 left-3/4 w-px bg-current" style={{ opacity: 0.15 }} />
+                              <span className="absolute bottom-px left-3/4 text-[8px] leading-none tracking-tight" style={{ transform: 'translateX(-50%)' }}>45</span>
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                     <div className="w-[40px] shrink-0" />
