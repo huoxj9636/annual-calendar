@@ -57,7 +57,7 @@ export function UserMenu() {
   if (!user) {
     return (
       <div
-        className="fixed bottom-4 left-4 z-50 select-none"
+        className="fixed bottom-4 left-4 z-30 select-none"
         style={{ fontFamily: 'inherit' }}
       >
         <button
@@ -92,7 +92,7 @@ export function UserMenu() {
   return (
     <div
       ref={menuRef}
-      className="fixed bottom-4 left-4 z-50 select-none"
+      className="fixed bottom-4 left-4 z-30 select-none"
       style={{ fontFamily: 'inherit' }}
     >
       {open && (
