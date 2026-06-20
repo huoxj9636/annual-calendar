@@ -722,7 +722,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   }}
                   onMouseLeave={() => { setHoverHour(null); setHoverY(null); }}
                 >
-                <div style={{ minWidth: `calc(${taskColumnWidth}px + ${(48 / ganttScale) * 24}px + 24px)` }}>
+                <div style={{ minWidth: `calc(${taskColumnWidth}px + ${(48 / ganttScale) * 24}px + 8px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
                     {/* 事项名称列占位 - sticky left so it doesn't scroll horizontally, covers time bars */}
@@ -784,7 +784,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         </div>
                       ))}
                     </div>
-                    <div className="w-[24px] shrink-0" />
+                    <div className="w-[8px] shrink-0" />
                   </div>
                   {/* Rows */}
                   {ganttRows.map((row, idx) => (
