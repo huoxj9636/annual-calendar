@@ -749,7 +749,7 @@ export default function YearCalendar() {
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
         <ParticleEffect color={skin.swatch} count={50} />
 
-        <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2">
+        <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2 pr-[160px]">
           <div className="flex items-center gap-3 px-5 py-2.5">
             <button
               onClick={() => setYear((y) => y - 1)}
