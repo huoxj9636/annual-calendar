@@ -725,9 +725,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 <div style={{ minWidth: `calc(${taskColumnWidth}px + ${(48 / ganttScale) * 24}px + 24px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
-                    {/* 事项名称列占位 - sticky left so it doesn't scroll horizontally */}
+                    {/* 事项名称列占位 - sticky left so it doesn't scroll horizontally, covers time bars */}
                     <div 
-                      className="shrink-0 relative sticky left-0 z-20" 
+                      className="shrink-0 relative sticky left-0 z-50" 
                       style={{ width: `${taskColumnWidth}px`, backgroundColor: skin.panelBg }}
                     >
                       {/* 拖拽手柄 - 移到列右侧边缘，始终可见 */}
@@ -1458,9 +1458,9 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
 
   return (
     <div className="flex mb-1 items-center group">
-      {/* Task name input - sticky left so it doesn't scroll horizontally */}
+      {/* Task name input - sticky left so it doesn't scroll horizontally, covers time bars */}
       <div 
-        className="shrink-0 px-2 sticky left-0 z-20" 
+        className="shrink-0 px-2 sticky left-0 z-50" 
         style={{ width: `${taskColumnWidth}px`, backgroundColor: skin.panelBg }}
       >
         <input
