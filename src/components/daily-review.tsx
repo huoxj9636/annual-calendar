@@ -590,6 +590,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
                   style={{ backgroundColor: viewMode === 'gantt' ? '#22c55e' : '#22c55e15', color: viewMode === 'gantt' ? '#fff' : '#22c55e' }}
                 >📊 甘特图</button>
+              <div className="flex items-center gap-3" style={{ marginLeft: '10px' }}>
               <button onClick={startVoiceRecording}
                   className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
                   style={{ backgroundColor: '#ef444415', color: '#ef4444' }}
@@ -624,6 +625,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   className="text-sm px-3 py-1.5 rounded-full font-medium transition-all"
                   style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
                 >🗑️ 清空</button>
+              </div>
               </>
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
