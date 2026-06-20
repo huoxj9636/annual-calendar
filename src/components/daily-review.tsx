@@ -646,13 +646,15 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                           {/* 15 分钟刻度，仅 30min / 15min 刻度下显示 */}
                           {(ganttScale === 0.25 || ganttScale === 0.5) && (
                             <div className="absolute inset-0 pointer-events-none">
-                              {/* :15 — 刻度线 + 标签 */}
-                              <div className="absolute top-0 bottom-0 left-1/4 w-px bg-current opacity-35" />
+                              {/* 刻度线只在上半部分 */}
+                              {/* :15 */}
+                              <div className="absolute top-0 left-1/4 w-px h-3 bg-current opacity-35" />
                               <span className="absolute bottom-px left-1/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>
-                              {/* :30 — 仅刻度线（标签去掉，小时数字已在对应位置） */}
-                              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-current opacity-50" />
-                              {/* :45 — 刻度线 + 标签 */}
-                              <div className="absolute top-0 bottom-0 left-3/4 w-px bg-current opacity-35" />
+                              {/* :30 */}
+                              <div className="absolute top-0 left-1/2 w-px h-3 bg-current opacity-50" />
+                              <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>
+                              {/* :45 */}
+                              <div className="absolute top-0 left-3/4 w-px h-3 bg-current opacity-35" />
                               <span className="absolute bottom-px left-3/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>
                             </div>
                           )}
