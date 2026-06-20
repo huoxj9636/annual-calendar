@@ -145,6 +145,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
     }]);
   };
 
+  // Timeline indicator state
+  const [ganttTimeline, setGanttTimeline] = useState<{ left: number; time: string } | null>(null);
+
   // Update a gantt row
   const updateGanttRow = (id: number, field: 'task' | 'startHour' | 'endHour', value: string | number) => {
     setGanttRows(ganttRows.map(row => row.id === id ? { ...row, [field]: value } : row));
@@ -610,7 +613,24 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         <div className="px-6 py-3 flex-1 flex flex-col min-h-0">
           {viewMode === 'gantt' ? (
             /* Gantt View */
-            <div className="flex flex-col gap-2 flex-1 min-h-0">
+            <div className="flex flex-col gap-2 flex-1 min-h-0"
+              onMouseMove={useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const viewportX = e.clientX - rect.left;
+                const scrollLeft = ganttScrollRef.current?.scrollLeft ?? 0;
+                const cellW = 48 / ganttScale;
+                const contentX = viewportX + scrollLeft - 140;
+                if (contentX >= 0 && contentX <= 24 * cellW) {
+                  const totalH = contentX / cellW;
+                  const h = Math.floor(totalH);
+                  const m = Math.min(59, Math.floor((totalH - h) * 60));
+                  setGanttTimeline({ left: viewportX, time: `${h}:${m.toString().padStart(2, '0')}` });
+                } else {
+                  setGanttTimeline(null);
+                }
+              }, [ganttScale])}
+              onMouseLeave={() => setGanttTimeline(null)}
+            >
               {/* Top row: back button + scale control */}
               <div className="flex items-center mb-2 gap-3">
                 <button onClick={() => setViewMode('review')}
@@ -633,7 +653,17 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 </div>
               </div>
               {/* Scrollable rows area (horizontal + vertical) — includes hour header + rows together so they scroll in sync */}
-              <div ref={ganttScrollRef} className="flex-1 overflow-auto" style={{ scrollbarGutter: 'stable' }}>
+              <div ref={ganttScrollRef} className="flex-1 overflow-auto" style={{ scrollbarGutter: 'stable', position: 'relative' }}>
+                {/* Timeline indicator */}
+                {ganttTimeline && (
+                  <div className="absolute inset-y-0 pointer-events-none z-20" style={{ left: ganttTimeline.left }}>
+                    <div className="absolute top-0 bottom-0 w-px" style={{ backgroundColor: skin.swatch, opacity: 0.4 }} />
+                    <div className="absolute top-0 left-1/2 text-xs font-medium px-[5px] py-[2px] rounded-b-sm whitespace-nowrap"
+                      style={{ transform: 'translateX(-50%)', backgroundColor: skin.swatch, color: '#fff' }}>
+                      {ganttTimeline.time}
+                    </div>
+                  </div>
+                )}
                 <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 40px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
