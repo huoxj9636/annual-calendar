@@ -730,6 +730,11 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                       className="shrink-0 relative sticky left-0 z-50" 
                       style={{ width: `${taskColumnWidth}px`, backgroundColor: skin.panelBg }}
                     >
+                      {/* 遮挡条 - 在手柄左侧，遮挡往左滑动的时间刻度 */}
+                      <div 
+                        className="absolute right-0 top-0 bottom-0 w-4 z-40"
+                        style={{ backgroundColor: skin.panelBg }}
+                      />
                       {/* 拖拽手柄 - 移到列右侧边缘，始终可见 */}
                       <div 
                         className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-8 cursor-ew-resize z-30 flex items-center justify-center rounded-sm hover:bg-black/10 transition-colors"
