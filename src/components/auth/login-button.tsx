@@ -3,13 +3,14 @@
 import { usePathname } from 'next/navigation';
 import { LogIn, CheckCircle2 } from 'lucide-react';
 import { useUser } from '@/components/auth/user-context';
+import { useSkinSwatch } from '@/hooks/use-skin-swatch';
 
 /**
  * 顶部工具栏登录按钮 - 主页右上角(始终可见)
  *
  * 设计意图:
  * - 位置:右上角 fixed top-[34px] right-4(往下移 10pt + 6pt ≈ 20px,让开页面最顶端)
- * - **不**融入主题色——用主色(primary) + 文字标签 + 阴影,确保"一眼能看到"
+ * - 颜色:**跟随当前皮肤主题色**(skin.swatch) - 与左下角 UserMenu 协调一致
  * - 行为:
  *   - 未登录:显示「登录」文字+图标 → 点击唤起弹窗
  *   - 已登录:显示「已同步 ✓」只读徽章(同样的强调色样式)
@@ -18,6 +19,7 @@ import { useUser } from '@/components/auth/user-context';
 export function LoginButton() {
   const { user, authChecked } = useUser();
   const pathname = usePathname();
+  const swatch = useSkinSwatch();
 
   // 登录页不显示
   if (pathname === '/login') return null;
@@ -29,7 +31,7 @@ export function LoginButton() {
     window.dispatchEvent(new CustomEvent('open-login-dialog', { detail: { reason: 'manual' } }));
   };
 
-  // ── 已登录:显示"已同步"只读徽章(强调色 + 阴影) ──
+  // ── 已登录:显示"已同步"只读徽章(主题色实色 + 白字 + 阴影) ──
   if (user) {
     return (
       <div
@@ -37,7 +39,13 @@ export function LoginButton() {
         style={{ fontFamily: 'inherit' }}
       >
         <div
-          className="h-10 px-4 rounded-full flex items-center gap-1.5 text-sm font-semibold shadow-lg ring-1 ring-emerald-200 bg-emerald-500 text-white dark:ring-emerald-800"
+          className="h-10 px-4 rounded-full flex items-center gap-1.5 text-sm font-semibold shadow-lg ring-1"
+          style={{
+            backgroundColor: swatch,
+            color: '#ffffff',
+            // @ts-expect-error tailwind ring color via CSS var
+            '--tw-ring-color': swatch + '30',
+          }}
           title="数据已同步到云端"
         >
           <CheckCircle2 className="h-4 w-4" />
@@ -47,7 +55,7 @@ export function LoginButton() {
     );
   }
 
-  // ── 未登录:醒目的「登录」按钮(主色 + 阴影 + 文字) ──
+  // ── 未登录:醒目的「登录」按钮(主题色 + 阴影 + 文字) ──
   return (
     <div
       className="fixed top-[34px] right-4 z-40 select-none"
@@ -56,7 +64,13 @@ export function LoginButton() {
       <button
         type="button"
         onClick={handleLogin}
-        className="group h-10 px-4 rounded-full bg-primary text-primary-foreground shadow-lg ring-1 ring-primary/20 hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 text-sm font-semibold"
+        className="group h-10 px-4 rounded-full text-sm font-semibold shadow-lg ring-1 hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
+        style={{
+          backgroundColor: swatch,
+          color: '#ffffff',
+          // @ts-expect-error tailwind ring color via CSS var
+          '--tw-ring-color': swatch + '30',
+        }}
         title="登录账号,数据自动同步到云端"
         aria-label="登录账号"
       >

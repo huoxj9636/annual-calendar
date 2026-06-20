@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { User as UserIcon, LogOut, Cloud, CloudOff } from 'lucide-react';
 import { useUser } from '@/components/auth/user-context';
-import { SKINS, NO_SKIN, DEFAULT_SKIN } from '@/lib/skins';
+import { useSkinSwatch } from '@/hooks/use-skin-swatch';
 
 /**
  * 浮动数据同步入口 - 左下角
@@ -24,28 +24,7 @@ export function UserMenu() {
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   // 读取当前皮肤主题色(skin.swatch) - 跟随设置面板切换皮肤时实时更新
-  const [swatch, setSwatch] = useState<string>(NO_SKIN.swatch);
-  useEffect(() => {
-    const apply = () => {
-      try {
-        const stored = localStorage.getItem('life-calendar-skin');
-        const key = stored ?? DEFAULT_SKIN;
-        const found = key ? SKINS.find((s) => s.key === key) : NO_SKIN;
-        setSwatch(found?.swatch || NO_SKIN.swatch);
-      } catch {
-        setSwatch(NO_SKIN.swatch);
-      }
-    };
-    apply();
-    // 跨标签页同步
-    window.addEventListener('storage', apply);
-    // 同标签页切换皮肤时实时同步(由设置面板 dispatch)
-    window.addEventListener('life-calendar-skin-changed', apply);
-    return () => {
-      window.removeEventListener('storage', apply);
-      window.removeEventListener('life-calendar-skin-changed', apply);
-    };
-  }, []);
+  const swatch = useSkinSwatch();
 
   // 点外部关闭(所有 hooks 必须在 early return 之前)
   useEffect(() => {
