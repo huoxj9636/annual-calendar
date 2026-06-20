@@ -107,6 +107,48 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const [importProgress, setImportProgress] = useState(0);
   const importTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Gantt chart state
+  const [showGantt, setShowGantt] = useState(false);
+  const [ganttRows, setGanttRows] = useState<Array<{ id: number; task: string; startHour: number; endHour: number; color: string }>>([]);
+  const ganttColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899'];
+
+  // Initialize 15 default gantt rows
+  const initGanttRows = () => {
+    const rows = [];
+    for (let i = 0; i < 15; i++) {
+      rows.push({
+        id: i + 1,
+        task: '',
+        startHour: 0,
+        endHour: 24,
+        color: ganttColors[i % ganttColors.length]
+      });
+    }
+    setGanttRows(rows);
+  };
+
+  // Add a new gantt row
+  const addGanttRow = () => {
+    const newId = ganttRows.length > 0 ? Math.max(...ganttRows.map(r => r.id)) + 1 : 1;
+    setGanttRows([...ganttRows, {
+      id: newId,
+      task: '',
+      startHour: 0,
+      endHour: 24,
+      color: ganttColors[newId % ganttColors.length]
+    }]);
+  };
+
+  // Update a gantt row
+  const updateGanttRow = (id: number, field: 'task' | 'startHour' | 'endHour', value: string | number) => {
+    setGanttRows(ganttRows.map(row => row.id === id ? { ...row, [field]: value } : row));
+  };
+
+  // Delete a gantt row
+  const deleteGanttRow = (id: number) => {
+    setGanttRows(ganttRows.filter(row => row.id !== id));
+  };
+
   // Voice recording state — MediaRecorder based
   const [voicePhase, setVoicePhase] = useState<VoicePhase>('idle');
   const [recSeconds, setRecSeconds] = useState(0);
@@ -477,6 +519,10 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
                     style={{ backgroundColor: '#3b82f615', color: '#3b82f6' }}
                   >📥 导入笔记</button>
+                <button onClick={() => {setShowGantt(true); if (ganttRows.length === 0) initGanttRows(); }}
+                    className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
+                    style={{ backgroundColor: '#22c55e15', color: '#22c55e' }}
+                  >📊 甘特图</button>
                 <button onClick={() => {
                   const fields = [
                     { label: '一、今天完成了什么？', key: 'completed' as const },
@@ -648,6 +694,121 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                       >⏹ 结束</button>
                     </>
                   )}
+
+      {/* Gantt Chart Modal */}
+      {showGantt && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
+          onClick={e => { if (e.target === e.currentTarget) { setShowGantt(false); } }}>
+          <div className="w-[1200px] max-h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
+            <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
+              <div className="font-bold" style={{ color: skin.textPrimary }}>📊 当日时间规划 - 24小时甘特图</div>
+              <div className="flex items-center gap-2">
+                <button onClick={addGanttRow}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1"
+                  style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
+                >➕ 添加行</button>
+                <button onClick={() => { setShowGantt(false); }} className="w-7 h-7 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}>✕</button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              {/* Header row with 24 hours */}
+              <div className="flex mb-2 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
+                <div className="w-[140px] shrink-0 text-center font-bold text-sm py-2 rounded-l-lg" style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}>
+                  事项
+                </div>
+                <div className="flex-1 gap-0.5" style={{ display: 'grid', gridTemplateColumns: 'repeat(24, 1fr)' }}>
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <div key={i} className="text-center text-xs py-2" style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}>
+                      {i}
+                    </div>
+                  ))}
+                </div>
+                <div className="w-[40px] shrink-0 text-center py-2 rounded-r-lg" style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}>
+                  操作
+                </div>
+              </div>
+              {/* Data rows */}
+              {ganttRows.map((row, rowIndex) => (
+                <div key={row.id} className="flex mb-1 items-center group">
+                  <div className="w-[140px] shrink-0 px-2">
+                    <input
+                      type="text"
+                      value={row.task}
+                      onChange={e => updateGanttRow(row.id, 'task', e.target.value)}
+                      placeholder={`事项 ${rowIndex + 1}`}
+                      className="w-full px-2 py-1.5 rounded-lg text-sm outline-none border"
+                      style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, borderColor: skin.cellBorder }}
+                      onFocus={e => e.currentTarget.style.borderColor = skin.swatch}
+                      onBlur={e => e.currentTarget.style.borderColor = skin.cellBorder}
+                    />
+                  </div>
+                  <div className="flex-1 relative h-8 rounded-lg mx-0.5" style={{ backgroundColor: skin.cardHover }}>
+                    {/* Time bar */}
+                    <div
+                      className="absolute h-full rounded-lg cursor-pointer transition-all hover:opacity-80"
+                      style={{
+                        left: `${(row.startHour / 24) * 100}%`,
+                        width: `${((row.endHour - row.startHour) / 24) * 100}%`,
+                        backgroundColor: row.color,
+                        minWidth: '4px'
+                      }}
+                      title={`${row.startHour}:00 - ${row.endHour}:00`}
+                    />
+                    {/* Hour grid lines */}
+                    <div className="absolute inset-0 pointer-events-none" style={{ display: 'grid', gridTemplateColumns: 'repeat(24, 1fr)' }}>
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <div key={i} className="border-r opacity-20" style={{ borderColor: skin.cellBorder }} />
+                      ))}
+                    </div>
+                    {/* Click handlers for adjusting time */}
+                    <div className="absolute inset-0" style={{ display: 'grid', gridTemplateColumns: 'repeat(24, 1fr)' }}>
+                      {Array.from({ length: 24 }, (_, hour) => (
+                        <div
+                          key={hour}
+                          className="cursor-pointer hover:bg-black/5"
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const parentRect = e.currentTarget.parentElement!.getBoundingClientRect();
+                            const clickX = e.clientX - parentRect.left;
+                            const totalWidth = parentRect.width;
+                            const clickedHour = Math.floor((clickX / totalWidth) * 24);
+                            
+                            // If clicking near start, adjust start; else adjust end
+                            const startDist = Math.abs(clickX - (row.startHour / 24) * totalWidth);
+                            const endDist = Math.abs(clickX - (row.endHour / 24) * totalWidth);
+                            
+                            if (startDist < endDist && clickedHour < row.endHour) {
+                              updateGanttRow(row.id, 'startHour', clickedHour);
+                            } else if (clickedHour > row.startHour) {
+                              updateGanttRow(row.id, 'endHour', clickedHour + 1 > 24 ? 24 : clickedHour + 1);
+                            }
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="w-[40px] shrink-0 text-center">
+                    <button
+                      onClick={() => deleteGanttRow(row.id)}
+                      className="w-6 h-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      style={{ backgroundColor: '#ef444420', color: '#ef4444' }}
+                    >×</button>
+                  </div>
+                </div>
+              ))}
+              {/* Add row button at bottom */}
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={addGanttRow}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+                  style={{ backgroundColor: skin.swatch + '15', color: skin.swatch, border: '1px solid ' + skin.swatch + '30' }}
+                >➕ 添加新行</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
                 </div>
               </>
             )}
