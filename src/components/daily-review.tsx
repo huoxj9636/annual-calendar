@@ -1481,7 +1481,7 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
           style={{ 
             backgroundColor: skin.cardBg, 
             color: skin.textPrimary, 
-            borderColor: skin.swatch, // Theme color border
+            borderColor: `${skin.swatch}30`, // Subtle border with 30% opacity, not too prominent
           }}
         />
       </div>
