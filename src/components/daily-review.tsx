@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { MapPin } from 'lucide-react';
+import { Crosshair } from 'lucide-react';
 
 interface DailyReviewProps {
   year: number;
@@ -658,7 +658,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     style={{ backgroundColor: '#ef444420', color: '#ef4444' }}
                     title="定位到当前时间"
                   >
-                    <MapPin className="w-4 h-4" />
+                    <Crosshair className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -1372,14 +1372,13 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
             return (
               <div
                 key={slot}
-                className={`h-full ${isEmpty ? 'cursor-pointer hover:bg-black/5' : 'cursor-default'}`}
+                className={`h-full ${isEmpty ? 'cursor-pointer' : 'cursor-default'}`}
                 onClick={() => {
                   if (isEmpty) {
                     // 使用悬浮时间作为起点（如果有的话），否则用格子时间
                     const startHour = hoverHour ?? slotHour;
-                    // 将起点四舍五入到最近的 snap 精度
-                    const roundedStart = Math.round(startHour / snap) * snap;
-                    onUpdateRow({ ...row, startHour: roundedStart, endHour: Math.min(24, roundedStart + 0.5) });
+                    // 直接使用悬浮时间创建 30 分钟条，不四舍五入
+                    onUpdateRow({ ...row, startHour: startHour, endHour: Math.min(24, startHour + 0.5) });
                   }
                 }}
               />
