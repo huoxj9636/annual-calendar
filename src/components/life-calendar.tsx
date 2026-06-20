@@ -72,7 +72,7 @@ function updateKRInGoals(goals: OKRObjective[], oid: string, krid: string, fn: (
 }
 
 // ── Migration from old GoalNode format ──
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 function migrateGoals(raw: any[]): OKRObjective[] {
   return raw.map((o: any) => ({
     id: o.id || genId(),
@@ -93,6 +93,7 @@ function migrateGoals(raw: any[]): OKRObjective[] {
     })),
   }));
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // ── Voice Recognition Hook ──
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -494,7 +495,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
 
   // Global stats
   const globalStats = useMemo(() => {
-    let totalO = filteredGoals.length;
+    const totalO = filteredGoals.length;
     let totalKR = 0, totalTask = 0, doneTask = 0;
     for (const o of filteredGoals) {
       totalKR += o.children.length;
@@ -1333,7 +1334,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       <p className="text-sm" style={{ color: s.textMuted }}>暂无带计划日期的任务</p>
-                      <p className="text-xs mt-1" style={{ color: s.textMuted }}>通过"发现目标"生成的OKR会自动安排任务日期</p>
+                      <p className="text-xs mt-1" style={{ color: s.textMuted }}>通过&ldquo;发现目标&rdquo;生成的OKR会自动安排任务日期</p>
                     </div>
                   );
                 }
@@ -1595,8 +1596,8 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
           <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>6大数据源</div>
           <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
             <li>日历勾叉模式 — 连续✗、工作日周末落差</li>
-            <li>"应该"句式 — 你自己说了想做但没做</li>
-            <li>"又"字句式 — 承认反复失败（最强信号）</li>
+            <li>&ldquo;应该&rdquo;句式 — 你自己说了想做但没做</li>
+            <li>&ldquo;又&rdquo;字句式 — 承认反复失败（最强信号）</li>
             <li>导入的笔记内容 — 你关心的事</li>
             <li>未完成待办 — 有意愿但执行困难</li>
             <li>AI深度分析 — 发现深层反复模式</li>

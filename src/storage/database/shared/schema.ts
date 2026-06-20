@@ -7,7 +7,7 @@ export const calendarNotes = pgTable("calendar_notes", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
 	year: integer().notNull(),
 	dateKey: varchar("date_key", { length: 20 }).notNull(),
-	content: text().default('),
+	content: text(),
 });
 
 export const healthCheck = pgTable("health_check", {
@@ -27,12 +27,12 @@ export const dailyReviews = pgTable("daily_reviews", {
 	year: integer().notNull(),
 	month: integer().notNull(),
 	day: integer().notNull(),
-	completed: text().default('),
-	goodThings: text("good_things").default('),
-	problems: text().default('),
-	mood: text().default('),
-	reflections: text().default('),
-	tomorrowTodo: text("tomorrow_todo").default('),
+	completed: text(),
+	goodThings: text("").notNull(),
+	problems: text(),
+	mood: text(),
+	reflections: text(),
+	tomorrowTodo: text("").notNull(),
 	moodScore: integer("mood_score").default(3),
 	energy: integer().default(3),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
@@ -112,7 +112,7 @@ export const monthReviews = pgTable("month_reviews", {
 	year: integer().notNull(),
 	month: integer().notNull(),
 	sectionKey: varchar("section_key", { length: 20 }).notNull(),
-	content: text().default('),
+	content: text(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
 	index("month_reviews_date_idx").using("btree", table.year.asc().nullsLast().op("int4_ops"), table.month.asc().nullsLast().op("int4_ops")),

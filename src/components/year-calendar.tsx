@@ -395,6 +395,7 @@ export default function YearCalendar() {
           const overridesData = overridesRes;
           if (Object.keys(overridesData).length > 0) {
             setOverrides(overridesData);
+            // eslint-disable-next-line react-hooks/immutability
             overridesLoadedRef.current = true;
           } else {
             // Migrate from localStorage if DB is empty
@@ -404,6 +405,7 @@ export default function YearCalendar() {
                 const lsOverrides = JSON.parse(lsData);
                 if (typeof lsOverrides === 'object' && Object.keys(lsOverrides).length > 0) {
                   setOverrides(lsOverrides);
+                  // eslint-disable-next-line react-hooks/immutability
                   overridesLoadedRef.current = true;
                   await apiFetch('/api/calendar-data', {
                     method: 'POST',
@@ -423,6 +425,7 @@ export default function YearCalendar() {
           const notesData = notesRes;
           if (Object.keys(notesData).length > 0) {
             setNotes(notesData);
+            // eslint-disable-next-line react-hooks/immutability
             notesLoadedRef.current = true;
           } else {
             // Migrate from localStorage if DB is empty
@@ -432,6 +435,7 @@ export default function YearCalendar() {
                 const lsNotes = JSON.parse(lsData);
                 if (typeof lsNotes === 'object' && Object.keys(lsNotes).length > 0) {
                   setNotes(lsNotes);
+                  // eslint-disable-next-line react-hooks/immutability
                   notesLoadedRef.current = true;
                   await apiFetch('/api/calendar-data', {
                     method: 'POST',
@@ -454,6 +458,7 @@ export default function YearCalendar() {
     if (!mounted) return;
     if (!overridesLoadedRef.current) {
       if (Object.keys(overrides).length > 0) {
+        // eslint-disable-next-line react-hooks/immutability
         overridesLoadedRef.current = true;
       } else {
         return;
@@ -472,6 +477,7 @@ export default function YearCalendar() {
     if (!mounted) return;
     if (!notesLoadedRef.current) {
       if (Object.keys(notes).length > 0) {
+        // eslint-disable-next-line react-hooks/immutability
         notesLoadedRef.current = true;
       } else {
         return;

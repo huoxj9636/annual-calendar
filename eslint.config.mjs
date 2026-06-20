@@ -46,6 +46,8 @@ const eslintConfig = defineConfig([
     'dist/**',
     // Script files (CommonJS):
     'scripts/**/*.js',
+    // 未使用的 drizzle schema 自动生成文件
+    'src/storage/**',
   ]),
 ]);
 

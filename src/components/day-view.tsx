@@ -197,16 +197,16 @@ export default function DayView({ year, month, day, onClose, embedded, skin: ski
   const saveEvents = useCallback((evts: TimeEvent[]) => {
     setEvents(evts);
     apiFire('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'events', year, month, day, data: evts }) });
-  }, [storageKey]);
+  }, [year, month, day]);
 
   const saveTodos = useCallback((items: TodoItem[]) => {
     setTodos(items);
     apiFire('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'todos', year, month, day, data: items }) });
-  }, [storageKey]);
+  }, [year, month, day]);
 
   const saveNote = useCallback(() => {
     apiFire('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'note', year, month, day, data: noteText }) });
-  }, [noteText, noteKey, year]);
+  }, [noteText, year, month, day]);
 
   const addEvent = () => {
     if (!newEvent.title.trim()) return;
