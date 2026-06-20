@@ -348,62 +348,65 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
     >
       {/* 主容器 */}
       <div className="w-full h-full flex flex-col overflow-hidden">
-        {/* 顶部标题栏 */}
-        <div
-          className="flex items-center justify-between px-6 py-4 border-b"
-          style={{
-            borderColor: skin.divider,
-            background: `linear-gradient(90deg, ${skin.swatch}08 0%, transparent 60%)`,
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center"
-              style={{
-                background: `radial-gradient(circle at 30% 30%, ${skin.swatch}55, ${skin.swatch} 100%)`,
-                boxShadow: `0 4px 12px ${skin.swatch}44`,
-              }}
-            >
-              <Trees size={20} color="#fff" strokeWidth={2} />
-            </div>
-            <div>
-              <h1
-                className="text-xl font-semibold leading-tight"
+        {/* 顶部标题栏 - 进入详情页时隐藏 */}
+        {!selectedTree && (
+          <div
+            className="flex items-center justify-between px-6 py-4 border-b"
+            style={{
+              borderColor: skin.divider,
+              background: `linear-gradient(90deg, ${skin.swatch}08 0%, transparent 60%)`,
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
                 style={{
-                  color: skin.textPrimary,
-                  fontFamily: "var(--font-serif)",
-                  letterSpacing: "0.02em",
+                  background: `radial-gradient(circle at 30% 30%, ${skin.swatch}55, ${skin.swatch} 100%)`,
+                  boxShadow: `0 4px 12px ${skin.swatch}44`,
                 }}
               >
-                知识森林
-              </h1>
-              <div
-                className="text-[11px] tracking-widest uppercase"
-                style={{ color: skin.textMuted }}
-              >
-                Knowledge Forest
+                <Trees size={20} color="#fff" strokeWidth={2} />
+              </div>
+              <div>
+                <h1
+                  className="text-xl font-semibold leading-tight"
+                  style={{
+                    color: skin.textPrimary,
+                    fontFamily: "var(--font-serif)",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  知识森林
+                </h1>
+                <div
+                  className="text-[11px] tracking-widest uppercase"
+                  style={{ color: skin.textMuted }}
+                >
+                  Knowledge Forest
+                </div>
               </div>
             </div>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:rotate-90"
+              style={{
+                background: skin.cardBg,
+                color: skin.textPrimary,
+                border: `1px solid ${skin.divider}`,
+              }}
+              aria-label="关闭"
+            >
+              <X size={18} />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:rotate-90"
-            style={{
-              background: skin.cardBg,
-              color: skin.textPrimary,
-              border: `1px solid ${skin.divider}`,
-            }}
-            aria-label="关闭"
-          >
-            <X size={18} />
-          </button>
-        </div>
+        )}
 
-        {/* Tab 切换 */}
-        <div
-          className="flex border-b pr-4"
-          style={{ borderColor: skin.divider }}
-        >
+        {/* Tab 切换 - 进入详情页时隐藏 */}
+        {!selectedTree && (
+          <div
+            className="flex border-b pr-4"
+            style={{ borderColor: skin.divider }}
+          >
           <TabButton
             active={activeTab === "my"}
             onClick={() => {
@@ -427,6 +430,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
             subLabel={`${bookmarks.length} 位`}
           />
         </div>
+        )}
 
         {/* 内容区 */}
         <div className="flex-1" style={{ overflow: "visible" }}>
