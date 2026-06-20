@@ -852,11 +852,12 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                       opacity: 0.5,
                     }}
                   >
-                  {/* Time label fixed at top of the line */}
-                  <div 
-                    className="absolute top-0 left-0 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
-                    style={{ 
-                      transform: 'translateX(8px)',
+                  {/* Time label next to mouse cursor */}
+                  <div
+                    className="absolute left-0 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap pointer-events-none"
+                    style={{
+                      top: `${hoverY}px`,
+                      transform: 'translate(8px, -50%)',
                       backgroundColor: skin.cardBg,
                       color: skin.textPrimary,
                       boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
