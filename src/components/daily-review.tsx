@@ -173,7 +173,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
 
-  // Map vertical mouse wheel to horizontal scroll inside the gantt area.
+  // Map vertical mouse wheel to horizontal/vertical scroll inside the gantt area based on mouse X position.
+  // Left half of the container  → wheel = horizontal scroll (slide the time axis left/right)
+  // Right half of the container → wheel = vertical scroll (scroll through rows / page)
   // React's onWheel is passive (can't preventDefault), so we use a native listener with { passive: false }.
   useEffect(() => {
     const el = ganttScrollRef.current;
@@ -182,8 +184,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       // Only intercept pure vertical wheel (mouse wheel without Shift).
       // Trackpad horizontal swipe (deltaX) and Shift+wheel fall through to native horizontal scroll.
       if (e.deltaX === 0 && e.deltaY !== 0) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
+        const rect = el.getBoundingClientRect();
+        const mouseXInContainer = e.clientX - rect.left;
+        const isLeftHalf = mouseXInContainer < rect.width / 2;
+        if (isLeftHalf) {
+          e.preventDefault();
+          el.scrollLeft += e.deltaY;
+        }
+        // Right half: let default vertical scroll happen (rows or page)
       }
     };
     el.addEventListener('wheel', onWheel, { passive: false });
