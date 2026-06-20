@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { SupabaseConfigProvider } from '@/lib/supabase-config-inject';
+import { UserProvider } from '@/components/auth/user-context';
+import { AuthGuard } from '@/components/auth/auth-guard';
 
 export const metadata: Metadata = {
   title: {
@@ -24,7 +27,11 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body className={`antialiased`}>
-        {children}
+        <SupabaseConfigProvider>
+          <UserProvider>
+            <AuthGuard>{children}</AuthGuard>
+          </UserProvider>
+        </SupabaseConfigProvider>
       </body>
     </html>
   );

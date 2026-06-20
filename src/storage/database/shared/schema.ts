@@ -1,169 +1,150 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb, index, serial } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, integer, text, serial, timestamp, uniqueIndex, index, foreignKey, boolean, jsonb, primaryKey } from "drizzle-orm/pg-core"
+import { sql } from "drizzle-orm"
 
-// ─── System table (DO NOT DELETE) ───
-export const healthCheck = pgTable("health_check", {
-  id: serial().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+
+
+export const calendarNotes = pgTable("calendar_notes", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	year: integer().notNull(),
+	dateKey: varchar("date_key", { length: 20 }).notNull(),
+	content: text().default('),
 });
 
-// ─── Daily Reviews ───
-export const dailyReviews = pgTable(
-  "daily_reviews",
-  {
-    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-    year: integer("year").notNull(),
-    month: integer("month").notNull(),
-    day: integer("day").notNull(),
-    completed: text("completed").default(''),
-    good_things: text("good_things").default(''),
-    problems: text("problems").default(''),
-    mood: text("mood").default(''),
-    reflections: text("reflections").default(''),
-    tomorrow_todo: text("tomorrow_todo").default(''),
-    mood_score: integer("mood_score").default(3),
-    energy: integer("energy").default(3),
-    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  },
-  (table) => [
-    index("daily_reviews_date_idx").on(table.year, table.month, table.day),
-  ]
-);
+export const healthCheck = pgTable("health_check", {
+	id: serial().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+});
 
-// ─── OKR Objectives ───
-export const okrObjectives = pgTable(
-  "okr_objectives",
-  {
-    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-    title: text("title").notNull(),
-    period: varchar("period", { length: 50 }).notNull(),
-    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index("okr_objectives_period_idx").on(table.period),
-  ]
-);
+export const calendarOverrides = pgTable("calendar_overrides", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	year: integer().notNull(),
+	dateKey: varchar("date_key", { length: 20 }).notNull(),
+	value: varchar({ length: 20 }).notNull(),
+});
 
-// ─── OKR Key Results ───
-export const okrKeyResults = pgTable(
-  "okr_key_results",
-  {
-    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-    objective_id: varchar("objective_id", { length: 36 }).notNull().references(() => okrObjectives.id, { onDelete: "cascade" }),
-    title: text("title").notNull(),
-    target_value: integer("target_value").default(1),
-    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index("okr_key_results_objective_id_idx").on(table.objective_id),
-  ]
-);
+export const dailyReviews = pgTable("daily_reviews", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	year: integer().notNull(),
+	month: integer().notNull(),
+	day: integer().notNull(),
+	completed: text().default('),
+	goodThings: text("good_things").default('),
+	problems: text().default('),
+	mood: text().default('),
+	reflections: text().default('),
+	tomorrowTodo: text("tomorrow_todo").default('),
+	moodScore: integer("mood_score").default(3),
+	energy: integer().default(3),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	uniqueIndex("daily_reviews_date_unique").using("btree", table.year.asc().nullsLast().op("int4_ops"), table.month.asc().nullsLast().op("int4_ops"), table.day.asc().nullsLast().op("int4_ops")),
+]);
 
-// ─── OKR Tasks ───
-export const okrTasks = pgTable(
-  "okr_tasks",
-  {
-    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-    key_result_id: varchar("key_result_id", { length: 36 }).notNull().references(() => okrKeyResults.id, { onDelete: "cascade" }),
-    title: text("title").notNull(),
-    done: integer("done", { mode: 'boolean' }).default(false).notNull(),
-    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index("okr_tasks_key_result_id_idx").on(table.key_result_id),
-  ]
-);
+export const dayEvents = pgTable("day_events", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	year: integer().notNull(),
+	month: integer().notNull(),
+	day: integer().notNull(),
+	title: text().notNull(),
+	startHour: integer("start_hour").default(0),
+	startMin: integer("start_min").default(0),
+	endHour: integer("end_hour").default(0),
+	endMin: integer("end_min").default(0),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+});
 
-// ─── Day View Events ───
-export const dayEvents = pgTable(
-  "day_events",
-  {
-    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-    year: integer("year").notNull(),
-    month: integer("month").notNull(),
-    day: integer("day").notNull(),
-    title: text("title").notNull(),
-    start_hour: integer("start_hour").default(0),
-    start_min: integer("start_min").default(0),
-    end_hour: integer("end_hour").default(0),
-    end_min: integer("end_min").default(0),
-    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index("day_events_date_idx").on(table.year, table.month, table.day),
-  ]
-);
+export const okrObjectives = pgTable("okr_objectives", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	title: text().notNull(),
+	period: varchar({ length: 50 }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("okr_objectives_period_idx").using("btree", table.period.asc().nullsLast().op("text_ops")),
+]);
 
-// ─── Day View Todos ───
-export const dayTodos = pgTable(
-  "day_todos",
-  {
-    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-    year: integer("year").notNull(),
-    month: integer("month").notNull(),
-    day: integer("day").notNull(),
-    text: text("text").notNull(),
-    done: integer("done", { mode: 'boolean' }).default(false).notNull(),
-    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index("day_todos_date_idx").on(table.year, table.month, table.day),
-  ]
-);
+export const okrKeyResults = pgTable("okr_key_results", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	objectiveId: varchar("objective_id", { length: 36 }).notNull(),
+	title: text().notNull(),
+	targetValue: integer("target_value").default(1),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("okr_key_results_objective_id_idx").using("btree", table.objectiveId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.objectiveId],
+			foreignColumns: [okrObjectives.id],
+			name: "okr_key_results_objective_id_fkey"
+		}).onDelete("cascade"),
+]);
 
-// ─── Calendar Overrides (satisfaction check/cross) ───
-export const calendarOverrides = pgTable(
-  "calendar_overrides",
-  {
-    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-    year: integer("year").notNull(),
-    date_key: varchar("date_key", { length: 20 }).notNull(),
-    value: varchar("value", { length: 20 }).notNull(),
-  },
-  (table) => [
-    index("calendar_overrides_year_idx").on(table.year),
-    index("calendar_overrides_date_key_idx").on(table.date_key),
-  ]
-);
+export const okrTasks = pgTable("okr_tasks", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	keyResultId: varchar("key_result_id", { length: 36 }).notNull(),
+	title: text().notNull(),
+	done: boolean().default(false).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	plannedYear: integer("planned_year"),
+	plannedMonth: integer("planned_month"),
+	plannedDay: integer("planned_day"),
+}, (table) => [
+	index("okr_tasks_key_result_id_idx").using("btree", table.keyResultId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.keyResultId],
+			foreignColumns: [okrKeyResults.id],
+			name: "okr_tasks_key_result_id_fkey"
+		}).onDelete("cascade"),
+]);
 
-// ─── Calendar Notes ───
-export const calendarNotes = pgTable(
-  "calendar_notes",
-  {
-    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-    year: integer("year").notNull(),
-    date_key: varchar("date_key", { length: 20 }).notNull(),
-    content: text("content").default(''),
-  },
-  (table) => [
-    index("calendar_notes_year_idx").on(table.year),
-    index("calendar_notes_date_key_idx").on(table.date_key),
-  ]
-);
+export const dayTodos = pgTable("day_todos", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	year: integer().notNull(),
+	month: integer().notNull(),
+	day: integer().notNull(),
+	text: text().notNull(),
+	done: boolean().default(false).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("day_todos_date_idx").using("btree", table.year.asc().nullsLast().op("int4_ops"), table.month.asc().nullsLast().op("int4_ops"), table.day.asc().nullsLast().op("int4_ops")),
+]);
 
-// ─── Month Reviews ───
-export const monthReviews = pgTable(
-  "month_reviews",
-  {
-    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-    year: integer("year").notNull(),
-    month: integer("month").notNull(),
-    section_key: varchar("section_key", { length: 20 }).notNull(),
-    content: text("content").default(''),
-    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  },
-  (table) => [
-    index("month_reviews_date_idx").on(table.year, table.month),
-  ]
-);
+export const monthReviews = pgTable("month_reviews", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	year: integer().notNull(),
+	month: integer().notNull(),
+	sectionKey: varchar("section_key", { length: 20 }).notNull(),
+	content: text().default('),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("month_reviews_date_idx").using("btree", table.year.asc().nullsLast().op("int4_ops"), table.month.asc().nullsLast().op("int4_ops")),
+]);
 
-// ─── Calendar Drawings ───
-export const calendarDrawings = pgTable(
-  "calendar_drawings",
-  {
-    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-    year: integer("year").notNull(),
-    strokes: jsonb("strokes").default([]),
-    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  }
-);
+export const calendarDrawings = pgTable("calendar_drawings", {
+	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
+	year: integer().notNull(),
+	strokes: jsonb().default([]),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	uniqueIndex("calendar_drawings_year_idx").using("btree", table.year.asc().nullsLast().op("int4_ops")),
+]);
+
+export const customLinks = pgTable("custom_links", {
+	id: text().primaryKey().notNull(),
+	userId: text("user_id").default('default'),
+	title: text().notNull(),
+	url: text().notNull(),
+	sortOrder: integer("sort_order").default(0),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+});
+
+// ─── User Key-Value Store (login user's localStorage data synced to DB) ───
+// 通用键值存储：登录用户的所有 localStorage 数据通过 key-value 形式持久化到数据库
+// user_id 直接关联 supabase auth.users，登录后通过 RLS 自动隔离
+export const userKvStore = pgTable("user_kv_store", {
+	userId: uuid("user_id").notNull(),
+	key: text().notNull(),
+	value: jsonb().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	primaryKey({ columns: [table.userId, table.key] }),
+	index("user_kv_store_user_id_idx").using("btree", table.userId.asc().nullsLast()),
+]);
