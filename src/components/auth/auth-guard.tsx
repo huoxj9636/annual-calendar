@@ -4,6 +4,7 @@ import { useEffect, useState, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { isConfigReady, SUPABASE_CONFIG_READY_EVENT } from '@/lib/supabase-config-inject';
 import { SyncProvider } from '@/components/auth/sync-provider';
+import { MigrationToast } from '@/components/auth/migration-toast';
 import { UserMenu } from '@/components/auth/user-menu';
 import { LoginPromptDialog } from '@/components/auth/login-prompt-dialog';
 
@@ -58,6 +59,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       {children}
       <UserMenu />
       <LoginPromptDialog />
+      <MigrationToast />
     </SyncProvider>
   );
 }

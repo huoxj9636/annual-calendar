@@ -118,3 +118,18 @@ export {
   waitForConfig,
   isConfigReady,
 };
+
+/**
+ * 同步获取当前 supabase session 的 access_token
+ * 用于在客户端 fetch API 时携带 x-session header
+ * 返回 null 表示未登录或 session 不可用
+ */
+export async function getSessionToken(): Promise<string | null> {
+  try {
+    const client = await getSupabaseBrowserClientAsync();
+    const { data } = await client.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
