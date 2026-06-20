@@ -754,11 +754,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                       >
                         <div className="w-1 h-5 rounded-full" style={{ backgroundColor: skin.swatch, opacity: 0.6 }} />
                       </div>
-                      {/* 右侧遮挡层 - 盖住往左滑动的时间刻度 */}
-                      <div 
-                        className="absolute -right-4 top-0 bottom-0 w-8 z-40 pointer-events-none" 
-                        style={{ backgroundColor: skin.panelBg }}
-                      />
                     </div>
                     {/* Time scale container - z-index lower than task column so it gets covered when scrolling left */}
                     <div className="flex relative z-0">
