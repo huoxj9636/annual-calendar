@@ -3,40 +3,86 @@
  *
  * 工作机制:
  * 1. 重写 Storage.prototype.setItem
- * 2. 维护"需要同步"的 localStorage key 前缀白名单
+ * 2. 维护"需要登录才能写"的 localStorage key 白名单
  * 3. 未登录时写入这些 key → 拦截 + 入队 pendingWrites + 触发登录弹窗
  * 4. 用户在弹窗内登录成功 → flushPendingWrites() 补写所有被拦截的操作
  * 5. 已登录时正常透传
  *
- * UI 偏好类 key(皮肤/面板状态/列宽等)不拦截,允许匿名用户保存偏好
+ * 设计原则（基于"访客=本地 / 登录=云端"目标）:
+ * - 大部分用户数据已迁到 Supabase 数据库专用表（day_events/calendar_overrides/...）
+ *   → 通过 fetch API 直连云端,不走 localStorage,也不走 user_kv_store
+ * - 本拦截器只覆盖"纯 localStorage 数据"(知识树/人生旅途进度/成果等)
+ *   → 这部分数据需要拦截已登录用户写入,以同步到 user_kv_store(多设备)
+ * - UI 偏好类 key(皮肤/面板/列宽等)不拦截,允许匿名用户保存偏好
+ *
+ * 已迁库的 key(不要再写到 user_kv_store,数据库已经有):
+ *   calendar-overrides-{year}      → calendar_overrides 表
+ *   calendar-notes-{year}          → calendar_notes 表
+ *   calendar-drawing-{year}        → calendar_drawings 表
+ *   gantt-rows-{y}-{m}-{d}         → 走 /api/calendar-data
+ *   dayview-events-{y}-{m}-{d}     → day_events 表
+ *   dayview-todos-{y}-{m}-{d}      → day_todos 表
+ *   life-calendar-okr              → okr_* 表
+ *   daily-review-{date}            → daily_reviews 表
+ *   month-reviews-*                → month_reviews 表
  */
 
-// 需要登录才能保存的 key 前缀/精确名
+// 需要登录才能保存的 key（纯 localStorage 数据,未迁库）
 const SYNCED_KEY_PATTERNS: Array<string | RegExp> = [
-  // 满意度勾选
-  /^calendar-overrides-\d{4}$/,
-  // 日程/待办
-  /^dayview-events-\d{4}-\d{1,2}-\d{1,2}$/,
-  /^dayview-todos-\d{4}-\d{1,2}-\d{1,2}$/,
-  // 备忘录
-  /^calendar-notes-\d{4}$/,
-  // 涂鸦
-  /^calendar-drawing-\d{4}$/,
-  // 甘特图（年-月-日，3 段）
-  /^gantt-rows-\d{4}-\d{1,2}-\d{1,2}$/,
   // 精确匹配的 key
   'calendar-bookmarks',
   'knowledge-trees',
   'knowledge-bookmarks',
-  'life-calendar-okr', // OKR 目标/关键结果/任务
   'life-calendar-progress', // 人生旅途 9 阶段进度
   // 成果面板（achievements-${key}）
   /^achievements-[\w-]+$/,
-  // life-calendar-* 其他（除 skin/panel 时钟模式外）
+  // life-calendar-* 其他（除 skin/panel）
   /^life-calendar-(?!skin$|panel)./,
 ];
 
+// 登出/切账号时清空 localStorage 的范围
+// (包含已迁库 key 残留 + 纯 localStorage 数据)
+export const CLEAR_ON_LOGOUT_KEY_PATTERNS: Array<string | RegExp> = [
+  // 已迁库 key 残留(防止游客期间数据污染已登录账号)
+  /^calendar-overrides-\d{4}$/,
+  /^calendar-notes-\d{4}$/,
+  /^calendar-drawing-\d{4}$/,
+  /^gantt-rows-\d{4}-\d{1,2}-\d{1,2}$/,
+  /^dayview-events-\d{4}-\d{1,2}-\d{1,2}$/,
+  /^dayview-todos-\d{4}-\d{1,2}-\d{1,2}$/,
+  /^daily-review-\d{4}-\d{1,2}-\d{1,2}$/,
+  /^month-reviews-\d{4}-\d{1,2}$/,
+  'life-calendar-okr',
+  // 纯 localStorage 数据
+  ...SYNCED_KEY_PATTERNS,
+];
+
 // 不拦截的 key(UI 偏好)
+
+function isSyncedKey(key: string): boolean {
+  if (UI_PREFERENCE_KEYS.has(key)) return false;
+  for (const p of SYNCED_KEY_PATTERNS) {
+    if (typeof p === 'string') {
+      if (key === p) return true;
+    } else {
+      if (p.test(key)) return true;
+    }
+  }
+  return false;
+}
+let _isLoggedIn = false;
+let _onRequireLogin: (() => void) | null = null;
+let _installed = false;
+let _originalSetItem: ((key: string, value: string) => void) | null = null;
+
+export function setInterceptorAuthStatus(loggedIn: boolean): void {
+  _isLoggedIn = loggedIn;
+}
+
+export function registerRequireLoginHandler(handler: (() => void) | null): void {
+  _onRequireLogin = handler;
+}
+
 const UI_PREFERENCE_KEYS = new Set<string>([
   'panel-left-open', 'panel-left-width', 'panel-left-collapsed',
   'panel-right-open', 'panel-right-width',
@@ -50,39 +96,11 @@ const UI_PREFERENCE_KEYS = new Set<string>([
   'supabase.auth.token', // supabase 自己的 token
 ]);
 
-let _isLoggedIn = false;
-let _onRequireLogin: (() => void) | null = null;
-let _installed = false;
-let _originalSetItem: ((key: string, value: string) => void) | null = null;
-
 // 被拦截的写入队列 - 登录成功后补写
 const pendingWrites: Array<{ key: string; value: string }> = [];
 // 被拦截的跳转队列 - 登录成功后打开新标签页
 const pendingNavigations: Array<{ url: string; target: string }> = [];
 
-function isSyncedKey(key: string): boolean {
-  if (UI_PREFERENCE_KEYS.has(key)) return false;
-  for (const p of SYNCED_KEY_PATTERNS) {
-    if (typeof p === 'string') {
-      if (key === p) return true;
-    } else {
-      if (p.test(key)) return true;
-    }
-  }
-  return false;
-}
-
-export function isAuthInterceptorInstalled(): boolean {
-  return _installed;
-}
-
-export function setInterceptorAuthStatus(loggedIn: boolean): void {
-  _isLoggedIn = loggedIn;
-}
-
-export function registerRequireLoginHandler(handler: (() => void) | null): void {
-  _onRequireLogin = handler;
-}
 
 /** 安装拦截器(全局只能装一次) */
 export function installAuthInterceptor(): void {
