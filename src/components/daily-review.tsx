@@ -722,7 +722,13 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   }}
                   onMouseLeave={() => { setHoverHour(null); setHoverY(null); }}
                 >
-                <div style={{ minWidth: `calc(${taskColumnWidth}px + ${(48 / ganttScale) * 24}px + 8px)` }}>
+                <div style={{ minWidth: `calc(${taskColumnWidth}px + ${(() => {
+                  // 在30分/15分档位下，最后一小时(23点)只显示到23:45，宽度为3/4
+                  const showQuarterScale = ganttScale === 0.25 || ganttScale === 0.5;
+                  const lastHourWidth = showQuarterScale ? (48 / ganttScale) * 0.75 : 48 / ganttScale;
+                  const otherHoursWidth = (48 / ganttScale) * 23;
+                  return otherHoursWidth + lastHourWidth;
+                })()}px + 8px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
                     {/* 事项名称列占位 - sticky left so it doesn't scroll horizontally, covers time bars */}
@@ -762,27 +768,51 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     </div>
                     {/* Time scale container - z-index lower than task column so it gets covered when scrolling left */}
                     <div className="flex relative z-0">
-                      {Array.from({ length: 24 }, (_, i) => (
-                        <div key={i} className="text-left text-xs font-medium shrink-0 border-r relative" style={{ width: `${48 / ganttScale}px`, color: skin.textMuted, borderColor: skin.cellBorder }}>
-                          {/* 小时数字靠左（代表 :00），居中时压 30 标记 */}
-                          <span className="relative pl-0.5">{i}</span>
-                          {/* 15 分钟刻度，仅 30min / 15min 刻度下显示 */}
-                          {(ganttScale === 0.25 || ganttScale === 0.5) && (
-                            <div className="absolute inset-0 pointer-events-none">
-                              {/* 刻度线只在上半部分 */}
-                              {/* :15 */}
-                              <div className="absolute top-0 left-1/4 w-px h-1 bg-current opacity-35" />
-                              <span className="absolute bottom-px left-1/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>
-                              {/* :30 */}
-                              <div className="absolute top-0 left-1/2 w-px h-1 bg-current opacity-50" />
-                              <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>
-                              {/* :45 */}
-                              <div className="absolute top-0 left-3/4 w-px h-1 bg-current opacity-35" />
-                              <span className="absolute bottom-px left-3/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                      {Array.from({ length: 24 }, (_, i) => {
+                        // 最后一个小时(23点)在30分/15分档位下只显示到23:45
+                        const isLastHour = i === 23;
+                        const showQuarterScale = ganttScale === 0.25 || ganttScale === 0.5;
+                        // 最后一小时在精细档位下，宽度为3/4（只显示到:45）
+                        const hourWidth = isLastHour && showQuarterScale 
+                          ? (48 / ganttScale) * 0.75 
+                          : 48 / ganttScale;
+                        
+                        return (
+                          <div key={i} className="text-left text-xs font-medium shrink-0 border-r relative" style={{ width: `${hourWidth}px`, color: skin.textMuted, borderColor: skin.cellBorder }}>
+                            {/* 小时数字靠左（代表 :00），居中时压 30 标记 */}
+                            <span className="relative pl-0.5">{i}</span>
+                            {/* 15 分钟刻度，仅 30min / 15min 刻度下显示 */}
+                            {showQuarterScale && !isLastHour && (
+                              <div className="absolute inset-0 pointer-events-none">
+                                {/* 刻度线只在上半部分 */}
+                                {/* :15 */}
+                                <div className="absolute top-0 left-1/4 w-px h-1 bg-current opacity-35" />
+                                <span className="absolute bottom-px left-1/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>
+                                {/* :30 */}
+                                <div className="absolute top-0 left-1/2 w-px h-1 bg-current opacity-50" />
+                                <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>
+                                {/* :45 */}
+                                <div className="absolute top-0 left-3/4 w-px h-1 bg-current opacity-35" />
+                                <span className="absolute bottom-px left-3/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>
+                              </div>
+                            )}
+                            {/* 最后一小时只显示:15/:30/:45刻度（宽度比例调整后） */}
+                            {showQuarterScale && isLastHour && (
+                              <div className="absolute inset-0 pointer-events-none">
+                                {/* :15 */}
+                                <div className="absolute top-0 left-1/3 w-px h-1 bg-current opacity-35" />
+                                <span className="absolute bottom-px left-1/3 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>
+                                {/* :30 */}
+                                <div className="absolute top-0 left-2/3 w-px h-1 bg-current opacity-50" />
+                                <span className="absolute bottom-px left-2/3 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>
+                                {/* :45 - 在右边缘 */}
+                                <div className="absolute top-0 right-0 w-px h-1 bg-current opacity-35" />
+                                <span className="absolute bottom-px right-0 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                     <div className="w-[8px] shrink-0" />
                   </div>
