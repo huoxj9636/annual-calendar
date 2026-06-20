@@ -634,7 +634,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               </div>
               {/* Scrollable rows area (horizontal + vertical) — includes hour header + rows together so they scroll in sync */}
               <div ref={ganttScrollRef} className="flex-1 overflow-auto" style={{ scrollbarGutter: 'stable' }}>
-                <div style={{ minWidth: `calc(140px + ${48 * 24}px + 40px)` }}>
+                <div style={{ minWidth: `calc(140px + ${(48 * 24) / ganttScale}px + 40px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: 'transparent' }}>
                     <div className="w-[140px] shrink-0" />
@@ -1147,11 +1147,11 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
   onUpdateRow: (row: GanttRowData) => void;
   onDelete: () => void;
 }) {
-  const cellWidth = 48 * scale; // 1h=48px, 30m=24px, 15m=12px
-  const totalSlots = 24 / scale; // total number of slots
-  const trackWidth = cellWidth * totalSlots; // 24h total width
-  const snap = scale; // snap to slot
-  const PIXELS_PER_HOUR = 48; // 1h 在轨道上永远是 48px（与 scale 无关，用于 bar 定位/宽度/拖拽换算）
+  const cellWidth = 48; // 1h 永远 = 1 大格 = 48px（不再随 scale 变宽）
+  const totalSlots = 24; // 固定 24 个 1h 大格
+  const trackWidth = cellWidth * totalSlots; // 固定 = 1152px
+  const snap = 1 / scale; // 1h 视图 snap=1h, 30min 视图 snap=0.5h, 15min 视图 snap=0.25h
+  const PIXELS_PER_HOUR = 48 / scale; // 1h 在轨道上的像素宽度：1h=48, 30min=96, 15min=192
   // Empty row = startHour === endHour → no bar visible, click a cell to create a 1h bar
   const isEmpty = row.startHour === row.endHour;
 
