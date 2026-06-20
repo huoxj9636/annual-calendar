@@ -6,7 +6,7 @@ import {
   collectSyncedItems,
   pushUserData,
   pullUserData,
-  replaceLocalWithCloud,
+  mergeCloudToLocal,
   clearAllSyncedLocalData,
   dispatchDataSyncedEvent,
 } from '@/lib/user-kv';
@@ -18,12 +18,13 @@ interface SyncProviderProps {
 /**
  * 数据同步 Provider
  *
- * 核心策略（游客 vs 登录 严格隔离）：
+ * 核心策略：
  * 1. 游客模式：所有写操作只走 localStorage，不触发云端同步
- * 2. 登录时：拉取云端数据 → 覆盖 localStorage（不保留游客数据）
- * 3. 已登录状态下写数据：写 localStorage（让组件读取立即生效）+ 800ms 防抖同步到云端
+ * 2. 登录时：拉取云端 → 合并到 localStorage（云端优先，local 补缺）
+ *           然后把 localStorage 现有数据推送到云端（保留游客期间新增）
+ * 3. 已登录状态下写：写 localStorage + 800ms 防抖同步到云端
  * 4. 登出时：清空 localStorage 中所有同步 keys（让游客会话无残留）
- * 5. 切换账号：新登录账号的云端数据覆盖 localStorage
+ * 5. 切换账号：先清空旧账号 localStorage → 拉取新账号云端合并 → 推送
  */
 export function SyncProvider({ children }: SyncProviderProps) {
   const { user, getToken } = useUser();
@@ -53,7 +54,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
         clearAllSyncedLocalData();
         initialLoadedRef.current = false;
       }
-      // 首次登录或切账号：拉取云端数据覆盖 localStorage
+      // 首次登录或切账号：拉取云端数据 → 合并到 localStorage → 推送 localStorage 到云端
       if (!initialLoadedRef.current) {
         initialLoadedRef.current = true;
         let cancelled = false;
@@ -61,12 +62,24 @@ export function SyncProvider({ children }: SyncProviderProps) {
           try {
             const token = await getToken();
             if (!token || cancelled) return;
+
+            // 1. 拉取云端
             const cloudItems = await pullUserData(token);
             if (cancelled) return;
-            replaceLocalWithCloud(cloudItems ?? []);
+
+            // 2. 合并到 localStorage（云端有值用云端；云端无值保留 local）
+            mergeCloudToLocal(cloudItems ?? []);
+
+            // 3. 把当前 localStorage 全部推送到云端
+            //    这步是关键：保留游客期间在 localStorage 新增的数据
+            const localItems = collectSyncedItems();
+            if (localItems.length > 0) {
+              await pushUserData(token, localItems);
+            }
+            if (cancelled) return;
             dispatchDataSyncedEvent();
           } catch (err) {
-            console.warn('[SyncProvider] pull from DB failed', err);
+            console.warn('[SyncProvider] sync on login failed', err);
           }
         })();
         return () => {
@@ -89,10 +102,8 @@ export function SyncProvider({ children }: SyncProviderProps) {
       mod.installAuthInterceptor();
     })();
 
-    const handleLocalChange = (e: Event) => {
+    const handleLocalChange = () => {
       if (cancelled) return;
-      const detail = (e as CustomEvent<{ key: string; op: string }>).detail;
-      if (!detail?.key) return;
       scheduleSync();
     };
 
