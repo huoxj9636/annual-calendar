@@ -640,18 +640,18 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     <div className="w-[140px] shrink-0" />
                     <div className="flex">
                       {Array.from({ length: 24 }, (_, i) => (
-                        <div key={i} className="text-center text-xs font-medium shrink-0 border-r relative" style={{ width: `${48 / ganttScale}px`, color: skin.textMuted, borderColor: skin.cellBorder, opacity: 0.6 }}>
-                          <span className="relative">{i}</span>
-                          {/* 15-minute tick marks for detailed scales */}
+                        <div key={i} className="text-left text-xs font-medium shrink-0 border-r relative" style={{ width: `${48 / ganttScale}px`, color: skin.textMuted, borderColor: skin.cellBorder, opacity: 0.6 }}>
+                          {/* 小时数字靠左（代表 :00），居中时压 30 标记 */}
+                          <span className="relative pl-0.5">{i}</span>
+                          {/* 15 分钟刻度，仅 30min / 15min 刻度下显示 */}
                           {(ganttScale === 0.25 || ganttScale === 0.5) && (
                             <div className="absolute inset-0 pointer-events-none">
-                              {/* :15 */}
+                              {/* :15 — 刻度线 + 标签 */}
                               <div className="absolute top-0 bottom-0 left-1/4 w-px bg-current" style={{ opacity: 0.14 }} />
                               <span className="absolute bottom-px left-1/4 text-[8px] leading-none tracking-tight opacity-40" style={{ transform: 'translateX(-50%)' }}>15</span>
-                              {/* :30 */}
+                              {/* :30 — 仅刻度线，标签去掉（小时数字已在对应位置） */}
                               <div className="absolute top-0 bottom-0 left-1/2 w-px bg-current" style={{ opacity: 0.28 }} />
-                              <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-65" style={{ transform: 'translateX(-50%)' }}>30</span>
-                              {/* :45 */}
+                              {/* :45 — 刻度线 + 标签 */}
                               <div className="absolute top-0 bottom-0 left-3/4 w-px bg-current" style={{ opacity: 0.14 }} />
                               <span className="absolute bottom-px left-3/4 text-[8px] leading-none tracking-tight opacity-40" style={{ transform: 'translateX(-50%)' }}>45</span>
                             </div>
