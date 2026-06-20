@@ -695,9 +695,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     <path d="M15 18l-6-6l6-6" />
                   </svg>
                 </button>
+                {/* 左侧遮挡层 - 盖住往左滑动的时间刻度和时间条，位于滚动容器外部 */}
+                <div 
+                  className="absolute top-0 bottom-0 z-20 pointer-events-none" 
+                  style={{ left: 0, width: `${taskColumnWidth}px`, backgroundColor: skin.panelBg }}
+                />
                 <div 
                   ref={ganttScrollRef} 
-                  className="absolute inset-0 overflow-auto" 
+                  className="absolute inset-0 overflow-auto z-10" 
                   style={{ scrollbarGutter: 'stable' }}
                   onScroll={(e) => {
                     setGanttScrollLeft(e.currentTarget.scrollLeft);
