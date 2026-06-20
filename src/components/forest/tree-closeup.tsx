@@ -7,7 +7,7 @@
  * 上方是大图区，下方是阶段进度 + 知识分组
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   Sprout,
@@ -20,6 +20,14 @@ import {
   Apple,
   GitBranch,
   Layers,
+  Folder,
+  File,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  Target,
+  Award,
+  BookOpen,
   Sprout as Root,
 } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
@@ -32,6 +40,15 @@ export const TREE_NODE_TYPE_INFO = {
   leaf: { label: "树叶", desc: "具体执行/碎片知识", Icon: Leaf, pos: "叶簇" },
   fruit: { label: "果实", desc: "成果产出/价值变现", Icon: Apple, pos: "果实" },
 } as const;
+
+// 大树模型层级信息（用于知识库展示）
+const TYPE_LABELS: Record<NodeType, { short: string; full: string; desc: string; Icon: React.ElementType }> = {
+  root: { short: "根", full: "找到根源", desc: "问题是什么？", Icon: Search },
+  trunk: { short: "干", full: "找到目标", desc: "想要实现什么？", Icon: Target },
+  branch: { short: "枝", full: "如何实现", desc: "实现路径与方法", Icon: GitBranch },
+  leaf: { short: "叶", full: "落地执行", desc: "具体执行步骤", Icon: Leaf },
+  fruit: { short: "果", full: "开花结果", desc: "成果验收与复盘", Icon: Award },
+};
 
 export type NodeType = keyof typeof TREE_NODE_TYPE_INFO;
 
@@ -484,23 +501,31 @@ export default function TreeCloseup({
 }) {
   const totalNodes = tree.nodes.length;
   const stage = getStage(totalNodes);
+  // 展开的文件夹
+  const [expandedType, setExpandedType] = useState<NodeType | null>(null);
 
   // 类型分布统计
   const typeStats = useMemo(() => {
-    return (Object.keys(TREE_NODE_TYPE_INFO) as NodeType[]).map((type) => {
-      const count = nodesByType[type]?.length || 0;
-      return { type, count, info: TREE_NODE_TYPE_INFO[type] };
+    return (Object.keys(TYPE_LABELS) as NodeType[]).map((type) => {
+      const nodes = nodesByType[type] || [];
+      return { type, nodes, info: TYPE_LABELS[type] };
     });
   }, [nodesByType]);
 
   return (
-    <div className="h-full overflow-y-auto p-5 space-y-4">
-      {/* 顶部导航 */}
-      <div className="flex items-center justify-between">
+    <div className="h-full overflow-y-auto">
+      {/* 顶部导航栏 */}
+      <div
+        className="flex items-center justify-between px-5 py-3 sticky top-0 z-10"
+        style={{
+          background: skin.panelBg,
+          borderBottom: `1px solid ${skin.divider}`,
+        }}
+      >
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:scale-105"
             style={{
               background: skin.cardBg,
               border: `1px solid ${skin.divider}`,
@@ -508,74 +533,175 @@ export default function TreeCloseup({
             }}
             title="返回森林"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={14} />
           </button>
-          <div>
+          <div className="flex items-center gap-2">
+            <Folder size={16} style={{ color: skin.swatch }} />
             <h2
-              className="text-xl font-semibold"
-              style={{
-                color: skin.textPrimary,
-                fontFamily: "var(--font-serif)",
-              }}
+              className="text-lg font-semibold truncate"
+              style={{ color: skin.textPrimary }}
             >
               {tree.name}
             </h2>
-            {tree.industry && (
-              <div
-                className="text-xs flex items-center gap-1"
-                style={{ color: skin.textSecondary }}
-              >
-                <Layers size={10} />
-                {tree.industry}
-              </div>
-            )}
           </div>
         </div>
         <button
           onClick={onAddNode}
-          className="px-4 py-2 rounded-full flex items-center gap-1.5 text-sm font-medium transition-transform hover:scale-105"
+          className="px-3 py-1.5 rounded-full flex items-center gap-1 text-xs font-medium transition-transform hover:scale-105"
           style={{ background: skin.swatch, color: "#fff" }}
         >
-          <Plus size={14} />
-          添加知识
+          <Plus size={12} />
+          添加
         </button>
       </div>
 
-      {tree.description && (
+      {/* 项目信息 */}
+      <div className="px-5 py-3">
         <div
-          className="text-sm italic px-4 py-2 rounded"
-          style={{
-            color: skin.textSecondary,
-            background: `${skin.swatch}08`,
-            borderLeft: `3px solid ${skin.swatch}`,
-          }}
+          className="flex items-center gap-2 text-xs"
+          style={{ color: skin.textMuted }}
         >
-          &ldquo;{tree.description}&rdquo;
+          <BookOpen size={12} />
+          <span>完整闭环项目</span>
+          <span>·</span>
+          <span>{totalNodes} 个节点</span>
+          <span>·</span>
+          <span>{stage.label}</span>
         </div>
-      )}
+        {tree.description && (
+          <div
+            className="text-sm mt-2 truncate"
+            style={{ color: skin.textSecondary }}
+          >
+            {tree.description}
+          </div>
+        )}
+      </div>
 
-      {/* 大图区 */}
-      <TreeBigVisual
-        tree={tree}
-        nodesByType={nodesByType}
-        skin={skin}
-      />
+      {/* 5个层级文件夹 - 紧凑网格布局 */}
+      <div className="px-5 pb-5">
+        <div className="grid grid-cols-5 gap-2">
+          {typeStats.map(({ type, nodes, info }) => {
+            const isExpanded = expandedType === type;
+            const count = nodes.length;
 
-      {/* 阶段进度 */}
-      <StageProgress count={totalNodes} skin={skin} />
+            return (
+              <div key={type}>
+                {/* 文件夹卡片 */}
+                <button
+                  onClick={() => setExpandedType(isExpanded ? null : type)}
+                  className="w-full rounded-lg p-2.5 transition-all hover:scale-[1.02]"
+                  style={{
+                    background: skin.cardBg,
+                    border: `1px solid ${isExpanded ? skin.swatch : skin.divider}`,
+                    boxShadow: isExpanded ? `0 4px 12px ${skin.swatch}20` : "none",
+                  }}
+                >
+                  {/* 图标 */}
+                  <div
+                    className="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center"
+                    style={{ background: `${skin.swatch}15` }}
+                  >
+                    <info.Icon size={16} style={{ color: skin.swatch }} />
+                  </div>
+                  {/* 层级名称 */}
+                  <div
+                    className="text-xs font-semibold text-center truncate"
+                    style={{ color: skin.textPrimary }}
+                  >
+                    {info.short}
+                  </div>
+                  {/* 数量 */}
+                  <div
+                    className="text-[10px] text-center mt-1"
+                    style={{ color: skin.textMuted }}
+                  >
+                    {count}
+                  </div>
+                  {/* 展开指示 */}
+                  <div className="flex justify-center mt-1.5">
+                    {isExpanded ? (
+                      <ChevronDown size={10} style={{ color: skin.swatch }} />
+                    ) : (
+                      <ChevronRight size={10} style={{ color: skin.textMuted }} />
+                    )}
+                  </div>
+                </button>
 
-      {/* 知识分组 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {typeStats.map(({ type, count, info }) => (
-          <NodeGroupCard
-            key={type}
-            type={type}
-            nodes={nodesByType[type] || []}
-            skin={skin}
-            onDelete={onDeleteNode}
-            onAdd={onAddTypeNode}
-          />
-        ))}
+                {/* 展开的文件列表 - 浮动面板 */}
+                {isExpanded && (
+                  <div
+                    className="mt-2 rounded-lg overflow-hidden"
+                    style={{
+                      background: skin.cardBg,
+                      border: `1px solid ${skin.divider}`,
+                      boxShadow: `0 4px 12px rgba(0,0,0,0.1)`,
+                    }}
+                  >
+                    {/* 层级说明 */}
+                    <div
+                      className="px-2.5 py-1.5 text-[10px]"
+                      style={{
+                        background: `${skin.swatch}08`,
+                        color: skin.textMuted,
+                      }}
+                    >
+                      {info.full} · {info.desc}
+                    </div>
+                    {/* 文件列表 */}
+                    <div className="p-2 space-y-1 max-h-48 overflow-auto">
+                      {count === 0 ? (
+                        <div
+                          className="text-center text-[10px] py-3"
+                          style={{ color: skin.textMuted }}
+                        >
+                          空
+                        </div>
+                      ) : (
+                        nodes.map((n) => (
+                          <div
+                            key={n.id}
+                            className="flex items-center gap-1.5 px-2 py-1.5 rounded transition-colors group"
+                            style={{ background: `${skin.swatch}08` }}
+                          >
+                            <File size={10} style={{ color: skin.swatch }} />
+                            <div className="flex-1 min-w-0">
+                              <div
+                                className="text-[11px] truncate"
+                                style={{ color: skin.textPrimary }}
+                              >
+                                {n.title}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => onDeleteNode(n.id)}
+                              className="opacity-0 group-hover:opacity-100 text-[9px] px-1 py-0.5 rounded"
+                              style={{ color: "#ef4444" }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))
+                      )}
+                      {/* 添加按钮 */}
+                      <button
+                        onClick={() => onAddTypeNode(type)}
+                        className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] font-medium"
+                        style={{
+                          background: skin.swatch,
+                          color: "#fff",
+                        }}
+                      >
+                        <Plus size={10} />
+                        添加
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <style>{`
