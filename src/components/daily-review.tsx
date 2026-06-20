@@ -129,9 +129,18 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   // cellWidth: 每个刻度格子的宽度（固定48px，和GanttRow一致）
   const cellWidth = 48;
   // Is this day "today"? (for showing current time line)
-  const today = new Date();
-  const isToday = year === today.getFullYear() && month === today.getMonth() + 1 && day === today.getDate();
-  const currentHour = today.getHours() + today.getMinutes() / 60;
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  const isToday = year === currentTime.getFullYear() && month === currentTime.getMonth() + 1 && day === currentTime.getDate();
+  const currentHour = currentTime.getHours() + currentTime.getMinutes() / 60 + currentTime.getSeconds() / 3600;
+
+  // Update current time every second for the "now" indicator (only if today)
+  useEffect(() => {
+    if (!isToday) return;
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isToday, year, month, day]);
   
   // Task input column width (can be dragged to resize, saved to localStorage)
   const [taskColumnWidth, setTaskColumnWidth] = useState(() => {
@@ -859,15 +868,23 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 )}
                 {/* Current time indicator - red line showing "now" (only for today) */}
                 {isToday && (
-                  <div 
-                    className="absolute top-0 bottom-0"
-                    style={{ 
+                  <div
+                    className="absolute top-0 bottom-0 z-10"
+                    style={{
                       left: `${taskColumnWidth + currentHour * 48 / ganttScale - ganttScrollLeft}px`,
                       width: '2px',
                       backgroundColor: '#ef4444',
                     }}
                     title={`当前时间 ${formatHour(currentHour)}`}
-                  />
+                  >
+                    {/* Time label at the top */}
+                    <div
+                      className="absolute -top-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-white whitespace-nowrap shadow-md"
+                      style={{ backgroundColor: '#ef4444' }}
+                    >
+                      {`${String(currentTime.getHours()).padStart(2, '0')}:${String(currentTime.getMinutes()).padStart(2, '0')}:${String(currentTime.getSeconds()).padStart(2, '0')}`}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
