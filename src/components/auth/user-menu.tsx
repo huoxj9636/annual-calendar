@@ -43,8 +43,26 @@ export function UserMenu() {
   // 等登录态检查完
   if (!authChecked) return null;
 
-  // ── 未登录:完全不显示 ──
-  if (!user) return null;
+  // ── 游客模式:显示"未同步"提示卡(让用户随时知道登录同步功能在左下角) ──
+  if (!user) {
+    return (
+      <div
+        className="fixed bottom-4 left-4 z-50 select-none"
+        style={{ fontFamily: 'inherit' }}
+      >
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent('open-login-dialog'))}
+          className="group flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-2 text-amber-700 shadow-md hover:bg-amber-100 transition-colors dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-950"
+          title="点击登录账号,数据自动同步到云端"
+          aria-label="登录同步(游客模式)"
+        >
+          <CloudOff className="h-4 w-4 shrink-0" />
+          <span className="text-sm font-medium">未同步 · 点击登录</span>
+        </button>
+      </div>
+    );
+  }
 
   const handleSignOut = async () => {
     await signOut();
