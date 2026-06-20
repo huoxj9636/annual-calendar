@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm"
 
 export const calendarNotes = pgTable("calendar_notes", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
-	userId: varchar("user_id", { length: 36 }).default('legacy').notNull(),
+	userId: varchar("user_id", { length: 36 }).default('legacy'),
 	year: integer().notNull(),
 	dateKey: varchar("date_key", { length: 20 }).notNull(),
 	content: text(),
@@ -19,7 +19,7 @@ export const healthCheck = pgTable("health_check", {
 
 export const calendarOverrides = pgTable("calendar_overrides", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
-	userId: varchar("user_id", { length: 36 }).default('legacy').notNull(),
+	userId: varchar("user_id", { length: 36 }).default('legacy'),
 	year: integer().notNull(),
 	dateKey: varchar("date_key", { length: 20 }).notNull(),
 	value: varchar({ length: 20 }).notNull(),
@@ -29,7 +29,7 @@ export const calendarOverrides = pgTable("calendar_overrides", {
 
 export const dailyReviews = pgTable("daily_reviews", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
-	userId: varchar("user_id", { length: 36 }).default('legacy').notNull(),
+	userId: varchar("user_id", { length: 36 }).default('legacy'),
 	year: integer().notNull(),
 	month: integer().notNull(),
 	day: integer().notNull(),
@@ -49,7 +49,7 @@ export const dailyReviews = pgTable("daily_reviews", {
 
 export const dayEvents = pgTable("day_events", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
-	userId: varchar("user_id", { length: 36 }).default('legacy').notNull(),
+	userId: varchar("user_id", { length: 36 }).default('legacy'),
 	year: integer().notNull(),
 	month: integer().notNull(),
 	day: integer().notNull(),
@@ -65,7 +65,7 @@ export const dayEvents = pgTable("day_events", {
 
 export const okrObjectives = pgTable("okr_objectives", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
-	userId: varchar("user_id", { length: 36 }).default('legacy').notNull(),
+	userId: varchar("user_id", { length: 36 }).default('legacy'),
 	title: text().notNull(),
 	period: varchar({ length: 50 }).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
@@ -76,7 +76,7 @@ export const okrObjectives = pgTable("okr_objectives", {
 
 export const okrKeyResults = pgTable("okr_key_results", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
-	userId: varchar("user_id", { length: 36 }).default('legacy').notNull(),
+	userId: varchar("user_id", { length: 36 }).default('legacy'),
 	objectiveId: varchar("objective_id", { length: 36 }).notNull(),
 	title: text().notNull(),
 	targetValue: integer("target_value").default(1),
@@ -93,7 +93,7 @@ export const okrKeyResults = pgTable("okr_key_results", {
 
 export const okrTasks = pgTable("okr_tasks", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
-	userId: varchar("user_id", { length: 36 }).default('legacy').notNull(),
+	userId: varchar("user_id", { length: 36 }).default('legacy'),
 	keyResultId: varchar("key_result_id", { length: 36 }).notNull(),
 	title: text().notNull(),
 	done: boolean().default(false).notNull(),
@@ -113,7 +113,7 @@ export const okrTasks = pgTable("okr_tasks", {
 
 export const dayTodos = pgTable("day_todos", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
-	userId: varchar("user_id", { length: 36 }).default('legacy').notNull(),
+	userId: varchar("user_id", { length: 36 }).default('legacy'),
 	year: integer().notNull(),
 	month: integer().notNull(),
 	day: integer().notNull(),
@@ -127,7 +127,7 @@ export const dayTodos = pgTable("day_todos", {
 
 export const monthReviews = pgTable("month_reviews", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
-	userId: varchar("user_id", { length: 36 }).default('legacy').notNull(),
+	userId: varchar("user_id", { length: 36 }).default('legacy'),
 	year: integer().notNull(),
 	month: integer().notNull(),
 	sectionKey: varchar("section_key", { length: 20 }).notNull(),
@@ -140,7 +140,7 @@ export const monthReviews = pgTable("month_reviews", {
 
 export const calendarDrawings = pgTable("calendar_drawings", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
-	userId: varchar("user_id", { length: 36 }).default('legacy').notNull(),
+	userId: varchar("user_id", { length: 36 }).default('legacy'),
 	year: integer().notNull(),
 	dateKey: varchar("date_key", { length: 20 }).default(''),
 	strokes: jsonb().default([]),
