@@ -578,24 +578,24 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         </div>
 
         {/* Content */}
-        <div className="px-6 py-3 flex-1 overflow-auto">
+        <div className="px-6 py-3 flex-1 flex flex-col min-h-0">
           {viewMode === 'gantt' ? (
             /* Gantt View */
-            <div className="flex flex-col gap-2">
-              {/* Header row */}
-              <div className="flex items-center gap-2 mb-2">
+            <div className="flex flex-col gap-2 flex-1 min-h-0">
+              {/* Top row: back button + hour labels */}
+              <div className="flex items-center mb-2">
                 <button onClick={() => setViewMode('review')}
-                    className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
+                    className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1 shrink-0 mr-2"
                     style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
                   >← 返回复盘</button>
-                <span className="text-lg font-bold" style={{ color: skin.textPrimary }}>24小时甘特图</span>
+                <div className="flex items-center flex-1">
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <div key={i} className="flex-1 text-center text-xs font-medium" style={{ color: skin.textMuted }}>{i}</div>
+                  ))}
+                </div>
               </div>
-              {/* Hour labels */}
-              <div className="flex items-center pl-24 pr-4 mb-1">
-                {Array.from({ length: 24 }, (_, i) => (
-                  <div key={i} className="w-10 text-center text-xs font-medium" style={{ color: skin.textMuted }}>{i}</div>
-                ))}
-              </div>
+              {/* Scrollable rows area */}
+              <div className="flex-1 overflow-auto">
               {/* Rows */}
               {ganttRows.map((row, idx) => (
                 <GanttRow
@@ -619,6 +619,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   }}
                 />
               ))}
+              </div>
               {/* Add row button */}
               <button
                 onClick={() => {
@@ -627,7 +628,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   setGanttRows(next);
                   saveGanttRows(year, month, day, next);
                 }}
-                className="mt-2 text-sm px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 w-full justify-center"
+                className="mt-2 text-sm px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 w-full justify-center shrink-0"
                 style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
               >➕ 添加新行</button>
             </div>
