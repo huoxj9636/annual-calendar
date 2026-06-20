@@ -723,11 +723,13 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   onMouseLeave={() => { setHoverHour(null); setHoverY(null); }}
                 >
                 <div style={{ minWidth: `calc(${taskColumnWidth}px + ${(() => {
-                  // 在30分/15分档位下，最后一小时(23点)只显示到23:45，宽度为3/4
+                  // 格子数量和GanttRow一致：30分档位47格子，15分档位95格子
+                  const cellWidth = 48;
                   const showQuarterScale = ganttScale === 0.25 || ganttScale === 0.5;
-                  const lastHourWidth = showQuarterScale ? (48 / ganttScale) * 0.75 : 48 / ganttScale;
-                  const otherHoursWidth = (48 / ganttScale) * 23;
-                  return otherHoursWidth + lastHourWidth;
+                  const totalSlots = showQuarterScale 
+                    ? Math.floor(24 / ganttScale) - 1 
+                    : 24;
+                  return cellWidth * totalSlots;
                 })()}px + 8px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
@@ -768,51 +770,37 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     </div>
                     {/* Time scale container - z-index lower than task column so it gets covered when scrolling left */}
                     <div className="flex relative z-0">
-                      {Array.from({ length: 24 }, (_, i) => {
-                        // 最后一个小时(23点)在30分/15分档位下只显示到23:45
-                        const isLastHour = i === 23;
+                      {/* 格子数量和GanttRow一致：30分档位47格子，15分档位95格子 */}
+                      {(() => {
+                        const cellWidth = 48;
                         const showQuarterScale = ganttScale === 0.25 || ganttScale === 0.5;
-                        // 最后一小时在精细档位下，宽度为3/4（只显示到:45）
-                        const hourWidth = isLastHour && showQuarterScale 
-                          ? (48 / ganttScale) * 0.75 
-                          : 48 / ganttScale;
+                        const totalSlots = showQuarterScale 
+                          ? Math.floor(24 / ganttScale) - 1 
+                          : 24;
                         
-                        return (
-                          <div key={i} className="text-left text-xs font-medium shrink-0 border-r relative" style={{ width: `${hourWidth}px`, color: skin.textMuted, borderColor: skin.cellBorder }}>
-                            {/* 小时数字靠左（代表 :00），居中时压 30 标记 */}
-                            <span className="relative pl-0.5">{i}</span>
-                            {/* 15 分钟刻度，仅 30min / 15min 刻度下显示 */}
-                            {showQuarterScale && !isLastHour && (
-                              <div className="absolute inset-0 pointer-events-none">
-                                {/* 刻度线只在上半部分 */}
-                                {/* :15 */}
-                                <div className="absolute top-0 left-1/4 w-px h-1 bg-current opacity-35" />
-                                <span className="absolute bottom-px left-1/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>
-                                {/* :30 */}
-                                <div className="absolute top-0 left-1/2 w-px h-1 bg-current opacity-50" />
-                                <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>
-                                {/* :45 */}
-                                <div className="absolute top-0 left-3/4 w-px h-1 bg-current opacity-35" />
-                                <span className="absolute bottom-px left-3/4 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>
-                              </div>
-                            )}
-                            {/* 最后一小时只显示:15/:30/:45刻度（宽度比例调整后） */}
-                            {showQuarterScale && isLastHour && (
-                              <div className="absolute inset-0 pointer-events-none">
-                                {/* :15 */}
-                                <div className="absolute top-0 left-1/3 w-px h-1 bg-current opacity-35" />
-                                <span className="absolute bottom-px left-1/3 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>
-                                {/* :30 */}
-                                <div className="absolute top-0 left-2/3 w-px h-1 bg-current opacity-50" />
-                                <span className="absolute bottom-px left-2/3 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>
-                                {/* :45 - 在右边缘 */}
-                                <div className="absolute top-0 right-0 w-px h-1 bg-current opacity-35" />
-                                <span className="absolute bottom-px right-0 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                        return Array.from({ length: totalSlots }, (_, slotIdx) => {
+                          const slotHour = slotIdx * ganttScale; // 每个格子代表的时间（小时）
+                          const hour = Math.floor(slotHour);
+                          const minute = (slotHour - hour) * 60;
+                          
+                          // 只在小时(:00)位置显示小时数字
+                          const showHourLabel = minute === 0;
+                          // 在每4个格子中的第1/2/3个显示15/30/45刻度
+                          const slotInHour = slotIdx % Math.round(1 / ganttScale);
+                          const show15MinLabel = slotInHour === 1 && showQuarterScale; // :15
+                          const show30MinLabel = slotInHour === 2 && showQuarterScale && ganttScale === 0.25; // :30（只在15分档位显示）
+                          const show45MinLabel = slotInHour === 3 && showQuarterScale && ganttScale === 0.25; // :45（只在15分档位显示）
+                          
+                          return (
+                            <div key={slotIdx} className="text-left text-xs font-medium shrink-0 border-r relative" style={{ width: `${cellWidth}px`, color: skin.textMuted, borderColor: skin.cellBorder }}>
+                              {showHourLabel && <span className="relative pl-0.5">{hour}</span>}
+                              {show15MinLabel && <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>}
+                              {show30MinLabel && <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>}
+                              {show45MinLabel && <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>}
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                     <div className="w-[8px] shrink-0" />
                   </div>
@@ -1367,17 +1355,18 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
   onUpdateRow: (row: GanttRowData) => void;
   onDelete: () => void;
 }) {
-  // cellWidth: 每小时的基准宽度48px，格子数量始终24个（代表24小时）
-  // 在精细档位下，网格内部会有更细的分割线（由grid渲染）
-  const cellWidth = 48; // 固定每小时48px
-  // 在30分/15分档位下，最后一小时格子截止在23:45，宽度为3/4
+  // cellWidth: 每个时间格子的宽度（每个刻度单位48px）
+  // scale=1: 1格子=1小时, scale=0.5: 1格子=30分钟, scale=0.25: 1格子=15分钟
+  const cellWidth = 48;
+  // 格子数量：24小时 / scale（30分档位48格子，15分档位96格子）
+  // 在精细档位下，截止在23:45（去掉最后15分钟）
   const showQuarterScale = scale === 0.25 || scale === 0.5;
-  const totalSlots = 24; // 24小时格子
-  const trackWidth = showQuarterScale 
-    ? 48 * 23.75 // 精细档位：23完整小时 + 最后一小时的3/4 = 1140px
-    : 48 * 24; // 1小时档位：完整24小时 = 1152px
+  const totalSlots = showQuarterScale 
+    ? Math.floor(24 / scale) - 1 // 30分档位47格子，15分档位95格子
+    : 24; // 1小时档位24格子
+  const trackWidth = cellWidth * totalSlots; // 30分档位2256px，15分档位4560px
   const snap = scale; // snap to slot
-  // Empty row = startHour === endHour → no bar visible, click a cell to create a 1h bar
+  // Empty row = startHour === endHour → no bar visible, click a cell to create a 30min bar
   const isEmpty = row.startHour === row.endHour;
 
   // State to track if user has clicked the bar (shows drag handles only after click)
@@ -1529,37 +1518,23 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
         style={{ backgroundColor: skin.cardHover, width: `${trackWidth}px` }}
       >
         {/* Hour grid lines (pointer-events: none, doesn't block clicks/drag) */}
-        <div className="absolute inset-0 pointer-events-none" style={{ display: 'grid', gridTemplateColumns: (() => {
-          // 在精细档位下，最后一小时格子宽度为3/4
-          if (showQuarterScale) {
-            const cols = Array.from({ length: 24 }, (_, i) => i === 23 ? '36px' : '48px').join(' ');
-            return cols;
-          }
-          return `repeat(24, 48px)`;
-        })() }}>
-          {Array.from({ length: 24 }, (_, i) => (
+        <div className="absolute inset-0 pointer-events-none" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlots}, ${cellWidth}px)` }}>
+          {Array.from({ length: totalSlots }, (_, i) => (
             <div
               key={i}
               className="border-r opacity-20"
               style={{
                 borderColor: skin.cellBorder,
-                borderRightWidth: i === 23 && showQuarterScale ? '0' : '1.5px', // 最后一格在精细档位下无右边框
+                borderRightWidth: '1.5px',
               }}
             />
           ))}
         </div>
         {/* Cell click layer — when the row is empty, clicking creates a 30min bar at that slot.
             When the row already has a bar, this layer is covered by the bar and is a no-op. */}
-        <div className="absolute inset-0" style={{ display: 'grid', gridTemplateColumns: (() => {
-          // 在精细档位下，最后一小时格子宽度为3/4
-          if (showQuarterScale) {
-            const cols = Array.from({ length: 24 }, (_, i) => i === 23 ? '36px' : '48px').join(' ');
-            return cols;
-          }
-          return `repeat(24, 48px)`;
-        })() }}>
-          {Array.from({ length: 24 }, (_, slot) => {
-            const slotHour = slot; // 每个格子代表1小时
+        <div className="absolute inset-0" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlots}, ${cellWidth}px)` }}>
+          {Array.from({ length: totalSlots }, (_, slot) => {
+            const slotHour = slot * scale; // 每个格子代表的时间（小时）
             return (
               <div
                 key={slot}
