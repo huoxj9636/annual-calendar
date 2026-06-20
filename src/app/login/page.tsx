@@ -126,6 +126,11 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-muted-foreground">手机号 + 密码登录，数据云端同步</p>
         </div>
 
+        {/* 首次登录提示：让用户知道此设备的旧数据会被自动保留 */}
+        <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          💡 首次登录此设备上的所有本地数据（如日程、待办、知识树、备忘录等）将<strong className="text-foreground">自动同步到云端</strong>，不会丢失。
+        </div>
+
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           {/* 登录/注册 切换 */}
           <div className="mb-4 flex rounded-lg bg-muted p-1 text-sm">

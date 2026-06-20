@@ -1,93 +1,70 @@
 'use client';
 
 import { useEffect, useRef, ReactNode } from 'react';
-import { getSupabaseBrowserClientWithRetry } from '@/lib/supabase-browser';
 import { useUser } from '@/components/auth/user-context';
+import {
+  collectSyncedItems,
+  pushUserData,
+  pullUserData,
+  getSyncedUserId,
+  setSyncedUserId,
+  mergeCloudToLocal,
+  dispatchDataSyncedEvent,
+  isSyncedKey,
+} from '@/lib/user-kv';
 
-// 需要同步到数据库的 localStorage key 列表
-// 涵盖日历核心数据：满意度勾选、日程/待办、备忘录、知识树、人生旅途进度等
-// 不同步的：纯 UI 偏好（皮肤/面板位置/时钟模式/甘特图列宽等）
-const SYNCED_KEYS = [
-  // 满意度勾选（按年）
-  'calendar-overrides',
-  // 日程/待办（按年月日）
-  'dayview-events',
-  'dayview-todos',
-  // 备忘录（按年）
-  'calendar-notes',
-  // 知识森林
-  'knowledge-trees',
-  'knowledge-bookmarks',
-  // 日历书签
-  'calendar-bookmarks',
-  // 人生旅途 OKR
-  'life-calendar-okr',
-  // 人生旅途进度（嵌套对象）
-  'life-calendar-progress',
-  // 甘特图行（按年月日）
-  'gantt-rows',
-  // 日历涂鸦（按年）
-  'calendar-drawing',
-  // 生日/座右铭（用户私有偏好，跨设备同步）
-  'calendar-birth-year',
-  'calendar-motto',
-  // 复盘起始日期
-  'calendar-review-start-date',
-  // 每日复盘（按日）—key 中含年份/月份/日期
-  // achievements-、daily-review-、shown-、shown- 等在 year-calendar.tsx 中可见
-];
-
-// 带年份/日期后缀的 key 前缀
-const SYNCED_PREFIX_KEYS = [
-  'achievements-', // 按年月日
-  'daily-review-', // 按年月日
-  'shown-', // 按日
-  'note-', // 备用备忘录前缀
-];
-
-// localStorage.setItem 包装函数：原组件代码不变，原始 API 仍写 localStorage
-// 此 Provider 仅在 setItem 被调用时通知"数据有变化"，再异步批量同步到 DB
 interface SyncProviderProps {
   children: ReactNode;
 }
 
+/**
+ * 数据同步 Provider
+ *
+ * 核心策略（保护已有数据，绝不丢）：
+ * 1. 首登（设备首次绑定该账号）：先把 localStorage 现有数据**全部上传**到云端
+ *    → 用户此前的所有数据（即使没有账号时积累的）都被保留到云端
+ * 2. 同账号二次登录：拉取云端数据**合并**到 localStorage（不覆盖本地已有）
+ * 3. 切账号（标记存在但 userId 不同）：把 localStorage 上传到**新**账号云端
+ *    → 新账号立刻拥有此前的所有数据
+ * 4. 登录后任何 setItem 改动：800ms 防抖批量上传
+ */
 export function SyncProvider({ children }: SyncProviderProps) {
   const { user, getToken } = useUser();
   const userId = user?.id ?? null;
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initialPulledRef = useRef(false);
+  const initialSyncedRef = useRef(false);
 
-  // ── 登录后：从 DB 拉取数据并合并到 localStorage ──
+  // ── 登录后：首登上传 / 合并拉取 ──
   useEffect(() => {
-    if (!userId || initialPulledRef.current) return;
-    initialPulledRef.current = true;
+    if (!userId || initialSyncedRef.current) return;
+    initialSyncedRef.current = true;
 
     let cancelled = false;
     (async () => {
       try {
         const token = await getToken();
-        if (!token) return;
-        const res = await fetch('/api/user-data', {
-          headers: { 'x-session': token },
-        });
-        if (!res.ok) return;
-        const data: { items?: Array<{ key: string; value: unknown }> } = await res.json();
-        if (cancelled || !Array.isArray(data.items)) return;
+        if (!token || cancelled) return;
 
-        for (const item of data.items) {
-          if (!item || typeof item.key !== 'string') continue;
-          // 始终用 DB 数据覆盖 localStorage（DB 是数据源）
-          try {
-            localStorage.setItem(item.key, JSON.stringify(item.value));
-          } catch {
-            // ignore quota errors
+        const previousUserId = getSyncedUserId();
+        const localItems = collectSyncedItems();
+
+        // 场景 A：设备未绑定过此账号（首登 / 切账号）→ 先上传本地数据
+        if (previousUserId !== userId) {
+          if (localItems.length > 0) {
+            await pushUserData(token, localItems);
           }
+          setSyncedUserId(userId);
+          dispatchDataSyncedEvent();
+          return;
         }
 
-        // 通知其他标签/组件：数据已从云端恢复
-        window.dispatchEvent(new CustomEvent('user-data-synced'));
+        // 场景 B：同账号二次登录 → 拉取云端，合并到 local（不覆盖）
+        const cloudItems = await pullUserData(token);
+        if (cancelled || !cloudItems) return;
+        mergeCloudToLocal(cloudItems);
+        dispatchDataSyncedEvent();
       } catch (err) {
-        console.warn('[SyncProvider] pull from DB failed', err);
+        console.warn('[SyncProvider] initial sync failed', err);
       }
     })();
 
@@ -101,13 +78,12 @@ export function SyncProvider({ children }: SyncProviderProps) {
     if (!userId) return;
 
     const handleStorageChange = (e: StorageEvent) => {
-      // StorageEvent 触发：另一窗口/标签页写入了 localStorage
       if (!e.key) return;
       if (!isSyncedKey(e.key)) return;
       scheduleSync();
     };
 
-    // 同一标签页内，原生 storage 事件不会触发（只有其他标签才会）
+    // 同一标签页内，原生 storage 事件不会触发
     // 用 monkey-patch setItem/removeItem 方式触发同步
     const originalSetItem = Storage.prototype.setItem;
     const originalRemoveItem = Storage.prototype.removeItem;
@@ -146,14 +122,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
         if (!token) return;
         const items = collectSyncedItems();
         if (items.length === 0) return;
-        await fetch('/api/user-data', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-session': token,
-          },
-          body: JSON.stringify({ items }),
-        });
+        await pushUserData(token, items);
       } catch (err) {
         console.warn('[SyncProvider] push to DB failed', err);
       }
@@ -161,28 +130,4 @@ export function SyncProvider({ children }: SyncProviderProps) {
   }, [userId, getToken]);
 
   return <>{children}</>;
-}
-
-// 收集所有需要同步的 localStorage 项
-function collectSyncedItems(): Array<{ key: string; value: unknown }> {
-  const items: Array<{ key: string; value: unknown }> = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-    if (!isSyncedKey(key)) continue;
-    const raw = localStorage.getItem(key);
-    if (raw === null) continue;
-    try {
-      items.push({ key, value: JSON.parse(raw) });
-    } catch {
-      // 非 JSON 字符串直接以字符串形式存
-      items.push({ key, value: raw });
-    }
-  }
-  return items;
-}
-
-function isSyncedKey(key: string): boolean {
-  if (SYNCED_KEYS.includes(key)) return true;
-  return SYNCED_PREFIX_KEYS.some((p) => key.startsWith(p));
 }

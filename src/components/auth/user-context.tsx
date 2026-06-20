@@ -2,6 +2,11 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { getSupabaseBrowserClientWithRetry } from '@/lib/supabase-browser';
+import {
+  collectSyncedItems,
+  pushUserData,
+  clearSyncedUserId,
+} from '@/lib/user-kv';
 
 export interface UserInfo {
   id: string;
@@ -89,42 +94,33 @@ export function UserProvider({ children }: UserProviderProps) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // 1. 登出前同步上传 localStorage 到云端（关键：保留所有数据）
+    try {
+      const token = await getToken();
+      if (token) {
+        const items = collectSyncedItems();
+        if (items.length > 0) {
+          await pushUserData(token, items);
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2. 清"已同步账号"标记 → 下次登录（即使是同一账号）会触发首登逻辑
+    //    避免登出前漏传的少量数据被云端覆盖
+    clearSyncedUserId();
+
+    // 3. 登出 supabase
     try {
       const supabase = await getSupabaseBrowserClientWithRetry();
       await supabase.auth.signOut();
     } catch {
       // ignore
     }
-    // 清空 localStorage 中"用户私有"key（DB 是数据源，本地可清空，下次登录会从 DB 拉）
-    try {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (!key) continue;
-        // 同步的 key 全清；UI 偏好（皮肤/面板位置/时钟模式）保留
-        if (
-          key.startsWith('calendar-overrides') ||
-          key.startsWith('dayview-') ||
-          key.startsWith('calendar-notes') ||
-          key.startsWith('knowledge-') ||
-          key.startsWith('calendar-bookmarks') ||
-          key.startsWith('life-calendar-okr') ||
-          key.startsWith('life-calendar-progress') ||
-          key.startsWith('gantt-rows') ||
-          key.startsWith('calendar-drawing') ||
-          key === 'calendar-birth-year' ||
-          key === 'calendar-motto' ||
-          key === 'calendar-review-start-date' ||
-          key.startsWith('achievements-') ||
-          key.startsWith('daily-review-') ||
-          key.startsWith('shown-') ||
-          key.startsWith('note-')
-        ) {
-          localStorage.removeItem(key);
-        }
-      }
-    } catch {
-      // ignore
-    }
+
+    // 注：不主动清空 localStorage！保留用户所有数据，下次同账号登录会重新合并
+    //     这样即使用户误操作登出，所有数据都不会丢失
     setUser(null);
   }, []);
 
