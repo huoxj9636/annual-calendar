@@ -1,51 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import {
-  requireUser,
-  parseJsonBody,
-  parseSearchParams,
-  apiError,
-  yearSchema,
-  monthSchema,
-  daySchema,
-} from '@/lib/api-auth';
+import { requireUser, parseJsonBody, apiError } from '@/lib/api-auth';
+import { z } from 'zod';
 
-// ─── Zod schemas ───
-const dateParamsSchema = z.object({
-  year: yearSchema,
-  month: monthSchema,
-  day: daySchema,
+const dayDataQuerySchema = z.object({
+  year: z.coerce.number().int().min(1900).max(2200),
+  month: z.coerce.number().int().min(1).max(12),
+  day: z.coerce.number().int().min(1).max(31),
 });
 
-const eventSchema = z.object({
-  id: z.string().min(1).max(100),
-  title: z.string().min(1).max(500),
-  time: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
-  endTime: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
-  startHour: z.number().int().min(0).max(23).optional(),
-  startMin: z.number().int().min(0).max(59).optional(),
-  endHour: z.number().int().min(0).max(23).optional(),
-  endMin: z.number().int().min(0).max(59).optional(),
-  color: z.string().max(50).optional(),
-  done: z.boolean().optional(),
-}).strict();
-
-const todoSchema = z.object({
-  id: z.string().min(1).max(100),
-  text: z.string().min(1).max(2000),
-  done: z.boolean(),
-}).strict();
-
-const postBodySchema = z.object({
-  year: yearSchema,
-  month: monthSchema,
-  day: daySchema,
-  type: z.enum(['events', 'todos']).optional(),
-  data: z.array(z.unknown()).max(500).optional(),
-  events: z.array(eventSchema).max(500).optional(),
-  todos: z.array(todoSchema).max(500).optional(),
-}).strict();
+const dayDataPostSchema = z.object({
+  year: z.coerce.number().int().min(1900).max(2200),
+  month: z.coerce.number().int().min(1).max(12),
+  day: z.coerce.number().int().min(1).max(31),
+  events: z.array(z.object({
+    title: z.string().min(1).max(500),
+    startHour: z.number().int().min(0).max(23).optional(),
+    startMin: z.number().int().min(0).max(59).optional(),
+    endHour: z.number().int().min(0).max(23).optional(),
+    endMin: z.number().int().min(0).max(59).optional(),
+  }).passthrough()).optional(),
+  todos: z.array(z.object({
+    content: z.string().min(1).max(2000).optional(),
+    text: z.string().min(1).max(2000).optional(),
+    priority: z.string().max(20).optional(),
+    done: z.boolean().optional(),
+  }).passthrough().refine(
+    (t) => !!(t.content || t.text),
+    { message: '需要 content 或 text' },
+  )).optional(),
+  note: z.string().max(5000).optional(),
+  // mode 字段: events / todos / all
+  mode: z.string().optional(),
+}).passthrough();
 
 export async function GET(request: NextRequest) {
   const userIdOrResp = await requireUser(request);
@@ -53,36 +40,57 @@ export async function GET(request: NextRequest) {
   const userId = userIdOrResp;
 
   const { searchParams } = new URL(request.url);
-  const parsed = parseSearchParams(searchParams, dateParamsSchema);
-  if (parsed instanceof NextResponse) return parsed;
-  const { year, month, day } = parsed;
+  const parsedQuery = dayDataQuerySchema.safeParse({
+    year: searchParams.get('year') ?? 0,
+    month: searchParams.get('month') ?? 0,
+    day: searchParams.get('day') ?? 0,
+  });
+  if (!parsedQuery.success) {
+    return apiError('日期参数无效', 400);
+  }
+  const { year, month, day } = parsedQuery.data;
 
   const client = getSupabaseClient();
-  const [eventsRes, todosRes] = await Promise.all([
-    client.from('day_events').select('*').eq('user_id', userId).eq('year', year).eq('month', month).eq('day', day).order('start_hour', { ascending: true }),
-    client.from('day_todos').select('*').eq('user_id', userId).eq('year', year).eq('month', month).eq('day', day).order('created_at', { ascending: true }),
-  ]);
-
-  if (eventsRes.error) return apiError('加载日程失败', 500, eventsRes.error);
-  if (todosRes.error) return apiError('加载待办失败', 500, todosRes.error);
-
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const events = (eventsRes.data || []).map((e: Record<string, unknown>) => ({
-    id: e.id,
-    title: e.title,
-    time: `${pad((e.start_hour as number) ?? 0)}:${pad((e.start_min as number) ?? 0)}`,
-    endTime: e.end_hour != null || e.end_min != null
-      ? `${pad((e.end_hour as number) ?? 0)}:${pad((e.end_min as number) ?? 0)}`
-      : undefined,
-  }));
-
-  const todos = (todosRes.data || []).map((t: Record<string, unknown>) => ({
-    id: t.id,
-    text: t.text,
-    done: t.done ?? false,
-  }));
-
-  return NextResponse.json({ events, todos });
+  try {
+    const [{ data: events, error: evErr }, { data: todos, error: tErr }, { data: noteRow, error: nErr }] = await Promise.all([
+      client.from('day_events').select('*').eq('user_id', userId).eq('year', year).eq('month', month).eq('day', day).order('start_hour', { ascending: true }),
+      client.from('day_todos').select('*').eq('user_id', userId).eq('year', year).eq('month', month).eq('day', day).order('created_at', { ascending: true }),
+      client.from('calendar_notes').select('*').eq('user_id', userId).eq('year', year).eq('date_key', `${month}-${day}`).maybeSingle(),
+    ]);
+    if (evErr) {
+      console.error('[day-data] events select error:', evErr);
+      return apiError('查询失败', 500);
+    }
+    if (tErr) {
+      console.error('[day-data] todos select error:', tErr);
+      return apiError('查询失败', 500);
+    }
+    if (nErr) {
+      console.error('[day-data] note select error:', nErr);
+      return apiError('查询失败', 500);
+    }
+    return NextResponse.json({
+      events: (events || []).map(e => ({
+        id: e.id,
+        title: e.title,
+        startHour: e.start_hour,
+        startMin: e.start_min,
+        endHour: e.end_hour,
+        endMin: e.end_min,
+      })),
+      todos: (todos || []).map(t => ({
+        id: t.id,
+        content: t.content || t.text,
+        text: t.text || t.content,
+        priority: t.priority,
+        done: t.done,
+      })),
+      note: noteRow?.content || '',
+    });
+  } catch (e) {
+    console.error('[day-data] GET exception:', e);
+    return apiError('服务器内部错误', 500);
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -90,55 +98,83 @@ export async function POST(request: NextRequest) {
   if (userIdOrResp instanceof NextResponse) return userIdOrResp;
   const userId = userIdOrResp;
 
-  const parsed = await parseJsonBody(request, postBodySchema);
-  if (parsed instanceof NextResponse) return parsed;
-  const { year, month, day, events, todos } = parsed;
+  const parsedBody = await parseJsonBody(request, dayDataPostSchema);
+  if (parsedBody instanceof NextResponse) return parsedBody;
+  const body = parsedBody as z.infer<typeof dayDataPostSchema>;
+  const mode = body.mode || 'all';
 
   const client = getSupabaseClient();
-
-  // Delete existing events and todos for this user on this date
-  const [delEvents, delTodos] = await Promise.all([
-    client.from('day_events').delete().eq('user_id', userId).eq('year', year).eq('month', month).eq('day', day),
-    client.from('day_todos').delete().eq('user_id', userId).eq('year', year).eq('month', month).eq('day', day),
-  ]);
-  if (delEvents.error) return apiError('清理日程失败', 500, delEvents.error);
-  if (delTodos.error) return apiError('清理待办失败', 500, delTodos.error);
-
-  if (events && events.length > 0) {
-    const parseTime = (t?: string) => {
-      if (!t) return { h: 0, m: 0 };
-      const parts = t.split(':').map(Number);
-      return { h: parts[0] ?? 0, m: parts[1] ?? 0 };
-    };
-    const rows = events.map(e => {
-      const start = e.startHour != null ? { h: e.startHour, m: e.startMin ?? 0 } : parseTime(e.time);
-      const end = e.endHour != null ? { h: e.endHour, m: e.endMin ?? 0 } : parseTime(e.endTime);
-      return {
-        user_id: userId,
-        id: e.id, year, month, day,
-        title: e.title,
-        start_hour: start.h,
-        start_min: start.m,
-        end_hour: end.h,
-        end_min: end.m,
-        created_at: new Date().toISOString(),
-      };
-    });
-    const { error } = await client.from('day_events').insert(rows);
-    if (error) return apiError('保存日程失败', 500, error);
+  try {
+    if (mode === 'events' || mode === 'all') {
+      await client.from('day_events').delete().eq('user_id', userId).eq('year', body.year).eq('month', body.month).eq('day', body.day);
+      if (body.events && body.events.length > 0) {
+        const rows = body.events
+          .filter(e => e && typeof e === 'object' && (e.title || '').toString().trim())
+          .map(e => ({
+            user_id: userId,
+            year: body.year,
+            month: body.month,
+            day: body.day,
+            title: String(e.title || '').slice(0, 500),
+            start_hour: typeof e.startHour === 'number' ? e.startHour : null,
+            start_min: typeof e.startMin === 'number' ? e.startMin : null,
+            end_hour: typeof e.endHour === 'number' ? e.endHour : null,
+            end_min: typeof e.endMin === 'number' ? e.endMin : null,
+          }));
+        if (rows.length > 0) {
+          const { error } = await client.from('day_events').insert(rows);
+          if (error) {
+            console.error('[day-data] events insert error:', error);
+            return apiError('保存失败', 500);
+          }
+        }
+      }
+    }
+    if (mode === 'todos' || mode === 'all') {
+      await client.from('day_todos').delete().eq('user_id', userId).eq('year', body.year).eq('month', body.month).eq('day', body.day);
+      if (body.todos && body.todos.length > 0) {
+        const rows = body.todos
+          .filter(t => t && typeof t === 'object' && (t.content || t.text))
+          .map(t => {
+            const text = String(t.content || t.text || '').slice(0, 2000);
+            return {
+              user_id: userId,
+              year: body.year,
+              month: body.month,
+              day: body.day,
+              text,
+              content: text,
+              priority: typeof t.priority === 'string' ? t.priority : null,
+              done: !!t.done,
+            };
+          });
+        if (rows.length > 0) {
+          const { error } = await client.from('day_todos').insert(rows);
+          if (error) {
+            console.error('[day-data] todos insert error:', error);
+            return apiError('保存失败', 500);
+          }
+        }
+      }
+    }
+    if (mode === 'note' || (mode === 'all' && body.note !== undefined)) {
+      const dateKey = `${body.month}-${body.day}`;
+      if (body.note && body.note.trim()) {
+        const { error } = await client.from('calendar_notes').upsert(
+          { user_id: userId, year: body.year, date_key: dateKey, content: body.note.slice(0, 5000) },
+          { onConflict: 'user_id,year,date_key' }
+        );
+        if (error) {
+          console.error('[day-data] note upsert error:', error);
+          return apiError('保存失败', 500);
+        }
+      } else {
+        await client.from('calendar_notes').delete().eq('user_id', userId).eq('year', body.year).eq('date_key', dateKey);
+      }
+    }
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    console.error('[day-data] POST exception:', e);
+    return apiError('服务器内部错误', 500);
   }
-
-  if (todos && todos.length > 0) {
-    const rows = todos.map(t => ({
-      user_id: userId,
-      id: t.id, year, month, day,
-      text: t.text,
-      done: t.done,
-      created_at: new Date().toISOString(),
-    }));
-    const { error } = await client.from('day_todos').insert(rows);
-    if (error) return apiError('保存待办失败', 500, error);
-  }
-
-  return NextResponse.json({ success: true });
 }

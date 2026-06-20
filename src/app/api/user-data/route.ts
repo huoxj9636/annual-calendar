@@ -1,110 +1,110 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import {
-  requireUser,
-  parseJsonBody,
-  apiError,
-} from '@/lib/api-auth';
-
-export const runtime = 'nodejs';
-
-// ─── Zod schemas ───
-const kvItemSchema = z.object({
-  key: z.string().min(1).max(200),
-  value: z.unknown(),
-}).strict();
+import { requireUser, parseJsonBody, apiError } from '@/lib/api-auth';
+import { z } from 'zod';
 
 const postBodySchema = z.object({
-  items: z.array(kvItemSchema).max(200),
-}).strict();
+  action: z.enum(['push', 'pull']),
+  // push: data + timestamp
+  // pull: keys
+  data: z.unknown().optional(),
+  timestamp: z.number().optional(),
+  keys: z.array(z.string().max(200)).optional(),
+}).passthrough();
 
-const deleteBodySchema = z.object({
-  keys: z.array(z.string().min(1).max(200)).max(500),
-}).strict();
-
-// GET /api/user-data
-// 拉取登录用户的所有 user_kv_store 数据，返回 { key, value }[] 格式
-// 前端会把它逐个 setItem 到 localStorage
-export async function GET(req: NextRequest) {
-  const userIdOrResp = await requireUser(req);
+export async function POST(request: NextRequest) {
+  const userIdOrResp = await requireUser(request);
   if (userIdOrResp instanceof NextResponse) return userIdOrResp;
   const userId = userIdOrResp;
+
+  const parsedBody = await parseJsonBody(request, postBodySchema);
+  if (parsedBody instanceof NextResponse) return parsedBody;
+  const body = parsedBody as z.infer<typeof postBodySchema>;
 
   const client = getSupabaseClient();
-  const { data, error } = await client
-    .from('user_kv_store')
-    .select('key, value')
-    .eq('user_id', userId);
 
-  if (error) {
-    return apiError('查询失败', 500, error);
+  try {
+    if (body.action === 'push') {
+      if (!body.data || typeof body.data !== 'object') {
+        return apiError('push 需要 data 字段', 400);
+      }
+      const entries = Object.entries(body.data as Record<string, unknown>);
+      if (entries.length === 0) {
+        return NextResponse.json({ success: true, count: 0 });
+      }
+      let success = 0;
+      for (const [key, value] of entries) {
+        if (!key || key.length > 200) continue;
+        const { error } = await client
+          .from('user_kv_store')
+          .upsert(
+            { user_id: userId, key, value, updated_at: new Date().toISOString() },
+            { onConflict: 'user_id,key' }
+          );
+        if (!error) success++;
+        else console.error('[user-data] push error:', error, 'key:', key);
+      }
+      return NextResponse.json({ success: true, count: success });
+    }
+    if (body.action === 'pull') {
+      if (!body.keys || body.keys.length === 0) {
+        return NextResponse.json({ data: {} });
+      }
+      const { data, error } = await client
+        .from('user_kv_store')
+        .select('key, value, updated_at')
+        .eq('user_id', userId)
+        .in('key', body.keys);
+      if (error) {
+        console.error('[user-data] pull error:', error);
+        return apiError('查询失败', 500);
+      }
+      const result: Record<string, { value: unknown; updated_at: string }> = {};
+      for (const row of data || []) {
+        result[row.key] = { value: row.value, updated_at: row.updated_at };
+      }
+      return NextResponse.json({ data: result });
+    }
+    return apiError('不支持的 action', 400);
+  } catch (e) {
+    console.error('[user-data] POST exception:', e);
+    return apiError('服务器内部错误', 500);
   }
-
-  return NextResponse.json({ items: data ?? [] });
 }
 
-// POST /api/user-data
-// 批量 upsert 登录用户的 localStorage 数据到 user_kv_store
-// body: { items: [{ key, value }, ...] }
-export async function POST(req: NextRequest) {
-  const userIdOrResp = await requireUser(req);
+export async function GET(request: NextRequest) {
+  const userIdOrResp = await requireUser(request);
   if (userIdOrResp instanceof NextResponse) return userIdOrResp;
   const userId = userIdOrResp;
 
-  const parsed = await parseJsonBody(req, postBodySchema);
-  if (parsed instanceof NextResponse) return parsed;
-  const { items } = parsed;
-
-  if (items.length === 0) {
-    return NextResponse.json({ ok: true, count: 0 });
+  const { searchParams } = new URL(request.url);
+  const keysParam = searchParams.get('keys');
+  if (!keysParam) {
+    return NextResponse.json({ data: {} });
   }
-
-  const rows = items.map((it) => ({
-    user_id: userId,
-    key: it.key,
-    value: it.value as never,
-    updated_at: new Date().toISOString(),
-  }));
-
-  const client = getSupabaseClient();
-  const { error } = await client
-    .from('user_kv_store')
-    .upsert(rows, { onConflict: 'user_id,key' });
-
-  if (error) {
-    return apiError('同步失败', 500, error);
-  }
-
-  return NextResponse.json({ ok: true, count: rows.length });
-}
-
-// DELETE /api/user-data
-// 登录用户主动删除某些 key（登出时清空 localStorage 不需要走这里）
-// body: { keys: string[] }
-export async function DELETE(req: NextRequest) {
-  const userIdOrResp = await requireUser(req);
-  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
-  const userId = userIdOrResp;
-
-  const parsed = await parseJsonBody(req, deleteBodySchema);
-  if (parsed instanceof NextResponse) return parsed;
-  const { keys } = parsed;
-
+  const keys = keysParam.split(',').map(s => s.trim()).filter(Boolean);
   if (keys.length === 0) {
-    return NextResponse.json({ ok: true, count: 0 });
+    return NextResponse.json({ data: {} });
   }
 
   const client = getSupabaseClient();
-  const { error } = await client
-    .from('user_kv_store')
-    .delete()
-    .eq('user_id', userId)
-    .in('key', keys);
-
-  if (error) {
-    return apiError('删除失败', 500, error);
+  try {
+    const { data, error } = await client
+      .from('user_kv_store')
+      .select('key, value, updated_at')
+      .eq('user_id', userId)
+      .in('key', keys);
+    if (error) {
+      console.error('[user-data] GET error:', error);
+      return apiError('查询失败', 500);
+    }
+    const result: Record<string, { value: unknown; updated_at: string }> = {};
+    for (const row of data || []) {
+      result[row.key] = { value: row.value, updated_at: row.updated_at };
+    }
+    return NextResponse.json({ data: result });
+  } catch (e) {
+    console.error('[user-data] GET exception:', e);
+    return apiError('服务器内部错误', 500);
   }
-
-  return NextResponse.json({ ok: true, count: keys.length });
 }
