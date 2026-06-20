@@ -698,8 +698,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     const rect = e.currentTarget.getBoundingClientRect();
                     const x = e.clientX - rect.left;
                     const y = e.clientY - rect.top;
-                    // Task name column is 140px wide; time grid starts after that
-                    const trackX = x - 140;
+                    // Task name column width is dynamic (taskColumnWidth); time grid starts after that
+                    const trackX = x - taskColumnWidth;
                     if (trackX >= 0) {
                       const hour = trackX / cellWidth;
                       const clampedHour = Math.max(0, Math.min(24, hour));
@@ -739,10 +739,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     >
                       {/* 拖拽手柄 */}
                       <div 
-                        className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-8 cursor-ew-resize z-20 group/handle"
-                        style={{ backgroundColor: 'transparent' }}
+                        className="absolute right-0 top-0 bottom-0 w-4 cursor-ew-resize z-20 flex items-center justify-center"
                       >
-                        <div className="w-1 h-4 rounded-full opacity-0 group-hover/handle:opacity-60 transition-opacity" style={{ backgroundColor: skin.swatch }} />
+                        <div className="w-1 h-6 rounded-full opacity-40 hover:opacity-80 transition-opacity" style={{ backgroundColor: skin.swatch }} />
                       </div>
                     </div>
                     <div className="flex">
