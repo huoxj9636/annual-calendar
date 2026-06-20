@@ -636,7 +636,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               <div ref={ganttScrollRef} className="flex-1 overflow-auto" style={{ scrollbarGutter: 'stable' }}>
                 <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 40px)` }}>
                   {/* Hour header row (scrolls with rows) */}
-                  <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: 'transparent' }}>
+                  <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
                     <div className="w-[140px] shrink-0" />
                     <div className="flex">
                       {Array.from({ length: 24 }, (_, i) => (
@@ -1141,6 +1141,15 @@ function formatHour(h: number): string {
   return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
 }
 
+function formatDuration(start: number, end: number): string {
+  const diff = end - start;
+  const hours = Math.floor(diff);
+  const mins = Math.round((diff - hours) * 60);
+  if (hours === 0) return `${mins}分钟`;
+  if (mins === 0) return `${hours}小时`;
+  return `${hours}小时${mins}分`;
+}
+
 type DailyReviewSkin = {
   swatch: string;
   panelBg: string;
@@ -1272,10 +1281,10 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
               <div
                 key={slot}
                 className={`h-full ${isEmpty ? 'cursor-pointer hover:bg-black/5' : 'cursor-default'}`}
-                title={isEmpty ? `点击创建 ${formatHour(slotHour)} - ${formatHour(Math.min(24, slotHour + snap))}` : undefined}
+                title={isEmpty ? `点击创建 ${formatHour(slotHour)} - ${formatHour(Math.min(24, slotHour + 0.5))}` : undefined}
                 onClick={() => {
                   if (isEmpty) {
-                    onUpdateRow({ ...row, startHour: slotHour, endHour: Math.min(24, slotHour + snap) });
+                    onUpdateRow({ ...row, startHour: slotHour, endHour: Math.min(24, slotHour + 0.5) });
                   }
                 }}
               />
@@ -1294,7 +1303,7 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
               opacity: 0.85,
               minWidth: '3px',
             }}
-            title={`${formatHour(row.startHour)} - ${formatHour(row.endHour)}（拖动两端调整时长）`}
+            title={`${formatDuration(row.startHour, row.endHour)}（${formatHour(row.startHour)}～${formatHour(row.endHour)}）`}
           >
             {/* Left edge drag handle */}
             <div
