@@ -614,9 +614,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
             <>
               <button onClick={() => setViewMode(viewMode === 'gantt' ? 'review' : 'gantt')}
                   className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
-                  style={{ backgroundColor: viewMode === 'gantt' ? '#22c55e' : '#22c55e15', color: viewMode === 'gantt' ? '#fff' : '#22c55e', marginLeft: '10px' }}
+                  style={{ backgroundColor: viewMode === 'gantt' ? '#22c55e' : '#22c55e15', color: viewMode === 'gantt' ? '#fff' : '#22c55e', marginLeft: '8px' }}
                 >📊 日程</button>
-              <div className="flex items-center gap-3" style={{ marginLeft: '10px' }}>
+              <div className="flex items-center gap-3" style={{ marginLeft: '16px' }}>
               <button onClick={startVoiceRecording}
                   className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
                   style={{ backgroundColor: '#ef444415', color: '#ef4444' }}
