@@ -645,6 +645,21 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     ))}
                   </div>
                 </div>
+                {/* Return to start button - scroll to left edge */}
+                <button
+                  onClick={() => {
+                    if (ganttScrollRef.current) {
+                      ganttScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 hover:scale-110 active:scale-95"
+                  style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
+                  title="返回起点（事项列表开头）"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 12H5M5 12l6 6M5 12l6-6" />
+                  </svg>
+                </button>
                 {/* Locate current time button - on the right */}
                 {isToday && (
                   <button
@@ -691,7 +706,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   }}
                   onMouseLeave={() => { setHoverHour(null); setHoverY(null); }}
                 >
-                <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 40px)` }}>
+                <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 60px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
                     <div className="w-[140px] shrink-0" />
@@ -718,7 +733,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         </div>
                       ))}
                     </div>
-                    <div className="w-[40px] shrink-0" />
+                    <div className="w-[60px] shrink-0" />
                   </div>
                   {/* Rows */}
                   {ganttRows.map((row, idx) => (
@@ -747,7 +762,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 </div>
               </div>
               {/* Fixed overlay for time indicators - stays on top regardless of scrolling */}
-              <div className="absolute inset-0 z-30 pointer-events-none" style={{ top: '36px' }}>
+              <div className="absolute inset-0 z-30 pointer-events-none" style={{ top: '28px' }}>
                 {/* Hover time indicator - vertical line showing hovered time position */}
                 {hoverHour !== null && (
                   <div 
