@@ -557,6 +557,10 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               <div className="text-xs font-medium tracking-wider" style={{ color: skin.textMuted }}>DAILY REVIEW</div>
             </div>
             <>
+              <button onClick={() => setViewMode(viewMode === 'gantt' ? 'review' : 'gantt')}
+                  className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
+                  style={{ backgroundColor: viewMode === 'gantt' ? '#22c55e' : '#22c55e15', color: viewMode === 'gantt' ? '#fff' : '#22c55e' }}
+                >📊 甘特图</button>
               <button onClick={startVoiceRecording}
                   className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
                   style={{ backgroundColor: '#ef444415', color: '#ef4444' }}
@@ -565,10 +569,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
                     style={{ backgroundColor: '#3b82f615', color: '#3b82f6' }}
                   >📥 导入笔记</button>
-                <button onClick={() => setViewMode(viewMode === 'gantt' ? 'review' : 'gantt')}
-                    className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
-                    style={{ backgroundColor: viewMode === 'gantt' ? '#22c55e' : '#22c55e15', color: viewMode === 'gantt' ? '#fff' : '#22c55e' }}
-                  >📊 甘特图</button>
                 <button onClick={() => {
                   const fields = [
                     { label: '一、今天完成了什么？', key: 'completed' as const },
