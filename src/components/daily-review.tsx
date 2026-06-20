@@ -675,8 +675,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                       ganttScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
                     }
                   }}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-2 h-16 rounded-r transition-all hover:w-3 active:scale-95"
-                  style={{ backgroundColor: skin.swatch + '40' }}
+                  className="absolute top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-2 h-16 rounded-r transition-all hover:w-3 active:scale-95"
+                  style={{ backgroundColor: skin.swatch + '40', left: '-20px' }}
                   title="返回起点"
                 >
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ color: skin.swatch, marginLeft: '-1px' }}>
@@ -685,8 +685,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 </button>
                 <div 
                   ref={ganttScrollRef} 
-                  className="absolute inset-y-0 right-0 overflow-auto" 
-                  style={{ scrollbarGutter: 'stable', left: '8px' }}
+                  className="absolute inset-0 overflow-auto" 
+                  style={{ scrollbarGutter: 'stable' }}
                   onScroll={(e) => {
                     setGanttScrollLeft(e.currentTarget.scrollLeft);
                   }}
@@ -776,21 +776,18 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                       opacity: 0.5,
                     }}
                   >
-                    {/* Time label near mouse */}
-                    {hoverY !== null && hoverY > 36 && (
-                      <div 
-                        className="absolute left-0 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
-                        style={{ 
-                          top: `${hoverY - 36}px`,
-                          backgroundColor: skin.cardBg,
-                          color: skin.textPrimary,
-                          transform: 'translateY(-50%) translateX(8px)',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                        }}
-                      >
-                        {formatHour(hoverHour)}
-                      </div>
-                    )}
+                  {/* Time label fixed at top of the line */}
+                  <div 
+                    className="absolute top-0 left-0 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
+                    style={{ 
+                      transform: 'translateX(8px)',
+                      backgroundColor: skin.cardBg,
+                      color: skin.textPrimary,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                    }}
+                  >
+                    {formatHour(hoverHour)}
+                  </div>
                   </div>
                 )}
                 {/* Current time indicator - red line showing "now" (only for today) */}
@@ -1397,19 +1394,18 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
     }
   };
 
-  // Long press handler for moving the entire bar (only after drag handles are shown)
+  // Long press handler for moving the entire bar
+  // First click shows handles, then long press starts move
   const handleLongPressStart = (e: React.MouseEvent) => {
-    if (!showDragHandles) {
-      // First click just shows the handles
-      handleBarClick(e);
-      return;
-    }
     e.preventDefault();
     e.stopPropagation();
-    // Set cursor to grab immediately for visual feedback
+    
+    // Always show handles on any click
+    setShowDragHandles(true);
+    
+    // Start long press timer immediately (400ms)
     document.body.style.cursor = 'grab';
     document.body.style.userSelect = 'none';
-    // Start timer for long press detection (400ms)
     longPressTimer.current = setTimeout(() => {
       startDrag('move', e);
     }, 400);
