@@ -755,7 +755,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         <div className="w-1 h-5 rounded-full" style={{ backgroundColor: skin.swatch, opacity: 0.6 }} />
                       </div>
                     </div>
-                    <div className="flex">
+                    {/* Time scale container - z-index lower than task column so it gets covered when scrolling left */}
+                    <div className="flex relative z-0">
                       {Array.from({ length: 24 }, (_, i) => (
                         <div key={i} className="text-left text-xs font-medium shrink-0 border-r relative" style={{ width: `${48 / ganttScale}px`, color: skin.textMuted, borderColor: skin.cellBorder }}>
                           {/* 小时数字靠左（代表 :00），居中时压 30 标记 */}
