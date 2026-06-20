@@ -162,11 +162,11 @@ export const customLinks = pgTable("custom_links", {
 // 通用键值存储：登录用户的所有 localStorage 数据通过 key-value 形式持久化到数据库
 // user_id 直接关联 supabase auth.users，登录后通过 RLS 自动隔离
 export const userKvStore = pgTable("user_kv_store", {
-	userId: uuid("user_id").notNull(),
+	userId: varchar("user_id", { length: 36 }).default('legacy'),
 	key: text().notNull(),
 	value: jsonb().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	primaryKey({ columns: [table.userId, table.key] }),
-	index("user_kv_store_user_id_idx").using("btree", table.userId.asc().nullsLast()),
+	index("user_kv_store_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
 ]);
