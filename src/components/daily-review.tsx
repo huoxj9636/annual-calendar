@@ -726,9 +726,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
                     {/* 事项名称列占位 - sticky left so it doesn't scroll horizontally, covers time bars */}
-                    {/* isolation: isolate creates a new stacking context, ensuring it covers all following elements */}
                     <div 
-                      className="shrink-0 sticky left-0 z-50 isolate" 
+                      className="shrink-0 relative sticky left-0 z-50" 
                       style={{ width: `${taskColumnWidth}px`, backgroundColor: skin.panelBg }}
                     >
                       {/* 拖拽手柄 - 移到列右侧边缘，始终可见 */}
@@ -756,7 +755,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         <div className="w-1 h-5 rounded-full" style={{ backgroundColor: skin.swatch, opacity: 0.6 }} />
                       </div>
                     </div>
-                    {/* Time scale container - rendered after sticky task column, will be covered when scrolling left */}
+                    {/* Time scale container - z-index lower than task column so it gets covered when scrolling left */}
                     <div className="flex relative z-0">
                       {Array.from({ length: 24 }, (_, i) => (
                         <div key={i} className="text-left text-xs font-medium shrink-0 border-r relative" style={{ width: `${48 / ganttScale}px`, color: skin.textMuted, borderColor: skin.cellBorder }}>
