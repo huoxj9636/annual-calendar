@@ -633,7 +633,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
             </div>
           ) : (
             /* Review View */
-            <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="grid grid-cols-3 grid-rows-2 gap-3 mb-3 h-full">
               <ReviewSection
               title="今天完成了什么？"
               icon="✓"
@@ -641,7 +641,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('completed', v)}
               skin={skin}
               placeholder="列出今天完成的事项..."
-              compact
             />
             <ReviewSection
               title="今天发生了哪些美好或值得关注的事？"
@@ -650,7 +649,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('goodThings', v)}
               skin={skin}
               placeholder="值得记录的好事..."
-              compact
             />
             <ReviewSection
               title="今天遇到了哪些突发问题？"
@@ -659,7 +657,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('problems', v)}
               skin={skin}
               placeholder="遇到的意外或困难..."
-              compact
             />
             <ReviewSection
               title="今天心情如何？"
@@ -668,7 +665,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('mood', v)}
               skin={skin}
               placeholder="简单描述心情..."
-              compact
             />
             <ReviewSection
               title="今天有哪些感想或总结？"
@@ -677,7 +673,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('reflections', v)}
               skin={skin}
               placeholder="今天的思考..."
-              compact
             />
             <ReviewSection
               title="明日待办？"
@@ -686,7 +681,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               onChange={v => updateField('tomorrowTodo', v)}
               skin={skin}
               placeholder="明天要做的事..."
-              compact
             />
           </div>
           )}
