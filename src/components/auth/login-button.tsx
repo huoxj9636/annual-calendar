@@ -35,7 +35,7 @@ export function LoginButton() {
   if (user) {
     return (
       <div
-        className="fixed top-[34px] right-4 z-40 select-none"
+        className="select-none"
         style={{ fontFamily: 'inherit' }}
       >
         <div
@@ -58,7 +58,7 @@ export function LoginButton() {
   // ── 未登录:醒目的「登录」按钮(主题色 + 阴影 + 文字) ──
   return (
     <div
-      className="fixed top-[34px] right-4 z-40 select-none"
+      className="select-none"
       style={{ fontFamily: 'inherit' }}
     >
       <button

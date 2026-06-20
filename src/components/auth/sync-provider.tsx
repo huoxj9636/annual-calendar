@@ -78,18 +78,33 @@ export function SyncProvider({ children }: SyncProviderProps) {
   // ── 迁移状态(localStorage 残留) ──
   const [pendingCount, setPendingCount] = useState(0);
   const [running, setRunning] = useState(false);
-  const dismissedRef = useRef(false);
+  // dismissed 状态: 持久化到 localStorage,刷新页面后仍生效
+  // 按"提示类型"分键 + 按"userId"分键(同一用户反复看到才重复)
+  const [dismissed, setDismissed] = useState(false);
+  const [legacyDismissed, setLegacyDismissed] = useState(false);
 
   // ── Legacy 状态(数据库中 user_id='legacy' 的旧访客数据) ──
   const [legacyCount, setLegacyCount] = useState(0);
   const [legacyLoading, setLegacyLoading] = useState(false);
   const [legacyRunning, setLegacyRunning] = useState(false);
-  const legacyDismissedRef = useRef(false);
+
+  // ── 客户端 mount 时从 localStorage 恢复 dismissed 状态 ──
+  useEffect(() => {
+    try {
+      // 按用户分键 — 避免一个用户的 dismiss 影响其他用户
+      const localKey = `calendar-migrated-local-dismissed:${user?.id ?? 'guest'}`;
+      const legacyKey = `calendar-migrated-legacy-dismissed:${user?.id ?? 'guest'}`;
+      if (localStorage.getItem(localKey) === '1') setDismissed(true);
+      if (localStorage.getItem(legacyKey) === '1') setLegacyDismissed(true);
+    } catch {
+      /* localStorage 不可用 — 静默忽略 */
+    }
+  }, [user?.id]);
 
   // 重新检测 localStorage 已迁库 key 的待迁移条数
   // 注意:dismiss 后不应该再弹 toast,即使有新数据写入
   const refreshPendingCount = useCallback(() => {
-    if (dismissedRef.current) return;
+    if (dismissed) return;
     try {
       setPendingCount(countLocalMigratableData());
     } catch {
@@ -99,7 +114,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
 
   // 检测数据库 legacy 数据条数
   const refreshLegacyCount = useCallback(async () => {
-    if (legacyDismissedRef.current) return;
+    if (legacyDismissed) return;
     setLegacyLoading(true);
     try {
       const token = await getSessionToken();
@@ -157,7 +172,10 @@ export function SyncProvider({ children }: SyncProviderProps) {
         console.warn('[Migration] cleanup localStorage failed', e);
       }
       setPendingCount(0);
-      dismissedRef.current = true;
+      setDismissed(true);
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('calendar-migrated-local-dismissed', '1'); } catch {}
+      }
     } catch (err) {
       console.warn('[Migration] failed', err);
     } finally {
@@ -166,8 +184,11 @@ export function SyncProvider({ children }: SyncProviderProps) {
   }, [running, getToken]);
 
   const dismiss = useCallback(() => {
-    dismissedRef.current = true;
+    setDismissed(true);
     setPendingCount(0);
+    if (typeof window !== 'undefined') {
+      try { localStorage.setItem('calendar-migrated-local-dismissed', '1'); } catch {}
+    }
   }, []);
 
   // 接管 legacy 数据
@@ -188,7 +209,10 @@ export function SyncProvider({ children }: SyncProviderProps) {
       if (res) {
         console.log('[Legacy] claimed');
         setLegacyCount(0);
-        legacyDismissedRef.current = true;
+        setLegacyDismissed(true);
+        if (typeof window !== 'undefined') {
+          try { localStorage.setItem('calendar-migrated-legacy-dismissed', '1'); } catch {}
+        }
         // 接管后重新拉云端数据
         const cloudItems = await pullUserData(token);
         if (cloudItems) mergeCloudToLocal(cloudItems);
@@ -221,7 +245,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
       if (res) {
         console.log('[Legacy] cleared');
         setLegacyCount(0);
-        legacyDismissedRef.current = true;
+        setLegacyDismissed(true); if (typeof window !== 'undefined') localStorage.setItem('calendar-migrated-legacy-dismissed', '1');
       } else {
         console.warn('[Legacy] clear failed', res.status);
       }
@@ -233,7 +257,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
   }, [legacyRunning]);
 
   const dismissLegacy = useCallback(() => {
-    legacyDismissedRef.current = true;
+    setLegacyDismissed(true); if (typeof window !== 'undefined') localStorage.setItem('calendar-migrated-legacy-dismissed', '1');
     setLegacyCount(0);
   }, []);
 
@@ -250,8 +274,8 @@ export function SyncProvider({ children }: SyncProviderProps) {
       initialLoadedRef.current = false;
       setPendingCount(0);
       setLegacyCount(0);
-      dismissedRef.current = false;
-      legacyDismissedRef.current = false;
+      setDismissed(false); if (typeof window !== 'undefined') localStorage.removeItem('calendar-migrated-local-dismissed');
+      setLegacyDismissed(false); if (typeof window !== 'undefined') localStorage.removeItem('calendar-migrated-legacy-dismissed');
       return;
     }
 
@@ -261,8 +285,8 @@ export function SyncProvider({ children }: SyncProviderProps) {
       if (prevUserId && prevUserId !== userId) {
         clearAllSyncedLocalData();
         initialLoadedRef.current = false;
-        dismissedRef.current = false;
-        legacyDismissedRef.current = false;
+        setDismissed(false); if (typeof window !== 'undefined') localStorage.removeItem('calendar-migrated-local-dismissed');
+        setLegacyDismissed(false); if (typeof window !== 'undefined') localStorage.removeItem('calendar-migrated-legacy-dismissed');
       }
       // 首次登录或切账号：拉取云端数据 → 合并到 localStorage → 推送 localStorage 到云端
       if (!initialLoadedRef.current) {
@@ -292,12 +316,12 @@ export function SyncProvider({ children }: SyncProviderProps) {
             // 4. 检测已迁库 key 残留 → 弹迁移提示
             //    推迟到下个 tick，等组件渲染完成
             setTimeout(() => {
-              if (cancelled || dismissedRef.current) return;
+              if (cancelled || dismissed) return;
               refreshPendingCount();
             }, 500);
 
             // 5. 检测数据库 legacy 数据(老访客) → 弹接管/清空提示
-            if (!cancelled && !legacyDismissedRef.current) {
+            if (!cancelled && !legacyDismissed) {
               void refreshLegacyCount();
             }
           } catch (err) {

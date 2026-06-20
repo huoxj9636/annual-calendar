@@ -4,7 +4,6 @@ import { SupabaseConfigProvider } from '@/lib/supabase-config-inject';
 import { UserProvider } from '@/components/auth/user-context';
 import { AuthGuard } from '@/components/auth/auth-guard';
 import { LoginPromptDialog } from '@/components/auth/login-prompt-dialog';
-import { LoginButton } from '@/components/auth/login-button';
 import { UserMenu } from '@/components/auth/user-menu';
 
 export const metadata: Metadata = {
@@ -36,8 +35,7 @@ export default function RootLayout({
               {children}
               <LoginPromptDialog />
             </AuthGuard>
-            <LoginButton />
-            <UserMenu />
+      <UserMenu />
           </UserProvider>
         </SupabaseConfigProvider>
       </body>
