@@ -687,11 +687,11 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                       ganttScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
                     }
                   }}
-                  className="absolute top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-2 h-16 rounded-r transition-all hover:w-3 active:scale-95"
-                  style={{ backgroundColor: skin.swatch + '40', left: `${taskColumnWidth - 4}px` }}
+                  className="absolute top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-5 h-14 rounded transition-all hover:w-6 hover:h-16 active:scale-95"
+                  style={{ backgroundColor: skin.swatch + '40', left: `${taskColumnWidth}px` }}
                   title="返回起点"
                 >
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ color: skin.swatch, marginLeft: '-1px' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ color: skin.swatch }}>
                     <path d="M15 18l-6-6l6-6" />
                   </svg>
                 </button>
@@ -727,11 +727,12 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
                     {/* 事项名称列占位 - sticky left so it doesn't scroll horizontally, covers time bars */}
                     <div 
-                      className="shrink-0 relative sticky left-0 z-50 flex items-center" 
+                      className="shrink-0 relative sticky left-0 z-50 flex items-center -ml-1" 
                       style={{ 
                         width: `${taskColumnWidth}px`, 
                         backgroundColor: skin.panelBg,
                         minHeight: '36px', // Same height as task input row for alignment
+                        paddingLeft: '4px', // Shift content left to make room for button
                       }}
                     >
                       {/* 拖拽手柄 - 移到列右侧边缘，始终可见 */}
@@ -1465,11 +1466,12 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
     <div className="flex mb-1 items-center group">
       {/* Task name input - sticky left so it doesn't scroll horizontally, covers time bars */}
       <div 
-        className="shrink-0 px-2 sticky left-0 z-50 flex items-center" 
+        className="shrink-0 px-2 sticky left-0 z-50 flex items-center -ml-1" 
         style={{ 
           width: `${taskColumnWidth}px`, 
           backgroundColor: skin.panelBg,
           minHeight: '36px', // Same height as header row for alignment
+          paddingLeft: '4px', // Shift content left to make room for button
         }}
       >
         <input
