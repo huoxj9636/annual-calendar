@@ -1564,19 +1564,19 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
             onClick={handleBarClick}
             onMouseLeave={handleBarMouseLeave}
           >
-            {/* Left edge drag handle - only visible after click */}
-            {showDragHandles && (
-              <div
-                className="absolute top-0 bottom-0 left-0 w-2 cursor-ew-resize"
-                onMouseDown={(e) => startDrag('left', e)}
-                title="拖动调整起点"
-              >
-                <div className="absolute inset-y-0 left-[3px] w-[2px] rounded-full bg-white/50" />
-              </div>
-            )}
+            {/* Left edge drag handle - always visible for clarity */}
+            <div
+              className="group/handle absolute top-0 bottom-0 left-0 w-3 cursor-ew-resize flex items-center justify-center"
+              onMouseDown={(e) => startDrag('left', e)}
+              title="拖动调整起点"
+            >
+              <div className={`w-[2px] rounded-full transition-all ${
+                showDragHandles ? 'h-3/5 bg-white opacity-90' : 'h-2/5 bg-white/40 group-hover/handle:h-3/5 group-hover/handle:opacity-70'
+              }`} />
+            </div>
             {/* Middle section for long-press to move entire bar */}
             <div
-              className="absolute top-0 bottom-0 left-2 right-2"
+              className="absolute top-0 bottom-0 left-3 right-3"
               style={{ cursor: showDragHandles ? 'grab' : 'pointer' }}
               onMouseDown={handleLongPressStart}
               onMouseUp={() => {
@@ -1588,18 +1588,29 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
                   document.body.style.userSelect = '';
                 }
               }}
-              title={showDragHandles ? "长按可移动整个时间条" : `${formatHour(row.startHour)}～${formatHour(row.endHour)}`}
-            />
-            {/* Right edge drag handle - only visible after click */}
-            {showDragHandles && (
-              <div
-                className="absolute top-0 bottom-0 right-0 w-2 cursor-ew-resize"
-                onMouseDown={(e) => startDrag('right', e)}
-                title="拖动调整终点"
-              >
-                <div className="absolute inset-y-0 right-[3px] w-[2px] rounded-full bg-white/50" />
+              title={showDragHandles ? "长按可移动整个时间条" : `${formatHour(row.startHour)}～${formatHour(row.endHour)}（${formatDuration(row.startHour, row.endHour)}）`}
+            >
+              {/* Subtle center indicator for long-press to move */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className={`flex gap-[2px] transition-opacity ${
+                  showDragHandles ? 'opacity-70' : 'opacity-30'
+                }`}>
+                  <div className="w-[2px] h-2 rounded-full bg-white" />
+                  <div className="w-[2px] h-2 rounded-full bg-white" />
+                  <div className="w-[2px] h-2 rounded-full bg-white" />
+                </div>
               </div>
-            )}
+            </div>
+            {/* Right edge drag handle - always visible for clarity */}
+            <div
+              className="group/handle absolute top-0 bottom-0 right-0 w-3 cursor-ew-resize flex items-center justify-center"
+              onMouseDown={(e) => startDrag('right', e)}
+              title="拖动调整终点"
+            >
+              <div className={`w-[2px] rounded-full transition-all ${
+                showDragHandles ? 'h-3/5 bg-white opacity-90' : 'h-2/5 bg-white/40 group-hover/handle:h-3/5 group-hover/handle:opacity-70'
+              }`} />
+            </div>
           </div>
         )}
       </div>
