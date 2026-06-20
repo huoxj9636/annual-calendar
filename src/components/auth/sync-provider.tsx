@@ -91,15 +91,15 @@ export function SyncProvider({ children }: SyncProviderProps) {
   // ── 客户端 mount 时从 localStorage 恢复 dismissed 状态 ──
   useEffect(() => {
     try {
-      // 按用户分键 — 避免一个用户的 dismiss 影响其他用户
-      const localKey = `calendar-migrated-local-dismissed:${user?.id ?? 'guest'}`;
-      const legacyKey = `calendar-migrated-legacy-dismissed:${user?.id ?? 'guest'}`;
+      // 统一使用全局 key，不需要按用户分键 — 用户 dismiss 一次后永久不弹
+      const localKey = 'calendar-migrated-local-dismissed';
+      const legacyKey = 'calendar-migrated-legacy-dismissed';
       if (localStorage.getItem(localKey) === '1') setDismissed(true);
       if (localStorage.getItem(legacyKey) === '1') setLegacyDismissed(true);
     } catch {
       /* localStorage 不可用 — 静默忽略 */
     }
-  }, [user?.id]);
+  }, []);
 
   // 重新检测 localStorage 已迁库 key 的待迁移条数
   // 注意:dismiss 后不应该再弹 toast,即使有新数据写入
@@ -274,8 +274,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
       initialLoadedRef.current = false;
       setPendingCount(0);
       setLegacyCount(0);
-      setDismissed(false); if (typeof window !== 'undefined') localStorage.removeItem('calendar-migrated-local-dismissed');
-      setLegacyDismissed(false); if (typeof window !== 'undefined') localStorage.removeItem('calendar-migrated-legacy-dismissed');
+      // 注意：不重置 dismissed 状态 — 用户 dismiss 后永久不弹
       return;
     }
 
@@ -285,8 +284,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
       if (prevUserId && prevUserId !== userId) {
         clearAllSyncedLocalData();
         initialLoadedRef.current = false;
-        setDismissed(false); if (typeof window !== 'undefined') localStorage.removeItem('calendar-migrated-local-dismissed');
-        setLegacyDismissed(false); if (typeof window !== 'undefined') localStorage.removeItem('calendar-migrated-legacy-dismissed');
+        // 注意：不重置 dismissed 状态 — 用户 dismiss 后永久不弹
       }
       // 首次登录或切账号：拉取云端数据 → 合并到 localStorage → 推送 localStorage 到云端
       if (!initialLoadedRef.current) {
