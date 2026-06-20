@@ -634,18 +634,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               </div>
               {/* Scrollable rows area (horizontal + vertical) — includes hour header + rows together so they scroll in sync */}
               <div ref={ganttScrollRef} className="flex-1 overflow-auto" style={{ scrollbarGutter: 'stable' }}>
-                <div style={{ minWidth: `calc(140px + ${(48 * 24) / ganttScale}px + 40px)` }}>
+                <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 40px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: 'transparent' }}>
                     <div className="w-[140px] shrink-0" />
                     <div className="flex">
                       {Array.from({ length: 24 }, (_, i) => (
-                        <div key={i} className="text-center text-xs font-medium shrink-0 border-r" style={{ width: `48px`, color: skin.textMuted, borderColor: skin.cellBorder, opacity: 0.6 }}>{i}</div>
+                        <div key={i} className="text-center text-xs font-medium shrink-0 border-r" style={{ width: `${48 / ganttScale}px`, color: skin.textMuted, borderColor: skin.cellBorder, opacity: 0.6 }}>{i}</div>
                       ))}
-                      {/* Trailing "24" label so the right edge of the track has a tick mark */}
-                      <div className="text-center text-xs font-medium shrink-0" style={{ width: `0px`, position: 'relative' }}>
-                        <span style={{ position: 'absolute', left: '-7px', top: 0, color: skin.textMuted, opacity: 0.6 }}>24</span>
-                      </div>
                     </div>
                     <div className="w-[40px] shrink-0" />
                   </div>
@@ -1147,11 +1143,10 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
   onUpdateRow: (row: GanttRowData) => void;
   onDelete: () => void;
 }) {
-  const cellWidth = 48; // 1h 永远 = 1 大格 = 48px（不再随 scale 变宽）
-  const totalSlots = 24; // 固定 24 个 1h 大格
-  const trackWidth = cellWidth * totalSlots; // 固定 = 1152px
-  const snap = 1 / scale; // 1h 视图 snap=1h, 30min 视图 snap=0.5h, 15min 视图 snap=0.25h
-  const PIXELS_PER_HOUR = 48 / scale; // 1h 在轨道上的像素宽度：1h=48, 30min=96, 15min=192
+  const cellWidth = 48 / scale; // 1h=48px, 30m=24px, 15m=12px
+  const totalSlots = 24 / scale; // total number of slots
+  const trackWidth = cellWidth * totalSlots; // 24h total width
+  const snap = scale; // snap to slot
   // Empty row = startHour === endHour → no bar visible, click a cell to create a 1h bar
   const isEmpty = row.startHour === row.endHour;
 
@@ -1176,7 +1171,7 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
       const ds = dragState.current;
       if (!ds) return;
       const dx = e.clientX - ds.startX;
-      const dh = dx / PIXELS_PER_HOUR;
+      const dh = dx / cellWidth;
       if (ds.edge === 'left') {
         // Move the left edge: clamp to [0, endHour - snap] so the bar is always ≥ snap wide
         const candidate = ds.startStartHour + dh;
@@ -1237,26 +1232,18 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
         className="relative h-8 rounded-lg mx-0.5 shrink-0"
         style={{ backgroundColor: skin.cardHover, width: `${trackWidth}px` }}
       >
-        {/* 15min tick marks (always visible at all scales — gives a clear ruler feel)
-            Position uses PIXELS_PER_HOUR (48) so ticks stay aligned with the bar regardless of scale. */}
-        <div className="absolute inset-0 pointer-events-none">
-          {Array.from({ length: 24 * 4 + 1 }, (_, i) => {
-            const tickHour = i * 0.25;
-            if (tickHour > 24) return null;
-            const isHour = i % 4 === 0;
-            return (
-              <div
-                key={i}
-                className="absolute top-0 bottom-0"
-                style={{
-                  left: `${tickHour * PIXELS_PER_HOUR}px`,
-                  width: isHour ? '1.5px' : '1px',
-                  backgroundColor: skin.cellBorder,
-                  opacity: isHour ? 0.5 : 0.32,
-                }}
-              />
-            );
-          })}
+        {/* Hour grid lines (pointer-events: none, doesn't block clicks/drag) */}
+        <div className="absolute inset-0 pointer-events-none" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlots}, ${cellWidth}px)` }}>
+          {Array.from({ length: totalSlots }, (_, i) => (
+            <div
+              key={i}
+              className="border-r opacity-20"
+              style={{
+                borderColor: skin.cellBorder,
+                borderRightWidth: i % (1 / scale) === 0 ? '1.5px' : '0.5px',
+              }}
+            />
+          ))}
         </div>
         {/* Cell click layer — when the row is empty, clicking creates a 1h bar at that slot.
             When the row already has a bar, this layer is covered by the bar and is a no-op. */}
@@ -1267,10 +1254,10 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
               <div
                 key={slot}
                 className={`h-full ${isEmpty ? 'cursor-pointer hover:bg-black/5' : 'cursor-default'}`}
-                title={isEmpty ? `点击创建 ${formatHour(slotHour)} - ${formatHour(Math.min(24, slotHour + 1))}` : undefined}
+                title={isEmpty ? `点击创建 ${formatHour(slotHour)} - ${formatHour(Math.min(24, slotHour + snap))}` : undefined}
                 onClick={() => {
                   if (isEmpty) {
-                    onUpdateRow({ ...row, startHour: slotHour, endHour: Math.min(24, slotHour + 1) });
+                    onUpdateRow({ ...row, startHour: slotHour, endHour: Math.min(24, slotHour + snap) });
                   }
                 }}
               />
@@ -1283,8 +1270,8 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
           <div
             className="absolute top-0 bottom-0 rounded-lg"
             style={{
-              left: `${row.startHour * PIXELS_PER_HOUR}px`,
-              width: `${(row.endHour - row.startHour) * PIXELS_PER_HOUR}px`,
+              left: `${row.startHour * cellWidth}px`,
+              width: `${(row.endHour - row.startHour) * cellWidth}px`,
               backgroundColor: skin.swatch,
               opacity: 0.85,
               minWidth: '3px',
