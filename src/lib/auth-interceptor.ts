@@ -22,16 +22,16 @@ const SYNCED_KEY_PATTERNS: Array<string | RegExp> = [
   /^calendar-notes-\d{4}$/,
   // 涂鸦
   /^calendar-drawing-\d{4}$/,
-  // 书签
-  'calendar-bookmarks',
-  // 人生旅途
-  /^life-calendar-(?!skin|panel|okr$).*$/, // skin/panel/okr 是偏好
-  /^life-calendar-okr-/, // 旧的 okr key
-  // 知识森林
-  'knowledge-trees',
-  'knowledge-bookmarks',
   // 甘特图
   /^gantt-rows-\d{4}-\d{1,2}$/,
+  // 精确匹配的 key
+  'calendar-bookmarks',
+  'knowledge-trees',
+  'knowledge-bookmarks',
+  'life-calendar-okr', // OKR 目标/关键结果/任务
+  'life-calendar-progress', // 人生旅途 9 阶段进度
+  // life-calendar-* 其他（除 skin/panel 时钟模式外）
+  /^life-calendar-(?!skin$|panel)./,
 ];
 
 // 不拦截的 key(UI 偏好)

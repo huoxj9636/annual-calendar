@@ -1,34 +1,26 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { LogIn, User as UserIcon, LogOut, Cloud, CloudOff } from 'lucide-react';
 import { useUser } from '@/components/auth/user-context';
 
 /**
- * 浮动用户菜单:右下角悬浮按钮
- * - 未登录:显示"登录"按钮 → 跳 /login
+ * 浮动用户菜单:右上角悬浮按钮(用户主动登录入口)
+ * - 未登录:显示"登录"按钮 → 唤起登录弹窗(无跳转)
  * - 已登录:显示用户菜单(脱敏手机号 + 登出 + 同步状态)
  *
- * 不修改任何已有组件,仅作为 Auth 体系的"装饰层"叠加在日历 UI 之上
+ * 弹窗唤起方式:dispatch 'open-login-dialog' 自定义事件
+ * LoginPromptDialog 全局监听此事件
  */
 export function UserMenu() {
   const { user, signOut, authChecked } = useUser();
-  const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  // 登录页不显示
-  if (pathname === '/login') return null;
-
-  // 等登录态检查完再决定显示什么(避免登录前后闪烁)
-  if (!authChecked) {
-    return null;
-  }
-
-  // 点外部关闭
+  // 点外部关闭(所有 hooks 必须在 early return 之前)
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
@@ -42,6 +34,14 @@ export function UserMenu() {
     return () => document.removeEventListener('mousedown', onClick);
   }, [open]);
 
+  // 登录页不显示
+  if (pathname === '/login') return null;
+
+  // 等登录态检查完再决定显示什么(避免登录前后闪烁)
+  if (!authChecked) {
+    return null;
+  }
+
   const handleSignOut = async () => {
     await signOut();
     setOpen(false);
@@ -49,25 +49,24 @@ export function UserMenu() {
   };
 
   const handleLogin = () => {
-    // 带 referrer,登录后能回到当前页
-    const from = pathname && pathname !== '/login' ? pathname : '/';
-    router.push(`/login?from=${encodeURIComponent(from)}`);
+    // 唤起弹窗(不跳转)
+    window.dispatchEvent(new CustomEvent('open-login-dialog', { detail: { reason: 'manual' } }));
   };
 
-  // ── 未登录:显示登录入口 ──
+  // ── 未登录:右上角登录入口 ──
   if (!user) {
     return (
       <div
-        className="fixed bottom-4 right-4 z-50 select-none"
+        className="fixed top-4 right-4 z-50 select-none"
         style={{ fontFamily: 'inherit' }}
       >
         <button
           type="button"
           onClick={handleLogin}
-          className="h-10 px-4 rounded-full bg-card border border-border shadow-lg hover:bg-muted transition-colors flex items-center gap-2 text-sm text-foreground"
+          className="h-9 px-3.5 rounded-full bg-card border border-border shadow-md hover:bg-muted transition-colors flex items-center gap-2 text-sm text-foreground"
           title="登录后可跨设备同步数据"
         >
-          <CloudOff className="h-4 w-4 text-muted-foreground" />
+          <CloudOff className="h-3.5 w-3.5 text-muted-foreground" />
           <span>登录同步</span>
         </button>
       </div>
@@ -80,7 +79,7 @@ export function UserMenu() {
   return (
     <div
       ref={menuRef}
-      className="fixed bottom-4 right-4 z-50 select-none"
+      className="fixed top-4 right-4 z-50 select-none"
       style={{ fontFamily: 'inherit' }}
     >
       {open && (
@@ -136,11 +135,12 @@ export function UserMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="h-10 w-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:opacity-90 transition-opacity flex items-center justify-center"
+        className="h-9 px-3.5 rounded-full bg-primary text-primary-foreground shadow-md hover:opacity-90 transition-opacity flex items-center gap-2 text-sm"
         title="账号菜单"
         aria-label="账号菜单"
       >
-        <UserIcon className="h-4 w-4" />
+        <UserIcon className="h-3.5 w-3.5" />
+        <span>{maskedPhone || '已登录'}</span>
       </button>
     </div>
   );

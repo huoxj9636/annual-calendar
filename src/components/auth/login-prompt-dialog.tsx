@@ -31,6 +31,17 @@ export function LoginPromptDialog() {
     return unregister;
   }, []);
 
+  // 监听 user-menu 主动唤起("open-login-dialog" 事件)
+  useEffect(() => {
+    const handler = () => {
+      setPendingCount(0); // 主动登录,无待补写
+      setOpen(true);
+      setError(null);
+    };
+    window.addEventListener('open-login-dialog', handler);
+    return () => window.removeEventListener('open-login-dialog', handler);
+  }, []);
+
   const close = useCallback(() => {
     setOpen(false);
     setError(null);
@@ -64,32 +75,29 @@ export function LoginPromptDialog() {
       // 内部邮箱(supabase 邮箱密码模式):把手机号映射为虚拟邮箱
       const email = `${cleanPhone}@calendar.local`;
 
-      // 先尝试登录
+      // 一体化登录/注册:先尝试登录 → 失败则注册 → 注册后自动登录
       let res = await supabase.auth.signInWithPassword({ email, password });
 
-      // 登录失败(用户不存在)→ 自动注册
-      if (res.error && /invalid login credentials|user not found/i.test(res.error.message)) {
+      if (res.error) {
+        // 登录失败 → 尝试注册(用户不存在则注册,用户已存在则提示密码错)
         const signUpRes = await supabase.auth.signUp({
           email,
           password,
           options: { data: { phone: cleanPhone } },
         });
         if (signUpRes.error) {
-          setError(translateError(signUpRes.error.message));
+          // 注册失败:说明用户已存在 → 密码错
+          setError('密码错误,请重新输入');
           setBusy(false);
           return;
         }
-        // 注册后自动登录
+        // 注册成功 → 自动登录
         res = await supabase.auth.signInWithPassword({ email, password });
         if (res.error) {
           setError(translateError(res.error.message));
           setBusy(false);
           return;
         }
-      } else if (res.error) {
-        setError(translateError(res.error.message));
-        setBusy(false);
-        return;
       }
 
       // 登录成功
