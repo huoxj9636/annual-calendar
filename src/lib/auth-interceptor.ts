@@ -115,20 +115,20 @@ export function installAuthInterceptor(): void {
 
   Storage.prototype.setItem = function (key: string, value: string): void {
     try {
-      // 智能去重:如果新值和 localStorage 当前值"语义相同"(JSON 比较),直接放行不弹窗
-      // 避免首次 mount 时 useState 默认值写入触发误判弹窗
-      if (_isLoggedIn === false && isSyncedKey(key)) {
+      // 智能去重:任何状态都做去重
+      // 避免组件 mount / useEffect 反复写入相同值时,频繁触发 local-storage-changed 事件 → 反复同步云端
+      if (isSyncedKey(key)) {
         try {
           const existing = localStorage.getItem(key);
           if (existing === value) {
-            return; // 值未变化,放行
+            return; // 值未变化,直接放行且不触发事件
           }
           // JSON 语义比较(JSON.parse 后 stringify 比较)
           try {
             const existingObj = JSON.parse(existing ?? 'null');
             const newObj = JSON.parse(value);
             if (JSON.stringify(existingObj) === JSON.stringify(newObj)) {
-              return; // 语义相同,放行
+              return; // 语义相同,直接放行且不触发事件
             }
           } catch {
             // JSON 解析失败,按"值不同"处理

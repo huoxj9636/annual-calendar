@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { apiFetch, apiFire } from '@/lib/api-client';
 
 interface Point {
   x: number;
@@ -57,11 +58,11 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
         // Extract year from storageKey like "calendar-drawing-2025"
         const yearMatch = storageKey.match(/(\d{4})/);
         if (yearMatch) {
-          fetch('/api/calendar-data', {
+          apiFire('/api/calendar-data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'drawing', year: Number(yearMatch[1]), data: newStrokes }),
-          }).catch(() => {});
+          });
         }
       } catch { /* ignore */ }
     }, [storageKey]);
@@ -101,9 +102,9 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
           const yearMatch = storageKey.match(/(\d{4})/);
           if (yearMatch) {
             const year = yearMatch[1];
-            const res = await fetch(`/api/calendar-data?type=drawing&year=${year}`);
-            if (res.ok) {
-              const data = await res.json();
+            const res = await apiFetch(`/api/calendar-data?type=drawing&year=${year}`);
+            if (res) {
+              const data = res;
               if (data.strokes && Array.isArray(data.strokes) && data.strokes.length > 0) {
                 setStrokes(data.strokes);
               } else {
@@ -115,7 +116,7 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
                     if (Array.isArray(lsStrokes) && lsStrokes.length > 0) {
                       setStrokes(lsStrokes);
                       // Migrate to DB
-                      await fetch('/api/calendar-data', {
+                      await apiFetch('/api/calendar-data', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ type: 'drawing', year: Number(year), data: lsStrokes }),

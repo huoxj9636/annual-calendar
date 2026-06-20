@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, ReactNode, createContext, useContext, useState, useCallback } from 'react';
+import { apiFetch } from '@/lib/api-client';
 import { useUser } from '@/components/auth/user-context';
 import {
   collectSyncedItems,
@@ -106,14 +107,14 @@ export function SyncProvider({ children }: SyncProviderProps) {
         setLegacyCount(0);
         return;
       }
-      const res = await fetch('/api/migrate-legacy', {
+      const res = await apiFetch('/api/migrate-legacy', {
         headers: { 'x-session': token },
       });
       if (!res.ok) {
         setLegacyCount(0);
         return;
       }
-      const data = await res.json();
+      const data = res;
       setLegacyCount(data?.total || 0);
     } catch {
       setLegacyCount(0);
@@ -179,12 +180,12 @@ export function SyncProvider({ children }: SyncProviderProps) {
         setLegacyRunning(false);
         return;
       }
-      const res = await fetch('/api/migrate-legacy', {
+      const res = await apiFetch('/api/migrate-legacy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-session': token },
         body: JSON.stringify({ action: 'claim' }),
       });
-      if (res.ok) {
+      if (res) {
         console.log('[Legacy] claimed');
         setLegacyCount(0);
         legacyDismissedRef.current = true;
@@ -212,12 +213,12 @@ export function SyncProvider({ children }: SyncProviderProps) {
         setLegacyRunning(false);
         return;
       }
-      const res = await fetch('/api/migrate-legacy', {
+      const res = await apiFetch('/api/migrate-legacy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-session': token },
         body: JSON.stringify({ action: 'clear' }),
       });
-      if (res.ok) {
+      if (res) {
         console.log('[Legacy] cleared');
         setLegacyCount(0);
         legacyDismissedRef.current = true;

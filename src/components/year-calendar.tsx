@@ -1,5 +1,6 @@
 'use client';
 
+import { apiFetch, apiFire } from '@/lib/api-client';
 import {
   useState,
   useEffect,
@@ -122,9 +123,9 @@ export default function YearCalendar() {
   // Refresh reviewDays from DB
   const refreshReviewDays = useCallback(async () => {
     try {
-      const res = await fetch(`/api/daily-review?year=${year}&action=list-days`);
-      if (res.ok) {
-        const data = await res.json();
+      const res = await apiFetch(`/api/daily-review?year=${year}&action=list-days`);
+      if (res) {
+        const data = res;
         if (Array.isArray(data.days)) {
           setReviewDays(new Set(data.days));
         }
@@ -179,9 +180,9 @@ export default function YearCalendar() {
       if (now.getHours() >= 18) {
         // Check if today already has review content
         try {
-          const res = await fetch(`/api/daily-review?year=${now.getFullYear()}&month=${now.getMonth() + 1}&day=${now.getDate()}`);
-          if (res.ok) {
-            const data = await res.json();
+          const res = await apiFetch(`/api/daily-review?year=${now.getFullYear()}&month=${now.getMonth() + 1}&day=${now.getDate()}`);
+          if (res) {
+            const data = res;
             const hasContent = data.completed || data.goodThings || data.problems || data.mood || data.reflections || data.tomorrowTodo;
             if (hasContent) {
               // Already has review content, don't auto-open
@@ -379,9 +380,9 @@ export default function YearCalendar() {
       try {
         // Load review days (dates that have daily review content)
         try {
-          const reviewDaysRes = await fetch(`/api/daily-review?year=${year}&action=list-days`);
-          if (reviewDaysRes.ok) {
-            const reviewDaysData = await reviewDaysRes.json();
+          const reviewDaysRes = await apiFetch(`/api/daily-review?year=${year}&action=list-days`);
+          if (reviewDaysRes) {
+            const reviewDaysData = reviewDaysRes;
             if (Array.isArray(reviewDaysData.days)) {
               setReviewDays(new Set(reviewDaysData.days));
             }
@@ -389,9 +390,9 @@ export default function YearCalendar() {
         } catch { /* ignore */ }
 
         // Load overrides from DB
-        const overridesRes = await fetch(`/api/calendar-data?type=overrides&year=${year}`);
-        if (overridesRes.ok) {
-          const overridesData = await overridesRes.json();
+        const overridesRes = await apiFetch(`/api/calendar-data?type=overrides&year=${year}`);
+        if (overridesRes) {
+          const overridesData = overridesRes;
           if (Object.keys(overridesData).length > 0) {
             setOverrides(overridesData);
             overridesLoadedRef.current = true;
@@ -404,7 +405,7 @@ export default function YearCalendar() {
                 if (typeof lsOverrides === 'object' && Object.keys(lsOverrides).length > 0) {
                   setOverrides(lsOverrides);
                   overridesLoadedRef.current = true;
-                  await fetch('/api/calendar-data', {
+                  await apiFetch('/api/calendar-data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ type: 'overrides', year, data: lsOverrides }),
@@ -417,9 +418,9 @@ export default function YearCalendar() {
         }
 
         // Load notes from DB
-        const notesRes = await fetch(`/api/calendar-data?type=notes&year=${year}`);
-        if (notesRes.ok) {
-          const notesData = await notesRes.json();
+        const notesRes = await apiFetch(`/api/calendar-data?type=notes&year=${year}`);
+        if (notesRes) {
+          const notesData = notesRes;
           if (Object.keys(notesData).length > 0) {
             setNotes(notesData);
             notesLoadedRef.current = true;
@@ -432,7 +433,7 @@ export default function YearCalendar() {
                 if (typeof lsNotes === 'object' && Object.keys(lsNotes).length > 0) {
                   setNotes(lsNotes);
                   notesLoadedRef.current = true;
-                  await fetch('/api/calendar-data', {
+                  await apiFetch('/api/calendar-data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ type: 'notes', year, data: lsNotes }),
@@ -458,11 +459,11 @@ export default function YearCalendar() {
         return;
       }
     }
-    fetch('/api/calendar-data', {
+    apiFire('/api/calendar-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'overrides', year, data: overrides }),
-    }).catch(() => {});
+    });
   }, [overrides, year, mounted]);
 
   // Save notes to DB
@@ -476,17 +477,17 @@ export default function YearCalendar() {
         return;
       }
     }
-    fetch('/api/calendar-data', {
+    apiFire('/api/calendar-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'notes', year, data: notes }),
-    }).catch(() => {});
+    });
   }, [notes, year, mounted]);
 
   // Load month review data when selectedMonth changes
   useEffect(() => {
     if (selectedMonth === null) return;
-    fetch(`/api/calendar-data?type=month-review&year=${year}&month=${selectedMonth}`)
+    apiFetch(`/api/calendar-data?type=month-review&year=${year}&month=${selectedMonth}`)
       .then(res => res.ok ? res.json() : {})
       .then(data => setMonthReviewData(data))
       .catch(() => {});
@@ -529,9 +530,9 @@ export default function YearCalendar() {
     if (!mounted) return;
     const poll = async () => {
       try {
-        const res = await fetch('/api/import-review?action=tasks');
-        if (res.ok) {
-          const data = await res.json();
+        const res = await apiFetch('/api/import-review?action=tasks');
+        if (res) {
+          const data = res;
           setBgTasks(data.tasks || []);
           // 如果有正在进行的任务，刷新reviewDays
           const hasActive = (data.tasks || []).some((t: { status: string }) => t.status === 'processing' || t.status === 'pending');
@@ -1641,11 +1642,11 @@ export default function YearCalendar() {
                       placeholder={section.placeholder}
                       defaultValue={savedValue}
                       onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => {
-                        fetch('/api/calendar-data', {
+                        apiFire('/api/calendar-data', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ type: 'month-review', year, month: selectedMonth, sectionKey: section.key, data: e.target.value }),
-                        }).catch(() => {});
+                        });
                       }}
                     />
                   </div>

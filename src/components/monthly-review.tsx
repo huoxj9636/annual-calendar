@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { apiFetch } from '@/lib/api-client';
 import { getLunarInfo } from '@/lib/lunar';
 import {
   getDaysInMonth,
@@ -79,9 +80,9 @@ export default function MonthlyReview({ year, skin: skinProp }: MonthlyReviewPro
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/month-stats?year=${year}`);
+        const res = await apiFetch(`/api/month-stats?year=${year}`);
         if (!res.ok) return;
-        const data = await res.json();
+        const data = res;
         setOverridesCache(data.overrides || {});
         setNoteKeysCache(new Set(data.noteKeys || []));
         setEventCountsCache(data.eventCounts || {});

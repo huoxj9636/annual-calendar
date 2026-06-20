@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { apiFetch } from '@/lib/api-client';
 import type { SkinTheme } from '@/lib/skins';
 
 interface InsightPanelProps {
@@ -114,22 +115,22 @@ export default function InsightPanel({ year, month, day, skin, onClose }: Omit<I
       let overrideStatus = '';
 
       try {
-        const res = await fetch(`/api/day-data?year=${year}&month=${month}&day=${day}`);
-        if (res.ok) {
-          const data = await res.json();
+        const res = await apiFetch(`/api/day-data?year=${year}&month=${month}&day=${day}`);
+        if (res) {
+          const data = res;
           if (data.events) events = data.events;
           if (data.todos) todos = data.todos;
         }
       } catch { /* empty */ }
       try {
-        const overridesRes = await fetch(`/api/calendar-data?type=overrides&year=${year}`);
-        if (overridesRes.ok) {
-          const overrides = await overridesRes.json();
+        const overridesRes = await apiFetch(`/api/calendar-data?type=overrides&year=${year}`);
+        if (overridesRes) {
+          const overrides = overridesRes;
           overrideStatus = overrides[`${year}-${month}-${day}`] || '';
         }
       } catch { /* empty */ }
 
-      const response = await fetch('/api/insight', {
+      const response = await apiFetch('/api/insight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

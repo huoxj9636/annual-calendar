@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { apiFetch, apiFire } from '@/lib/api-client';
 import { SKINS } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
 
@@ -136,9 +137,9 @@ function useVoiceRecognition(onResult: (text: string) => void, context?: string)
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: final, context }),
           });
-          const data = await res.json();
-          setPolishedText(data.result || final);
-          onResult(data.result || final);
+          const data = res.ok ? await res.json() : null;
+          setPolishedText(data?.result || final);
+          onResult(data?.result || final);
         } catch {
           setPolishedText(final);
           onResult(final);
@@ -407,10 +408,10 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/okr');
+        const res = await apiFetch('/api/okr');
         if (cancelled) return;
-        if (res.ok) {
-          const data = await res.json();
+        if (res) {
+          const data = res;
           if (data.objectives) {
             const parsed = migrateGoals(data.objectives);
             setGoals(parsed);
@@ -434,7 +435,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                     setGoals(parsed);
                     setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
                     setSelectedOId(parsed[0].id);
-                    await fetch('/api/okr', {
+                    await apiFetch('/api/okr', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ objectives: parsed }),
@@ -472,7 +473,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
   };
 
   // Save via API — only after initial load completes
-  useEffect(() => { if (mounted && !loading) fetch('/api/okr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ objectives: goals }) }).catch(() => {}); }, [goals, mounted, loading]);
+  useEffect(() => { if (mounted && !loading) apiFire('/api/okr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ objectives: goals }) }); }, [goals, mounted, loading]);
 
   // Voice for top input
   const voiceTop = useVoiceRecognition((text) => { setNewOTitle(text); });
@@ -521,8 +522,8 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
     setDiscoveryState('scanning');
     setAddedThemes(new Set());
     try {
-      const res = await fetch('/api/discover-goals');
-      const data = await res.json();
+      const res = await apiFetch('/api/discover-goals');
+      const data = res;
       if (data.themes && data.themes.length > 0) {
         setDiscoveredThemes(data.themes);
         const stats = data.signalStats;
@@ -552,12 +553,12 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
     setDiscoveryState('generating');
     setPendingOKR(null);
     try {
-      const res = await fetch('/api/generate-okr', {
+      const res = await apiFetch('/api/generate-okr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ theme }),
       });
-      const data = await res.json();
+      const data = res;
       if (data.error) {
         setDiscoveryMessage(data.error);
         setDiscoveryState('selecting');
@@ -645,8 +646,8 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ objective: obj.title, period: obj.period, age: birthYear ? new Date().getFullYear() - birthYear : undefined }),
       });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      const data = res.ok ? await res.json() : null;
+      if (data?.error) throw new Error(data.error);
       setAiDecompose(prev => ({ ...prev, loading: false, result: data }));
     } catch {
       setAiDecompose(prev => ({ ...prev, loading: false }));
@@ -1022,11 +1023,11 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                           }))
                       );
                       if (tasksWithDates.length > 0) {
-                        fetch('/api/add-day-events', {
+                        apiFire('/api/add-day-events', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ events: tasksWithDates }),
-                        }).catch(() => {});
+                        });
                       }
                       setPendingOKR(null);
                       setSelectedTheme(null);

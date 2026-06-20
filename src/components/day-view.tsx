@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { apiFetch, apiFire } from '@/lib/api-client';
 import { getLunarInfo } from '@/lib/lunar';
 import { NO_SKIN } from '@/lib/skins';
 import type { SkinTheme } from '@/lib/skins';
@@ -151,9 +152,9 @@ export default function DayView({ year, month, day, onClose, embedded, skin: ski
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/day-data?year=${year}&month=${month}&day=${day}`);
-        if (res.ok) {
-          const data = await res.json();
+        const res = await apiFetch(`/api/day-data?year=${year}&month=${month}&day=${day}`);
+        if (res) {
+          const data = res;
           const hasDBData = (data.events && data.events.length > 0) || (data.todos && data.todos.length > 0) || data.note;
           if (hasDBData) {
             if (data.events) setEvents(data.events);
@@ -172,17 +173,17 @@ export default function DayView({ year, month, day, onClose, embedded, skin: ski
               if (hasLSData) {
                 if (migratedEvents.length > 0) {
                   setEvents(migratedEvents);
-                  fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'events', year, month, day, data: migratedEvents }) }).catch(() => {});
+                  apiFire('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'events', year, month, day, data: migratedEvents }) });
                   localStorage.removeItem(storageKey);
                 }
                 if (migratedTodos.length > 0) {
                   setTodos(migratedTodos);
-                  fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'todos', year, month, day, data: migratedTodos }) }).catch(() => {});
+                  apiFire('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'todos', year, month, day, data: migratedTodos }) });
                   localStorage.removeItem(todoKey);
                 }
                 if (migratedNote) {
                   setNoteText(migratedNote);
-                  fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'note', year, month, day, data: migratedNote }) }).catch(() => {});
+                  apiFire('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'note', year, month, day, data: migratedNote }) });
                   localStorage.removeItem(noteKey);
                 }
               }
@@ -195,16 +196,16 @@ export default function DayView({ year, month, day, onClose, embedded, skin: ski
 
   const saveEvents = useCallback((evts: TimeEvent[]) => {
     setEvents(evts);
-    fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'events', year, month, day, data: evts }) }).catch(() => {});
+    apiFire('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'events', year, month, day, data: evts }) });
   }, [storageKey]);
 
   const saveTodos = useCallback((items: TodoItem[]) => {
     setTodos(items);
-    fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'todos', year, month, day, data: items }) }).catch(() => {});
+    apiFire('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'todos', year, month, day, data: items }) });
   }, [storageKey]);
 
   const saveNote = useCallback(() => {
-    fetch('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'note', year, month, day, data: noteText }) }).catch(() => {});
+    apiFire('/api/day-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'note', year, month, day, data: noteText }) });
   }, [noteText, noteKey, year]);
 
   const addEvent = () => {

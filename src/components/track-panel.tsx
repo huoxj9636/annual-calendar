@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { apiFetch } from '@/lib/api-client';
 import type { SkinTheme } from '@/lib/skins';
 
 interface TrackPanelProps {
@@ -67,9 +68,9 @@ export default function TrackPanel({ year, skin, onClose }: Omit<TrackPanelProps
     if (!mounted) return;
     (async () => {
       try {
-        const res = await fetch(`/api/day-data?year=${year}&month=${selectedMonth}&day=${selectedDay}`);
-        if (res.ok) {
-          const data = await res.json();
+        const res = await apiFetch(`/api/day-data?year=${year}&month=${selectedMonth}&day=${selectedDay}`);
+        if (res) {
+          const data = res;
           setPlannedEvents(Array.isArray(data.events) ? data.events : []);
         } else {
           setPlannedEvents([]);
@@ -85,13 +86,13 @@ export default function TrackPanel({ year, skin, onClose }: Omit<TrackPanelProps
     if (!mounted) return;
     (async () => {
       try {
-        const res = await fetch(`/api/calendar-data?type=drawing&year=${year}`);
+        const res = await apiFetch(`/api/calendar-data?type=drawing&year=${year}`);
         // We use a simple key-value store approach - store actual times in calendar_notes
         // For now, load from a dedicated API
         const key = `track-actual-${year}-${selectedMonth}-${selectedDay}`;
-        const noteRes = await fetch(`/api/calendar-data?type=notes&year=${year}`);
-        if (noteRes.ok) {
-          const notes = await noteRes.json();
+        const noteRes = await apiFetch(`/api/calendar-data?type=notes&year=${year}`);
+        if (noteRes) {
+          const notes = noteRes;
           if (notes[key]) setActualTimes(JSON.parse(notes[key]));
           else setActualTimes({});
         } else {
@@ -110,10 +111,10 @@ export default function TrackPanel({ year, skin, onClose }: Omit<TrackPanelProps
     try {
       // Store track actual times as a note entry
       const key = `track-actual-${year}-${selectedMonth}-${selectedDay}`;
-      const noteRes = await fetch(`/api/calendar-data?type=notes&year=${year}`);
-      const existingNotes = noteRes.ok ? await noteRes.json() : {};
+      const noteRes = await apiFetch(`/api/calendar-data?type=notes&year=${year}`);
+      const existingNotes = noteRes.ok ? noteRes : {};
       existingNotes[key] = JSON.stringify(times);
-      await fetch('/api/calendar-data', {
+      await apiFetch('/api/calendar-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'notes', year, data: existingNotes }),
@@ -181,9 +182,9 @@ export default function TrackPanel({ year, skin, onClose }: Omit<TrackPanelProps
       // Get satisfaction data for context
       let satisfactionInfo = '';
       try {
-        const overridesRes = await fetch(`/api/calendar-data?type=overrides&year=${year}`);
-        if (overridesRes.ok) {
-          const overrides = await overridesRes.json();
+        const overridesRes = await apiFetch(`/api/calendar-data?type=overrides&year=${year}`);
+        if (overridesRes) {
+          const overrides = overridesRes;
           let satisfied = 0, crossed = 0;
           for (let d = 1; d <= daysInMonth; d++) {
             const key = `${year}-${selectedMonth}-${d}`;

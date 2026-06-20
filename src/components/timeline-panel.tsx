@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { apiFetch, apiFire } from '@/lib/api-client';
 
 interface TimelineEvent {
   id: string;
@@ -99,9 +100,9 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     if (!mounted) return;
     (async () => {
       try {
-        const res = await fetch(`/api/day-data?year=${navYear}&month=${navMonth}&day=${navDay}`);
-        if (res.ok) {
-          const data = await res.json();
+        const res = await apiFetch(`/api/day-data?year=${navYear}&month=${navMonth}&day=${navDay}`);
+        if (res) {
+          const data = res;
           setEvents(Array.isArray(data.events) ? data.events : []);
         } else {
           setEvents([]);
@@ -112,11 +113,11 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
 
   useEffect(() => {
     if (!mounted) return;
-    fetch('/api/day-data', {
+    apiFire('/api/day-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'events', year: navYear, month: navMonth, day: navDay, data: events }),
-    }).catch(() => {});
+    });
   }, [events, storageKey, mounted]);
 
   // 关闭右键菜单
