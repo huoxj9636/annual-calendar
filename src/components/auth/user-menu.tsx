@@ -51,7 +51,7 @@ export function UserMenu() {
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent('open-login-dialog'))}
-          className="group flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-amber-700 shadow-md hover:bg-amber-100 transition-all hover:shadow-lg dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-950"
+          className="group flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-primary shadow-md hover:bg-primary/20 transition-all hover:shadow-lg dark:bg-primary/15 dark:hover:bg-primary/25"
           title="点击登录账号,数据自动同步到云端"
           aria-label="登录同步"
         >
