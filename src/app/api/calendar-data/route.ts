@@ -1,6 +1,46 @@
-import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { requireUser } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
+import {
+  requireUser,
+  parseJsonBody,
+  parseSearchParams,
+  apiError,
+  yearSchema,
+  monthSchema,
+} from '@/lib/api-auth';
+
+// ─── Zod schemas ───
+const getParamsSchema = z.object({
+  type: z.enum(['overrides', 'notes', 'month-review', 'drawing']),
+  year: yearSchema,
+  month: monthSchema.optional(),
+});
+
+const postBodySchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('overrides'),
+    year: yearSchema,
+    data: z.record(z.string().regex(/^\d{1,2}-\d{1,2}$/), z.string().max(50)),
+  }),
+  z.object({
+    type: z.literal('notes'),
+    year: yearSchema,
+    data: z.record(z.string().regex(/^\d{1,2}-\d{1,2}$/), z.string().max(10000)),
+  }),
+  z.object({
+    type: z.literal('month-review'),
+    year: yearSchema,
+    month: monthSchema,
+    sectionKey: z.string().min(1).max(100).regex(/^[\w-]+$/),
+    data: z.string().max(50000),
+  }),
+  z.object({
+    type: z.literal('drawing'),
+    year: yearSchema,
+    data: z.array(z.unknown()).max(5000), // 笔画数组
+  }),
+]);
 
 // GET /api/calendar-data?type=overrides|notes|month-review|drawing&year=2025[&month=7][&sectionKey=goals]
 export async function GET(request: NextRequest) {
@@ -9,12 +49,9 @@ export async function GET(request: NextRequest) {
   const userId = userIdOrResp;
 
   const { searchParams } = new URL(request.url);
-  const type = searchParams.get('type');
-  const year = Number(searchParams.get('year'));
-
-  if (!type || !year) {
-    return NextResponse.json({ error: 'Missing type/year' }, { status: 400 });
-  }
+  const parsed = parseSearchParams(searchParams, getParamsSchema);
+  if (parsed instanceof NextResponse) return parsed;
+  const { type, year, month } = parsed;
 
   const client = getSupabaseClient();
 
@@ -25,7 +62,7 @@ export async function GET(request: NextRequest) {
       .eq('user_id', userId)
       .eq('year', year);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return apiError('加载勾选状态失败', 500, error);
 
     const overrides: Record<string, string> = {};
     for (const row of (data || []) as Record<string, string>[]) {
@@ -41,7 +78,7 @@ export async function GET(request: NextRequest) {
       .eq('user_id', userId)
       .eq('year', year);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return apiError('加载备注失败', 500, error);
 
     const notes: Record<string, string> = {};
     for (const row of (data || []) as Record<string, string>[]) {
@@ -51,8 +88,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (type === 'month-review') {
-    const month = Number(searchParams.get('month'));
-    if (!month) return NextResponse.json({ error: 'Missing month' }, { status: 400 });
+    if (month == null) return apiError('month-review 需要 month 参数', 400);
 
     const { data, error } = await client
       .from('month_reviews')
@@ -61,7 +97,7 @@ export async function GET(request: NextRequest) {
       .eq('year', year)
       .eq('month', month);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return apiError('加载月度复盘失败', 500, error);
 
     const result: Record<string, string> = {};
     for (const row of (data || []) as Record<string, string>[]) {
@@ -78,11 +114,12 @@ export async function GET(request: NextRequest) {
       .eq('year', year)
       .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error && error.code !== 'PGRST116') return apiError('加载涂鸦失败', 500, error);
     return NextResponse.json({ strokes: (data as Record<string, unknown>)?.strokes || [] });
   }
 
-  return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
+  // 不应到达这里(zod 已限制 type 取值)
+  return apiError('Invalid type', 400);
 }
 
 // POST /api/calendar-data
@@ -91,24 +128,14 @@ export async function POST(request: NextRequest) {
   if (userIdOrResp instanceof NextResponse) return userIdOrResp;
   const userId = userIdOrResp;
 
-  const body = await request.json();
-  const { type, year, data, month, sectionKey } = body as {
-    type: 'overrides' | 'notes' | 'month-review' | 'drawing';
-    year: number;
-    data: unknown;
-    month?: number;
-    sectionKey?: string;
-  };
-
-  if (!type || !year) {
-    return NextResponse.json({ error: 'Missing params' }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, postBodySchema);
+  if (parsed instanceof NextResponse) return parsed;
 
   const client = getSupabaseClient();
 
-  if (type === 'overrides') {
-    const overrideData = data as Record<string, string>;
-    // 只删当前用户的数据
+  // ── overrides ──
+  if (parsed.type === 'overrides') {
+    const { year, data: overrideData } = parsed;
     await client.from('calendar_overrides').delete().eq('user_id', userId).eq('year', year);
 
     const entries = Object.entries(overrideData);
@@ -120,13 +147,14 @@ export async function POST(request: NextRequest) {
         value,
       }));
       const { error } = await client.from('calendar_overrides').insert(rows);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return apiError('保存勾选状态失败', 500, error);
     }
     return NextResponse.json({ success: true });
   }
 
-  if (type === 'notes') {
-    const notesData = data as Record<string, string>;
+  // ── notes ──
+  if (parsed.type === 'notes') {
+    const { year, data: notesData } = parsed;
     await client.from('calendar_notes').delete().eq('user_id', userId).eq('year', year);
 
     const entries = Object.entries(notesData).filter(([, v]) => v && v.trim());
@@ -138,16 +166,14 @@ export async function POST(request: NextRequest) {
         content,
       }));
       const { error } = await client.from('calendar_notes').insert(rows);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return apiError('保存备注失败', 500, error);
     }
     return NextResponse.json({ success: true });
   }
 
-  if (type === 'month-review') {
-    if (!month || !sectionKey) {
-      return NextResponse.json({ error: 'Missing month/sectionKey' }, { status: 400 });
-    }
-    const content = (data as string) || '';
+  // ── month-review ──
+  if (parsed.type === 'month-review') {
+    const { year, month, sectionKey, data: content } = parsed;
 
     // Upsert: delete existing then insert (限定当前用户)
     await client
@@ -165,12 +191,14 @@ export async function POST(request: NextRequest) {
       section_key: sectionKey,
       content,
     });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return apiError('保存月度复盘失败', 500, error);
     return NextResponse.json({ success: true });
   }
 
-  if (type === 'drawing') {
-    const strokes = data;
+  // ── drawing ──
+  if (parsed.type === 'drawing') {
+    const { year, data: strokes } = parsed;
+
     // Upsert (限定当前用户)
     const { data: existing } = await client
       .from('calendar_drawings')
@@ -185,17 +213,17 @@ export async function POST(request: NextRequest) {
         .update({ strokes, updated_at: new Date().toISOString() })
         .eq('user_id', userId)
         .eq('year', year);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return apiError('更新涂鸦失败', 500, error);
     } else {
       const { error } = await client.from('calendar_drawings').insert({
         user_id: userId,
         year,
         strokes,
       });
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return apiError('保存涂鸦失败', 500, error);
     }
     return NextResponse.json({ success: true });
   }
 
-  return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
+  return apiError('Invalid type', 400);
 }

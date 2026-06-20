@@ -9,8 +9,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { getUserIdFromRequest, requireUser } from '@/lib/api-auth';
+import {
+  requireUser,
+  parseJsonBody,
+  apiError,
+} from '@/lib/api-auth';
 
 const LEGACY_TABLES = [
   'calendar_overrides',
@@ -23,7 +28,12 @@ const LEGACY_TABLES = [
   'okr_objectives',
   'okr_key_results',
   'okr_tasks',
+  'custom_links',
 ] as const;
+
+const postBodySchema = z.object({
+  action: z.enum(['claim', 'clear']),
+}).strict();
 
 export async function GET(request: NextRequest) {
   // 统计 legacy 数据条数
@@ -35,10 +45,11 @@ export async function GET(request: NextRequest) {
   const byTable: Record<string, number> = {};
 
   for (const table of LEGACY_TABLES) {
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from(table)
       .select('*', { count: 'exact', head: true })
       .eq('user_id', 'legacy');
+    if (error) return apiError(`统计 ${table} 失败`, 500, error);
     const c = count || 0;
     byTable[table] = c;
     total += c;
@@ -52,11 +63,9 @@ export async function POST(request: NextRequest) {
   if (userIdOrResp instanceof NextResponse) return userIdOrResp;
   const userId = userIdOrResp;
 
-  const body = await request.json();
-  const action = body?.action as 'claim' | 'clear' | undefined;
-  if (action !== 'claim' && action !== 'clear') {
-    return NextResponse.json({ error: 'action 必须是 claim 或 clear' }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, postBodySchema);
+  if (parsed instanceof NextResponse) return parsed;
+  const { action } = parsed;
 
   const supabase = getSupabaseClient();
   const result: Record<string, number> = {};
@@ -69,9 +78,7 @@ export async function POST(request: NextRequest) {
         .update({ user_id: userId })
         .eq('user_id', 'legacy')
         .select('id');
-      if (error) {
-        return NextResponse.json({ error: `${table} 接管失败: ${error.message}` }, { status: 500 });
-      }
+      if (error) return apiError(`${table} 接管失败`, 500, error);
       result[table] = data?.length || 0;
     } else {
       // 删除 legacy
@@ -80,9 +87,7 @@ export async function POST(request: NextRequest) {
         .delete()
         .eq('user_id', 'legacy')
         .select('id');
-      if (error) {
-        return NextResponse.json({ error: `${table} 清空失败: ${error.message}` }, { status: 500 });
-      }
+      if (error) return apiError(`${table} 清空失败`, 500, error);
       result[table] = data?.length || 0;
     }
   }

@@ -1,6 +1,44 @@
-import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { requireUser } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
+import {
+  requireUser,
+  parseJsonBody,
+  parseSearchParams,
+  apiError,
+  yearSchema,
+  monthSchema,
+  daySchema,
+} from '@/lib/api-auth';
+
+// ─── Zod schemas ───
+const listDaysParamsSchema = z.object({
+  action: z.literal('list-days'),
+  year: yearSchema,
+});
+
+const singleDayParamsSchema = z.object({
+  year: yearSchema,
+  month: monthSchema,
+  day: daySchema,
+});
+
+const reviewField = z.string().max(10000);
+const scoreField = z.number().int().min(1).max(5);
+
+const postBodySchema = z.object({
+  year: yearSchema,
+  month: monthSchema,
+  day: daySchema,
+  completed: reviewField.optional(),
+  goodThings: reviewField.optional(),
+  problems: reviewField.optional(),
+  mood: reviewField.optional(),
+  reflections: reviewField.optional(),
+  tomorrowTodo: reviewField.optional(),
+  moodScore: scoreField.optional(),
+  energy: scoreField.optional(),
+}).strict();
 
 export async function GET(request: NextRequest) {
   const userIdOrResp = await requireUser(request);
@@ -8,37 +46,37 @@ export async function GET(request: NextRequest) {
   const userId = userIdOrResp;
 
   const { searchParams } = new URL(request.url);
-  const year = Number(searchParams.get('year'));
   const action = searchParams.get('action');
 
+  const client = getSupabaseClient();
+
   // List days that have review content for a year
-  if (action === 'list-days' && year) {
-    const client = getSupabaseClient();
+  if (action === 'list-days') {
+    const parsed = parseSearchParams(searchParams, listDaysParamsSchema);
+    if (parsed instanceof NextResponse) return parsed;
+    const { year } = parsed;
+
     const { data, error } = await client
       .from('daily_reviews')
       .select('month, day, completed, good_things, problems, mood, reflections, tomorrow_todo')
       .eq('user_id', userId)
       .eq('year', year);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return apiError('加载复盘列表失败', 500, error);
     const days = (data || [])
       .filter((r: Record<string, unknown>) =>
         !!(r.completed || r.good_things || r.problems || r.mood || r.reflections || r.tomorrow_todo))
       .map((r: { month: number; day: number }) => `${year}-${r.month}-${r.day}`);
-    // Also return days with action feedback (completed + tomorrow_todo)
     const actionDays = (data || [])
       .filter((r: Record<string, unknown>) => !!(r.completed || r.tomorrow_todo))
       .map((r: { month: number; day: number }) => `${year}-${r.month}-${r.day}`);
     return NextResponse.json({ days, actionDays });
   }
 
-  const month = Number(searchParams.get('month'));
-  const day = Number(searchParams.get('day'));
+  // Single day lookup
+  const parsed = parseSearchParams(searchParams, singleDayParamsSchema);
+  if (parsed instanceof NextResponse) return parsed;
+  const { year, month, day } = parsed;
 
-  if (!year || !month || !day) {
-    return NextResponse.json({ error: 'Missing year/month/day' }, { status: 400 });
-  }
-
-  const client = getSupabaseClient();
   const { data, error } = await client
     .from('daily_reviews')
     .select('completed, good_things, problems, mood, reflections, tomorrow_todo, mood_score, energy, updated_at')
@@ -48,7 +86,7 @@ export async function GET(request: NextRequest) {
     .eq('day', day)
     .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return apiError('加载复盘失败', 500, error);
 
   if (!data) {
     return NextResponse.json({
@@ -75,30 +113,27 @@ export async function POST(request: NextRequest) {
   if (userIdOrResp instanceof NextResponse) return userIdOrResp;
   const userId = userIdOrResp;
 
-  const body = await request.json();
-  const { year, month, day, completed, goodThings, problems, mood, reflections, tomorrowTodo, moodScore, energy } = body as {
-    year: number; month: number; day: number;
-    completed?: string; goodThings?: string; problems?: string;
-    mood?: string; reflections?: string; tomorrowTodo?: string;
-    moodScore?: number; energy?: number;
-  };
-
-  if (!year || !month || !day) {
-    return NextResponse.json({ error: 'Missing year/month/day' }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, postBodySchema);
+  if (parsed instanceof NextResponse) return parsed;
+  const {
+    year, month, day,
+    completed = '', goodThings = '', problems = '',
+    mood = '', reflections = '', tomorrowTodo = '',
+    moodScore = 3, energy = 3,
+  } = parsed;
 
   const client = getSupabaseClient();
   const row = {
     user_id: userId,
     year, month, day,
-    completed: completed || '',
-    good_things: goodThings || '',
-    problems: problems || '',
-    mood: mood || '',
-    reflections: reflections || '',
-    tomorrow_todo: tomorrowTodo || '',
-    mood_score: moodScore ?? 3,
-    energy: energy ?? 3,
+    completed,
+    good_things: goodThings,
+    problems,
+    mood,
+    reflections,
+    tomorrow_todo: tomorrowTodo,
+    mood_score: moodScore,
+    energy,
     updated_at: new Date().toISOString(),
   };
 
@@ -106,7 +141,7 @@ export async function POST(request: NextRequest) {
     .from('daily_reviews')
     .upsert(row, { onConflict: 'user_id,year,month,day' });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return apiError('保存复盘失败', 500, error);
   return NextResponse.json({ success: true });
 }
 
@@ -116,13 +151,9 @@ export async function DELETE(request: NextRequest) {
   const userId = userIdOrResp;
 
   const { searchParams } = new URL(request.url);
-  const year = Number(searchParams.get('year'));
-  const month = Number(searchParams.get('month'));
-  const day = Number(searchParams.get('day'));
-
-  if (!year || !month || !day) {
-    return NextResponse.json({ error: 'Missing year/month/day' }, { status: 400 });
-  }
+  const parsed = parseSearchParams(searchParams, singleDayParamsSchema);
+  if (parsed instanceof NextResponse) return parsed;
+  const { year, month, day } = parsed;
 
   const client = getSupabaseClient();
   const { error } = await client
@@ -133,6 +164,6 @@ export async function DELETE(request: NextRequest) {
     .eq('month', month)
     .eq('day', day);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return apiError('删除复盘失败', 500, error);
   return NextResponse.json({ success: true });
 }

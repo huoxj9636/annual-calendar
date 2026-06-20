@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { z, ZodError, ZodSchema } from 'zod';
 
 /**
  * API 鉴权共享工具
@@ -69,3 +70,80 @@ export function isOwnerOrLegacy(rowUserId: string | null | undefined, currentUse
   if (rowUserId === currentUserId) return true;
   return false;
 }
+
+/**
+ * 通用 API 错误响应 helper
+ *
+ * 用途:统一错误响应格式 + 脱敏内部错误信息
+ * - 已知业务错误(validation/auth):返回原始 message(给前端展示)
+ * - 未知错误(数据库/网络):返回通用 message,原始错误打到 console + 服务端日志
+ */
+export function apiError(
+  message: string,
+  status: number = 500,
+  internalDetail?: unknown,
+): NextResponse {
+  if (status >= 500 && internalDetail) {
+    // 5xx 错误:记录到服务端日志,不暴露给客户端
+    console.error('[apiError]', message, internalDetail);
+  }
+  return NextResponse.json({ error: message }, { status });
+}
+
+/**
+ * Zod 验证 helper
+ *
+ * 用法:
+ *   const parsed = await parseJsonBody(request, MySchema);
+ *   if (parsed instanceof NextResponse) return parsed; // 400
+ *   const { field1, field2 } = parsed;
+ */
+export async function parseJsonBody<T>(
+  req: NextRequest,
+  schema: ZodSchema<T>,
+): Promise<T | NextResponse> {
+  try {
+    const body = await req.json();
+    return schema.parse(body);
+  } catch (err) {
+    if (err instanceof ZodError) {
+      const issues = err.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
+      return apiError(`参数验证失败 - ${issues}`, 400);
+    }
+    if (err instanceof SyntaxError) {
+      return apiError('请求体不是合法 JSON', 400);
+    }
+    return apiError('请求体解析失败', 400, err);
+  }
+}
+
+/**
+ * Zod 查询参数验证 helper
+ */
+export function parseSearchParams<T>(
+  searchParams: URLSearchParams,
+  schema: ZodSchema<T>,
+): T | NextResponse {
+  const obj: Record<string, string> = {};
+  searchParams.forEach((v, k) => { obj[k] = v; });
+  try {
+    return schema.parse(obj);
+  } catch (err) {
+    if (err instanceof ZodError) {
+      const issues = err.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
+      return apiError(`参数验证失败 - ${issues}`, 400);
+    }
+    return apiError('查询参数解析失败', 400, err);
+  }
+}
+
+// ─── 通用 Zod schema 复用 ───
+
+/** 年份 schema: 1970-2100 */
+export const yearSchema = z.coerce.number().int().min(1970).max(2100);
+
+/** 月份 schema: 1-12 */
+export const monthSchema = z.coerce.number().int().min(1).max(12);
+
+/** 日期 schema: 1-31 */
+export const daySchema = z.coerce.number().int().min(1).max(31);

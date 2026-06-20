@@ -33,9 +33,11 @@ export class ApiError extends Error {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiFetch<T = any>(
   url: string,
   options: ApiFetchOptions = {},
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any | null> {
   const { body, headers, silentOn401 = true, ...rest } = options;
 

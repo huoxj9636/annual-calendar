@@ -1,6 +1,45 @@
-import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { requireUser } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
+import {
+  requireUser,
+  parseJsonBody,
+  apiError,
+  yearSchema,
+  monthSchema,
+  daySchema,
+} from '@/lib/api-auth';
+
+// ─── Zod schemas ───
+const okrTaskSchema = z.object({
+  id: z.string().min(1).max(100),
+  title: z.string().min(1).max(500),
+  done: z.boolean(),
+  plannedYear: yearSchema.optional(),
+  plannedMonth: monthSchema.optional(),
+  plannedDay: daySchema.optional(),
+  createdAt: z.union([z.string().max(50), z.number()]).optional(),
+}).strict();
+
+const okrKeyResultSchema = z.object({
+  id: z.string().min(1).max(100),
+  title: z.string().min(1).max(500),
+  targetValue: z.number().min(0).max(999999),
+  children: z.array(okrTaskSchema).max(200),
+  createdAt: z.union([z.string().max(50), z.number()]).optional(),
+}).strict();
+
+const okrObjectiveSchema = z.object({
+  id: z.string().min(1).max(100),
+  title: z.string().min(1).max(500),
+  period: z.string().max(50),
+  children: z.array(okrKeyResultSchema).max(100),
+  createdAt: z.union([z.string().max(50), z.number()]).optional(),
+}).strict();
+
+const postBodySchema = z.object({
+  objectives: z.array(okrObjectiveSchema).max(200),
+}).strict();
 
 export async function GET(request: NextRequest) {
   const userIdOrResp = await requireUser(request);
@@ -15,7 +54,7 @@ export async function GET(request: NextRequest) {
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
 
-  if (oErr) return NextResponse.json({ error: oErr.message }, { status: 500 });
+  if (oErr) return apiError('加载 OKR 失败', 500, oErr);
 
   const result = (objectives || []).map((o: Record<string, unknown>) => ({
     id: o.id,
@@ -46,55 +85,91 @@ export async function POST(request: NextRequest) {
   if (userIdOrResp instanceof NextResponse) return userIdOrResp;
   const userId = userIdOrResp;
 
-  const body = await request.json();
-  const { objectives } = body as {
-    objectives: {
-      id: string; title: string; period: string; createdAt?: string | number;
-      children: {
-        id: string; title: string; targetValue: number; createdAt?: string | number;
-        children: { id: string; title: string; done: boolean; plannedYear?: number; plannedMonth?: number; plannedDay?: number; createdAt?: string | number }[];
-      }[];
-    }[];
-  };
+  const parsed = await parseJsonBody(request, postBodySchema);
+  if (parsed instanceof NextResponse) return parsed;
+  const { objectives } = parsed;
 
   const client = getSupabaseClient();
 
-  // Get existing IDs for current user only
-  const { data: existingO } = await client.from('okr_objectives').select('id').eq('user_id', userId);
-  const existingOIds = new Set<string>((existingO || []).map((o: Record<string, string>) => o.id));
-
-  const { data: existingKR } = await client.from('okr_key_results').select('id, okr_objectives!inner(user_id)').eq('okr_objectives.user_id', userId);
-  const existingKRIds = new Set<string>(((existingKR || []) as Array<{ id: string }>).map((kr) => kr.id));
-
-  const { data: existingTask } = await client.from('okr_tasks').select('id, okr_key_results!inner(user_id)').eq('okr_key_results.okr_objectives.user_id', userId);
-  const existingTaskIds = new Set<string>(((existingTask || []) as Array<{ id: string }>).map((t) => t.id));
-
-  const currentOIds = new Set<string>();
-  const currentKRIds = new Set<string>();
-  const currentTaskIds = new Set<string>();
-
+  // 收集所有客户端传来的 id
+  const incomingOIds = new Set<string>();
+  const incomingKRIds = new Set<string>();
+  const incomingTaskIds = new Set<string>();
   for (const o of objectives) {
-    currentOIds.add(o.id);
+    incomingOIds.add(o.id);
     for (const kr of o.children) {
-      currentKRIds.add(kr.id);
+      incomingKRIds.add(kr.id);
       for (const t of kr.children) {
-        currentTaskIds.add(t.id);
+        incomingTaskIds.add(t.id);
       }
     }
   }
 
-  const taskToDelete = [...existingTaskIds].filter(id => !currentTaskIds.has(id));
-  const krToDelete = [...existingKRIds].filter(id => !currentKRIds.has(id));
-  const oToDelete = [...existingOIds].filter(id => !currentOIds.has(id));
+  // 关键安全检查: 所有 id 必须经过校验
+  // - 存在的 id 必须属于当前用户 (不能越权修改别人的数据)
+  // - 不存在的 id 才能作为新建
+  const idArr = [...incomingOIds];
+  const { data: ownedO } = await client
+    .from('okr_objectives')
+    .select('id, user_id')
+    .in('id', idArr);
+  const ownedOById = new Map<string, string>(((ownedO || []) as Array<{ id: string; user_id: string }>).map((o) => [o.id, o.user_id]));
+  for (const id of incomingOIds) {
+    if (ownedOById.has(id) && ownedOById.get(id) !== userId) {
+      return apiError('权限拒绝:Objective 属于其他用户', 403);
+    }
+  }
 
+  const krIdArr = [...incomingKRIds];
+  const { data: ownedKR } = await client
+    .from('okr_key_results')
+    .select('id, okr_objectives!inner(user_id)')
+    .in('id', krIdArr);
+  const ownedKRById = new Map<string, string>(((ownedKR || []) as unknown as Array<{ id: string; okr_objectives: { user_id: string } }>).map((kr) => [kr.id, kr.okr_objectives.user_id]));
+  for (const id of incomingKRIds) {
+    if (ownedKRById.has(id) && ownedKRById.get(id) !== userId) {
+      return apiError('权限拒绝:KeyResult 属于其他用户', 403);
+    }
+  }
+
+  const taskIdArr = [...incomingTaskIds];
+  const { data: ownedTask } = await client
+    .from('okr_tasks')
+    .select('id, okr_key_results!inner(okr_objectives!inner(user_id))')
+    .in('id', taskIdArr);
+  const ownedTaskById = new Map<string, string>(((ownedTask || []) as unknown as Array<{ id: string; okr_key_results: { okr_objectives: { user_id: string } } }>).map((t) => [t.id, t.okr_key_results.okr_objectives.user_id]));
+  for (const id of incomingTaskIds) {
+    if (ownedTaskById.has(id) && ownedTaskById.get(id) !== userId) {
+      return apiError('权限拒绝:Task 属于其他用户', 403);
+    }
+  }
+
+  // Get existing IDs for current user only (用于计算待删除)
+  const { data: existingO } = await client.from('okr_objectives').select('id').eq('user_id', userId);
+  const existingOIds = new Set<string>((existingO || []).map((o: Record<string, string>) => o.id));
+
+  const { data: existingKR } = await client.from('okr_key_results').select('id, okr_objectives!inner(user_id)').eq('okr_objectives.user_id', userId);
+  const existingKRIds = new Set<string>(((existingKR || []) as unknown as Array<{ id: string }>).map((kr) => kr.id));
+
+  const { data: existingTask } = await client.from('okr_tasks').select('id, okr_key_results!inner(okr_objectives!inner(user_id))').eq('okr_key_results.okr_objectives.user_id', userId);
+  const existingTaskIds = new Set<string>(((existingTask || []) as unknown as Array<{ id: string }>).map((t) => t.id));
+
+  const taskToDelete = [...existingTaskIds].filter(id => !incomingTaskIds.has(id));
+  const krToDelete = [...existingKRIds].filter(id => !incomingKRIds.has(id));
+  const oToDelete = [...existingOIds].filter(id => !incomingOIds.has(id));
+
+  // 关键安全: delete 必须带 user_id 过滤(double check 防越权)
   if (taskToDelete.length > 0) {
-    await client.from('okr_tasks').delete().in('id', taskToDelete);
+    const { error } = await client.from('okr_tasks').delete().in('id', taskToDelete).eq('user_id', userId);
+    if (error) return apiError('删除 Task 失败', 500, error);
   }
   if (krToDelete.length > 0) {
-    await client.from('okr_key_results').delete().in('id', krToDelete);
+    const { error } = await client.from('okr_key_results').delete().in('id', krToDelete).eq('user_id', userId);
+    if (error) return apiError('删除 KeyResult 失败', 500, error);
   }
   if (oToDelete.length > 0) {
-    await client.from('okr_objectives').delete().in('id', oToDelete);
+    const { error } = await client.from('okr_objectives').delete().in('id', oToDelete).eq('user_id', userId);
+    if (error) return apiError('删除 Objective 失败', 500, error);
   }
 
   for (const o of objectives) {
@@ -108,7 +183,7 @@ export async function POST(request: NextRequest) {
         created_at: typeof o.createdAt === 'number' ? new Date(o.createdAt).toISOString() : (o.createdAt || new Date().toISOString()),
       }, { onConflict: 'id' });
 
-    if (oErr) console.error('[OKR upsert O]', oErr.message);
+    if (oErr) return apiError('保存 Objective 失败', 500, oErr);
 
     for (const kr of o.children) {
       const { error: krErr } = await client
@@ -122,7 +197,7 @@ export async function POST(request: NextRequest) {
           created_at: typeof kr.createdAt === 'number' ? new Date(kr.createdAt).toISOString() : (kr.createdAt || new Date().toISOString()),
         }, { onConflict: 'id' });
 
-      if (krErr) console.error('[OKR upsert KR]', krErr.message);
+      if (krErr) return apiError('保存 KeyResult 失败', 500, krErr);
 
       for (const t of kr.children) {
         const { error: tErr } = await client
@@ -139,7 +214,7 @@ export async function POST(request: NextRequest) {
             created_at: typeof t.createdAt === 'number' ? new Date(t.createdAt).toISOString() : (t.createdAt || new Date().toISOString()),
           }, { onConflict: 'id' });
 
-        if (tErr) console.error('[OKR upsert Task]', tErr.message);
+        if (tErr) return apiError('保存 Task 失败', 500, tErr);
       }
     }
   }

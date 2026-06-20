@@ -178,7 +178,7 @@ export function installAuthInterceptor(): void {
       const urlString = url === undefined ? '' : String(url);
       // 允许的内部跳转/空 URL 直接放行
       if (!urlString || urlString === 'about:blank') {
-        return originalOpen.call(this, url as any, target, features);
+        return originalOpen.call(this, url, target, features);
       }
       if (!_isLoggedIn) {
         // 未登录 → 拦截,入队
@@ -189,7 +189,7 @@ export function installAuthInterceptor(): void {
     } catch (err) {
       console.warn('[auth-interceptor] window.open error', err);
     }
-    return originalOpen.call(this, url as any, target, features);
+    return originalOpen.call(this, url, target, features);
   };
 }
 
@@ -209,7 +209,15 @@ export function flushPendingWrites(): number {
   const writes = pendingWrites.splice(0, pendingWrites.length);
   for (const w of writes) {
     try {
+      // 1) 真正写入 localStorage(用原始 setItem,避免去重逻辑和重复拦截)
       _originalSetItem.call(localStorage, w.key, w.value);
+      // 2) 主动 dispatch 事件,触发 SyncProvider 同步到云端
+      //    (用原始 setItem 写入不会触发 patched 后的 local-storage-changed 事件)
+      if (typeof window !== 'undefined' && isSyncedKey(w.key)) {
+        window.dispatchEvent(
+          new CustomEvent('local-storage-changed', { detail: { key: w.key, op: 'set' } }),
+        );
+      }
     } catch (err) {
       console.warn('[auth-interceptor] flush write failed', w.key, err);
     }
