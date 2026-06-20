@@ -1212,12 +1212,16 @@ function GanttRow({ row, idx, skin, scale, onUpdateRow, onDelete }: {
           })}
         </div>
       </div>
-      {/* Delete button */}
-      <div className="w-[40px] shrink-0 text-center">
+      {/* Delete button — sticky to right edge of visible area, appears on row hover */}
+      <div
+        className="w-[40px] shrink-0 flex items-center justify-end pr-2 opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ position: 'sticky', right: 0, zIndex: 5 }}
+      >
         <button
           onClick={onDelete}
-          className="w-6 h-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-          style={{ backgroundColor: '#ef444420', color: '#ef4444' }}
+          className="w-7 h-7 rounded-full flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform"
+          style={{ backgroundColor: '#ef4444', color: '#fff' }}
+          title="删除该行"
         >×</button>
       </div>
     </div>
