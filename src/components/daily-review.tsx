@@ -188,8 +188,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const [isDragging, setIsDragging] = useState(false);
 
   // Map vertical mouse wheel to horizontal/vertical scroll inside the gantt area based on mouse X position.
-  // Left half of the container  → wheel = horizontal scroll (slide the time axis left/right)
-  // Right half of the container → wheel = vertical scroll (scroll through rows / page)
+  // Left side (task name column area, ~140px) → wheel = horizontal scroll (slide the time axis left/right)
+  // Right side (time grid area) → wheel = vertical scroll (scroll through rows / page)
   // React's onWheel is passive (can't preventDefault), so we use a native listener with { passive: false }.
   useEffect(() => {
     const el = ganttScrollRef.current;
@@ -200,12 +200,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       if (e.deltaX === 0 && e.deltaY !== 0) {
         const rect = el.getBoundingClientRect();
         const mouseXInContainer = e.clientX - rect.left;
-        const isLeftHalf = mouseXInContainer < rect.width / 2;
-        if (isLeftHalf) {
+        // 事项名称列宽度约140px，该区域为水平滑动区域
+        const taskColumnWidth = 140;
+        const isTaskColumnArea = mouseXInContainer < taskColumnWidth;
+        if (isTaskColumnArea) {
           e.preventDefault();
           el.scrollLeft += e.deltaY;
         }
-        // Right half: let default vertical scroll happen (rows or page)
+        // Right side: let default vertical scroll happen (rows or page)
       }
     };
     el.addEventListener('wheel', onWheel, { passive: false });
@@ -666,29 +668,25 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
               {/* Scrollable rows area (horizontal + vertical) — includes hour header + rows together so they scroll in sync */}
               {/* Wrapper to enable fixed overlay positioning */}
               <div className="flex-1 relative min-h-0">
-                {/* Return to start button - vertical bar on left edge, centered */}
+                {/* Return to start button - slim vertical bar on left edge */}
                 <button
                   onClick={() => {
                     if (ganttScrollRef.current) {
                       ganttScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
                     }
                   }}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center justify-center gap-1 py-3 px-1.5 rounded-r-lg transition-all hover:px-2 active:scale-95"
-                  style={{ backgroundColor: skin.swatch + '30', color: skin.swatch }}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-2 h-16 rounded-r transition-all hover:w-3 active:scale-95"
+                  style={{ backgroundColor: skin.swatch + '40' }}
                   title="返回起点"
                 >
-                  {/* Vertical bar indicator */}
-                  <div className="w-1 h-6 rounded-full" style={{ backgroundColor: skin.swatch }} />
-                  {/* Left arrow */}
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ color: skin.swatch, marginLeft: '-1px' }}>
                     <path d="M15 18l-6-6l6-6" />
                   </svg>
-                  <div className="w-1 h-6 rounded-full" style={{ backgroundColor: skin.swatch }} />
                 </button>
                 <div 
                   ref={ganttScrollRef} 
                   className="absolute inset-y-0 right-0 overflow-auto" 
-                  style={{ scrollbarGutter: 'stable', left: '24px' }}
+                  style={{ scrollbarGutter: 'stable', left: '8px' }}
                   onScroll={(e) => {
                     setGanttScrollLeft(e.currentTarget.scrollLeft);
                   }}
@@ -1298,6 +1296,9 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
   // Empty row = startHour === endHour → no bar visible, click a cell to create a 1h bar
   const isEmpty = row.startHour === row.endHour;
 
+  // State to track if user has clicked the bar (shows drag handles only after click)
+  const [showDragHandles, setShowDragHandles] = useState(false);
+
   // Refs so the window-level drag listeners always read the latest row and onUpdateRow
   // (avoids re-binding the listeners on every parent re-render)
   const rowRef = useRef(row);
@@ -1366,6 +1367,8 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
   const startDrag = (edge: 'left' | 'right' | 'move', e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Show drag handles when starting interaction
+    setShowDragHandles(true);
     // Cancel any pending long press timer
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
@@ -1381,8 +1384,26 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
     document.body.style.userSelect = 'none';
   };
 
-  // Long press handler for moving the entire bar
+  // Handle bar click - show drag handles on first click
+  const handleBarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDragHandles(true);
+  };
+
+  // Hide drag handles when mouse leaves the bar (if not actively dragging)
+  const handleBarMouseLeave = () => {
+    if (!dragState.current) {
+      setShowDragHandles(false);
+    }
+  };
+
+  // Long press handler for moving the entire bar (only after drag handles are shown)
   const handleLongPressStart = (e: React.MouseEvent) => {
+    if (!showDragHandles) {
+      // First click just shows the handles
+      handleBarClick(e);
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     // Set cursor to grab immediately for visual feedback
@@ -1450,7 +1471,7 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
             Only rendered when the row has an actual time range. */}
         {!isEmpty && (
           <div
-            className="absolute top-0 bottom-0 rounded-lg"
+            className="absolute top-0 bottom-0 rounded-lg cursor-pointer"
             style={{
               left: `${row.startHour * cellWidth}px`,
               width: `${(row.endHour - row.startHour) * cellWidth}px`,
@@ -1459,18 +1480,23 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
               minWidth: '3px',
             }}
             title={`${formatDuration(row.startHour, row.endHour)}（${formatHour(row.startHour)}～${formatHour(row.endHour)}）`}
+            onClick={handleBarClick}
+            onMouseLeave={handleBarMouseLeave}
           >
-            {/* Left edge drag handle */}
-            <div
-              className="absolute top-0 bottom-0 left-0 w-2 cursor-ew-resize"
-              onMouseDown={(e) => startDrag('left', e)}
-              title="拖动调整起点"
-            >
-              <div className="absolute inset-y-0 left-[3px] w-[2px] rounded-full bg-white/50" />
-            </div>
+            {/* Left edge drag handle - only visible after click */}
+            {showDragHandles && (
+              <div
+                className="absolute top-0 bottom-0 left-0 w-2 cursor-ew-resize"
+                onMouseDown={(e) => startDrag('left', e)}
+                title="拖动调整起点"
+              >
+                <div className="absolute inset-y-0 left-[3px] w-[2px] rounded-full bg-white/50" />
+              </div>
+            )}
             {/* Middle section for long-press to move entire bar */}
             <div
-              className="absolute top-0 bottom-0 left-2 right-2 cursor-grab"
+              className="absolute top-0 bottom-0 left-2 right-2"
+              style={{ cursor: showDragHandles ? 'grab' : 'pointer' }}
               onMouseDown={handleLongPressStart}
               onMouseUp={() => {
                 // Cancel long press timer if released early
@@ -1481,16 +1507,18 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
                   document.body.style.userSelect = '';
                 }
               }}
-              title="长按可移动整个时间条"
+              title={showDragHandles ? "长按可移动整个时间条" : `${formatHour(row.startHour)}～${formatHour(row.endHour)}`}
             />
-            {/* Right edge drag handle */}
-            <div
-              className="absolute top-0 bottom-0 right-0 w-2 cursor-ew-resize"
-              onMouseDown={(e) => startDrag('right', e)}
-              title="拖动调整终点"
-            >
-              <div className="absolute inset-y-0 right-[3px] w-[2px] rounded-full bg-white/50" />
-            </div>
+            {/* Right edge drag handle - only visible after click */}
+            {showDragHandles && (
+              <div
+                className="absolute top-0 bottom-0 right-0 w-2 cursor-ew-resize"
+                onMouseDown={(e) => startDrag('right', e)}
+                title="拖动调整终点"
+              >
+                <div className="absolute inset-y-0 right-[3px] w-[2px] rounded-full bg-white/50" />
+              </div>
+            )}
           </div>
         )}
       </div>
