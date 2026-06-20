@@ -514,6 +514,28 @@ export default function TreeCloseup({
     });
   }, [nodesByType]);
 
+  // 计算当前阶段：第一个有内容但没有下一层级内容的层级
+  const currentStageIdx = useMemo(() => {
+    for (let i = 0; i < typeStats.length; i++) {
+      const hasCurrent = typeStats[i].nodes.length > 0;
+      const hasNext = i < typeStats.length - 1 && typeStats[i + 1].nodes.length > 0;
+      if (hasCurrent && !hasNext) return i;
+      if (!hasCurrent && i === 0) return 0; // 还没开始
+    }
+    // 全部完成
+    return typeStats.length - 1;
+  }, [typeStats]);
+
+  // 完整度百分比
+  const completionPercent = useMemo(() => {
+    const filledCount = typeStats.filter((s) => s.nodes.length > 0).length;
+    return Math.round((filledCount / 5) * 100);
+  }, [typeStats]);
+
+  // 当前阶段信息
+  const currentStageInfo = TYPE_LABELS[typeStats[currentStageIdx]?.type || "root"];
+  const currentStagePercent = (currentStageIdx / 4) * 100;
+
   // 理论库模拟数据（方法论文件）
   const theoryFiles: Record<NodeType, { name: string }[]> = {
     root: [
@@ -632,149 +654,181 @@ export default function TreeCloseup({
         </div>
       </div>
 
-      {/* 5个层级文件夹 */}
+      {/* 顶部进度条 */}
+      <div className="px-5 py-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs" style={{ color: skin.textMuted }}>
+            当前阶段：{currentStageInfo.short} · {currentStageInfo.full}
+          </span>
+          <span className="text-xs font-medium" style={{ color: skin.swatch }}>
+            完整度 {completionPercent}%
+          </span>
+        </div>
+        {/* 进度条 */}
+        <div className="relative">
+          <div
+            className="h-2 rounded-full"
+            style={{ background: `${skin.swatch}20` }}
+          />
+          <div
+            className="absolute top-0 left-0 h-2 rounded-full transition-all"
+            style={{
+              width: `${completionPercent}%`,
+              background: skin.swatch,
+            }}
+          />
+          {/* 当前阶段指示点 */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2"
+            style={{
+              left: `${currentStagePercent}%`,
+              background: skin.swatch,
+              borderColor: "#fff",
+              boxShadow: `0 0 6px ${skin.swatch}`,
+            }}
+          />
+        </div>
+        {/* 5个阶段标签 */}
+        <div className="flex justify-between mt-1">
+          {["根", "干", "枝", "叶", "果"].map((label, idx) => (
+            <span
+              key={label}
+              className="text-[10px]"
+              style={{
+                color: idx <= currentStageIdx ? skin.swatch : skin.textMuted,
+                fontWeight: idx === currentStageIdx ? "600" : "400",
+              }}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* 5个层级纵向流程展示 */}
       <div className="px-5 pb-5">
-        <div className="grid grid-cols-5 gap-2">
-          {typeStats.map(({ type, nodes, info }) => {
-            const isExpanded = expandedType === type;
-            // 理论库显示模拟文件数，项目库显示实际节点数
-            const count = libType === "theory" 
-              ? (theoryFiles[type]?.length || 0) 
-              : nodes.length;
+        <div className="space-y-3">
+          {typeStats.map(({ type, nodes, info }, idx) => {
+            const hasContent = libType === "theory"
+              ? (theoryFiles[type]?.length || 0) > 0
+              : nodes.length > 0;
+            const isCurrent = idx === currentStageIdx;
+            const isPast = idx < currentStageIdx;
+            const isFuture = idx > currentStageIdx;
+            
+            // 获取该层级的内容摘要
+            const contentSummary = libType === "theory"
+              ? theoryFiles[type]?.[0]?.name || ""
+              : nodes[0]?.title || "";
 
             return (
               <div key={type}>
-                {/* 文件夹卡片 */}
-                <button
-                  onClick={() => setExpandedType(isExpanded ? null : type)}
-                  className="w-full rounded-lg p-2.5 transition-all hover:scale-[1.02]"
+                {/* 层级卡片 */}
+                <div
+                  className="rounded-lg p-3 transition-all"
                   style={{
-                    background: skin.cardBg,
-                    border: `1px solid ${isExpanded ? skin.swatch : skin.divider}`,
-                    boxShadow: isExpanded ? `0 4px 12px ${skin.swatch}20` : "none",
+                    background: isCurrent ? `${skin.swatch}15` : skin.cardBg,
+                    border: `1px solid ${isCurrent ? skin.swatch : skin.divider}`,
+                    boxShadow: isCurrent ? `0 2px 8px ${skin.swatch}20` : "none",
                   }}
                 >
-                  {/* 图标 */}
-                  <div
-                    className="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center"
-                    style={{ background: `${skin.swatch}15` }}
-                  >
-                    <info.Icon size={16} style={{ color: skin.swatch }} />
-                  </div>
-                  {/* 层级名称 */}
-                  <div
-                    className="text-xs font-semibold text-center truncate"
-                    style={{ color: skin.textPrimary }}
-                  >
-                    {info.short}
-                  </div>
-                  {/* 数量 */}
-                  <div
-                    className="text-[10px] text-center mt-1"
-                    style={{ color: skin.textMuted }}
-                  >
-                    {count}
-                  </div>
-                  {/* 展开指示 */}
-                  <div className="flex justify-center mt-1.5">
-                    {isExpanded ? (
-                      <ChevronDown size={10} style={{ color: skin.swatch }} />
-                    ) : (
-                      <ChevronRight size={10} style={{ color: skin.textMuted }} />
-                    )}
-                  </div>
-                </button>
-
-                {/* 展开的文件列表 */}
-                {isExpanded && (
-                  <div
-                    className="mt-2 rounded-lg overflow-hidden"
-                    style={{
-                      background: skin.cardBg,
-                      border: `1px solid ${skin.divider}`,
-                      boxShadow: `0 4px 12px rgba(0,0,0,0.1)`,
-                    }}
-                  >
-                    {/* 层级说明 */}
+                  {/* 左侧：序号+图标 */}
+                  <div className="flex items-start gap-3">
                     <div
-                      className="px-2.5 py-1.5 text-[10px]"
+                      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
                       style={{
-                        background: `${skin.swatch}08`,
-                        color: skin.textMuted,
+                        background: hasContent ? `${skin.swatch}20` : `${skin.textMuted}15`,
                       }}
                     >
-                      {info.full} · {info.desc}
-                    </div>
-                    {/* 文件列表 */}
-                    <div className="p-2 space-y-1 max-h-48 overflow-auto">
-                      {libType === "theory" ? (
-                        // 理论库：显示方法论文件
-                        theoryFiles[type]?.map((f, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center gap-1.5 px-2 py-1.5 rounded"
-                            style={{ background: `${skin.swatch}08` }}
-                          >
-                            <File size={10} style={{ color: skin.swatch }} />
-                            <div
-                              className="text-[11px] truncate"
-                              style={{ color: skin.textPrimary }}
-                            >
-                              {f.name}
-                            </div>
-                          </div>
-                        ))
+                      {hasContent ? (
+                        <info.Icon size={18} style={{ color: skin.swatch }} />
                       ) : (
-                        // 项目库：显示实际节点
-                        count === 0 ? (
-                          <div
-                            className="text-center text-[10px] py-3"
-                            style={{ color: skin.textMuted }}
-                          >
-                            空
-                          </div>
-                        ) : (
-                          nodes.map((n) => (
-                            <div
-                              key={n.id}
-                              className="flex items-center gap-1.5 px-2 py-1.5 rounded transition-colors group"
-                              style={{ background: `${skin.swatch}08` }}
-                            >
-                              <File size={10} style={{ color: skin.swatch }} />
-                              <div className="flex-1 min-w-0">
-                                <div
-                                  className="text-[11px] truncate"
-                                  style={{ color: skin.textPrimary }}
-                                >
-                                  {n.title}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => onDeleteNode(n.id)}
-                                className="opacity-0 group-hover:opacity-100 text-[9px] px-1 py-0.5 rounded"
-                                style={{ color: "#ef4444" }}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))
-                        )
-                      )}
-                      {/* 添加按钮（仅项目库） */}
-                      {libType === "project" && (
-                        <button
-                          onClick={() => onAddTypeNode(type)}
-                          className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] font-medium"
-                          style={{
-                            background: skin.swatch,
-                            color: "#fff",
-                          }}
-                        >
-                          <Plus size={10} />
-                          添加
-                        </button>
+                        <span className="text-sm font-bold" style={{ color: skin.textMuted }}>
+                          {idx + 1}
+                        </span>
                       )}
                     </div>
+                    
+                    {/* 中间：层级信息 */}
+                    <div className="flex-1 min-w-0">
+                      {/* 层级名称 */}
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="text-sm font-semibold"
+                          style={{ color: skin.textPrimary }}
+                        >
+                          {info.short} · {info.full}
+                        </span>
+                        {isCurrent && (
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded"
+                            style={{ background: skin.swatch, color: "#fff" }}
+                          >
+                            当前
+                          </span>
+                        )}
+                        {hasContent && !isCurrent && (
+                          <span
+                            className="text-[10px]"
+                            style={{ color: skin.swatch }}
+                          >
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* 层级描述 */}
+                      <div
+                        className="text-xs mt-1"
+                        style={{ color: skin.textMuted }}
+                      >
+                        {info.desc}
+                      </div>
+                      
+                      {/* 内容摘要 */}
+                      {hasContent ? (
+                        <div
+                          className="text-xs mt-2 truncate"
+                          style={{ color: skin.textSecondary }}
+                        >
+                          {contentSummary}
+                        </div>
+                      ) : (
+                        <div
+                          className="text-xs mt-2"
+                          style={{ color: isFuture ? skin.textMuted : skin.swatch }}
+                        >
+                          {isFuture ? "[待补充]" : "[待补充] 下一步：填写此处推进项目"}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* 右侧：操作按钮 */}
+                    {libType === "project" && (
+                      <button
+                        onClick={() => onAddTypeNode(type)}
+                        className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                        style={{
+                          background: hasContent ? `${skin.swatch}20` : skin.swatch,
+                          color: hasContent ? skin.swatch : "#fff",
+                        }}
+                        title="添加内容"
+                      >
+                        <Plus size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* 连接箭头 */}
+                {idx < 4 && (
+                  <div className="flex justify-center py-1">
+                    <div
+                      className="w-0.5 h-4"
+                      style={{
+                        background: idx < currentStageIdx ? skin.swatch : `${skin.divider}`,
+                      }}
+                    />
                   </div>
                 )}
               </div>
