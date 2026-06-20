@@ -10,18 +10,18 @@ import { z } from 'zod';
 // month_reviews(id, user_id, year, month, section_key, content)
 
 const getQuerySchema = z.object({
-  type: z.enum(['overrides', 'notes', 'drawings', 'month_reviews', 'month_review']),
+  type: z.enum(['overrides', 'notes', 'drawings', 'drawing', 'month_reviews', 'month_review']),
   year: z.coerce.number().int().min(1900).max(2200),
   month: z.coerce.number().int().min(1).max(12).optional(),
 });
 
 const postBodySchema = z.object({
-  type: z.enum(['overrides', 'notes', 'drawings', 'month_reviews', 'month_review']),
+  type: z.enum(['overrides', 'notes', 'drawings', 'drawing', 'month_reviews', 'month_review']),
   year: z.coerce.number().int().min(1900).max(2200),
   month: z.coerce.number().int().min(1).max(12).optional(),
   // overrides: { "3-15": "checked", "6-20": "crossed" }
   // notes: { "6-20": "今天..." }
-  // drawings: { "6-20": { strokes: [...], color: "..." } }
+  // drawings/drawing: { "6-20": { strokes: [...] } } 或直接 { strokes: [...] }（年度全局画板）
   // month_reviews: { summary: "...", highlights: [...], ... }
   data: z.unknown().optional(),
 }).passthrough();
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
       }
       return NextResponse.json({ data: result });
     }
-    if (type === 'drawings') {
+    if (type === 'drawings' || type === 'drawing') {
       const { data, error } = await client
         .from('calendar_drawings')
         .select('*')
@@ -95,9 +95,15 @@ export async function GET(request: NextRequest) {
         console.error('[calendar-data] drawings GET error:', error);
         return apiError('查询失败', 500);
       }
+      // 支持年度全局画板（单条记录，无 date_key 或 date_key 为 'yearly'）
+      const yearlyRow = (data || []).find(row => !row.date_key || row.date_key === 'yearly');
+      if (yearlyRow && yearlyRow.strokes) {
+        return NextResponse.json({ strokes: yearlyRow.strokes });
+      }
+      // 支持按日期分组的画板数据
       const result: Record<string, { strokes: unknown }> = {};
       for (const row of data || []) {
-        if (row.date_key) {
+        if (row.date_key && row.date_key !== 'yearly') {
           result[row.date_key] = { strokes: row.strokes };
         }
       }
@@ -185,27 +191,51 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ success: true, count: rows.length });
     }
-    if (type === 'drawings') {
-      if (!data || typeof data !== 'object') return apiError('需要 data 字段', 400);
-      const entries = Object.entries(data as Record<string, { strokes?: unknown }>);
-      await client.from('calendar_drawings').delete().eq('user_id', userId).eq('year', year);
-      const validRows = entries
-        .filter(([_, v]) => v && typeof v === 'object' && v.strokes)
-        .map(([dateKey, v]) => ({
+    if (type === 'drawings' || type === 'drawing') {
+      if (!data) return apiError('需要 data 字段', 400);
+      
+      // 支持年度全局画板（data 直接是 strokes 数组）
+      if (Array.isArray(data)) {
+        // 删除旧的年度画板记录
+        await client.from('calendar_drawings').delete().eq('user_id', userId).eq('year', year);
+        // 插入新的年度画板记录（date_key 为 'yearly'）
+        const { error } = await client.from('calendar_drawings').insert({
           user_id: userId,
           year,
-          date_key: normalizeDateKey(dateKey),
-          strokes: v.strokes,
-        }));
-      if (validRows.length === 0) {
-        return NextResponse.json({ success: true, count: 0 });
+          date_key: 'yearly',
+          strokes: data,
+        });
+        if (error) {
+          console.error('[calendar-data] drawing POST error:', error);
+          return apiError('保存失败', 500);
+        }
+        return NextResponse.json({ success: true, count: 1 });
       }
-      const { error } = await client.from('calendar_drawings').insert(validRows);
-      if (error) {
-        console.error('[calendar-data] drawings POST error:', error);
-        return apiError('保存失败', 500);
+      
+      // 支持按日期分组的画板数据（data 是对象）
+      if (typeof data === 'object') {
+        const entries = Object.entries(data as Record<string, { strokes?: unknown }>);
+        await client.from('calendar_drawings').delete().eq('user_id', userId).eq('year', year);
+        const validRows = entries
+          .filter(([_, v]) => v && typeof v === 'object' && v.strokes)
+          .map(([dateKey, v]) => ({
+            user_id: userId,
+            year,
+            date_key: normalizeDateKey(dateKey),
+            strokes: v.strokes,
+          }));
+        if (validRows.length === 0) {
+          return NextResponse.json({ success: true, count: 0 });
+        }
+        const { error } = await client.from('calendar_drawings').insert(validRows);
+        if (error) {
+          console.error('[calendar-data] drawings POST error:', error);
+          return apiError('保存失败', 500);
+        }
+        return NextResponse.json({ success: true, count: validRows.length });
       }
-      return NextResponse.json({ success: true, count: validRows.length });
+      
+      return apiError('data 格式无效', 400);
     }
     if (type === 'month_reviews' || type === 'month_review') {
       if (!month) return apiError('需要 month 参数', 400);
