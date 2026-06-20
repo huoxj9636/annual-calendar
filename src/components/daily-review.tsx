@@ -621,9 +621,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         </div>
 
         {/* Content */}
-        <div className="px-6 py-3 flex-1 flex flex-col min-h-0">
+        <div className="px-2 py-3 flex-1 flex flex-col min-h-0">
           {viewMode === 'gantt' ? (
-            /* Gantt View */
+            /* Gantt View - fixed task column + scrollable time grid */
             <div className="flex flex-col gap-2 flex-1 min-h-0">
               {/* Top row: back button + scale control + locate button */}
               <div className="flex items-center justify-between mb-2">
@@ -665,28 +665,67 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   </button>
                 )}
               </div>
-              {/* Scrollable rows area (horizontal + vertical) — includes hour header + rows together so they scroll in sync */}
-              {/* Wrapper to enable fixed overlay positioning */}
-              <div className="flex-1 relative min-h-0">
-                {/* Return to start button - slim vertical bar on left edge */}
-                <button
-                  onClick={() => {
-                    if (ganttScrollRef.current) {
-                      ganttScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-                    }
-                  }}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-2 h-16 rounded-r transition-all hover:w-3 active:scale-95"
-                  style={{ backgroundColor: skin.swatch + '40' }}
-                  title="返回起点"
-                >
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ color: skin.swatch, marginLeft: '-1px' }}>
-                    <path d="M15 18l-6-6l6-6" />
-                  </svg>
-                </button>
+              {/* Main area: fixed task column + scrollable time grid */}
+              <div className="flex-1 flex min-h-0">
+                {/* Fixed task column on left edge */}
+                <div className="flex flex-col shrink-0" style={{ width: '140px' }}>
+                  {/* Return to start button - at very left edge */}
+                  <button
+                    onClick={() => {
+                      if (ganttScrollRef.current) {
+                        ganttScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                      }
+                    }}
+                    className="flex items-center justify-center w-6 h-10 rounded-r transition-all hover:w-8 active:scale-95 mt-1"
+                    style={{ backgroundColor: skin.swatch + '40' }}
+                    title="返回起点"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: skin.swatch }}>
+                      <path d="M15 18l-6-6l6-6" />
+                    </svg>
+                  </button>
+                  {/* Task list header */}
+                  <div className="text-xs font-medium px-2 py-2" style={{ color: skin.textMuted }}>事项</div>
+                  {/* Task inputs - fixed, not scrolling with time grid */}
+                  <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
+                    {ganttRows.map((row, idx) => (
+                      <div key={row.id} className="flex items-center h-8 mb-1 px-2">
+                        <input
+                          type="text"
+                          value={row.task}
+                          onChange={(e) => {
+                            const next = [...ganttRows];
+                            next[idx] = { ...row, task: e.target.value };
+                            setGanttRows(next);
+                            saveGanttRows(year, month, day, next);
+                          }}
+                          placeholder={`事项${idx + 1}`}
+                          className="w-full text-sm px-1 py-0.5 rounded border-none outline-none focus:ring-1"
+                          style={{ 
+                            backgroundColor: 'transparent',
+                            color: skin.textPrimary,
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Add row button */}
+                  <button
+                    onClick={() => {
+                      const newId = ganttRows.length > 0 ? Math.max(...ganttRows.map(r => r.id)) + 1 : 1;
+                      const next = [...ganttRows, { id: newId, task: '', startHour: 0, endHour: 0 }];
+                      setGanttRows(next);
+                      saveGanttRows(year, month, day, next);
+                    }}
+                    className="text-xs px-2 py-1 rounded transition-all flex items-center gap-1 mt-1 mx-2 shrink-0"
+                    style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
+                  >➕ 添加新行</button>
+                </div>
+                {/* Scrollable time grid */}
                 <div 
                   ref={ganttScrollRef} 
-                  className="absolute inset-y-0 right-0 overflow-auto" 
-                  style={{ scrollbarGutter: 'stable', left: '8px' }}
+                  className="flex-1 overflow-auto relative min-h-0"
+                  style={{ scrollbarGutter: 'stable' }}
                   onScroll={(e) => {
                     setGanttScrollLeft(e.currentTarget.scrollLeft);
                   }}
@@ -694,24 +733,16 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     const rect = e.currentTarget.getBoundingClientRect();
                     const x = e.clientX - rect.left;
                     const y = e.clientY - rect.top;
-                    // Task name column is 140px wide; time grid starts after that
-                    const trackX = x - 140;
-                    if (trackX >= 0) {
-                      const hour = trackX / cellWidth;
-                      const clampedHour = Math.max(0, Math.min(24, hour));
-                      setHoverHour(clampedHour);
-                      setHoverY(y);
-                    } else {
-                      setHoverHour(null);
-                      setHoverY(null);
-                    }
+                    const hour = x / cellWidth;
+                    const clampedHour = Math.max(0, Math.min(24, hour));
+                    setHoverHour(clampedHour);
+                    setHoverY(y);
                   }}
                   onMouseLeave={() => { setHoverHour(null); setHoverY(null); }}
                 >
-                <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 24px)` }}>
+                <div style={{ minWidth: `calc(${(48 / ganttScale) * 24}px + 24px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: skin.panelBg }}>
-                    <div className="w-[140px] shrink-0" />
                     <div className="flex">
                       {Array.from({ length: 24 }, (_, i) => (
                         <div key={i} className="text-left text-xs font-medium shrink-0 border-r relative" style={{ width: `${48 / ganttScale}px`, color: skin.textMuted, borderColor: skin.cellBorder }}>
@@ -770,7 +801,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <div 
                     className="absolute top-0 bottom-0"
                     style={{ 
-                      left: `${140 + hoverHour * cellWidth - ganttScrollLeft}px`,
+                      left: `${hoverHour * cellWidth - ganttScrollLeft}px`,
                       width: '1px',
                       backgroundColor: skin.textMuted,
                       opacity: 0.5,
@@ -798,7 +829,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                   <div 
                     className="absolute top-0 bottom-0"
                     style={{ 
-                      left: `${140 + currentHour * cellWidth - ganttScrollLeft}px`,
+                      left: `${currentHour * cellWidth - ganttScrollLeft}px`,
                       width: '2px',
                       backgroundColor: '#ef4444',
                     }}
@@ -807,17 +838,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 )}
               </div>
             </div>
-            {/* Add row button */}
-            <button
-                onClick={() => {
-                  const newId = ganttRows.length > 0 ? Math.max(...ganttRows.map(r => r.id)) + 1 : 1;
-                  const next = [...ganttRows, { id: newId, task: '', startHour: 0, endHour: 0 }];
-                  setGanttRows(next);
-                  saveGanttRows(year, month, day, next);
-                }}
-                className="mt-2 text-sm px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 w-full justify-center shrink-0"
-                style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
-              >➕ 添加新行</button>
             </div>
           ) : (
             /* Review View */
@@ -1325,21 +1345,21 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
       if (ds.edge === 'left') {
         // Move the left edge: clamp to [0, endHour - snap] so the bar is always ≥ snap wide
         const candidate = ds.startStartHour + dh;
-        const snapped = Math.round(candidate / snap) * snap;
-        const newStart = Math.max(0, Math.min(ds.startEndHour - snap, snapped));
+        // 直接使用鼠标位置，不四舍五入，让拖动更丝滑
+        const newStart = Math.max(0, Math.min(ds.startEndHour - snap, candidate));
         onUpdateRowRef.current({ ...rowRef.current, startHour: newStart });
       } else if (ds.edge === 'right') {
         // Move the right edge: clamp to [startHour + snap, 24]
         const candidate = ds.startEndHour + dh;
-        const snapped = Math.round(candidate / snap) * snap;
-        const newEnd = Math.min(24, Math.max(ds.startStartHour + snap, snapped));
+        // 直接使用鼠标位置，不四舍五入，让拖动更丝滑
+        const newEnd = Math.min(24, Math.max(ds.startStartHour + snap, candidate));
         onUpdateRowRef.current({ ...rowRef.current, endHour: newEnd });
       } else if (ds.edge === 'move') {
         // Move the entire bar: shift both start and end together, preserve length
         const barLength = ds.startEndHour - ds.startStartHour;
         const candidate = ds.startStartHour + dh;
-        const snapped = Math.round(candidate / snap) * snap;
-        const newStart = Math.max(0, Math.min(24 - barLength, snapped));
+        // 直接使用鼠标位置，不四舍五入，让拖动更丝滑
+        const newStart = Math.max(0, Math.min(24 - barLength, candidate));
         const newEnd = newStart + barLength;
         onUpdateRowRef.current({ ...rowRef.current, startHour: newStart, endHour: newEnd });
       }
@@ -1417,17 +1437,6 @@ function GanttRow({ row, idx, skin, scale, hoverHour, onUpdateRow, onDelete }: {
 
   return (
     <div className="flex mb-1 items-center group">
-      {/* Task name input */}
-      <div className="w-[140px] shrink-0 px-2">
-        <input
-          type="text"
-          value={row.task}
-          onChange={e => onUpdateRow({ ...row, task: e.target.value })}
-          placeholder={`事项 ${idx + 1}`}
-          className="w-full px-2 py-1.5 rounded-lg text-sm outline-none border"
-          style={{ backgroundColor: skin.cardBg, color: skin.textPrimary, borderColor: skin.cellBorder }}
-        />
-      </div>
       {/* Time bar track - fixed pixel width based on scale */}
       <div
         className="relative h-8 rounded-lg mx-0.5 shrink-0"
