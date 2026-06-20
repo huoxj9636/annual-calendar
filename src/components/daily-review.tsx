@@ -1039,7 +1039,7 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWi
   };
 
   return (
-    <div className={`rounded-xl p-4 flex flex-col relative transition-colors duration-300 ${fullWidth ? 'col-span-2' : ''}`} style={{ backgroundColor: value.trim() ? skin.cardBg : `${skin.cardBg}60` }}>
+    <div className={`rounded-xl p-4 flex flex-col h-full relative transition-colors duration-300 ${fullWidth ? 'col-span-2' : ''}`} style={{ backgroundColor: value.trim() ? skin.cardBg : `${skin.cardBg}60` }}>
       <div className="flex items-center gap-2 mb-3">
         <span className="text-base" style={{ color: skin.swatch }}>{icon}</span>
         <span className="text-base font-bold" style={{ color: skin.textPrimary }}>{title}</span>
@@ -1051,9 +1051,8 @@ function ReviewSection({ title, icon, value, onChange, skin, placeholder, fullWi
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
-        rows={6}
-        className="w-full bg-transparent text-sm leading-relaxed outline-none border border-transparent rounded-lg p-2.5 resize-none transition-colors"
-        style={{ color: skin.textPrimary, minHeight: fullWidth ? '120px' : '192px' }}
+        className="w-full flex-1 bg-transparent text-sm leading-relaxed outline-none border border-transparent rounded-lg p-2.5 resize-none transition-colors"
+        style={{ color: skin.textPrimary }}
       />
     </div>
   );
