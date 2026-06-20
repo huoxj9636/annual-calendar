@@ -80,13 +80,17 @@ export async function pushUserData(
 ): Promise<boolean> {
   if (items.length === 0) return true;
   try {
+    const data: Record<string, unknown> = {};
+    for (const item of items) {
+      data[item.key] = item.value;
+    }
     const res = await fetch('/api/user-data', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-session': token,
       },
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({ action: 'push', data }),
     });
     return res.ok;
   } catch {
@@ -99,12 +103,29 @@ export async function pullUserData(
   token: string,
 ): Promise<Array<{ key: string; value: unknown }> | null> {
   try {
-    const res = await fetch('/api/user-data', {
+    // 先收集所有需要同步的 key（从 SYNCED_KEYS 和本地已有 keys）
+    const keys = new Set<string>(SYNCED_KEYS);
+    if (typeof window !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && isSyncedKey(key)) keys.add(key);
+      }
+    }
+    const keysArray = Array.from(keys);
+    const res = await fetch(`/api/user-data?keys=${encodeURIComponent(keysArray.join(','))}`, {
       headers: { 'x-session': token },
     });
     if (!res.ok) return null;
-    const data: { items?: Array<{ key: string; value: unknown }> } = await res.json();
-    return Array.isArray(data.items) ? data.items : [];
+    const result: { data?: Record<string, { value: unknown; updated_at: string }> } = await res.json();
+    const items: Array<{ key: string; value: unknown }> = [];
+    if (result.data && typeof result.data === 'object') {
+      for (const [key, obj] of Object.entries(result.data)) {
+        if (obj && typeof obj === 'object' && 'value' in obj) {
+          items.push({ key, value: obj.value });
+        }
+      }
+    }
+    return items;
   } catch {
     return null;
   }
