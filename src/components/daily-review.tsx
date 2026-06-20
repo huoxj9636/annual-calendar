@@ -1404,9 +1404,11 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
         onUpdateRowRef.current({ ...rowRef.current, endHour: newEnd });
       } else if (ds.edge === 'move') {
         // Move the entire bar: shift both start and end together, preserve length
+        // Use 1-minute precision for smooth movement
         const barLength = ds.startEndHour - ds.startStartHour;
+        const minutePrecision = 1 / 60; // 1 minute
         const candidate = ds.startStartHour + dh;
-        const snapped = Math.round(candidate / snap) * snap;
+        const snapped = Math.round(candidate / minutePrecision) * minutePrecision;
         const newStart = Math.max(0, Math.min(24 - barLength, snapped));
         const newEnd = newStart + barLength;
         onUpdateRowRef.current({ ...rowRef.current, startHour: newStart, endHour: newEnd });
