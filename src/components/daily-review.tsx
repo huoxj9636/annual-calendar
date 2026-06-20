@@ -166,10 +166,31 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
+  // Gantt chart horizontal scroll container — wheel handler maps vertical wheel to horizontal scroll
+  const ganttScrollRef = useRef<HTMLDivElement>(null);
   // Drag state for voice modal
   const [modalPos, setModalPos] = useState<{ x: number; y: number } | null>(null);
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+
+  // Map vertical mouse wheel to horizontal scroll inside the gantt area.
+  // React's onWheel is passive (can't preventDefault), so we use a native listener with { passive: false }.
+  useEffect(() => {
+    const el = ganttScrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      // Only intercept pure vertical wheel (mouse wheel without Shift).
+      // Trackpad horizontal swipe (deltaX) and Shift+wheel fall through to native horizontal scroll.
+      if (e.deltaX === 0 && e.deltaY !== 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, [viewMode]);
 
   // Drag handlers for voice modal
   const onDragMouseDown = (e: React.MouseEvent) => {
@@ -602,7 +623,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                 </div>
               </div>
               {/* Scrollable rows area (horizontal + vertical) — includes hour header + rows together so they scroll in sync */}
-              <div className="flex-1 overflow-auto" style={{ scrollbarGutter: 'stable' }}>
+              <div ref={ganttScrollRef} className="flex-1 overflow-auto" style={{ scrollbarGutter: 'stable' }}>
                 <div style={{ minWidth: `calc(140px + ${(48 / ganttScale) * 24}px + 40px)` }}>
                   {/* Hour header row (scrolls with rows) */}
                   <div className="flex items-center mb-1 sticky top-0 z-10" style={{ backgroundColor: 'transparent' }}>
