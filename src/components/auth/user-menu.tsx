@@ -2,16 +2,19 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { LogIn, User as UserIcon, LogOut, Cloud, CloudOff } from 'lucide-react';
+import { User as UserIcon, LogOut, Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import { useUser } from '@/components/auth/user-context';
 
 /**
- * 浮动用户菜单:右上角悬浮按钮(用户主动登录入口)
- * - 未登录:显示"登录"按钮 → 唤起登录弹窗(无跳转)
- * - 已登录:显示用户菜单(脱敏手机号 + 登出 + 同步状态)
+ * 浮动用户菜单 - 左下角
  *
- * 弹窗唤起方式:dispatch 'open-login-dialog' 自定义事件
- * LoginPromptDialog 全局监听此事件
+ * 设计意图:
+ * - 这是**登录后**才出现的用户菜单(触发同步状态查看、登出等操作)
+ * - 位置:左下角
+ * - 行为:
+ *   - 未登录:**完全不显示**(不占位)
+ *   - 已登录:显示头像按钮 → 点击展开菜单(手机号/同步状态/登出)
+ * - 右上角另有独立的 <LoginButton /> 始终可见
  */
 export function UserMenu() {
   const { user, signOut, authChecked } = useUser();
@@ -37,10 +40,11 @@ export function UserMenu() {
   // 登录页不显示
   if (pathname === '/login') return null;
 
-  // 等登录态检查完再决定显示什么(避免登录前后闪烁)
-  if (!authChecked) {
-    return null;
-  }
+  // 等登录态检查完
+  if (!authChecked) return null;
+
+  // ── 未登录:完全不显示 ──
+  if (!user) return null;
 
   const handleSignOut = async () => {
     await signOut();
@@ -48,38 +52,13 @@ export function UserMenu() {
     setConfirming(false);
   };
 
-  const handleLogin = () => {
-    // 唤起弹窗(不跳转)
-    window.dispatchEvent(new CustomEvent('open-login-dialog', { detail: { reason: 'manual' } }));
-  };
-
-  // ── 未登录:左下角登录入口 ──
-  if (!user) {
-    return (
-      <div
-        className="fixed top-4 right-4 z-50 select-none"
-        style={{ fontFamily: 'inherit' }}
-      >
-        <button
-          type="button"
-          onClick={handleLogin}
-          className="h-9 px-3.5 rounded-full bg-card border border-border shadow-md hover:bg-muted transition-colors flex items-center gap-2 text-sm text-foreground"
-          title="登录后可跨设备同步数据"
-        >
-          <CloudOff className="h-3.5 w-3.5 text-muted-foreground" />
-          <span>登录同步</span>
-        </button>
-      </div>
-    );
-  }
-
-  // ── 已登录:显示用户菜单 ──
   const maskedPhone = maskPhone(user.phone);
+  const lastSyncText = '云端同步已启用';
 
   return (
     <div
       ref={menuRef}
-      className="fixed top-4 right-4 z-50 select-none"
+      className="fixed bottom-4 left-4 z-50 select-none"
       style={{ fontFamily: 'inherit' }}
     >
       {open && (
@@ -94,7 +73,7 @@ export function UserMenu() {
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-1">
                 <Cloud className="h-3 w-3" />
-                云端同步已开启
+                {lastSyncText}
               </div>
             </div>
           </div>
@@ -135,12 +114,11 @@ export function UserMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="h-9 px-3.5 rounded-full bg-primary text-primary-foreground shadow-md hover:opacity-90 transition-opacity flex items-center gap-2 text-sm"
+        className="h-10 w-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:opacity-90 transition-opacity flex items-center justify-center"
         title="账号菜单"
         aria-label="账号菜单"
       >
-        <UserIcon className="h-3.5 w-3.5" />
-        <span>{maskedPhone || '已登录'}</span>
+        <UserIcon className="h-4 w-4" />
       </button>
     </div>
   );
@@ -149,4 +127,12 @@ export function UserMenu() {
 function maskPhone(phone: string): string {
   if (!phone || phone.length < 7) return phone;
   return `${phone.slice(0, 3)}****${phone.slice(7)}`;
+}
+
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return '刚刚';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
+  return `${Math.floor(diff / 86_400_000)} 天前`;
 }
