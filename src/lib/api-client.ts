@@ -15,6 +15,7 @@
  * 都必须用这个 helper，否则已登录用户会因为缺 x-session 而 401 失败。
  */
 import { getSessionToken } from './supabase-browser';
+import { requireLogin } from './auth-interceptor';
 
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
@@ -41,9 +42,10 @@ export async function apiFetch<T = any>(
 ): Promise<any | null> {
   const { body, headers, silentOn401 = true, ...rest } = options;
 
-  // 未登录时直接跳过（避免 401 刷屏）
+  // 未登录时触发登录弹窗并跳过请求
   const token = await getSessionToken();
   if (!token) {
+    requireLogin();
     return null;
   }
 

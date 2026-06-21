@@ -83,6 +83,11 @@ export function registerRequireLoginHandler(handler: (() => void) | null): void 
   _onRequireLogin = handler;
 }
 
+/** 手动触发登录弹窗(用于 apiFetch 等不走 localStorage 的场景) */
+export function requireLogin(): void {
+  if (_onRequireLogin) _onRequireLogin();
+}
+
 const UI_PREFERENCE_KEYS = new Set<string>([
   'panel-left-open', 'panel-left-width', 'panel-left-collapsed',
   'panel-right-open', 'panel-right-width',
