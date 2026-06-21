@@ -76,9 +76,10 @@ async function saveReview(year: number, month: number, day: number, data: Review
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ year, month, day, ...data }),
     });
-    if (!res.ok) {
-      const err = res.catch(() => ({}));
-      console.error('[saveReview] Failed:', res.status, err);
+    // apiFetch 返回 JSON 数据或 null，不是 Response 对象
+    // 如果返回 null 或 error 字段，说明保存失败
+    if (!res || res.error) {
+      console.error('[saveReview] Failed:', res?.error || 'null response');
     }
   } catch (e) {
     console.error('[saveReview] Network error:', e);
