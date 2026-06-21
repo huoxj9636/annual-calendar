@@ -95,7 +95,6 @@ export async function POST(request: NextRequest) {
 
   const client = getSupabaseClient();
   try {
-    // upsert by (user_id, year, month, day)
     const row = {
       user_id: userId,
       year: body.year,
@@ -110,9 +109,17 @@ export async function POST(request: NextRequest) {
       mood_score: body.moodScore ?? null,
       energy: body.energy ?? null,
     };
+    // delete + insert 代替 upsert（避免需要唯一约束）
+    await client
+      .from('daily_reviews')
+      .delete()
+      .eq('user_id', userId)
+      .eq('year', body.year)
+      .eq('month', body.month)
+      .eq('day', body.day);
     const { error } = await client
       .from('daily_reviews')
-      .upsert(row, { onConflict: 'user_id,year,month,day' });
+      .insert(row);
     if (error) {
       console.error('[daily-review] POST error:', error);
       return apiError('保存失败', 500);

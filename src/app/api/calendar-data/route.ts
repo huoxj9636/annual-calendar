@@ -253,7 +253,7 @@ export async function POST(request: NextRequest) {
         section_key: section_key.slice(0, 100),
         content: String(content).slice(0, 10000),
       }));
-      const { error } = await client.from('month_reviews').upsert(rows, { onConflict: 'user_id,year,month,section_key' });
+      const { error } = await client.from('month_reviews').insert(rows);
       if (error) {
         console.error('[calendar-data] month_reviews POST error:', error);
         return apiError('保存失败', 500);
