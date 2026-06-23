@@ -129,6 +129,7 @@ function useDraggable(initial: Point, onChange?: (next: Point) => void) {
         y: clamp(s.origY + dy, SAFE_MARGIN, maxY),
       };
       setPosRef.current(next);
+      onChangeRef.current?.(next);
       if (!dragging) setDragging(true);
     },
     [dragging]
@@ -205,23 +206,16 @@ export function IframeControls({
   };
   const initial = stored.current ?? fallback;
 
-  const returnCtrl = useDraggable(initial.return, (next) => {
-    if (stored.current) stored.current.return = next;
-    else stored.current = { return: next, external: externalCtrl.pos };
-    saveStoredPos({
-      return: next,
-      external: externalCtrl.pos,
-    });
-  });
+  const returnCtrl = useDraggable(initial.return);
+  const externalCtrl = useDraggable(initial.external);
 
-  const externalCtrl = useDraggable(initial.external, (next) => {
-    if (stored.current) stored.current.external = next;
-    else stored.current = { return: returnCtrl.pos, external: next };
-    saveStoredPos({
-      return: returnCtrl.pos,
-      external: next,
-    });
-  });
+  // 任意一个按钮位置变化都同步写一次 localStorage。
+  // 拖动过程中会高频触发，所以 setPos 时不再调 onChange，
+  // 而是直接依赖 pos 这个 React state，React 会自动 dedupe。
+  useEffect(() => {
+    if (!mounted) return;
+    saveStoredPos({ return: returnCtrl.pos, external: externalCtrl.pos });
+  }, [mounted, returnCtrl.pos, externalCtrl.pos]);
 
   // Re-clamp on resize so a button that was placed on a wide monitor doesn't
   // end up off-screen on a smaller window.
