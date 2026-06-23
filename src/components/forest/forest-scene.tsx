@@ -172,33 +172,35 @@ function ForestTree({
 
   // 计算指针位置：优先用 inner（物理画布）rect，让 px/py 和 x/y 同坐标系
   // 这样树在 inner 内的位置可以拖到整个 0-100% 范围（视觉上覆盖整个可视区）
-  // 注意：innerRectProp / sceneRect 是 ref 对象,通过 .current 读取,不进 deps
-  const getPointerInCanvas = (e: React.PointerEvent<HTMLDivElement>) => {
-    const inner = innerRectProp?.current;
-    if (inner) {
-      const r = inner.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) {
-        return {
-          px: ((e.clientX - r.left) / r.width) * 100,
-          py: ((e.clientY - r.top) / r.height) * 100,
-          rectW: r.width,
-          rectH: r.height,
-        };
+  const getPointerInCanvas = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const inner = innerRectProp?.current;
+      if (inner) {
+        const r = inner.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          return {
+            px: ((e.clientX - r.left) / r.width) * 100,
+            py: ((e.clientY - r.top) / r.height) * 100,
+            rectW: r.width,
+            rectH: r.height,
+          };
+        }
       }
-    }
-    // 兜底：用 sceneRect（外层可视区），并按 inner/scene 比例换算到 inner 坐标系
-    const scene = sceneRect.current;
-    if (!scene) return null;
-    const r = scene.getBoundingClientRect();
-    if (r.width <= 0 || r.height <= 0) return null;
-    const ratio = 100 / (CANVAS_W * zoom);
-    return {
-      px: ((e.clientX - r.left) / r.width) * 100 * ratio,
-      py: ((e.clientY - r.top) / r.height) * 100 * ratio,
-      rectW: r.width,
-      rectH: r.height,
-    };
-  };
+      // 兜底：用 sceneRect（外层可视区），并按 inner/scene 比例换算到 inner 坐标系
+      const scene = sceneRect.current;
+      if (!scene) return null;
+      const r = scene.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return null;
+      const ratio = 100 / (CANVAS_W * zoom);
+      return {
+        px: ((e.clientX - r.left) / r.width) * 100 * ratio,
+        py: ((e.clientY - r.top) / r.height) * 100 * ratio,
+        rectW: r.width,
+        rectH: r.height,
+      };
+    },
+    [innerRectProp, sceneRect, zoom]
+  );
 
   // 拖拽状态
   const [dragging, setDragging] = useState(false);

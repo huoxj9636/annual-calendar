@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { apiFetch, apiFire } from '@/lib/api-client';
 
 interface TimelineEvent {
   id: string;
@@ -100,9 +99,9 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     if (!mounted) return;
     (async () => {
       try {
-        const res = await apiFetch(`/api/day-data?year=${navYear}&month=${navMonth}&day=${navDay}`);
-        if (res) {
-          const data = res;
+        const res = await fetch(`/api/day-data?year=${navYear}&month=${navMonth}&day=${navDay}`);
+        if (res.ok) {
+          const data = await res.json();
           setEvents(Array.isArray(data.events) ? data.events : []);
         } else {
           setEvents([]);
@@ -113,11 +112,11 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
 
   useEffect(() => {
     if (!mounted) return;
-    apiFire('/api/day-data', {
+    fetch('/api/day-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'events', year: navYear, month: navMonth, day: navDay, data: events }),
-    });
+    }).catch(() => {});
   }, [events, storageKey, mounted]);
 
   // 关闭右键菜单
@@ -358,13 +357,6 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
   const dragRef = useRef(dragState);
   dragRef.current = dragState;
   const wasDraggingRef = useRef(false);
-  // React Compiler 规则: useCallback 内不能改 ref。在 useEffect 里同步重置
-  useEffect(() => {
-    if (dragState === null) {
-      // eslint-disable-next-line react-hooks/immutability
-      wasDraggingRef.current = false;
-    }
-  }, [dragState]);
 
   const handleResizeStart = useCallback((
     e: React.MouseEvent,
@@ -389,6 +381,7 @@ export default function TimelinePanel({ year, month, day, skin, onClose }: Omit<
     };
     setDragState(newState);
     dragRef.current = newState;
+    wasDraggingRef.current = false; // 拖拽开始，尚未移动
     document.body.style.userSelect = 'none';
     document.body.style.cursor = type === 'top' || type === 'bottom' ? 'ns-resize' : type === 'move' ? 'grabbing' : 'ew-resize';
   }, [eventLayoutMap]);

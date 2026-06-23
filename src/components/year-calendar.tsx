@@ -1,6 +1,5 @@
 'use client';
 
-import { apiFetch, apiFire } from '@/lib/api-client';
 import {
   useState,
   useEffect,
@@ -15,7 +14,6 @@ import LifeCalendar from '@/components/life-calendar';
 import AchievementPanel from '@/components/achievement-panel';
 import { SKINS, NO_SKIN, DEFAULT_SKIN, generateMonthColors } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
-import { LoginButton } from '@/components/auth/login-button';
 import DrawingOverlay, { DrawingOverlayHandle } from '@/components/drawing-overlay';
 import TimelinePanel from '@/components/timeline-panel';
 import InsightPanel from '@/components/insight-panel';
@@ -124,9 +122,9 @@ export default function YearCalendar() {
   // Refresh reviewDays from DB
   const refreshReviewDays = useCallback(async () => {
     try {
-      const res = await apiFetch(`/api/daily-review?year=${year}&action=list-days`);
-      if (res) {
-        const data = res;
+      const res = await fetch(`/api/daily-review?year=${year}&action=list-days`);
+      if (res.ok) {
+        const data = await res.json();
         if (Array.isArray(data.days)) {
           setReviewDays(new Set(data.days));
         }
@@ -181,9 +179,9 @@ export default function YearCalendar() {
       if (now.getHours() >= 18) {
         // Check if today already has review content
         try {
-          const res = await apiFetch(`/api/daily-review?year=${now.getFullYear()}&month=${now.getMonth() + 1}&day=${now.getDate()}`);
-          if (res) {
-            const data = res;
+          const res = await fetch(`/api/daily-review?year=${now.getFullYear()}&month=${now.getMonth() + 1}&day=${now.getDate()}`);
+          if (res.ok) {
+            const data = await res.json();
             const hasContent = data.completed || data.goodThings || data.problems || data.mood || data.reflections || data.tomorrowTodo;
             if (hasContent) {
               // Already has review content, don't auto-open
@@ -380,62 +378,33 @@ export default function YearCalendar() {
     (async () => {
       try {
         // Load review days (dates that have daily review content)
-        // 优先从 API 加载（登录状态），如果失败则从 localStorage 扫描（未登录状态）
         try {
-          const reviewDaysRes = await apiFetch(`/api/daily-review?year=${year}&action=list-days`);
-          if (reviewDaysRes && Array.isArray(reviewDaysRes.days)) {
-            setReviewDays(new Set(reviewDaysRes.days));
-          } else {
-            // 未登录或API失败：从 localStorage 扫描 daily-review-* keys
-            const localReviewDays = new Set<string>();
-            for (let i = 0; i < localStorage.length; i++) {
-              const k = localStorage.key(i);
-              if (k && /^daily-review-\d{4}-\d{1,2}-\d{1,2}$/.test(k)) {
-                // 提取日期部分：daily-review-2025-1-15 → 2025-1-15
-                const dateMatch = k.match(/^daily-review-(\d{4}-\d{1,2}-\d{1,2})$/);
-                if (dateMatch) {
-                  const raw = localStorage.getItem(k);
-                  // 只有有实际内容才计入
-                  if (raw) {
-                    try {
-                      const parsed = JSON.parse(raw);
-                      // 检查是否有非空内容（今日完成或明日待办）
-                      if (parsed && (parsed.todayDone || parsed.tomorrowTodo || parsed.summary)) {
-                        localReviewDays.add(dateMatch[1]);
-                      }
-                    } catch {
-                      // 非 JSON 格式但有内容也算
-                      if (raw.length > 10) localReviewDays.add(dateMatch[1]);
-                    }
-                  }
-                }
-              }
+          const reviewDaysRes = await fetch(`/api/daily-review?year=${year}&action=list-days`);
+          if (reviewDaysRes.ok) {
+            const reviewDaysData = await reviewDaysRes.json();
+            if (Array.isArray(reviewDaysData.days)) {
+              setReviewDays(new Set(reviewDaysData.days));
             }
-            setReviewDays(localReviewDays);
           }
         } catch { /* ignore */ }
 
         // Load overrides from DB
-        // 优先从 API 加载（登录状态），如果失败则从 localStorage 加载（未登录状态）
-        const overridesRes = await apiFetch(`/api/calendar-data?type=overrides&year=${year}`);
-        if (overridesRes) {
-          const overridesData = overridesRes.data || overridesRes;
+        const overridesRes = await fetch(`/api/calendar-data?type=overrides&year=${year}`);
+        if (overridesRes.ok) {
+          const overridesData = await overridesRes.json();
           if (Object.keys(overridesData).length > 0) {
             setOverrides(overridesData);
-            // eslint-disable-next-line react-hooks/immutability
             overridesLoadedRef.current = true;
-          }
-          // 登录但数据库空：尝试从 localStorage 迁移
-          if (Object.keys(overridesData).length === 0) {
+          } else {
+            // Migrate from localStorage if DB is empty
             try {
               const lsData = localStorage.getItem(`calendar-overrides-${year}`);
               if (lsData) {
                 const lsOverrides = JSON.parse(lsData);
                 if (typeof lsOverrides === 'object' && Object.keys(lsOverrides).length > 0) {
                   setOverrides(lsOverrides);
-                  // eslint-disable-next-line react-hooks/immutability
                   overridesLoadedRef.current = true;
-                  await apiFetch('/api/calendar-data', {
+                  await fetch('/api/calendar-data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ type: 'overrides', year, data: lsOverrides }),
@@ -445,28 +414,14 @@ export default function YearCalendar() {
               }
             } catch { /* ignore */ }
           }
-        } else {
-          // 未登录或API失败：从 localStorage 加载
-          try {
-            const lsData = localStorage.getItem(`calendar-overrides-${year}`);
-            if (lsData) {
-              const lsOverrides = JSON.parse(lsData);
-              if (typeof lsOverrides === 'object') {
-                setOverrides(lsOverrides);
-                // eslint-disable-next-line react-hooks/immutability
-                overridesLoadedRef.current = true;
-              }
-            }
-          } catch { /* ignore */ }
         }
 
         // Load notes from DB
-        const notesRes = await apiFetch(`/api/calendar-data?type=notes&year=${year}`);
-        if (notesRes) {
-          const notesData = notesRes.data || notesRes;
+        const notesRes = await fetch(`/api/calendar-data?type=notes&year=${year}`);
+        if (notesRes.ok) {
+          const notesData = await notesRes.json();
           if (Object.keys(notesData).length > 0) {
             setNotes(notesData);
-            // eslint-disable-next-line react-hooks/immutability
             notesLoadedRef.current = true;
           } else {
             // Migrate from localStorage if DB is empty
@@ -476,9 +431,8 @@ export default function YearCalendar() {
                 const lsNotes = JSON.parse(lsData);
                 if (typeof lsNotes === 'object' && Object.keys(lsNotes).length > 0) {
                   setNotes(lsNotes);
-                  // eslint-disable-next-line react-hooks/immutability
                   notesLoadedRef.current = true;
-                  await apiFetch('/api/calendar-data', {
+                  await fetch('/api/calendar-data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ type: 'notes', year, data: lsNotes }),
@@ -499,17 +453,16 @@ export default function YearCalendar() {
     if (!mounted) return;
     if (!overridesLoadedRef.current) {
       if (Object.keys(overrides).length > 0) {
-        // eslint-disable-next-line react-hooks/immutability
         overridesLoadedRef.current = true;
       } else {
         return;
       }
     }
-    apiFire('/api/calendar-data', {
+    fetch('/api/calendar-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'overrides', year, data: overrides }),
-    });
+    }).catch(() => {});
   }, [overrides, year, mounted]);
 
   // Save notes to DB
@@ -518,23 +471,22 @@ export default function YearCalendar() {
     if (!mounted) return;
     if (!notesLoadedRef.current) {
       if (Object.keys(notes).length > 0) {
-        // eslint-disable-next-line react-hooks/immutability
         notesLoadedRef.current = true;
       } else {
         return;
       }
     }
-    apiFire('/api/calendar-data', {
+    fetch('/api/calendar-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'notes', year, data: notes }),
-    });
+    }).catch(() => {});
   }, [notes, year, mounted]);
 
   // Load month review data when selectedMonth changes
   useEffect(() => {
     if (selectedMonth === null) return;
-    apiFetch(`/api/calendar-data?type=month-review&year=${year}&month=${selectedMonth}`)
+    fetch(`/api/calendar-data?type=month-review&year=${year}&month=${selectedMonth}`)
       .then(res => res.ok ? res.json() : {})
       .then(data => setMonthReviewData(data))
       .catch(() => {});
@@ -577,9 +529,9 @@ export default function YearCalendar() {
     if (!mounted) return;
     const poll = async () => {
       try {
-        const res = await apiFetch('/api/import-review?action=tasks');
-        if (res) {
-          const data = res;
+        const res = await fetch('/api/import-review?action=tasks');
+        if (res.ok) {
+          const data = await res.json();
           setBgTasks(data.tasks || []);
           // 如果有正在进行的任务，刷新reviewDays
           const hasActive = (data.tasks || []).some((t: { status: string }) => t.status === 'processing' || t.status === 'pending');
@@ -700,31 +652,24 @@ export default function YearCalendar() {
   const getDayStatus = useCallback(
     (month: number, day: number): 'checked' | 'crossed' | 'auto' | 'none' => {
       const key = `${year}-${month}-${day}`;
+      if (overrides[key]) return overrides[key];
       // 当天不默认状态，只有昨天及之前才默认判断
       if (isDatePast(year, month, day)) {
-        // If reviewStartDate is set and date >= startDate
+        // If reviewStartDate is set and date >= startDate, default to crossed (✗) when no review content
         if (reviewStartDate) {
           const [sy, sm, sd] = reviewStartDate.split('-').map(Number);
           const dateNum = year * 10000 + month * 100 + day;
           const startNum = sy * 10000 + sm * 100 + sd;
           if (dateNum >= startNum) {
-            // 有复盘内容 → 优先显示 ✓（不管 overrides）
+            // Check if this day has review content
             const hasContent = reviewDays.has(key);
-            if (hasContent) return 'auto';
-            // 没有复盘内容 → 看 overrides 或默认 ✗
-            if (overrides[key]) return overrides[key];
-            return 'crossed';
+            return hasContent ? 'auto' : 'crossed';
           }
         }
-        // 不在复盘日期范围内 → 看 overrides 或默认 auto
-        if (overrides[key]) return overrides[key];
         return 'auto';
       }
       // 今天保持空白，等待用户填写
       if (isToday(year, month, day)) {
-        // 今天如果有复盘内容，也显示 ✓
-        const hasContent = reviewDays.has(key);
-        if (hasContent) return 'auto';
         return 'none';
       }
       return 'none';
@@ -733,56 +678,20 @@ export default function YearCalendar() {
   );
 
   const toggleDay = useCallback(
-    async (month: number, day: number) => {
+    (month: number, day: number) => {
       const key = `${year}-${month}-${day}`;
       const current = overrides[key];
-      let newValue: DayOverride | null = null;
 
       if (!current) {
-        newValue = 'crossed';
-        setOverrides((prev) => ({ ...prev, [key]: newValue! }));
+        setOverrides((prev) => ({ ...prev, [key]: 'crossed' }));
       } else if (current === 'crossed') {
-        newValue = 'checked';
-        setOverrides((prev) => ({ ...prev, [key]: newValue! }));
+        setOverrides((prev) => ({ ...prev, [key]: 'checked' }));
       } else {
         setOverrides((prev) => {
           const next = { ...prev };
           delete next[key];
           return next;
         });
-      }
-
-      // 保存：登录状态保存到数据库，未登录状态保存到 localStorage
-      try {
-        const dataToSave: Record<string, string> = {};
-        if (newValue) {
-          dataToSave[key] = newValue;
-        } else {
-          // 删除：发送空值表示删除
-          dataToSave[key] = '';
-        }
-        
-        // 先尝试保存到数据库
-        const res = await apiFetch('/api/calendar-data', {
-          method: 'POST',
-          body: JSON.stringify({ type: 'overrides', year, data: dataToSave }),
-        });
-        
-        // 如果 API 返回 null（未登录），保存到 localStorage
-        if (!res) {
-          try {
-            const existingData = localStorage.getItem(`calendar-overrides-${year}`);
-            const existingOverrides = existingData ? JSON.parse(existingData) : {};
-            if (newValue) {
-              existingOverrides[key] = newValue;
-            } else {
-              delete existingOverrides[key];
-            }
-            localStorage.setItem(`calendar-overrides-${year}`, JSON.stringify(existingOverrides));
-          } catch { /* ignore */ }
-        }
-      } catch (e) {
-        console.error('[toggleDay] 保存失败:', e);
       }
     },
     [year, overrides],
@@ -840,7 +749,7 @@ export default function YearCalendar() {
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.12) 50%, rgba(0,0,0,0.03) 100%)" }} />
         <ParticleEffect color={skin.swatch} count={50} />
 
-        <div className="relative px-8 py-2 pr-[107px] flex items-center justify-between flex-wrap gap-2 ">
+        <div className="relative px-8 py-2 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3 px-5 py-2.5">
             <button
               onClick={() => setYear((y) => y - 1)}
@@ -1042,14 +951,8 @@ export default function YearCalendar() {
                   </button>
                 </div>
 
-
               </div>
             </div>
-          </div>
-          
-          {/* 登录按钮 - 绝对定位在右边 */}
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-50">
-            <LoginButton />
           </div>
 
           {/* 居中标语 */}
@@ -1138,7 +1041,7 @@ export default function YearCalendar() {
               <div className="px-4 pt-3 pb-2 flex items-center justify-between" style={{ borderBottom: `1px solid ${skin.divider}` }}>
                 <div className="flex items-center gap-3">
                   <h3 className="text-sm font-semibold tracking-wide" style={{ color: skin.textSecondary }}>选择皮肤</h3>
-                  <button onClick={() => { setSkinKey(''); localStorage.removeItem('life-calendar-skin'); window.dispatchEvent(new CustomEvent('life-calendar-skin-changed')); }} className="text-xs px-2 py-0.5 rounded transition-colors cursor-pointer" style={{ color: skin.textMuted, backgroundColor: skin.divider + '40' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = skin.divider + '80'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = skin.divider + '40'; }}>默认{skinKey === '' && <span className="ml-1" style={{ color: skin.checkColor }}>✓</span>}</button>
+                  <button onClick={() => { setSkinKey(''); localStorage.removeItem('life-calendar-skin'); }} className="text-xs px-2 py-0.5 rounded transition-colors cursor-pointer" style={{ color: skin.textMuted, backgroundColor: skin.divider + '40' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = skin.divider + '80'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = skin.divider + '40'; }}>默认{skinKey === '' && <span className="ml-1" style={{ color: skin.checkColor }}>✓</span>}</button>
                 </div>
                 <button onClick={() => setShowSkinPicker(false)} className="w-6 h-6 rounded-full flex items-center justify-center transition-colors cursor-pointer text-sm" style={{ color: skin.textMuted, backgroundColor: skin.divider + '60' }}>&times;</button>
               </div>
@@ -1148,7 +1051,7 @@ export default function YearCalendar() {
                   return (
                     <button
                       key={s.key}
-                      onClick={() => { setSkinKey(s.key); localStorage.setItem('life-calendar-skin', s.key); window.dispatchEvent(new CustomEvent('life-calendar-skin-changed')); }}
+                      onClick={() => { setSkinKey(s.key); localStorage.setItem('life-calendar-skin', s.key); }}
                       className="relative rounded-xl overflow-hidden transition-all cursor-pointer group"
                       style={{
                         border: isActive ? `2px solid ${s.swatch}` : `1px solid ${s.isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)'}`,
@@ -1738,11 +1641,11 @@ export default function YearCalendar() {
                       placeholder={section.placeholder}
                       defaultValue={savedValue}
                       onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => {
-                        apiFire('/api/calendar-data', {
+                        fetch('/api/calendar-data', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ type: 'month-review', year, month: selectedMonth, sectionKey: section.key, data: e.target.value }),
-                        });
+                        }).catch(() => {});
                       }}
                     />
                   </div>
@@ -1757,7 +1660,7 @@ export default function YearCalendar() {
       {/* Right arrow for Knowledge Panel - floating, no layout impact */}
       <button
         onClick={() => setShowKnowledge(true)}
-        className="fixed right-0 top-[calc(50%+43px)] -translate-y-1/2 w-14 h-32 flex items-center justify-center transition-all group cursor-pointer z-20"
+        className="fixed right-0 top-1/2 -translate-y-1/2 w-14 h-32 flex items-center justify-center transition-all group cursor-pointer z-20"
         style={{ background: `linear-gradient(to left, ${skin.swatch}18, transparent)` }}
         title="知识库"
       >

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { apiFetch } from '@/lib/api-client';
 import { Crosshair } from 'lucide-react';
 
 interface DailyReviewProps {
@@ -41,9 +40,9 @@ const ENERGY_LABELS = ['', '枯竭', '低迷', '正常', '充沛', '满格'];
 async function loadReview(year: number, month: number, day: number): Promise<ReviewData> {
   const defaultData: ReviewData = { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
   try {
-    const res = await apiFetch(`/api/daily-review?year=${year}&month=${month}&day=${day}`);
-    if (res) {
-      const data = res;
+    const res = await fetch(`/api/daily-review?year=${year}&month=${month}&day=${day}`);
+    if (res.ok) {
+      const data = await res.json();
       const hasDBData = data.completed || data.goodThings || data.problems || data.mood || data.reflections || data.tomorrowTodo;
       if (hasDBData) return data;
       // Migrate from localStorage if DB is empty
@@ -54,7 +53,7 @@ async function loadReview(year: number, month: number, day: number): Promise<Rev
           const parsed = JSON.parse(lsData) as ReviewData;
           const hasLSData = parsed.completed || parsed.goodThings || parsed.problems || parsed.mood || parsed.reflections || parsed.tomorrowTodo;
           if (hasLSData) {
-            await apiFetch('/api/daily-review', {
+            await fetch('/api/daily-review', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ year, month, day, ...parsed }),
@@ -71,15 +70,14 @@ async function loadReview(year: number, month: number, day: number): Promise<Rev
 
 async function saveReview(year: number, month: number, day: number, data: ReviewData) {
   try {
-    const res = await apiFetch('/api/daily-review', {
+    const res = await fetch('/api/daily-review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ year, month, day, ...data }),
     });
-    // apiFetch 返回 JSON 数据或 null，不是 Response 对象
-    // 如果返回 null 或 error 字段，说明保存失败
-    if (!res || res.error) {
-      console.error('[saveReview] Failed:', res?.error || 'null response');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('[saveReview] Failed:', res.status, err);
     }
   } catch (e) {
     console.error('[saveReview] Network error:', e);
@@ -97,7 +95,7 @@ function saveGanttRows(year: number, month: number, day: number, rows: Array<{ i
 
 async function clearReview(year: number, month: number, day: number) {
   try {
-    await apiFetch(`/api/daily-review?year=${year}&month=${month}&day=${day}`, { method: 'DELETE' });
+    await fetch(`/api/daily-review?year=${year}&month=${month}&day=${day}`, { method: 'DELETE' });
   } catch {}
 }
 
@@ -483,8 +481,14 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         method: 'POST',
         body: formData,
       });
-      const asrData = asrRes.ok ? await asrRes.json() : null;
-      const spokenText = (asrData as { text?: string } | null)?.text?.trim();
+
+      if (!asrRes.ok) {
+        const errData = await asrRes.json().catch(() => ({}));
+        throw new Error((errData as { error?: string }).error || 'ASR failed');
+      }
+
+      const asrData = await asrRes.json();
+      const spokenText = (asrData as { text?: string }).text?.trim();
       if (!spokenText) {
         setVoicePhase('idle');
       setModalPos(null);
@@ -610,9 +614,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
             <>
               <button onClick={() => setViewMode(viewMode === 'gantt' ? 'review' : 'gantt')}
                   className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
-                  style={{ backgroundColor: viewMode === 'gantt' ? '#22c55e' : '#22c55e15', color: viewMode === 'gantt' ? '#fff' : '#22c55e', marginLeft: '10px' }}
+                  style={{ backgroundColor: viewMode === 'gantt' ? '#22c55e' : '#22c55e15', color: viewMode === 'gantt' ? '#fff' : '#22c55e', marginLeft: '8px' }}
                 >📊 日程</button>
-              <div className="flex items-center gap-3" style={{ marginLeft: '10px' }}>
+              <div className="flex items-center gap-3" style={{ marginLeft: '16px' }}>
               <button onClick={startVoiceRecording}
                   className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
                   style={{ backgroundColor: '#ef444415', color: '#ef4444' }}
@@ -1198,12 +1202,12 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                         });
                       }, 300);
                       try {
-                        const res = await apiFetch('/api/import-review', {
+                        const res = await fetch('/api/import-review', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify(importMode === 'text' ? { text: importHtml, year, month, day } : { html: importHtml }),
                         });
-                        const data = res;
+                        const data = await res.json();
                         if (importTimerRef.current) clearInterval(importTimerRef.current);
                         setImportProgress(100);
                         await new Promise(r => setTimeout(r, 300)); // 让用户看到100%

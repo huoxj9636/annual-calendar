@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { apiFetch, apiFire } from '@/lib/api-client';
 import { SKINS } from '@/lib/skins';
 import ParticleEffect from '@/components/particle-effect';
 
@@ -72,7 +71,7 @@ function updateKRInGoals(goals: OKRObjective[], oid: string, krid: string, fn: (
 }
 
 // ── Migration from old GoalNode format ──
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function migrateGoals(raw: any[]): OKRObjective[] {
   return raw.map((o: any) => ({
     id: o.id || genId(),
@@ -93,7 +92,6 @@ function migrateGoals(raw: any[]): OKRObjective[] {
     })),
   }));
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // ── Voice Recognition Hook ──
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -138,9 +136,9 @@ function useVoiceRecognition(onResult: (text: string) => void, context?: string)
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: final, context }),
           });
-          const data = res.ok ? await res.json() : null;
-          setPolishedText(data?.result || final);
-          onResult(data?.result || final);
+          const data = await res.json();
+          setPolishedText(data.result || final);
+          onResult(data.result || final);
         } catch {
           setPolishedText(final);
           onResult(final);
@@ -409,10 +407,10 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
     let cancelled = false;
     (async () => {
       try {
-        const res = await apiFetch('/api/okr');
+        const res = await fetch('/api/okr');
         if (cancelled) return;
-        if (res) {
-          const data = res;
+        if (res.ok) {
+          const data = await res.json();
           if (data.objectives) {
             const parsed = migrateGoals(data.objectives);
             setGoals(parsed);
@@ -436,7 +434,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                     setGoals(parsed);
                     setExpandedKRs(new Set(parsed.flatMap(o => o.children.map(kr => kr.id))));
                     setSelectedOId(parsed[0].id);
-                    await apiFetch('/api/okr', {
+                    await fetch('/api/okr', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ objectives: parsed }),
@@ -474,7 +472,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
   };
 
   // Save via API — only after initial load completes
-  useEffect(() => { if (mounted && !loading) apiFire('/api/okr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ objectives: goals }) }); }, [goals, mounted, loading]);
+  useEffect(() => { if (mounted && !loading) fetch('/api/okr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ objectives: goals }) }).catch(() => {}); }, [goals, mounted, loading]);
 
   // Voice for top input
   const voiceTop = useVoiceRecognition((text) => { setNewOTitle(text); });
@@ -495,7 +493,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
 
   // Global stats
   const globalStats = useMemo(() => {
-    const totalO = filteredGoals.length;
+    let totalO = filteredGoals.length;
     let totalKR = 0, totalTask = 0, doneTask = 0;
     for (const o of filteredGoals) {
       totalKR += o.children.length;
@@ -523,8 +521,8 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
     setDiscoveryState('scanning');
     setAddedThemes(new Set());
     try {
-      const res = await apiFetch('/api/discover-goals');
-      const data = res;
+      const res = await fetch('/api/discover-goals');
+      const data = await res.json();
       if (data.themes && data.themes.length > 0) {
         setDiscoveredThemes(data.themes);
         const stats = data.signalStats;
@@ -554,12 +552,12 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
     setDiscoveryState('generating');
     setPendingOKR(null);
     try {
-      const res = await apiFetch('/api/generate-okr', {
+      const res = await fetch('/api/generate-okr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ theme }),
       });
-      const data = res;
+      const data = await res.json();
       if (data.error) {
         setDiscoveryMessage(data.error);
         setDiscoveryState('selecting');
@@ -647,8 +645,8 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ objective: obj.title, period: obj.period, age: birthYear ? new Date().getFullYear() - birthYear : undefined }),
       });
-      const data = res.ok ? await res.json() : null;
-      if (data?.error) throw new Error(data.error);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
       setAiDecompose(prev => ({ ...prev, loading: false, result: data }));
     } catch {
       setAiDecompose(prev => ({ ...prev, loading: false }));
@@ -1024,11 +1022,11 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                           }))
                       );
                       if (tasksWithDates.length > 0) {
-                        apiFire('/api/add-day-events', {
+                        fetch('/api/add-day-events', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ events: tasksWithDates }),
-                        });
+                        }).catch(() => {});
                       }
                       setPendingOKR(null);
                       setSelectedTheme(null);
@@ -1334,7 +1332,7 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       <p className="text-sm" style={{ color: s.textMuted }}>暂无带计划日期的任务</p>
-                      <p className="text-xs mt-1" style={{ color: s.textMuted }}>通过&ldquo;发现目标&rdquo;生成的OKR会自动安排任务日期</p>
+                      <p className="text-xs mt-1" style={{ color: s.textMuted }}>通过"发现目标"生成的OKR会自动安排任务日期</p>
                     </div>
                   );
                 }
@@ -1596,8 +1594,8 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
           <div className="font-medium mb-2 text-sm" style={{ color: s.text1 }}>6大数据源</div>
           <ul className="space-y-1.5 ml-3" style={{ listStyle: 'disc' }}>
             <li>日历勾叉模式 — 连续✗、工作日周末落差</li>
-            <li>&ldquo;应该&rdquo;句式 — 你自己说了想做但没做</li>
-            <li>&ldquo;又&rdquo;字句式 — 承认反复失败（最强信号）</li>
+            <li>"应该"句式 — 你自己说了想做但没做</li>
+            <li>"又"字句式 — 承认反复失败（最强信号）</li>
             <li>导入的笔记内容 — 你关心的事</li>
             <li>未完成待办 — 有意愿但执行困难</li>
             <li>AI深度分析 — 发现深层反复模式</li>

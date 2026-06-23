@@ -1,14 +1,9 @@
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { requireUser } from '@/lib/api-auth';
 import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const userIdOrResp = await requireUser(request);
-    if (userIdOrResp instanceof NextResponse) return userIdOrResp;
-    const userId = userIdOrResp;
-
     const body = await request.json();
     const { theme, userContext } = body as {
       theme: string;
@@ -19,13 +14,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'theme is required' }, { status: 400 });
     }
 
-    // Fetch recent review data for context (仅当前用户)
+    // Fetch recent review data for context
     const year = new Date().getFullYear();
     const client = getSupabaseClient();
     const { data: reviews } = await client
       .from('daily_reviews')
       .select('month, day, completed, good_things, problems, mood, reflections, tomorrow_todo')
-      .eq('user_id', userId)
       .eq('year', year)
       .order('month', { ascending: false })
       .order('day', { ascending: false })

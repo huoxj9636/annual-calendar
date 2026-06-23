@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { apiFetch } from '@/lib/api-client';
 import type { SkinTheme } from '@/lib/skins';
 
 interface AchievementPanelProps {
@@ -137,9 +136,9 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
 
     setLoadingDate(key);
     try {
-      const res = await apiFetch(`/api/daily-review?year=${y}&month=${m}&day=${d}`);
-      if (res) {
-        const data = res.data || res;
+      const res = await fetch(`/api/daily-review?year=${y}&month=${m}&day=${d}`);
+      if (res.ok) {
+        const data = await res.json();
         const review: DailyReview = {
           completed: data.completed || '',
           goodThings: data.goodThings || '',

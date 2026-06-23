@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { requireUser } from '@/lib/api-auth';
 
 interface ParsedEntry {
   date: string; // YYYY-M-D format
@@ -445,7 +444,6 @@ ${entries.map((e, i) => `[${i}] 日期:${e.date}\n${e.content}`).join('\n\n')}
 
 async function processImportTask(
   taskId: string,
-  userId: string,
   entries: ParsedEntry[],
   requestHeaders: Headers,
   fallbackDate: { year?: number; month?: number; day?: number }
@@ -486,7 +484,6 @@ async function processImportTask(
       const { data: existing } = await supabase
         .from('daily_reviews')
         .select('*')
-        .eq('user_id', userId)
         .eq('year', entry.year)
         .eq('month', entry.month)
         .eq('day', entry.day)
@@ -514,18 +511,15 @@ async function processImportTask(
             reflections: updated.reflections,
             tomorrow_todo: updated.tomorrowTodo,
           })
-          .eq('user_id', userId)
           .eq('year', entry.year)
           .eq('month', entry.month)
           .eq('day', entry.day);
 
         if (!error) savedCount++;
       } else {
-        // 不存在记录，直接 insert
         const { error } = await supabase
           .from('daily_reviews')
-          .insert({
-            user_id: userId,
+          .upsert({
             year: entry.year,
             month: entry.month,
             day: entry.day,
@@ -537,7 +531,7 @@ async function processImportTask(
             tomorrow_todo: entry.tomorrowTodo,
             mood_score: 3,
             energy: 3,
-          });
+          }, { onConflict: 'year,month,day' });
 
         if (!error) savedCount++;
       }
@@ -605,10 +599,6 @@ export async function GET(request: NextRequest) {
 // POST: 创建导入任务（异步后台执行）
 export async function POST(request: NextRequest) {
   try {
-    const userIdOrResp = await requireUser(request);
-    if (userIdOrResp instanceof NextResponse) return userIdOrResp;
-    const userId = userIdOrResp;
-
     const body = await request.json();
     const { html, text, year: reqYear, month: reqMonth, day: reqDay } = body as {
       html?: string; text?: string; year?: number; month?: number; day?: number;
@@ -644,7 +634,7 @@ export async function POST(request: NextRequest) {
     const clonedHeaders = new Headers(headerPairs);
 
     // 后台异步执行（不 await，立即返回 taskId）
-    processImportTask(task.id, userId, entries, clonedHeaders, { year: reqYear, month: reqMonth, day: reqDay })
+    processImportTask(task.id, entries, clonedHeaders, { year: reqYear, month: reqMonth, day: reqDay })
       .catch(err => {
         console.error(`[Import Task ${task.id}] Unhandled error:`, err);
         updateTask(task.id, { status: 'failed', error: err instanceof Error ? err.message : 'Unknown error' });

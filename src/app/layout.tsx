@@ -1,10 +1,5 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { SupabaseConfigProvider } from '@/lib/supabase-config-inject';
-import { UserProvider } from '@/components/auth/user-context';
-import { AuthGuard } from '@/components/auth/auth-guard';
-import { LoginPromptDialog } from '@/components/auth/login-prompt-dialog';
-import { UserMenu } from '@/components/auth/user-menu';
 
 export const metadata: Metadata = {
   title: {
@@ -29,15 +24,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body className={`antialiased`}>
-        <SupabaseConfigProvider>
-          <UserProvider>
-            <AuthGuard>
-              {children}
-              <LoginPromptDialog />
-              <UserMenu />
-            </AuthGuard>
-          </UserProvider>
-        </SupabaseConfigProvider>
+        {children}
       </body>
     </html>
   );

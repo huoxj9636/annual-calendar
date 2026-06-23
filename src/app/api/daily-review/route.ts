@@ -1,132 +1,121 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { requireUser, parseJsonBody, apiError } from '@/lib/api-auth';
-import { z } from 'zod';
-
-const dailyReviewSchema = z.object({
-  year: z.coerce.number().int().min(1900).max(2200),
-  month: z.coerce.number().int().min(1).max(12),
-  day: z.coerce.number().int().min(1).max(31),
-  completed: z.boolean().optional(),
-  goodThings: z.string().max(5000).optional(),
-  problems: z.string().max(5000).optional(),
-  mood: z.string().max(50).optional(),
-  reflections: z.string().max(5000).optional(),
-  tomorrowTodo: z.string().max(2000).optional(),
-  moodScore: z.coerce.number().int().min(1).max(10).optional(),
-  energy: z.coerce.number().int().min(1).max(10).optional(),
-}).passthrough();
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  const userIdOrResp = await requireUser(request);
-  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
-  const userId = userIdOrResp;
-
   const { searchParams } = new URL(request.url);
-  const year = searchParams.get('year');
-  const month = searchParams.get('month');
-  const day = searchParams.get('day');
+  const year = Number(searchParams.get('year'));
+  const action = searchParams.get('action');
 
-  const client = getSupabaseClient();
-  try {
-    if (year && month && day) {
-      const y = Number(year), m = Number(month), d = Number(day);
-      if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) {
-        return apiError('无效日期', 400);
-      }
-      const { data, error } = await client
-        .from('daily_reviews')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('year', y)
-        .eq('month', m)
-        .eq('day', d)
-        .maybeSingle();
-      if (error) {
-        console.error('[daily-review] GET error:', error);
-        return apiError('查询失败', 500);
-      }
-      return NextResponse.json({ review: data });
-    }
-    // 无日期参数: 返回整月
-    if (year && month) {
-      const y = Number(year), m = Number(month);
-      if (Number.isNaN(y) || Number.isNaN(m)) {
-        return apiError('无效年月', 400);
-      }
-      const { data, error } = await client
-        .from('daily_reviews')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('year', y)
-        .eq('month', m);
-      if (error) {
-        console.error('[daily-review] GET month error:', error);
-        return apiError('查询失败', 500);
-      }
-      return NextResponse.json({ reviews: data || [] });
-    }
-    // 无参数: 返回当年
-    const y = Number(year) || new Date().getFullYear();
+  // List days that have review content for a year
+  if (action === 'list-days' && year) {
+    const client = getSupabaseClient();
     const { data, error } = await client
       .from('daily_reviews')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('year', y);
-    if (error) {
-      console.error('[daily-review] GET year error:', error);
-      return apiError('查询失败', 500);
-    }
-    return NextResponse.json({ reviews: data || [] });
-  } catch (e) {
-    console.error('[daily-review] GET exception:', e);
-    return apiError('服务器内部错误', 500);
+      .select('month, day, completed, good_things, problems, mood, reflections, tomorrow_todo')
+      .eq('year', year);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const days = (data || [])
+      .filter((r: Record<string, unknown>) =>
+        !!(r.completed || r.good_things || r.problems || r.mood || r.reflections || r.tomorrow_todo))
+      .map((r: { month: number; day: number }) => `${year}-${r.month}-${r.day}`);
+    // Also return days with action feedback (completed + tomorrow_todo)
+    const actionDays = (data || [])
+      .filter((r: Record<string, unknown>) => !!(r.completed || r.tomorrow_todo))
+      .map((r: { month: number; day: number }) => `${year}-${r.month}-${r.day}`);
+    return NextResponse.json({ days, actionDays });
   }
+
+  const month = Number(searchParams.get('month'));
+  const day = Number(searchParams.get('day'));
+
+  if (!year || !month || !day) {
+    return NextResponse.json({ error: 'Missing year/month/day' }, { status: 400 });
+  }
+
+  const client = getSupabaseClient();
+  const { data, error } = await client
+    .from('daily_reviews')
+    .select('completed, good_things, problems, mood, reflections, tomorrow_todo, mood_score, energy, updated_at')
+    .eq('year', year)
+    .eq('month', month)
+    .eq('day', day)
+    .maybeSingle();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (!data) {
+    return NextResponse.json({
+      completed: '', goodThings: '', problems: '', mood: '',
+      reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '',
+    });
+  }
+
+  return NextResponse.json({
+    completed: data.completed || '',
+    goodThings: data.good_things || '',
+    problems: data.problems || '',
+    mood: data.mood || '',
+    reflections: data.reflections || '',
+    tomorrowTodo: data.tomorrow_todo || '',
+    moodScore: data.mood_score ?? 3,
+    energy: data.energy ?? 3,
+    updatedAt: data.updated_at || '',
+  });
 }
 
 export async function POST(request: NextRequest) {
-  const userIdOrResp = await requireUser(request);
-  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
-  const userId = userIdOrResp;
+  const body = await request.json();
+  const { year, month, day, completed, goodThings, problems, mood, reflections, tomorrowTodo, moodScore, energy } = body as {
+    year: number; month: number; day: number;
+    completed?: string; goodThings?: string; problems?: string;
+    mood?: string; reflections?: string; tomorrowTodo?: string;
+    moodScore?: number; energy?: number;
+  };
 
-  const parsedBody = await parseJsonBody(request, dailyReviewSchema);
-  if (parsedBody instanceof NextResponse) return parsedBody;
-  const body = parsedBody as z.infer<typeof dailyReviewSchema>;
+  if (!year || !month || !day) {
+    return NextResponse.json({ error: 'Missing year/month/day' }, { status: 400 });
+  }
 
   const client = getSupabaseClient();
-  try {
-    const row = {
-      user_id: userId,
-      year: body.year,
-      month: body.month,
-      day: body.day,
-      completed: !!body.completed,
-      good_things: body.goodThings || null,
-      problems: body.problems || null,
-      mood: body.mood || null,
-      reflections: body.reflections || null,
-      tomorrow_todo: body.tomorrowTodo || null,
-      mood_score: body.moodScore ?? null,
-      energy: body.energy ?? null,
-    };
-    // delete + insert 代替 upsert（避免需要唯一约束）
-    await client
-      .from('daily_reviews')
-      .delete()
-      .eq('user_id', userId)
-      .eq('year', body.year)
-      .eq('month', body.month)
-      .eq('day', body.day);
-    const { error } = await client
-      .from('daily_reviews')
-      .insert(row);
-    if (error) {
-      console.error('[daily-review] POST error:', error);
-      return apiError('保存失败', 500);
-    }
-    return NextResponse.json({ success: true });
-  } catch (e) {
-    console.error('[daily-review] POST exception:', e);
-    return apiError('服务器内部错误', 500);
+  const row = {
+    year, month, day,
+    completed: completed || '',
+    good_things: goodThings || '',
+    problems: problems || '',
+    mood: mood || '',
+    reflections: reflections || '',
+    tomorrow_todo: tomorrowTodo || '',
+    mood_score: moodScore ?? 3,
+    energy: energy ?? 3,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await client
+    .from('daily_reviews')
+    .upsert(row, { onConflict: 'year,month,day' });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const year = Number(searchParams.get('year'));
+  const month = Number(searchParams.get('month'));
+  const day = Number(searchParams.get('day'));
+
+  if (!year || !month || !day) {
+    return NextResponse.json({ error: 'Missing year/month/day' }, { status: 400 });
   }
+
+  const client = getSupabaseClient();
+  const { error } = await client
+    .from('daily_reviews')
+    .delete()
+    .eq('year', year)
+    .eq('month', month)
+    .eq('day', day);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
 }

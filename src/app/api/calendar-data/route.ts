@@ -1,270 +1,180 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { requireUser, parseJsonBody, apiError } from '@/lib/api-auth';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from 'next/server';
 
-// 真实 schema:
-// calendar_overrides(id, user_id, year, date_key, value) - date_key 格式 "M-D" 或 "MM-DD"
-// calendar_notes(id, user_id, year, date_key, content)
-// calendar_drawings(id, user_id, year, date_key, strokes)
-// month_reviews(id, user_id, year, month, section_key, content)
-
-const getQuerySchema = z.object({
-  type: z.enum(['overrides', 'notes', 'drawings', 'drawing', 'month_reviews', 'month_review']),
-  year: z.coerce.number().int().min(1900).max(2200),
-  month: z.coerce.number().int().min(1).max(12).optional(),
-});
-
-const postBodySchema = z.object({
-  type: z.enum(['overrides', 'notes', 'drawings', 'drawing', 'month_reviews', 'month_review']),
-  year: z.coerce.number().int().min(1900).max(2200),
-  month: z.coerce.number().int().min(1).max(12).optional(),
-  // overrides: { "3-15": "checked", "6-20": "crossed" }
-  // notes: { "6-20": "今天..." }
-  // drawings/drawing: { "6-20": { strokes: [...] } } 或直接 { strokes: [...] }（年度全局画板）
-  // month_reviews: { summary: "...", highlights: [...], ... }
-  data: z.unknown().optional(),
-}).passthrough();
-
-function normalizeDateKey(k: string): string {
-  // "3-15" -> "3-15", "03-15" -> "3-15", "2025-3-15" -> "3-15"
-  const parts = k.split('-').map(s => s.trim()).filter(Boolean);
-  if (parts.length === 1) return parts[0];
-  if (parts.length === 2) return `${Number(parts[0])}-${Number(parts[1])}`;
-  if (parts.length >= 3) return `${Number(parts[1])}-${Number(parts[2])}`;
-  return k;
-}
-
+// GET /api/calendar-data?type=overrides|notes|month-review|drawing&year=2025[&month=7][&sectionKey=goals]
 export async function GET(request: NextRequest) {
-  const userIdOrResp = await requireUser(request);
-  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
-  const userId = userIdOrResp;
-
   const { searchParams } = new URL(request.url);
-  const parsed = getQuerySchema.safeParse({
-    type: searchParams.get('type') ?? '',
-    year: searchParams.get('year') ?? 0,
-    month: searchParams.get('month') ?? undefined,
-  });
-  if (!parsed.success) {
-    return apiError('参数无效', 400);
+  const type = searchParams.get('type');
+  const year = Number(searchParams.get('year'));
+
+  if (!type || !year) {
+    return NextResponse.json({ error: 'Missing type/year' }, { status: 400 });
   }
-  const { type, year, month } = parsed.data;
+
   const client = getSupabaseClient();
 
-  try {
-    if (type === 'overrides') {
-      const { data, error } = await client
-        .from('calendar_overrides')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('year', year);
-      if (error) {
-        console.error('[calendar-data] overrides GET error:', error);
-        return apiError('查询失败', 500);
-      }
-      const result: Record<string, string> = {};
-      for (const row of data || []) {
-        result[row.date_key] = row.value;
-      }
-      return NextResponse.json({ data: result });
+  if (type === 'overrides') {
+    const { data, error } = await client
+      .from('calendar_overrides')
+      .select('date_key, value')
+      .eq('year', year);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const overrides: Record<string, string> = {};
+    for (const row of (data || []) as Record<string, string>[]) {
+      overrides[row.date_key] = row.value;
     }
-    if (type === 'notes') {
-      const { data, error } = await client
-        .from('calendar_notes')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('year', year);
-      if (error) {
-        console.error('[calendar-data] notes GET error:', error);
-        return apiError('查询失败', 500);
-      }
-      const result: Record<string, string> = {};
-      for (const row of data || []) {
-        result[row.date_key] = row.content;
-      }
-      return NextResponse.json({ data: result });
-    }
-    if (type === 'drawings' || type === 'drawing') {
-      const { data, error } = await client
-        .from('calendar_drawings')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('year', year);
-      if (error) {
-        console.error('[calendar-data] drawings GET error:', error);
-        return apiError('查询失败', 500);
-      }
-      // 支持年度全局画板（单条记录，无 date_key 或 date_key 为 'yearly'）
-      const yearlyRow = (data || []).find(row => !row.date_key || row.date_key === 'yearly');
-      if (yearlyRow && yearlyRow.strokes) {
-        return NextResponse.json({ strokes: yearlyRow.strokes });
-      }
-      // 支持按日期分组的画板数据
-      const result: Record<string, { strokes: unknown }> = {};
-      for (const row of data || []) {
-        if (row.date_key && row.date_key !== 'yearly') {
-          result[row.date_key] = { strokes: row.strokes };
-        }
-      }
-      return NextResponse.json({ data: result });
-    }
-    if (type === 'month_reviews' || type === 'month_review') {
-      if (!month) return apiError('需要 month 参数', 400);
-      const { data, error } = await client
-        .from('month_reviews')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('year', year)
-        .eq('month', month);
-      if (error) {
-        console.error('[calendar-data] month_reviews GET error:', error);
-        return apiError('查询失败', 500);
-      }
-      const result: Record<string, string> = {};
-      for (const row of data || []) {
-        result[row.section_key] = row.content;
-      }
-      return NextResponse.json({ data: result });
-    }
-    return apiError('不支持的 type', 400);
-  } catch (e) {
-    console.error('[calendar-data] GET exception:', e);
-    return apiError('服务器内部错误', 500);
+    return NextResponse.json(overrides);
   }
+
+  if (type === 'notes') {
+    const { data, error } = await client
+      .from('calendar_notes')
+      .select('date_key, content')
+      .eq('year', year);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const notes: Record<string, string> = {};
+    for (const row of (data || []) as Record<string, string>[]) {
+      if (row.content) notes[row.date_key] = row.content;
+    }
+    return NextResponse.json(notes);
+  }
+
+  if (type === 'month-review') {
+    const month = Number(searchParams.get('month'));
+    if (!month) return NextResponse.json({ error: 'Missing month' }, { status: 400 });
+
+    const { data, error } = await client
+      .from('month_reviews')
+      .select('section_key, content')
+      .eq('year', year)
+      .eq('month', month);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const result: Record<string, string> = {};
+    for (const row of (data || []) as Record<string, string>[]) {
+      if (row.content) result[row.section_key] = row.content;
+    }
+    return NextResponse.json(result);
+  }
+
+  if (type === 'drawing') {
+    const { data, error } = await client
+      .from('calendar_drawings')
+      .select('strokes')
+      .eq('year', year)
+      .single();
+
+    if (error && error.code !== 'PGRST116') return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ strokes: (data as Record<string, unknown>)?.strokes || [] });
+  }
+
+  return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
 }
 
+// POST /api/calendar-data
 export async function POST(request: NextRequest) {
-  const userIdOrResp = await requireUser(request);
-  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
-  const userId = userIdOrResp;
+  const body = await request.json();
+  const { type, year, data, month, sectionKey } = body as {
+    type: 'overrides' | 'notes' | 'month-review' | 'drawing';
+    year: number;
+    data: unknown;
+    month?: number;
+    sectionKey?: string;
+  };
 
-  const parsedBody = await parseJsonBody(request, postBodySchema);
-  if (parsedBody instanceof NextResponse) return parsedBody;
-  const body = parsedBody as z.infer<typeof postBodySchema> & { data?: unknown };
-  const { type, year, month } = body;
-  const data = body.data;
+  if (!type || !year) {
+    return NextResponse.json({ error: 'Missing params' }, { status: 400 });
+  }
+
   const client = getSupabaseClient();
 
-  try {
-    if (type === 'overrides') {
-      if (!data || typeof data !== 'object') return apiError('需要 data 字段', 400);
-      const entries = Object.entries(data as Record<string, string>)
-        .filter(([k, v]) => typeof v === 'string' && v.trim());
-      if (entries.length === 0) {
-        await client.from('calendar_overrides').delete().eq('user_id', userId).eq('year', year);
-        return NextResponse.json({ success: true, count: 0 });
-      }
-      // 先删后插(简化,适合每天少量数据)
-      await client.from('calendar_overrides').delete().eq('user_id', userId).eq('year', year);
+  if (type === 'overrides') {
+    const overrideData = data as Record<string, string>;
+    await client.from('calendar_overrides').delete().eq('year', year);
+
+    const entries = Object.entries(overrideData);
+    if (entries.length > 0) {
       const rows = entries.map(([dateKey, value]) => ({
-        id: `${userId.slice(0, 8)}-override-${year}-${normalizeDateKey(dateKey)}`,
-        user_id: userId,
         year,
-        date_key: normalizeDateKey(dateKey),
-        value: String(value).slice(0, 50),
+        date_key: dateKey,
+        value,
       }));
       const { error } = await client.from('calendar_overrides').insert(rows);
-      if (error) {
-        console.error('[calendar-data] overrides POST error:', error);
-        return apiError('保存失败', 500);
-      }
-      return NextResponse.json({ success: true, count: rows.length });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    if (type === 'notes') {
-      if (!data || typeof data !== 'object') return apiError('需要 data 字段', 400);
-      const entries = Object.entries(data as Record<string, string>)
-        .filter(([k, v]) => typeof v === 'string');
-      await client.from('calendar_notes').delete().eq('user_id', userId).eq('year', year);
-      if (entries.length === 0) {
-        return NextResponse.json({ success: true, count: 0 });
-      }
+    return NextResponse.json({ success: true });
+  }
+
+  if (type === 'notes') {
+    const notesData = data as Record<string, string>;
+    await client.from('calendar_notes').delete().eq('year', year);
+
+    const entries = Object.entries(notesData).filter(([, v]) => v && v.trim());
+    if (entries.length > 0) {
       const rows = entries.map(([dateKey, content]) => ({
-        id: `${userId.slice(0, 8)}-note-${year}-${normalizeDateKey(dateKey)}`,
-        user_id: userId,
         year,
-        date_key: normalizeDateKey(dateKey),
-        content: String(content).slice(0, 5000),
+        date_key: dateKey,
+        content,
       }));
       const { error } = await client.from('calendar_notes').insert(rows);
-      if (error) {
-        console.error('[calendar-data] notes POST error:', error);
-        return apiError('保存失败', 500);
-      }
-      return NextResponse.json({ success: true, count: rows.length });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    if (type === 'drawings' || type === 'drawing') {
-      if (!data) return apiError('需要 data 字段', 400);
-      
-      // 支持年度全局画板（data 直接是 strokes 数组）
-      if (Array.isArray(data)) {
-        // 删除旧的年度画板记录
-        await client.from('calendar_drawings').delete().eq('user_id', userId).eq('year', year);
-        // 插入新的年度画板记录（date_key 为 'yearly'）
-        const { error } = await client.from('calendar_drawings').insert({
-          user_id: userId,
-          year,
-          date_key: 'yearly',
-          strokes: data,
-        });
-        if (error) {
-          console.error('[calendar-data] drawing POST error:', error);
-          return apiError('保存失败', 500);
-        }
-        return NextResponse.json({ success: true, count: 1 });
-      }
-      
-      // 支持按日期分组的画板数据（data 是对象）
-      if (typeof data === 'object') {
-        const entries = Object.entries(data as Record<string, { strokes?: unknown }>);
-        await client.from('calendar_drawings').delete().eq('user_id', userId).eq('year', year);
-        const validRows = entries
-          .filter(([_, v]) => v && typeof v === 'object' && v.strokes)
-          .map(([dateKey, v]) => ({
-            user_id: userId,
-            year,
-            date_key: normalizeDateKey(dateKey),
-            strokes: v.strokes,
-          }));
-        if (validRows.length === 0) {
-          return NextResponse.json({ success: true, count: 0 });
-        }
-        const { error } = await client.from('calendar_drawings').insert(validRows);
-        if (error) {
-          console.error('[calendar-data] drawings POST error:', error);
-          return apiError('保存失败', 500);
-        }
-        return NextResponse.json({ success: true, count: validRows.length });
-      }
-      
-      return apiError('data 格式无效', 400);
-    }
-    if (type === 'month_reviews' || type === 'month_review') {
-      if (!month) return apiError('需要 month 参数', 400);
-      if (!data || typeof data !== 'object') return apiError('需要 data 字段', 400);
-      const entries = Object.entries(data as Record<string, string | number | null | undefined>)
-        .filter(([k, v]) => k && (typeof v === 'string' || typeof v === 'number'));
-      await client.from('month_reviews').delete().eq('user_id', userId).eq('year', year).eq('month', month);
-      if (entries.length === 0) {
-        return NextResponse.json({ success: true, count: 0 });
-      }
-      const rows = entries.map(([section_key, content]) => ({
-        user_id: userId,
-        year,
-        month,
-        section_key: section_key.slice(0, 100),
-        content: String(content).slice(0, 10000),
-      }));
-      const { error } = await client.from('month_reviews').insert(rows);
-      if (error) {
-        console.error('[calendar-data] month_reviews POST error:', error);
-        return apiError('保存失败', 500);
-      }
-      return NextResponse.json({ success: true, count: rows.length });
-    }
-    return apiError('不支持的 type', 400);
-  } catch (e) {
-    console.error('[calendar-data] POST exception:', e);
-    return apiError('服务器内部错误', 500);
+    return NextResponse.json({ success: true });
   }
+
+  if (type === 'month-review') {
+    if (!month || !sectionKey) {
+      return NextResponse.json({ error: 'Missing month/sectionKey' }, { status: 400 });
+    }
+    const content = (data as string) || '';
+
+    // Upsert: delete existing then insert
+    await client
+      .from('month_reviews')
+      .delete()
+      .eq('year', year)
+      .eq('month', month)
+      .eq('section_key', sectionKey);
+
+    const { error } = await client.from('month_reviews').insert({
+      year,
+      month,
+      section_key: sectionKey,
+      content,
+    });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  }
+
+  if (type === 'drawing') {
+    const strokes = data;
+    // Upsert
+    const { data: existing } = await client
+      .from('calendar_drawings')
+      .select('id')
+      .eq('year', year)
+      .single();
+
+    if (existing) {
+      const { error } = await client
+        .from('calendar_drawings')
+        .update({ strokes, updated_at: new Date().toISOString() })
+        .eq('year', year);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    } else {
+      const { error } = await client.from('calendar_drawings').insert({
+        year,
+        strokes,
+      });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  }
+
+  return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
 }

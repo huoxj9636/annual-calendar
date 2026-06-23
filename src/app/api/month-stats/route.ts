@@ -1,65 +1,76 @@
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { requireUser } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
+// GET /api/month-stats?year=2025
+// Returns monthly stats: overrides, event counts, todo counts, memo counts per month
 export async function GET(request: NextRequest) {
-  const userIdOrResp = await requireUser(request);
-  if (userIdOrResp instanceof NextResponse) return userIdOrResp;
-  const userId = userIdOrResp;
-
   const { searchParams } = new URL(request.url);
   const year = Number(searchParams.get('year'));
-  if (!year) return NextResponse.json({ error: 'Missing year' }, { status: 400 });
+
+  if (!year) {
+    return NextResponse.json({ error: 'Missing year' }, { status: 400 });
+  }
 
   const client = getSupabaseClient();
 
-  // 1. 总勾选数
-  const { count: totalChecked } = await client
-    .from('calendar_overrides')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('year', year)
-    .neq('value', 'crossed');
+  try {
+    // Get overrides
+    const { data: overridesData } = await client
+      .from('calendar_overrides')
+      .select('date_key, value')
+      .eq('year', year);
 
-  // 2. 已复习日(完成复盘或记录明天计划)
-  const { data: reviewDays } = await client
-    .from('daily_reviews')
-    .select('month, day, mood_score, energy, completed, tomorrow_todo, good_things, problems, reflections')
-    .eq('user_id', userId)
-    .eq('year', year);
+    const overrides: Record<string, string> = {};
+    for (const row of (overridesData || []) as Record<string, string>[]) {
+      overrides[row.date_key] = row.value;
+    }
 
-  // 3. 满意度
-  const moodScores = (reviewDays || []).map((r: Record<string, unknown>) => r.mood_score).filter((s): s is number => typeof s === 'number');
-  const energies = (reviewDays || []).map((r: Record<string, unknown>) => r.energy).filter((s): s is number => typeof s === 'number');
+    // Get notes
+    const { data: notesData } = await client
+      .from('calendar_notes')
+      .select('date_key, content')
+      .eq('year', year);
 
-  // 4. 已完结的 OKR 任务数
-  const { count: okrDone } = await client
-    .from('okr_tasks')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('done', true);
+    const noteKeys = new Set<string>();
+    for (const row of (notesData || []) as Record<string, string>[]) {
+      if (row.content && row.content.trim()) noteKeys.add(row.date_key);
+    }
 
-  // 5. 日程总数
-  const { count: eventCount } = await client
-    .from('day_events')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('year', year);
+    // Get event counts per month
+    const { data: eventsData } = await client
+      .from('day_events')
+      .select('month, id')
+      .eq('year', year);
 
-  // 6. 待办总数
-  const { count: todoCount } = await client
-    .from('day_todos')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('year', year);
+    const eventCounts: Record<number, number> = {};
+    // Count unique days with events per month
+    const eventDaysPerMonth: Record<string, Set<string>> = {};
+    for (const row of (eventsData || []) as Record<string, number>[]) {
+      const key = String(row.month);
+      if (!eventDaysPerMonth[key]) eventDaysPerMonth[key] = new Set();
+      // We count rows, each is an event on some day
+      eventDaysPerMonth[key].add(String(row.id)); // just count events
+    }
+    for (const [m, ids] of Object.entries(eventDaysPerMonth)) {
+      eventCounts[Number(m)] = ids.size;
+    }
 
-  return NextResponse.json({
-    totalChecked: totalChecked ?? 0,
-    reviewCount: (reviewDays || []).length,
-    okrDone: okrDone ?? 0,
-    eventCount: eventCount ?? 0,
-    todoCount: todoCount ?? 0,
-    avgMood: moodScores.length ? Number((moodScores.reduce((a, b) => a + b, 0) / moodScores.length).toFixed(2)) : 0,
-    avgEnergy: energies.length ? Number((energies.reduce((a, b) => a + b, 0) / energies.length).toFixed(2)) : 0,
-  });
+    // Get todo counts per month
+    const { data: todosData } = await client
+      .from('day_todos')
+      .select('month, done')
+      .eq('year', year);
+
+    const todoCounts: Record<number, { total: number; done: number }> = {};
+    for (const row of (todosData || []) as Record<string, number>[]) {
+      const m = Number(row.month);
+      if (!todoCounts[m]) todoCounts[m] = { total: 0, done: 0 };
+      todoCounts[m].total++;
+      if (row.done) todoCounts[m].done++;
+    }
+
+    return NextResponse.json({ overrides, noteKeys: Array.from(noteKeys), eventCounts, todoCounts });
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }

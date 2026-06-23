@@ -101,63 +101,6 @@ type SpeciesTreeProps = {
   hasFruit?: boolean;
 };
 
-// 掌状叶 path（5 瓣）
-function MapleLeaf({
-  x,
-  y,
-  r,
-  rot,
-  accent,
-}: {
-  x: number;
-  y: number;
-  r: number;
-  rot: number;
-  accent: string;
-}) {
-  return (
-    <g transform={`translate(${x} ${y}) rotate(${rot})`}>
-      <path
-        d={`M0,${-r} L${r * 0.3},${-r * 0.3} L${r * 0.95},${-r * 0.45} L${r * 0.55},${r * 0.1} L${r * 0.75},${r * 0.6} L0,${r * 0.4} L${-r * 0.75},${r * 0.6} L${-r * 0.55},${r * 0.1} L${-r * 0.95},${-r * 0.45} L${-r * 0.3},${-r * 0.3} Z`}
-        fill={accent}
-        opacity="0.85"
-      />
-    </g>
-  );
-}
-
-// 五瓣樱花
-function Flower({
-  x,
-  y,
-  r,
-  accent,
-  opacity = 0.9,
-}: {
-  x: number;
-  y: number;
-  r: number;
-  accent: string;
-  opacity?: number;
-}) {
-  return (
-    <g transform={`translate(${x} ${y})`} opacity={opacity}>
-      {[0, 72, 144, 216, 288].map((a) => (
-        <ellipse
-          key={a}
-          cx={0}
-          cy={-r * 0.55}
-          rx={r * 0.4}
-          ry={r * 0.6}
-          transform={`rotate(${a})`}
-          fill={accent}
-        />
-      ))}
-      <circle cx={0} cy={0} r={r * 0.18} fill={accent} opacity={0.95} />
-    </g>
-  );
-}
-
 /** 单棵树（SVG，60×60 viewBox） */
 export function SpeciesTree({
   species,
@@ -642,7 +585,16 @@ function MapleShape({
   const crownY = 32 - trunkH;
   const crownR = 9 + sizeTier * 2.2;
 
-  // 掌状叶 path（5 瓣，使用顶层 MapleLeaf 组件）
+  // 掌状叶 path（5 瓣）
+  const MapleLeaf = ({ x, y, r, rot }: { x: number; y: number; r: number; rot: number }) => (
+    <g transform={`translate(${x} ${y}) rotate(${rot})`}>
+      <path
+        d={`M0,${-r} L${r * 0.3},${-r * 0.3} L${r * 0.95},${-r * 0.45} L${r * 0.55},${r * 0.1} L${r * 0.75},${r * 0.6} L0,${r * 0.4} L${-r * 0.75},${r * 0.6} L${-r * 0.55},${r * 0.1} L${-r * 0.95},${-r * 0.45} L${-r * 0.3},${-r * 0.3} Z`}
+        fill={accent}
+        opacity="0.85"
+      />
+    </g>
+  );
 
   // 树冠轮廓：不规则云朵（多个凸起，底部起伏）
   const top = crownY;
@@ -697,11 +649,11 @@ function MapleShape({
       {/* 树冠高光 */}
       <ellipse cx={30 - cs * 0.35} cy={top + cs * 0.0} rx={cs * 0.3} ry={cs * 0.15} fill="rgba(255,255,255,0.18)" />
       {/* 掌状叶点缀（散落在树冠外缘） */}
-      <MapleLeaf x={28 - cs * 0.55} y={top + cs * 0.2} r={2.4 + sizeTier * 0.3} rot={-20} accent={accent} />
-      <MapleLeaf x={32 + cs * 0.55} y={top + cs * 0.1} r={2.4 + sizeTier * 0.3} rot={30} accent={accent} />
-      <MapleLeaf x={30} y={top - cs * 0.65} r={2.2 + sizeTier * 0.25} rot={-5} accent={accent} />
-      {giant && <MapleLeaf x={30 - cs * 0.65} y={top + cs * 0.6} r={2.0} rot={-50} accent={accent} />}
-      {ancient && <MapleLeaf x={30 + cs * 0.65} y={top + cs * 0.55} r={2.0} rot={55} accent={accent} />}
+      <MapleLeaf x={28 - cs * 0.55} y={top + cs * 0.2} r={2.4 + sizeTier * 0.3} rot={-20} />
+      <MapleLeaf x={32 + cs * 0.55} y={top + cs * 0.1} r={2.4 + sizeTier * 0.3} rot={30} />
+      <MapleLeaf x={30} y={top - cs * 0.65} r={2.2 + sizeTier * 0.25} rot={-5} />
+      {giant && <MapleLeaf x={30 - cs * 0.65} y={top + cs * 0.6} r={2.0} rot={-50} />}
+      {ancient && <MapleLeaf x={30 + cs * 0.65} y={top + cs * 0.55} r={2.0} rot={55} />}
     </g>
   );
 }
@@ -737,8 +689,23 @@ function CherryShape({
   const crownY = 32 - trunkH;
   const crownSize = 9 + sizeTier * 1.8;
 
-  // 五瓣樱花（使用顶层 Flower 组件）
-  // Flower 中心硬编码为 #FFE5A8（金黄花蕊）
+  // 五瓣樱花
+  const Flower = ({ x, y, r, opacity = 0.9 }: { x: number; y: number; r: number; opacity?: number }) => (
+    <g transform={`translate(${x} ${y})`} opacity={opacity}>
+      {[0, 72, 144, 216, 288].map((a) => (
+        <ellipse
+          key={a}
+          cx={0}
+          cy={-r * 0.55}
+          rx={r * 0.4}
+          ry={r * 0.6}
+          transform={`rotate(${a})`}
+          fill={accent}
+        />
+      ))}
+      <circle cx={0} cy={0} r={r * 0.22} fill="#FFE5A8" />
+    </g>
+  );
 
   // 树冠轮廓：轻盈蓬松云朵（多凸起，比橡树更稀疏更轻盈）
   const cs = crownSize;
@@ -793,12 +760,12 @@ function CherryShape({
       {/* 花簇（成树开始，自然点缀） */}
       {mature && !hasFruit && (
         <g>
-          <Flower x={26 - cs * 0.4} y={top + cs * 0.3} r={2.2} accent={accent} />
-          <Flower x={34 + cs * 0.35} y={top + cs * 0.4} r={2.0} opacity={0.85} accent={accent} />
-          <Flower x={30} y={top + cs * 0.0} r={1.9} opacity={0.8} accent={accent} />
+          <Flower x={26 - cs * 0.4} y={top + cs * 0.3} r={2.2} />
+          <Flower x={34 + cs * 0.35} y={top + cs * 0.4} r={2.0} opacity={0.85} />
+          <Flower x={30} y={top + cs * 0.0} r={1.9} opacity={0.8} />
         </g>
       )}
-      {giant && !hasFruit && <Flower x={22 - cs * 0.5} y={top + cs * 0.55} r={2.3} opacity={0.9} accent={accent} />}
+      {giant && !hasFruit && <Flower x={22 - cs * 0.5} y={top + cs * 0.55} r={2.3} opacity={0.9} />}
       {/* 果实（樱桃，红色小圆点，有fruit节点时显示） */}
       {hasFruit && mature && (
         <g>
@@ -815,8 +782,8 @@ function CherryShape({
       )}
       {ancient && (
         <g>
-          <Flower x={38 + cs * 0.5} y={top + cs * 0.5} r={2.0} opacity={0.9} accent={accent} />
-          <Flower x={30} y={top - cs * 0.6} r={1.8} opacity={0.85} accent={accent} />
+          <Flower x={38 + cs * 0.5} y={top + cs * 0.5} r={2.0} opacity={0.9} />
+          <Flower x={30} y={top - cs * 0.6} r={1.8} opacity={0.85} />
           {/* 古木垂挂藤蔓 */}
           <path
             d={`M${30 - cs * 0.3},${top + cs * 0.7} Q${30 - cs * 0.4},${top + cs * 0.95} ${30 - cs * 0.35},${top + cs * 1.15}`}
