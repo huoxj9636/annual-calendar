@@ -676,7 +676,7 @@ export default function ForestScene({
         ref={sceneRef}
         style={{
           ...sceneStyle,
-          cursor: panning ? "grabbing" : "grab",
+          cursor: panning ? "grabbing" : "default",
           touchAction: "none",
         }}
         className={fillHeight ? "w-full h-full" : "w-full"}
