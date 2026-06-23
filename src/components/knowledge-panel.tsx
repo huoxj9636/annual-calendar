@@ -16,6 +16,7 @@ import {
   Sparkles,
   Trash2,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Crosshair,
   RefreshCw,
@@ -854,12 +855,24 @@ function MyForestView({
   const [listOpen, setListOpen] = useState(false);
   // focus 树 id：点击列表项时设置，ForestScene 内部高亮该树（不 pan，树永远在屏幕内）
   const [focusTreeId, setFocusTreeId] = useState<string | null>(null);
+  // 分页（>7 棵树时启用）
+  const PAGE_SIZE = 7;
+  const [page, setPage] = useState(0);
 
   // 按节点数倒序排（参天古木在前）
   const sortedItems = useMemo(
     () => [...forestItems].sort((a, b) => b.count - a.count),
     [forestItems]
   );
+
+  // 派生分页数据
+  const pageCount = Math.max(1, Math.ceil(sortedItems.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageItems = sortedItems.slice(
+    safePage * PAGE_SIZE,
+    (safePage + 1) * PAGE_SIZE
+  );
+  const showPager = sortedItems.length > PAGE_SIZE;
 
   const handleFocusTree = useCallback((id: string) => {
     setFocusTreeId(id);
@@ -929,7 +942,7 @@ function MyForestView({
                 还没有树，去右下角种一棵吧
               </div>
             ) : (
-              sortedItems.map((item) => {
+              pageItems.map((item) => {
                 const stage = getStage(item.count);
                 const StageIcon =
                   stage.size === 0
@@ -1003,6 +1016,57 @@ function MyForestView({
                   </div>
                 );
               })
+            )}
+
+            {/* 分页指示器（>7 颗时启用） */}
+            {showPager && (
+              <div
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2 border-t"
+                style={{ borderColor: skin.divider }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={safePage === 0}
+                  className="w-5 h-5 rounded-md flex items-center justify-center transition-colors disabled:opacity-30 hover:bg-black/5"
+                  style={{ color: skin.textSecondary }}
+                  title="上一页"
+                  aria-label="上一页"
+                >
+                  <ChevronLeft size={12} />
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: pageCount }).map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setPage(idx)}
+                      className="rounded-full transition-all"
+                      style={{
+                        width: idx === safePage ? 14 : 5,
+                        height: 5,
+                        background:
+                          idx === safePage
+                            ? skin.swatch
+                            : skin.divider,
+                      }}
+                      title={`第 ${idx + 1} 页 / 共 ${pageCount} 页`}
+                      aria-label={`第 ${idx + 1} 页`}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                  disabled={safePage === pageCount - 1}
+                  className="w-5 h-5 rounded-md flex items-center justify-center transition-colors disabled:opacity-30 hover:bg-black/5"
+                  style={{ color: skin.textSecondary }}
+                  title="下一页"
+                  aria-label="下一页"
+                >
+                  <ChevronRight size={12} />
+                </button>
+              </div>
             )}
           </div>
         )}
