@@ -80,6 +80,7 @@ export default function YearCalendar() {
   const timelineOpenRef = useRef(false);
   const [showLifeCalendar, setShowLifeCalendar] = useState(false);
   const [showKnowledge, setShowKnowledge] = useState(false);
+  const [didaModalOpen, setDidaModalOpen] = useState(false);
   const [birthYear, setBirthYear] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('calendar-birth-year');
@@ -581,6 +582,16 @@ export default function YearCalendar() {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [notePopup, saveNote]);
+
+  // Dida modal - close on Escape
+  useEffect(() => {
+    if (!didaModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDidaModalOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [didaModalOpen]);
 
   // Custom scroll snap with controlled animation speed
   useEffect(() => {
@@ -1134,7 +1145,7 @@ export default function YearCalendar() {
                 timelineOpenRef.current = opening; setTimelineOpen(opening);
                 if (!opening && scrollContainerRef.current) scrollContainerRef.current.style.overflowY = 'scroll';
               } else if (mk === 'dida') {
-                window.open(moduleLinks.dida || 'https://dida365.com/webapp/#q/all/timeline', '_blank');
+                setDidaModalOpen(true);
               } else if (mk === 'longterm') {
                 if (moduleLinks.longterm) { window.open(moduleLinks.longterm, '_blank'); return; }
                 setShowLifeCalendar(true);
@@ -1672,6 +1683,62 @@ export default function YearCalendar() {
       {/* Knowledge Panel */}
       {showKnowledge && (
         <KnowledgePanel open={showKnowledge} skin={skin} onClose={() => setShowKnowledge(false)} />
+      )}
+
+      {/* Dida Modal - iframe popup for 滴答清单 */}
+      {didaModalOpen && mounted && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.55)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setDidaModalOpen(false)}
+        >
+          <div
+            className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-6xl h-full max-h-[92vh] overflow-hidden flex flex-col border"
+            style={{ borderColor: `${skin.swatch}40` }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              className="flex items-center justify-between px-5 py-3 border-b flex-shrink-0"
+              style={{ borderColor: `${skin.swatch}30`, background: `linear-gradient(135deg, ${skin.sidebarFrom}10, ${skin.sidebarTo}10)` }}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: skin.swatch }} />
+                <span className="text-base font-semibold" style={{ color: skin.textPrimary }}>{getModuleName('dida')}</span>
+                <span className="text-xs ml-1" style={{ color: skin.textMuted }}>滴答清单</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={moduleLinks.dida || 'https://dida365.com/webapp/#q/all/timeline'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-2.5 py-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                  style={{ color: skin.textSecondary }}
+                  title="新窗口打开"
+                >
+                  ↗ 新窗口
+                </a>
+                <button
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 transition-colors"
+                  onClick={() => setDidaModalOpen(false)}
+                  aria-label="关闭"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M1 1l12 12M13 1L1 13" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            {/* iframe body */}
+            <iframe
+              src={moduleLinks.dida || 'https://dida365.com/webapp/#q/all/timeline'}
+              className="w-full flex-1 bg-white"
+              title="滴答清单"
+              allow="clipboard-read; clipboard-write"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        </div>
       )}
 
       {/* Note Popup - TickTick inspired */}
