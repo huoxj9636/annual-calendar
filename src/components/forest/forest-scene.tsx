@@ -360,7 +360,6 @@ function ForestTree({
             width: sizes.crown * 1.6 * treeScale * zoom * currentScale,
             height: sizes.crown * 1.6 * treeScale * zoom * currentScale,
             border: `2px solid ${skin.swatch}`,
-            marginLeft: 50,
             transformOrigin: "center bottom",
             animation: "focusRing 1.2s ease-out 2",
           }}
