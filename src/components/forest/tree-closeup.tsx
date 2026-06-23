@@ -7,34 +7,47 @@
  * 上方是大图区，下方是阶段进度 + 知识分组
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
+  ChevronDown,
+  Plus,
+  Share2,
+  MoreHorizontal,
+  Undo2,
+  Redo2,
+  Heading1,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
+  CheckSquare,
+  Quote,
+  Code,
+  Eraser,
+  Link as LinkIcon,
+  Trash2,
+  FileText,
+  File,
+  Video,
+  User,
   Sprout,
   TreePine,
   TreeDeciduous,
   Cherry,
   Trees,
-  Plus,
   Leaf,
   Apple,
   GitBranch,
-  Layers,
-  Folder,
-  File,
-  ChevronDown,
-  ChevronRight,
   Search,
   Target,
   Award,
-  BookOpen,
-  Sprout as Root,
 } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import type { KnowledgeNode, KnowledgeTree } from "../knowledge-panel";
 
 export const TREE_NODE_TYPE_INFO = {
-  root: { label: "树根", desc: "底层认知/核心原理", Icon: Root, pos: "土中" },
+  root: { label: "树根", desc: "底层认知/核心原理", Icon: Sprout, pos: "土中" },
   trunk: { label: "树干", desc: "核心目标/方向", Icon: TreePine, pos: "主干" },
   branch: { label: "树枝", desc: "实现路径/方法", Icon: GitBranch, pos: "分枝" },
   leaf: { label: "树叶", desc: "具体执行/碎片知识", Icon: Leaf, pos: "叶簇" },
@@ -482,13 +495,64 @@ function NodeGroupCard({
   );
 }
 
+/* ================== 知识库（左右分栏） ================== */
+
+type KBNoteType = "note" | "file" | "live" | "blog";
+
+type KBNote = {
+  id: string;
+  title: string;
+  content: string; // HTML
+  type: KBNoteType;
+  createdAt: number;
+  updatedAt: number;
+};
+
+type KBSlot = {
+  notes: KBNote[];
+  activeId: string | null;
+  filter: "all" | KBNoteType;
+};
+
+function loadKBSlot(treeId: string): KBSlot {
+  if (typeof window === "undefined") return { notes: [], activeId: null, filter: "all" };
+  try {
+    const raw = localStorage.getItem(`tree-knowledge-${treeId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.notes)) {
+        return {
+          notes: parsed.notes,
+          activeId: typeof parsed.activeId === "string" ? parsed.activeId : null,
+          filter: ["all", "note", "file", "live", "blog"].includes(parsed.filter) ? parsed.filter : "all",
+        };
+      }
+    }
+  } catch {}
+  return { notes: [], activeId: null, filter: "all" };
+}
+
+function saveKBSlot(treeId: string, slot: KBSlot) {
+  try {
+    localStorage.setItem(`tree-knowledge-${treeId}`, JSON.stringify(slot));
+  } catch {}
+}
+
+const KB_FILTER_TABS: { key: KBSlot["filter"]; label: string }[] = [
+  { key: "all", label: "全部" },
+  { key: "note", label: "笔记" },
+  { key: "file", label: "文件" },
+  { key: "live", label: "直播" },
+  { key: "blog", label: "博主" },
+];
+
 export default function TreeCloseup({
   tree,
-  nodesByType,
+  nodesByType: _nodesByType,
   onBack,
-  onAddNode,
-  onDeleteNode,
-  onAddTypeNode,
+  onAddNode: _onAddNode,
+  onDeleteNode: _onDeleteNode,
+  onAddTypeNode: _onAddTypeNode,
   skin,
 }: {
   tree: KnowledgeTree;
@@ -499,350 +563,581 @@ export default function TreeCloseup({
   onAddTypeNode: (type: NodeType) => void;
   skin: SkinTheme;
 }) {
-  const totalNodes = tree.nodes.length;
-  const stage = getStage(totalNodes);
-  // 库类型切换：理论库 / 项目库
-  const [libType, setLibType] = useState<"theory" | "project">("project");
-  // 展开的文件夹
-  const [expandedType, setExpandedType] = useState<NodeType | null>(null);
+  // 知识库本地存储
+  const [slot, setSlot] = useState<KBSlot>({ notes: [], activeId: null, filter: "all" });
+  const [mounted, setMounted] = useState(false);
+  const [editorRef, setEditorRef] = useState<HTMLDivElement | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
 
-  // 类型分布统计
-  const typeStats = useMemo(() => {
-    return (Object.keys(TYPE_LABELS) as NodeType[]).map((type) => {
-      const nodes = nodesByType[type] || [];
-      return { type, nodes, info: TYPE_LABELS[type] };
-    });
-  }, [nodesByType]);
+  // 首次挂载后从 localStorage 读取
+  useEffect(() => {
+    const loaded = loadKBSlot(tree.id);
+    setSlot(loaded);
+    setMounted(true);
+  }, [tree.id]);
 
-  // 计算当前阶段：第一个有内容但没有下一层级内容的层级
-  const currentStageIdx = useMemo(() => {
-    for (let i = 0; i < typeStats.length; i++) {
-      const hasCurrent = typeStats[i].nodes.length > 0;
-      const hasNext = i < typeStats.length - 1 && typeStats[i + 1].nodes.length > 0;
-      if (hasCurrent && !hasNext) return i;
-      if (!hasCurrent && i === 0) return 0; // 还没开始
-    }
-    // 全部完成
-    return typeStats.length - 1;
-  }, [typeStats]);
+  // active note
+  const activeNote = useMemo(
+    () => slot.notes.find((n) => n.id === slot.activeId) || null,
+    [slot.notes, slot.activeId]
+  );
 
-  // 完整度百分比
-  const completionPercent = useMemo(() => {
-    const filledCount = typeStats.filter((s) => s.nodes.length > 0).length;
-    return Math.round((filledCount / 5) * 100);
-  }, [typeStats]);
+  // 过滤后的列表
+  const filteredNotes = useMemo(() => {
+    if (slot.filter === "all") return slot.notes;
+    return slot.notes.filter((n) => n.type === slot.filter);
+  }, [slot.notes, slot.filter]);
 
-  // 当前阶段信息
-  const currentStageInfo = TYPE_LABELS[typeStats[currentStageIdx]?.type || "root"];
-  const currentStagePercent = (currentStageIdx / 4) * 100;
+  // 持久化
+  const persist = useCallback(
+    (next: KBSlot) => {
+      setSlot(next);
+      saveKBSlot(tree.id, next);
+      setSavedAt(Date.now());
+    },
+    [tree.id]
+  );
 
-  // 理论库模拟数据（方法论文件）
-  const theoryFiles: Record<NodeType, { name: string }[]> = {
-    root: [
-      { name: "问题分析方法论.md" },
-      { name: "5Why分析法.md" },
-    ],
-    trunk: [
-      { name: "SMART目标法则.md" },
-      { name: "OKR目标管理.md" },
-    ],
-    branch: [
-      { name: "方案设计框架.md" },
-      { name: "MVP最小可行方案.md" },
-    ],
-    leaf: [
-      { name: "时间管理技巧.md" },
-      { name: "执行习惯养成.md" },
-    ],
-    fruit: [
-      { name: "OKR复盘方法.md" },
-      { name: "迭代优化方法论.md" },
-    ],
+  // 切换标签
+  const setFilter = (f: KBSlot["filter"]) => {
+    setSlot((s) => ({ ...s, filter: f }));
   };
 
+  // 新建笔记
+  const createNote = (type: KBNoteType = "note") => {
+    const now = Date.now();
+    const newNote: KBNote = {
+      id: `n_${now}_${Math.random().toString(36).slice(2, 7)}`,
+      title: type === "note" ? "无标题笔记" : type === "file" ? "新文件" : type === "live" ? "新直播" : "新博主",
+      content: "",
+      type,
+      createdAt: now,
+      updatedAt: now,
+    };
+    persist({ notes: [newNote, ...slot.notes], activeId: newNote.id, filter: type === "note" ? slot.filter : type });
+    // 选中后聚焦编辑器
+    setTimeout(() => editorRef?.focus(), 50);
+  };
+
+  // 选中笔记
+  const selectNote = (id: string) => {
+    persist({ ...slot, activeId: id });
+  };
+
+  // 删除笔记
+  const deleteNote = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextNotes = slot.notes.filter((n) => n.id !== id);
+    const nextActive = slot.activeId === id ? nextNotes[0]?.id ?? null : slot.activeId;
+    persist({ notes: nextNotes, activeId: nextActive, filter: slot.filter });
+  };
+
+  // 更新笔记标题
+  const updateTitle = (id: string, title: string) => {
+    const next = {
+      ...slot,
+      notes: slot.notes.map((n) =>
+        n.id === id ? { ...n, title, updatedAt: Date.now() } : n
+      ),
+    };
+    persist(next);
+  };
+
+  // 更新笔记内容（contenteditable 触发）
+  const updateContent = (id: string, content: string) => {
+    const next = {
+      ...slot,
+      notes: slot.notes.map((n) =>
+        n.id === id ? { ...n, content, updatedAt: Date.now() } : n
+      ),
+    };
+    // 持久化但不重置 savedAt 显示，由 debounce 决定
+    setSlot(next);
+  };
+
+  // debounce 持久化 content
+  useEffect(() => {
+    if (!mounted) return;
+    const t = setTimeout(() => {
+      saveKBSlot(tree.id, slot);
+      setSavedAt(Date.now());
+    }, 400);
+    return () => clearTimeout(t);
+  }, [slot, tree.id, mounted]);
+
+  // 切换 active 时把 content 同步到编辑器 DOM
+  useEffect(() => {
+    if (editorRef && activeNote) {
+      if (editorRef.innerHTML !== activeNote.content) {
+        editorRef.innerHTML = activeNote.content;
+      }
+    } else if (editorRef && !activeNote) {
+      editorRef.innerHTML = "";
+    }
+  }, [activeNote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 富文本命令
+  const exec = (cmd: string, value?: string) => {
+    if (!activeNote) return;
+    editorRef?.focus();
+    document.execCommand(cmd, false, value);
+    if (editorRef) updateContent(activeNote.id, editorRef.innerHTML);
+  };
+
+  // 插入链接
+  const insertLink = () => {
+    if (!activeNote) return;
+    const url = window.prompt("请输入链接 URL：");
+    if (!url) return;
+    exec("createLink", url);
+  };
+
+  // 列表快捷符号
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!activeNote) return;
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      // cmd+enter 切到下一行
+      e.preventDefault();
+      document.execCommand("insertLineBreak");
+    }
+  };
+
+  // 统计字数（去除 HTML 标签）
+  const wordCount = useMemo(() => {
+    if (!activeNote) return 0;
+    const text = activeNote.content.replace(/<[^>]+>/g, "").trim();
+    if (!text) return 0;
+    // 中文字符 + 英文单词
+    const cnChars = (text.match(/[一-龥]/g) || []).length;
+    const enWords = (text.replace(/[一-龥]/g, " ").trim().match(/\S+/g) || []).length;
+    return cnChars + enWords;
+  }, [activeNote]);
+
+  // 显示名（未挂载时用占位）
+  const displayName = mounted ? tree.name : tree.name;
+  const noteCount = mounted ? slot.notes.length : 0;
+
   return (
-    <div className="h-full overflow-y-auto">
-      {/* 顶部导航栏 */}
+    <div className="h-full flex" style={{ background: skin.panelBg }}>
+      {/* 左侧栏 */}
       <div
-        className="flex items-center justify-between px-5 py-3 sticky top-0 z-10"
-        style={{
-          background: skin.panelBg,
-          borderBottom: `1px solid ${skin.divider}`,
-        }}
+        className="w-[280px] shrink-0 flex flex-col h-full"
+        style={{ background: skin.cardBg, borderRight: `1px solid ${skin.divider}` }}
       >
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:scale-105"
-            style={{
-              background: skin.cardBg,
-              border: `1px solid ${skin.divider}`,
-              color: skin.textPrimary,
-            }}
-            title="返回森林"
-          >
-            <ArrowLeft size={14} />
-          </button>
-          <div className="flex items-center gap-2">
-            <Folder size={16} style={{ color: skin.swatch }} />
+        {/* 顶部标题区 */}
+        <div
+          className="px-4 py-3 shrink-0"
+          style={{ borderBottom: `1px solid ${skin.divider}` }}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              onClick={onBack}
+              className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
+              style={{ background: "transparent", color: skin.textMuted }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = skin.cardHover; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              title="返回森林"
+            >
+              <ArrowLeft size={14} />
+            </button>
+            <button
+              className="w-7 h-7 rounded-md flex items-center justify-center"
+              style={{ background: "transparent", color: skin.textMuted }}
+              title="锁定"
+            >
+              <LockIcon size={12} />
+            </button>
+            <div className="flex-1 min-w-0" />
+            <button
+              className="w-7 h-7 rounded-md flex items-center justify-center"
+              style={{ background: "transparent", color: skin.textMuted }}
+              title="分享"
+            >
+              <Share2 size={13} />
+            </button>
+            <button
+              className="w-7 h-7 rounded-md flex items-center justify-center"
+              style={{ background: "transparent", color: skin.textMuted }}
+              title="更多"
+            >
+              <MoreHorizontal size={14} />
+            </button>
+            <button
+              onClick={() => createNote("note")}
+              className="ml-1 px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1"
+              style={{ background: skin.textPrimary, color: skin.cardBg }}
+              title="添加"
+            >
+              <Plus size={12} />
+              添加
+            </button>
+          </div>
+          <div className="flex items-center gap-1 mb-1">
             <h2
-              className="text-lg font-semibold truncate"
+              className="text-base font-semibold truncate"
               style={{ color: skin.textPrimary }}
             >
-              {tree.name}
+              {displayName}
             </h2>
+            <ChevronDown size={14} style={{ color: skin.textMuted }} />
+          </div>
+          <div
+            className="flex items-center gap-1.5 text-xs"
+            style={{ color: skin.textMuted }}
+          >
+            <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-medium" style={{ background: skin.swatch + "30", color: skin.swatch }}>G</span>
+            <span>个人</span>
+          </div>
+          <div
+            className="text-[11px] mt-1.5"
+            style={{ color: skin.textMuted }}
+          >
+            {noteCount} 个内容
           </div>
         </div>
-        {libType === "project" && (
-          <button
-            onClick={onAddNode}
-            className="px-3 py-1.5 rounded-full flex items-center gap-1 text-xs font-medium transition-transform hover:scale-105"
-            style={{ background: skin.swatch, color: "#fff" }}
-          >
-            <Plus size={12} />
-            添加
-          </button>
+
+        {/* 标签切换栏 */}
+        <div
+          className="px-3 py-2 shrink-0"
+          style={{ borderBottom: `1px solid ${skin.divider}` }}
+        >
+          <div className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {KB_FILTER_TABS.map((tab) => {
+              const isActive = slot.filter === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setFilter(tab.key)}
+                  className="text-xs px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-all"
+                  style={{
+                    background: isActive ? skin.swatch : "transparent",
+                    color: isActive ? "#fff" : skin.textMuted,
+                    boxShadow: isActive ? `0 1px 3px ${skin.swatch}40` : "none",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 内容列表 */}
+        <div className="flex-1 overflow-y-auto px-2 py-2">
+          {!mounted ? null : filteredNotes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <EmptyIllustration color={skin.textMuted} />
+              <div
+                className="text-xs mt-3"
+                style={{ color: skin.textMuted }}
+              >
+                暂无内容
+              </div>
+              <button
+                onClick={() => createNote("note")}
+                className="mt-3 text-[11px] px-2.5 py-1 rounded-md"
+                style={{ background: skin.swatch + "15", color: skin.swatch }}
+              >
+                + 新建笔记
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {filteredNotes.map((n) => {
+                const isActive = n.id === slot.activeId;
+                const typeLabel = n.type === "note" ? "笔记" : n.type === "file" ? "文件" : n.type === "live" ? "直播" : "博主";
+                const preview = n.content.replace(/<[^>]+>/g, "").trim().slice(0, 60) || "无内容";
+                const time = new Date(n.updatedAt).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
+                return (
+                  <div
+                    key={n.id}
+                    onClick={() => selectNote(n.id)}
+                    className="group px-2.5 py-2 rounded-md cursor-pointer transition-colors relative"
+                    style={{
+                      background: isActive ? `${skin.swatch}18` : "transparent",
+                    }}
+                    onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = skin.cardHover; }}
+                    onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <div className="flex items-start gap-1.5">
+                      <NoteTypeIcon type={n.type} color={isActive ? skin.swatch : skin.textMuted} />
+                      <div className="flex-1 min-w-0">
+                        <div
+                          className="text-xs font-medium truncate"
+                          style={{ color: skin.textPrimary }}
+                        >
+                          {n.title || "无标题"}
+                        </div>
+                        <div
+                          className="text-[10px] mt-0.5 truncate"
+                          style={{ color: skin.textMuted }}
+                        >
+                          {preview}
+                        </div>
+                        <div
+                          className="text-[10px] mt-0.5 flex items-center gap-1.5"
+                          style={{ color: skin.textMuted }}
+                        >
+                          <span className="px-1 rounded" style={{ background: isActive ? skin.swatch + "30" : skin.cardHover, color: isActive ? skin.swatch : skin.textMuted }}>{typeLabel}</span>
+                          <span>{time}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => deleteNote(n.id, e)}
+                        className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded flex items-center justify-center transition-opacity"
+                        style={{ color: skin.textMuted }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = skin.textMuted; }}
+                        title="删除"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 右侧编辑器 */}
+      <div className="flex-1 flex flex-col h-full min-w-0" style={{ background: skin.panelBg }}>
+        {activeNote ? (
+          <>
+            {/* 标题输入 */}
+            <div
+              className="px-8 pt-6 pb-2 shrink-0"
+            >
+              <input
+                value={activeNote.title}
+                onChange={(e) => updateTitle(activeNote.id, e.target.value)}
+                placeholder="无标题"
+                className="w-full text-2xl font-semibold outline-none bg-transparent"
+                style={{ color: skin.textPrimary }}
+              />
+              <div
+                className="text-[11px] mt-1 flex items-center gap-2"
+                style={{ color: skin.textMuted }}
+              >
+                <span>{activeNote.type === "note" ? "笔记" : activeNote.type === "file" ? "文件" : activeNote.type === "live" ? "直播" : "博主"}</span>
+                <span>·</span>
+                <span>更新于 {new Date(activeNote.updatedAt).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+              </div>
+            </div>
+
+            {/* 工具栏 */}
+            <div
+              className="mx-8 mt-2 mb-2 flex items-center gap-0.5 px-1.5 py-1 rounded-md shrink-0"
+              style={{ background: skin.cardBg, border: `1px solid ${skin.divider}` }}
+            >
+              <ToolBtn title="撤销 (Ctrl+Z)" onClick={() => exec("undo")}>
+                <Undo2 size={14} />
+              </ToolBtn>
+              <ToolBtn title="重做 (Ctrl+Y)" onClick={() => exec("redo")}>
+                <Redo2 size={14} />
+              </ToolBtn>
+              <Divider />
+              <ToolBtn title="标题 1" onClick={() => exec("formatBlock", "H1")}>
+                <Heading1 size={14} />
+              </ToolBtn>
+              <ToolBtn title="标题 2" onClick={() => exec("formatBlock", "H2")}>
+                <Heading2 size={14} />
+              </ToolBtn>
+              <ToolBtn title="标题 3" onClick={() => exec("formatBlock", "H3")}>
+                <Heading3 size={14} />
+              </ToolBtn>
+              <Divider />
+              <ToolBtn title="加粗 (Ctrl+B)" onClick={() => exec("bold")} bold>
+                <span className="text-xs font-bold">B</span>
+              </ToolBtn>
+              <ToolBtn title="斜体 (Ctrl+I)" onClick={() => exec("italic")}>
+                <span className="text-xs italic font-serif">I</span>
+              </ToolBtn>
+              <ToolBtn title="下划线 (Ctrl+U)" onClick={() => exec("underline")}>
+                <span className="text-xs underline">U</span>
+              </ToolBtn>
+              <ToolBtn title="删除线" onClick={() => exec("strikeThrough")}>
+                <span className="text-xs line-through">S</span>
+              </ToolBtn>
+              <Divider />
+              <ToolBtn title="无序列表" onClick={() => exec("insertUnorderedList")}>
+                <List size={14} />
+              </ToolBtn>
+              <ToolBtn title="有序列表" onClick={() => exec("insertOrderedList")}>
+                <ListOrdered size={14} />
+              </ToolBtn>
+              <ToolBtn title="任务列表" onClick={() => exec("insertHTML", "<ul><li><input type='checkbox' /> 待办</li></ul>")}>
+                <CheckSquare size={14} />
+              </ToolBtn>
+              <ToolBtn title="引用" onClick={() => exec("formatBlock", "BLOCKQUOTE")}>
+                <Quote size={14} />
+              </ToolBtn>
+              <ToolBtn title="代码" onClick={() => exec("formatBlock", "PRE")}>
+                <Code size={14} />
+              </ToolBtn>
+              <Divider />
+              <ToolBtn title="链接" onClick={insertLink}>
+                <LinkIcon size={14} />
+              </ToolBtn>
+              <ToolBtn title="清除格式" onClick={() => exec("removeFormat")}>
+                <Eraser size={14} />
+              </ToolBtn>
+            </div>
+
+            {/* 编辑区 */}
+            <div className="flex-1 overflow-y-auto px-8 py-4">
+              <div
+                ref={setEditorRef}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={(e) => updateContent(activeNote.id, (e.currentTarget as HTMLDivElement).innerHTML)}
+                onKeyDown={onKeyDown}
+                onBlur={() => activeNote && saveKBSlot(tree.id, slot)}
+                data-placeholder="从这里开始书写..."
+                className="kb-editor min-h-[60vh] outline-none leading-relaxed"
+                style={{ color: skin.textPrimary }}
+              />
+            </div>
+
+            {/* 底部状态栏 */}
+            <div
+              className="px-8 py-2 flex items-center gap-3 text-[11px] shrink-0"
+              style={{ color: skin.textMuted, borderTop: `1px solid ${skin.divider}` }}
+            >
+              <span>{wordCount} 字</span>
+              <span>·</span>
+              <span>{savedAt ? `已保存 ${new Date(savedAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}` : "未保存"}</span>
+              <div className="flex-1" />
+              <span>共 {(activeNote.content.replace(/<[^>]+>/g, "")).length} 字符</span>
+            </div>
+          </>
+        ) : (
+          // 空状态
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <EmptyIllustration color={skin.textMuted} size={120} />
+            <div
+              className="text-sm mt-4"
+              style={{ color: skin.textMuted }}
+            >
+              从左侧选择内容查看
+            </div>
+            <button
+              onClick={() => createNote("note")}
+              className="mt-4 px-4 py-2 rounded-md text-sm font-medium"
+              style={{ background: skin.swatch, color: "#fff" }}
+            >
+              <Plus size={14} className="inline mr-1" />
+              新建笔记
+            </button>
+          </div>
         )}
       </div>
 
-      {/* 项目信息 */}
-      <div className="px-5 py-2">
-        <div
-          className="flex items-center gap-2 text-xs"
-          style={{ color: skin.textMuted }}
-        >
-          <BookOpen size={12} />
-          <span>完整闭环项目</span>
-          <span>·</span>
-          <span>{totalNodes} 个节点</span>
-          <span>·</span>
-          <span>{stage.label}</span>
-        </div>
-      </div>
-
-      {/* 理论库/项目库切换 */}
-      <div className="px-5 py-2">
-        <div
-          className="flex rounded-lg p-0.5"
-          style={{ background: skin.cardBg, border: `1px solid ${skin.divider}` }}
-        >
-          <button
-            onClick={() => setLibType("theory")}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
-            style={{
-              background: libType === "theory" ? skin.swatch : "transparent",
-              color: libType === "theory" ? "#fff" : skin.textSecondary,
-            }}
-          >
-            <BookOpen size={12} />
-            理论库
-          </button>
-          <button
-            onClick={() => setLibType("project")}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
-            style={{
-              background: libType === "project" ? skin.swatch : "transparent",
-              color: libType === "project" ? "#fff" : skin.textSecondary,
-            }}
-          >
-            <Layers size={12} />
-            项目库
-          </button>
-        </div>
-        <div className="text-[10px] mt-1.5" style={{ color: skin.textMuted }}>
-          {libType === "theory" ? "方法论、通用框架" : "当前项目的完整闭环"}
-        </div>
-      </div>
-
-      {/* 顶部进度条 */}
-      <div className="px-5 py-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs" style={{ color: skin.textMuted }}>
-            当前阶段：{currentStageInfo.short} · {currentStageInfo.full}
-          </span>
-          <span className="text-xs font-medium" style={{ color: skin.swatch }}>
-            完整度 {completionPercent}%
-          </span>
-        </div>
-        {/* 进度条 */}
-        <div className="relative">
-          <div
-            className="h-2 rounded-full"
-            style={{ background: `${skin.swatch}20` }}
-          />
-          <div
-            className="absolute top-0 left-0 h-2 rounded-full transition-all"
-            style={{
-              width: `${completionPercent}%`,
-              background: skin.swatch,
-            }}
-          />
-          {/* 当前阶段指示点 */}
-          <div
-            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2"
-            style={{
-              left: `${currentStagePercent}%`,
-              background: skin.swatch,
-              borderColor: "#fff",
-              boxShadow: `0 0 6px ${skin.swatch}`,
-            }}
-          />
-        </div>
-        {/* 5个阶段标签 */}
-        <div className="flex justify-between mt-1">
-          {["根", "干", "枝", "叶", "果"].map((label, idx) => (
-            <span
-              key={label}
-              className="text-[10px]"
-              style={{
-                color: idx <= currentStageIdx ? skin.swatch : skin.textMuted,
-                fontWeight: idx === currentStageIdx ? "600" : "400",
-              }}
-            >
-              {label}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* 5个层级纵向流程展示 */}
-      <div className="px-5 pb-5">
-        <div className="space-y-3">
-          {typeStats.map(({ type, nodes, info }, idx) => {
-            const hasContent = libType === "theory"
-              ? (theoryFiles[type]?.length || 0) > 0
-              : nodes.length > 0;
-            const isCurrent = idx === currentStageIdx;
-            const isPast = idx < currentStageIdx;
-            const isFuture = idx > currentStageIdx;
-            
-            // 获取该层级的内容摘要
-            const contentSummary = libType === "theory"
-              ? theoryFiles[type]?.[0]?.name || ""
-              : nodes[0]?.title || "";
-
-            return (
-              <div key={type}>
-                {/* 层级卡片 */}
-                <div
-                  className="rounded-lg p-3 transition-all"
-                  style={{
-                    background: isCurrent ? `${skin.swatch}15` : skin.cardBg,
-                    border: `1px solid ${isCurrent ? skin.swatch : skin.divider}`,
-                    boxShadow: isCurrent ? `0 2px 8px ${skin.swatch}20` : "none",
-                  }}
-                >
-                  {/* 左侧：序号+图标 */}
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                      style={{
-                        background: hasContent ? `${skin.swatch}20` : `${skin.textMuted}15`,
-                      }}
-                    >
-                      {hasContent ? (
-                        <info.Icon size={18} style={{ color: skin.swatch }} />
-                      ) : (
-                        <span className="text-sm font-bold" style={{ color: skin.textMuted }}>
-                          {idx + 1}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* 中间：层级信息 */}
-                    <div className="flex-1 min-w-0">
-                      {/* 层级名称 */}
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="text-sm font-semibold"
-                          style={{ color: skin.textPrimary }}
-                        >
-                          {info.short} · {info.full}
-                        </span>
-                        {isCurrent && (
-                          <span
-                            className="text-[10px] px-1.5 py-0.5 rounded"
-                            style={{ background: skin.swatch, color: "#fff" }}
-                          >
-                            当前
-                          </span>
-                        )}
-                        {hasContent && !isCurrent && (
-                          <span
-                            className="text-[10px]"
-                            style={{ color: skin.swatch }}
-                          >
-                            ✓
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* 层级描述 */}
-                      <div
-                        className="text-xs mt-1"
-                        style={{ color: skin.textMuted }}
-                      >
-                        {info.desc}
-                      </div>
-                      
-                      {/* 内容摘要 */}
-                      {hasContent ? (
-                        <div
-                          className="text-xs mt-2 truncate"
-                          style={{ color: skin.textSecondary }}
-                        >
-                          {contentSummary}
-                        </div>
-                      ) : (
-                        <div
-                          className="text-xs mt-2"
-                          style={{ color: isFuture ? skin.textMuted : skin.swatch }}
-                        >
-                          {isFuture ? "[待补充]" : "[待补充] 下一步：填写此处推进项目"}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* 右侧：操作按钮 */}
-                    {libType === "project" && (
-                      <button
-                        onClick={() => onAddTypeNode(type)}
-                        className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-transform hover:scale-110"
-                        style={{
-                          background: hasContent ? `${skin.swatch}20` : skin.swatch,
-                          color: hasContent ? skin.swatch : "#fff",
-                        }}
-                        title="添加内容"
-                      >
-                        <Plus size={12} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                
-                {/* 连接箭头 */}
-                {idx < 4 && (
-                  <div className="flex justify-center py-1">
-                    <div
-                      className="w-0.5 h-4"
-                      style={{
-                        background: idx < currentStageIdx ? skin.swatch : `${skin.divider}`,
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       <style>{`
-        @keyframes treeSway2 {
-          0%   { transform: translateX(-50%) rotate(-1deg); }
-          100% { transform: translateX(-50%) rotate(1deg); }
+        .kb-editor:empty::before {
+          content: attr(data-placeholder);
+          color: ${skin.textMuted};
+          opacity: 0.6;
+          pointer-events: none;
         }
+        .kb-editor h1 { font-size: 1.6rem; font-weight: 600; margin: 0.8em 0 0.4em; }
+        .kb-editor h2 { font-size: 1.3rem; font-weight: 600; margin: 0.7em 0 0.4em; }
+        .kb-editor h3 { font-size: 1.1rem; font-weight: 600; margin: 0.6em 0 0.3em; }
+        .kb-editor p { margin: 0.5em 0; }
+        .kb-editor ul, .kb-editor ol { margin: 0.5em 0; padding-left: 1.5em; }
+        .kb-editor li { margin: 0.2em 0; }
+        .kb-editor blockquote {
+          margin: 0.6em 0;
+          padding: 0.3em 0.8em;
+          border-left: 3px solid ${skin.swatch};
+          background: ${skin.swatch}10;
+          border-radius: 0 4px 4px 0;
+          color: ${skin.textMuted};
+        }
+        .kb-editor pre {
+          margin: 0.6em 0;
+          padding: 0.6em 0.8em;
+          background: ${skin.cardHover};
+          border-radius: 6px;
+          font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+          font-size: 0.9em;
+          overflow-x: auto;
+        }
+        .kb-editor a {
+          color: ${skin.swatch};
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+        .kb-editor code {
+          background: ${skin.cardHover};
+          padding: 0.1em 0.4em;
+          border-radius: 3px;
+          font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+          font-size: 0.9em;
+        }
+        .kb-editor input[type="checkbox"] {
+          margin-right: 0.3em;
+          accent-color: ${skin.swatch};
+        }
+        .kb-editor:focus { outline: none; }
       `}</style>
     </div>
   );
 }
+
+/* 工具栏按钮 */
+function ToolBtn({ children, onClick, title, bold }: { children: React.ReactNode; onClick: () => void; title: string; bold?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      onMouseDown={(e) => e.preventDefault()} // 防止编辑器失焦
+      title={title}
+      className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${bold ? "font-bold" : ""}`}
+      style={{ color: "currentColor" }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Divider() {
+  return <div className="w-px h-4 mx-0.5" style={{ background: "currentColor", opacity: 0.15 }} />;
+}
+
+/* 笔记类型图标 */
+function NoteTypeIcon({ type, color }: { type: KBNoteType; color: string }) {
+  const size = 12;
+  if (type === "note") return <FileText size={size} style={{ color, marginTop: 1 }} />;
+  if (type === "file") return <File size={size} style={{ color, marginTop: 1 }} />;
+  if (type === "live") return <Video size={size} style={{ color, marginTop: 1 }} />;
+  return <User size={size} style={{ color, marginTop: 1 }} />;
+}
+
+/* 空状态插画 */
+function EmptyIllustration({ color, size = 80 }: { color: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* 气球 */}
+      <ellipse cx="50" cy="32" rx="14" ry="17" stroke={color} strokeWidth="1.2" opacity="0.5" />
+      <path d="M50 49 L50 60" stroke={color} strokeWidth="1.2" opacity="0.5" />
+      <path d="M48 60 L50 64 L52 60 Z" fill={color} opacity="0.5" />
+      {/* 文件框 */}
+      <rect x="32" y="64" width="36" height="26" rx="2" stroke={color} strokeWidth="1.2" opacity="0.5" />
+      <line x1="38" y1="72" x2="62" y2="72" stroke={color} strokeWidth="1.2" opacity="0.5" />
+      <line x1="38" y1="78" x2="58" y2="78" stroke={color} strokeWidth="1.2" opacity="0.5" />
+      <line x1="38" y1="84" x2="54" y2="84" stroke={color} strokeWidth="1.2" opacity="0.5" />
+    </svg>
+  );
+}
+
+/* 内联图标封装（避免外层 import 太多） */
+function LockIcon(props: { size?: number }) {
+  return (
+    <svg width={props.size || 14} height={props.size || 14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
