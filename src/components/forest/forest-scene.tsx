@@ -355,12 +355,12 @@ function ForestTree({
           className="absolute left-1/2 -translate-x-1/2 rounded-full pointer-events-none"
           style={{
             // 圆圈中心 = 树冠中心（从树底部算 trunk + crown/2）
-            // 圆圈底部 = 圆圈中心 - 圆圈半径（crown * 0.8）
-            bottom: (sizes.trunk + sizes.crown * 0.5 - sizes.crown * 0.8) * treeScale * zoom * currentScale,
+            // 用 translateY(-50%) 让圆圈中心在 bottom 位置
+            bottom: (sizes.trunk + sizes.crown * 0.5) * treeScale * zoom * currentScale,
             width: sizes.crown * 1.6 * treeScale * zoom * currentScale,
             height: sizes.crown * 1.6 * treeScale * zoom * currentScale,
+            transform: "translateY(-50%)",
             border: `2px solid ${skin.swatch}`,
-            transformOrigin: "center bottom",
             animation: "focusRing 1.2s ease-out 2",
           }}
         />
@@ -666,9 +666,9 @@ export default function ForestScene({
           100% { transform: translateX(-50%) scale(1); }
         }
         @keyframes focusRing {
-          0%   { opacity: 0.85; transform: translateX(-50%) scale(0.5); }
-          80%  { opacity: 0;    transform: translateX(-50%) scale(1.6); }
-          100% { opacity: 0;    transform: translateX(-50%) scale(1.6); }
+          0%   { opacity: 0.85; transform: translate(-50%, -50%) scale(0.5); }
+          80%  { opacity: 0;    transform: translate(-50%, -50%) scale(1.6); }
+          100% { opacity: 0;    transform: translate(-50%, -50%) scale(1.6); }
         }
       `}</style>
 
