@@ -330,7 +330,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   );
 
   // === 画布分页（>7 颗时启用）===
-  const FOREST_PAGE_SIZE = 7;
+  const FOREST_PAGE_SIZE = 12;
   const [forestPage, setForestPage] = useState(0);
   const forestPageCount = Math.max(
     1,
@@ -442,64 +442,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               </div>
             </div>
 
-            {/* 翻页控制条：>7 颗时显示 */}
-            {showForestPager && (
-              <div
-                className="flex items-center gap-1.5 rounded-full px-2 py-1"
-                style={{
-                  background: skin.cardBg,
-                  border: `1px solid ${skin.divider}`,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForestPage((p) => Math.max(0, p - 1))
-                  }
-                  disabled={safeForestPage === 0}
-                  className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
-                  style={{
-                    background: "transparent",
-                    color:
-                      safeForestPage === 0
-                        ? skin.textMuted
-                        : skin.textPrimary,
-                    opacity: safeForestPage === 0 ? 0.4 : 1,
-                  }}
-                  aria-label="上一页"
-                >
-                  <ChevronLeft size={15} />
-                </button>
-                <span
-                  className="text-xs font-mono tabular-nums px-1"
-                  style={{ color: skin.textPrimary }}
-                >
-                  {safeForestPage + 1} / {forestPageCount}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForestPage((p) =>
-                      Math.min(forestPageCount - 1, p + 1)
-                    )
-                  }
-                  disabled={safeForestPage === forestPageCount - 1}
-                  className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
-                  style={{
-                    background: "transparent",
-                    color:
-                      safeForestPage === forestPageCount - 1
-                        ? skin.textMuted
-                        : skin.textPrimary,
-                    opacity:
-                      safeForestPage === forestPageCount - 1 ? 0.4 : 1,
-                  }}
-                  aria-label="下一页"
-                >
-                  <ChevronRight size={15} />
-                </button>
-              </div>
-            )}
+
 
             <button
               onClick={onClose}
