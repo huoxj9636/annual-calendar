@@ -42,11 +42,14 @@ export async function apiFetch<T = any>(
 ): Promise<any | null> {
   const { body, headers, silentOn401 = true, ...rest } = options;
 
-  // 未登录时触发登录弹窗并跳过请求
+  // 未登录时的处理：写入操作触发登录弹窗，读取操作静默跳过
   const token = await getSessionToken();
+  const isWriteOperation = (rest.method || 'GET').toUpperCase() !== 'GET';
   if (!token) {
-    requireLogin();
-    return null;
+    if (isWriteOperation) {
+      requireLogin();  // 只有写入操作才触发登录弹窗
+    }
+    return null;  // 无论读写，都跳过请求返回null
   }
 
   const finalHeaders: Record<string, string> = {
