@@ -17,6 +17,10 @@ function DidaContent() {
 
   useEffect(() => {
     if (!mounted) return;
+    // 用 history.replaceState 把当前条目从 /dida 替换成 /,
+    // 这样浏览器历史栈里不会留下 /dida 中间页。
+    // 用户从 dida365.com 按浏览器返回时，直接回到日历主页 /。
+    window.history.replaceState(null, '', '/');
     window.location.href = url;
   }, [mounted, url]);
 
