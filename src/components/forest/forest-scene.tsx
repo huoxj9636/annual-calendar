@@ -354,12 +354,13 @@ function ForestTree({
         <div
           className="absolute left-1/2 -translate-x-1/2 rounded-full pointer-events-none"
           style={{
-            // 从树底部算：树冠中心 = trunk + crown/2，圆圈底部 = crown_center - crown*0.8
-            // 乘缩放因子
+            // 圆圈中心 = 树冠中心（从树底部算 trunk + crown/2）
+            // 圆圈底部 = 圆圈中心 - 圆圈半径（crown * 0.8）
             bottom: (sizes.trunk + sizes.crown * 0.5 - sizes.crown * 0.8) * treeScale * zoom * currentScale,
             width: sizes.crown * 1.6 * treeScale * zoom * currentScale,
             height: sizes.crown * 1.6 * treeScale * zoom * currentScale,
             border: `2px solid ${skin.swatch}`,
+            transformOrigin: "center bottom",
             animation: "focusRing 1.2s ease-out 2",
           }}
         />
