@@ -329,6 +329,24 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
     [trees]
   );
 
+  // === 画布分页（>7 颗时启用）===
+  const FOREST_PAGE_SIZE = 7;
+  const [forestPage, setForestPage] = useState(0);
+  const forestPageCount = Math.max(
+    1,
+    Math.ceil(forestItems.length / FOREST_PAGE_SIZE)
+  );
+  const safeForestPage = Math.min(forestPage, forestPageCount - 1);
+  const pagedForestItems = useMemo(
+    () =>
+      forestItems.slice(
+        safeForestPage * FOREST_PAGE_SIZE,
+        (safeForestPage + 1) * FOREST_PAGE_SIZE
+      ),
+    [forestItems, safeForestPage]
+  );
+  const showForestPager = forestItems.length > FOREST_PAGE_SIZE;
+
   // 拖拽结束：更新单棵树位置并持久化
   const handleTreePositionChange = useCallback(
     (id: string, position: { x: number; y: number }) => {
@@ -423,6 +441,66 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
                 </div>
               </div>
             </div>
+
+            {/* 翻页控制条：>7 颗时显示 */}
+            {showForestPager && (
+              <div
+                className="flex items-center gap-1.5 rounded-full px-2 py-1"
+                style={{
+                  background: skin.cardBg,
+                  border: `1px solid ${skin.divider}`,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForestPage((p) => Math.max(0, p - 1))
+                  }
+                  disabled={safeForestPage === 0}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                  style={{
+                    background: "transparent",
+                    color:
+                      safeForestPage === 0
+                        ? skin.textMuted
+                        : skin.textPrimary,
+                    opacity: safeForestPage === 0 ? 0.4 : 1,
+                  }}
+                  aria-label="上一页"
+                >
+                  <ChevronLeft size={15} />
+                </button>
+                <span
+                  className="text-xs font-mono tabular-nums px-1"
+                  style={{ color: skin.textPrimary }}
+                >
+                  {safeForestPage + 1} / {forestPageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForestPage((p) =>
+                      Math.min(forestPageCount - 1, p + 1)
+                    )
+                  }
+                  disabled={safeForestPage === forestPageCount - 1}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                  style={{
+                    background: "transparent",
+                    color:
+                      safeForestPage === forestPageCount - 1
+                        ? skin.textMuted
+                        : skin.textPrimary,
+                    opacity:
+                      safeForestPage === forestPageCount - 1 ? 0.4 : 1,
+                  }}
+                  aria-label="下一页"
+                >
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+            )}
+
             <button
               onClick={onClose}
               className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:rotate-90"
@@ -442,7 +520,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         <div className="flex-1" style={{ overflow: "visible" }}>
           {!selectedTree && (
             <MyForestView
-              forestItems={forestItems}
+              forestItems={pagedForestItems}
               totalNodes={stats.totalNodes}
               totalTrees={stats.totalTrees}
               onSelectTree={(id) => {
@@ -456,6 +534,33 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               onTreeScaleChange={handleTreeScaleChange}
               skin={skin}
             />
+          )}
+
+          {/* 底部圆点指示器（>7 颗时显示） */}
+          {showForestPager && !selectedTree && (
+            <div
+              className="flex items-center justify-center gap-1.5 py-3"
+              style={{ borderTop: `1px solid ${skin.divider}` }}
+            >
+              {Array.from({ length: forestPageCount }).map((_, i) => {
+                const active = i === safeForestPage;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setForestPage(i)}
+                    aria-label={`第 ${i + 1} 页`}
+                    className="rounded-full transition-all"
+                    style={{
+                      width: active ? 14 : 5,
+                      height: 5,
+                      background: active ? skin.swatch : skin.divider,
+                      opacity: active ? 1 : 0.7,
+                    }}
+                  />
+                );
+              })}
+            </div>
           )}
 
           {selectedTree && !selectedTree.link && (
@@ -855,24 +960,12 @@ function MyForestView({
   const [listOpen, setListOpen] = useState(false);
   // focus 树 id：点击列表项时设置，ForestScene 内部高亮该树（不 pan，树永远在屏幕内）
   const [focusTreeId, setFocusTreeId] = useState<string | null>(null);
-  // 分页（>7 棵树时启用）
-  const PAGE_SIZE = 7;
-  const [page, setPage] = useState(0);
 
   // 按节点数倒序排（参天古木在前）
   const sortedItems = useMemo(
     () => [...forestItems].sort((a, b) => b.count - a.count),
     [forestItems]
   );
-
-  // 派生分页数据
-  const pageCount = Math.max(1, Math.ceil(sortedItems.length / PAGE_SIZE));
-  const safePage = Math.min(page, pageCount - 1);
-  const pageItems = sortedItems.slice(
-    safePage * PAGE_SIZE,
-    (safePage + 1) * PAGE_SIZE
-  );
-  const showPager = sortedItems.length > PAGE_SIZE;
 
   const handleFocusTree = useCallback((id: string) => {
     setFocusTreeId(id);
@@ -942,7 +1035,7 @@ function MyForestView({
                 还没有树，去右下角种一棵吧
               </div>
             ) : (
-              pageItems.map((item) => {
+              sortedItems.map((item) => {
                 const stage = getStage(item.count);
                 const StageIcon =
                   stage.size === 0
@@ -1016,57 +1109,6 @@ function MyForestView({
                   </div>
                 );
               })
-            )}
-
-            {/* 分页指示器（>7 颗时启用） */}
-            {showPager && (
-              <div
-                className="flex items-center justify-center gap-1.5 px-3.5 py-2 border-t"
-                style={{ borderColor: skin.divider }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={safePage === 0}
-                  className="w-5 h-5 rounded-md flex items-center justify-center transition-colors disabled:opacity-30 hover:bg-black/5"
-                  style={{ color: skin.textSecondary }}
-                  title="上一页"
-                  aria-label="上一页"
-                >
-                  <ChevronLeft size={12} />
-                </button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: pageCount }).map((_, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setPage(idx)}
-                      className="rounded-full transition-all"
-                      style={{
-                        width: idx === safePage ? 14 : 5,
-                        height: 5,
-                        background:
-                          idx === safePage
-                            ? skin.swatch
-                            : skin.divider,
-                      }}
-                      title={`第 ${idx + 1} 页 / 共 ${pageCount} 页`}
-                      aria-label={`第 ${idx + 1} 页`}
-                    />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-                  disabled={safePage === pageCount - 1}
-                  className="w-5 h-5 rounded-md flex items-center justify-center transition-colors disabled:opacity-30 hover:bg-black/5"
-                  style={{ color: skin.textSecondary }}
-                  title="下一页"
-                  aria-label="下一页"
-                >
-                  <ChevronRight size={12} />
-                </button>
-              </div>
             )}
           </div>
         )}
