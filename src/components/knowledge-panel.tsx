@@ -484,7 +484,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
           {/* 底部圆点指示器（>12 颗时显示） */}
           {showForestPager && !selectedTree && (
             <div
-              className="flex items-center justify-center gap-3 py-4"
+              className="flex items-center justify-center gap-2 py-3"
               style={{ borderTop: `1px solid ${skin.divider}` }}
             >
               {Array.from({ length: forestPageCount }).map((_, i) => {
@@ -497,8 +497,8 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
                     aria-label={`第 ${i + 1} 页`}
                     className="rounded-full transition-all hover:opacity-100"
                     style={{
-                      width: active ? 24 : 12,
-                      height: 12,
+                      width: active ? 16 : 8,
+                      height: 8,
                       background: active ? skin.swatch : skin.divider,
                       opacity: active ? 1 : 0.6,
                     }}
