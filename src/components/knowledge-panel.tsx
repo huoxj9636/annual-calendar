@@ -43,6 +43,7 @@ import ForestScene, { type ForestItem } from "./forest/forest-scene";
 import TreeCloseup, { TREE_NODE_TYPE_INFO, type NodeType } from "./forest/tree-closeup";
 import FriendsForest from "./forest/friends-forest";
 import { TREE_SPECIES, SpeciesPreview, type TreeSpeciesId } from "./forest/tree-species";
+import { IframeControls } from "./forest/iframe-controls";
 
 // === 数据类型（保持兼容）===
 
@@ -491,34 +492,12 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
                 referrerPolicy="no-referrer-when-downgrade"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
               />
-              {/* 左上角悬浮返回按钮 */}
-              <button
-                onClick={() => setSelectedTree(null)}
-                className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                style={{
-                  background: skin.swatch,
-                  color: "#fff",
-                  boxShadow: `0 4px 16px ${skin.swatch}55`,
-                }}
-                title={`返回森林（${selectedTree.name}）`}
-              >
-                <ChevronDown size={18} className="rotate-90" />
-              </button>
-              {/* 右上角悬浮"新窗口"按钮（偶尔需要跳出 iframe 时使用） */}
-              <a
-                href={selectedTree.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                style={{
-                  background: skin.cardBg,
-                  color: skin.textPrimary,
-                  boxShadow: `0 4px 16px rgba(0,0,0,0.15)`,
-                }}
-                title="在新标签页打开"
-              >
-                <ExternalLink size={15} />
-              </a>
+              {/* 可拖动悬浮按钮：返回 + 新窗口 */}
+              <IframeControls
+                treeName={selectedTree.name}
+                treeLink={selectedTree.link}
+                onBack={() => setSelectedTree(null)}
+              />
             </div>
           )}
 
