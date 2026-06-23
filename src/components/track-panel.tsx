@@ -184,7 +184,7 @@ export default function TrackPanel({ year, skin, onClose }: Omit<TrackPanelProps
       try {
         const overridesRes = await apiFetch(`/api/calendar-data?type=overrides&year=${year}`);
         if (overridesRes) {
-          const overrides = overridesRes;
+          const overrides = overridesRes.data || overridesRes;
           let satisfied = 0, crossed = 0;
           for (let d = 1; d <= daysInMonth; d++) {
             const key = `${year}-${selectedMonth}-${d}`;

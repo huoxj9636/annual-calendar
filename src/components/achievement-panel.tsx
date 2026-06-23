@@ -139,7 +139,7 @@ export default function AchievementPanel({ year, month, day, skin, onClose }: Ac
     try {
       const res = await apiFetch(`/api/daily-review?year=${y}&month=${m}&day=${d}`);
       if (res) {
-        const data = res;
+        const data = res.data || res;
         const review: DailyReview = {
           completed: data.completed || '',
           goodThings: data.goodThings || '',

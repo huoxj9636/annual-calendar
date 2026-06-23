@@ -125,12 +125,11 @@ export function SyncProvider({ children }: SyncProviderProps) {
       const res = await apiFetch('/api/migrate-legacy', {
         headers: { 'x-session': token },
       });
-      if (!res.ok) {
+      if (!res) {
         setLegacyCount(0);
         return;
       }
-      const data = res;
-      setLegacyCount(data?.total || 0);
+      setLegacyCount(res?.total || 0);
     } catch {
       setLegacyCount(0);
     } finally {

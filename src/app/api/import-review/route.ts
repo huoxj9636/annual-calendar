@@ -521,9 +521,10 @@ async function processImportTask(
 
         if (!error) savedCount++;
       } else {
+        // 不存在记录，直接 insert
         const { error } = await supabase
           .from('daily_reviews')
-          .upsert({
+          .insert({
             user_id: userId,
             year: entry.year,
             month: entry.month,
@@ -536,7 +537,7 @@ async function processImportTask(
             tomorrow_todo: entry.tomorrowTodo,
             mood_score: 3,
             energy: 3,
-          }, { onConflict: 'user_id,year,month,day' });
+          });
 
         if (!error) savedCount++;
       }

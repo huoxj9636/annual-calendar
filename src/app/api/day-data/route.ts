@@ -159,17 +159,16 @@ export async function POST(request: NextRequest) {
     }
     if (mode === 'note' || (mode === 'all' && body.note !== undefined)) {
       const dateKey = `${body.month}-${body.day}`;
+      // 先删后插，避免 upsert 需要唯一约束
+      await client.from('calendar_notes').delete().eq('user_id', userId).eq('year', body.year).eq('date_key', dateKey);
       if (body.note && body.note.trim()) {
-        const { error } = await client.from('calendar_notes').upsert(
-          { user_id: userId, year: body.year, date_key: dateKey, content: body.note.slice(0, 5000) },
-          { onConflict: 'user_id,year,date_key' }
+        const { error } = await client.from('calendar_notes').insert(
+          { user_id: userId, year: body.year, date_key: dateKey, content: body.note.slice(0, 5000) }
         );
         if (error) {
-          console.error('[day-data] note upsert error:', error);
+          console.error('[day-data] note insert error:', error);
           return apiError('保存失败', 500);
         }
-      } else {
-        await client.from('calendar_notes').delete().eq('user_id', userId).eq('year', body.year).eq('date_key', dateKey);
       }
     }
     return NextResponse.json({ success: true });
