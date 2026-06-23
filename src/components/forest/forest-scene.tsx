@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useRef, useState, useCallback, useEffect } from "react";
-import { X, TreeDeciduous, Pencil } from "lucide-react";
+import { X, TreeDeciduous } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import { SpeciesTree, TREE_SPECIES, type TreeSpeciesId } from "./tree-species";
 
@@ -421,8 +421,7 @@ function ForestTree({
             boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
           }}
         >
-          <span>{item.name}</span>
-          {onEdit && (
+          {onEdit ? (
             <button
               type="button"
               onClick={(e) => {
@@ -438,22 +437,13 @@ function ForestTree({
                 e.stopPropagation();
               }}
               aria-label="编辑这棵树"
-              className="ml-0.5 rounded-full flex items-center justify-center pointer-events-auto transition-colors"
-              style={{ 
-                background: "rgba(255,255,255,0.18)",
-                width: 16,
-                height: 16,
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.42)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.18)";
-              }}
+              className="ml-0.5 pointer-events-auto transition-opacity hover:opacity-80"
               title="编辑这棵树"
             >
-              <Pencil size={10} strokeWidth={2.5} />
+              <span>{item.name}</span>
             </button>
+          ) : (
+            <span>{item.name}</span>
           )}
           {onDelete && (
             <button

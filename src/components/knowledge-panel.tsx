@@ -850,8 +850,8 @@ function MyForestView({
     prevCountRef.current = forestItems.length;
   }, [forestItems.length]);
 
-  // 树列表折叠状态（默认展开）
-  const [listOpen, setListOpen] = useState(true);
+  // 树列表折叠状态（默认收起）
+  const [listOpen, setListOpen] = useState(false);
   // focus 树 id：点击列表项时设置，ForestScene 内部高亮该树（不 pan，树永远在屏幕内）
   const [focusTreeId, setFocusTreeId] = useState<string | null>(null);
 
@@ -939,32 +939,40 @@ function MyForestView({
                     : TreeDeciduous;
                 const accent = item.accentColor || skin.swatch;
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
-                    onClick={() => handleFocusTree(item.id)}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left transition-colors"
+                    className="flex items-center gap-1 px-3.5 py-1.5 transition-colors"
                     style={{
                       color: skin.textPrimary,
                       borderBottom: `1px solid ${skin.divider}`,
                     }}
                     onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background =
+                      (e.currentTarget as HTMLDivElement).style.background =
                         `${skin.swatch}10`;
                     }}
                     onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background =
+                      (e.currentTarget as HTMLDivElement).style.background =
                         "transparent";
                     }}
-                    title={`点击定位到「${item.name}」`}
+                    title="点名称=编辑 · 点图标=定位 · 点×=删除"
                   >
-                    <span
-                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                    {/* 树图标：点击定位到树 */}
+                    <button
+                      type="button"
+                      onClick={() => handleFocusTree(item.id)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-transform hover:scale-110"
                       style={{ background: `${accent}22` }}
+                      title={`定位到「${item.name}」`}
                     >
                       <StageIcon size={14} style={{ color: accent }} />
-                    </span>
-                    <div className="flex-1 min-w-0">
+                    </button>
+
+                    {/* 名称：点击 = 修改 */}
+                    <button
+                      type="button"
+                      onClick={() => onEditTree(item.id)}
+                      className="flex-1 min-w-0 text-left px-1.5 py-1 rounded-md transition-colors hover:bg-card"
+                    >
                       <div className="text-[13px] font-medium truncate">
                         {item.name}
                       </div>
@@ -974,13 +982,22 @@ function MyForestView({
                       >
                         {stage.label}
                       </div>
-                    </div>
-                    <Crosshair
-                      size={13}
+                    </button>
+
+                    {/* 删除：点击 = 弹出确认 */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteTree(item.id);
+                      }}
+                      className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors hover:bg-destructive/10"
                       style={{ color: skin.textMuted }}
-                      className="shrink-0"
-                    />
-                  </button>
+                      title="删除"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
                 );
               })
             )}
