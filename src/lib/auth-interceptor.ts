@@ -74,6 +74,7 @@ let _isLoggedIn = false;
 let _onRequireLogin: (() => void) | null = null;
 let _installed = false;
 let _initialized = false; // 初始化完成标记（安装 + session 检查完成）
+let _paused = true; // 启动暂停期：等待组件初始化完成
 let _originalSetItem: ((key: string, value: string) => void) | null = null;
 
 export function setInterceptorAuthStatus(loggedIn: boolean): void {
@@ -156,6 +157,11 @@ export async function installAuthInterceptor(): Promise<void> {
 
       if (isSyncedKey(key) && !_isLoggedIn) {
         // 未登录 + 同步 key → 拦截入队
+        // 但在暂停期间（启动初始化）直接放行，不拦截
+        if (_paused) {
+          if (_originalSetItem) _originalSetItem.call(this, key, value);
+          return;
+        }
         pendingWrites.push({ key, value });
         // 只有初始化完成后才触发登录弹窗（避免页面刷新时误触发）
         if (_initialized && _onRequireLogin) _onRequireLogin();
@@ -176,6 +182,11 @@ export async function installAuthInterceptor(): Promise<void> {
 
   // 初始化完成：标记 _initialized，让后续写入可以触发登录弹窗
   _initialized = true;
+
+  // 延迟解除暂停：等待组件初始化完成（500ms）
+  setTimeout(() => {
+    _paused = false;
+  }, 500);
 
   Storage.prototype.removeItem = function (key: string): void {
     try {

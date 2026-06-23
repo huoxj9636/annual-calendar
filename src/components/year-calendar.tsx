@@ -660,24 +660,31 @@ export default function YearCalendar() {
   const getDayStatus = useCallback(
     (month: number, day: number): 'checked' | 'crossed' | 'auto' | 'none' => {
       const key = `${year}-${month}-${day}`;
-      if (overrides[key]) return overrides[key];
       // 当天不默认状态，只有昨天及之前才默认判断
       if (isDatePast(year, month, day)) {
-        // If reviewStartDate is set and date >= startDate, default to crossed (✗) when no review content
+        // If reviewStartDate is set and date >= startDate
         if (reviewStartDate) {
           const [sy, sm, sd] = reviewStartDate.split('-').map(Number);
           const dateNum = year * 10000 + month * 100 + day;
           const startNum = sy * 10000 + sm * 100 + sd;
           if (dateNum >= startNum) {
-            // Check if this day has review content
+            // 有复盘内容 → 优先显示 ✓（不管 overrides）
             const hasContent = reviewDays.has(key);
-            return hasContent ? 'auto' : 'crossed';
+            if (hasContent) return 'auto';
+            // 没有复盘内容 → 看 overrides 或默认 ✗
+            if (overrides[key]) return overrides[key];
+            return 'crossed';
           }
         }
+        // 不在复盘日期范围内 → 看 overrides 或默认 auto
+        if (overrides[key]) return overrides[key];
         return 'auto';
       }
       // 今天保持空白，等待用户填写
       if (isToday(year, month, day)) {
+        // 今天如果有复盘内容，也显示 ✓
+        const hasContent = reviewDays.has(key);
+        if (hasContent) return 'auto';
         return 'none';
       }
       return 'none';
