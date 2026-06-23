@@ -460,9 +460,10 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         )}
 
         {/* 内容区：直接渲染树视图（已去掉 OS / 好友森林 tab） */}
-        <div className="flex-1" style={{ overflow: "visible" }}>
+        <div className="flex-1 flex flex-col min-h-0">
           {!selectedTree && (
-            <MyForestView
+            <div className="flex-1 min-h-0">
+              <MyForestView
               forestItems={pagedForestItems}
               totalNodes={stats.totalNodes}
               totalTrees={stats.totalTrees}
@@ -477,9 +478,10 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               onTreeScaleChange={handleTreeScaleChange}
               skin={skin}
             />
+            </div>
           )}
 
-          {/* 底部圆点指示器（>7 颗时显示） */}
+          {/* 底部圆点指示器（>12 颗时显示） */}
           {showForestPager && !selectedTree && (
             <div
               className="flex items-center justify-center gap-1.5 py-3"
