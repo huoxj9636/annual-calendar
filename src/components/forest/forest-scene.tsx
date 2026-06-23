@@ -346,7 +346,6 @@ function ForestTree({
         cursor: draggable ? (dragging ? "grabbing" : "grab") : onClick ? "pointer" : "default",
         touchAction: "none",
         zIndex: dragging ? 50 : selected ? 10 : 1,
-        animation: focused ? "focusPulse 1.2s ease-out 2" : undefined,
       }}
       title={`${item.name} · ${stage.label} · ${item.count} 个知识`}
     >
@@ -380,8 +379,8 @@ function ForestTree({
         className="absolute left-1/2 -translate-x-1/2"
         style={{
           bottom: 0,
-          width: sizes.crown * zoom * currentScale,
-          height: sizes.h * zoom * currentScale,
+          width: sizes.crown * treeScale * zoom * currentScale,
+          height: sizes.h * treeScale * zoom * currentScale,
         }}
       >
         {/* 波纹树（真实树木：有云朵状树冠 + 梯形树干 + 树皮纹路） */}
@@ -389,8 +388,8 @@ function ForestTree({
           className="absolute left-1/2 -translate-x-1/2"
           style={{
             bottom: 0,
-            width: sizes.crown * 1.4 * zoom * currentScale,
-            height: (sizes.trunk + sizes.crown) * zoom * currentScale,
+            width: sizes.crown * 1.4 * treeScale * zoom * currentScale,
+            height: (sizes.trunk + sizes.crown) * treeScale * zoom * currentScale,
             transition: "transform 200ms ease-out",
           }}
         >
@@ -666,9 +665,9 @@ export default function ForestScene({
           100% { transform: translateX(-50%) scale(1); }
         }
         @keyframes focusRing {
-          0%   { opacity: 0.85; transform: translate(-50%, -50%) scale(0.5); }
-          80%  { opacity: 0;    transform: translate(-50%, -50%) scale(1.6); }
-          100% { opacity: 0;    transform: translate(-50%, -50%) scale(1.6); }
+          0%   { opacity: 0.85; transform: translateX(-50%) scale(0.5); }
+          80%  { opacity: 0;    transform: translateX(-50%) scale(1.6); }
+          100% { opacity: 0;    transform: translateX(-50%) scale(1.6); }
         }
       `}</style>
 
