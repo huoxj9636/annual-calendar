@@ -32,6 +32,8 @@ import {
   Target,
   Search,
   Award,
+  Link as LinkIcon,
+  ExternalLink,
   BookOpen,
   Briefcase,
   LayoutDashboard,
@@ -81,6 +83,8 @@ export interface KnowledgeTree {
   position?: { x: number; y: number };
   /** 可选：自定义缩放（滚轮放大缩小，默认 1） */
   scale?: number;
+  /** 可选：自定义链接。设置后点击树直接打开此链接（不再进入知识库） */
+  link?: string;
 }
 
 export interface Bookmark {
@@ -113,7 +117,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   const [pendingDeleteTreeId, setPendingDeleteTreeId] = useState<string | null>(null);
 
   // 表单状态
-  const [newTree, setNewTree] = useState<{ name: string; industry: string; description: string; species: TreeSpeciesId }>({ name: "", industry: "", description: "", species: "oak" });
+  const [newTree, setNewTree] = useState<{ name: string; industry: string; description: string; species: TreeSpeciesId; link: string }>({ name: "", industry: "", description: "", species: "oak", link: "" });
   const [newNode, setNewNode] = useState<{
     type: NodeType;
     title: string;
@@ -200,9 +204,11 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
       createdAt: now,
       // 新树默认种在画布逻辑中心 (50, 50)，pan 复位时正好在可视区中央
       position: { x: 50, y: 50 },
+      // 可选链接（如未填写则为 undefined，便于判断）
+      ...(newTree.link.trim() ? { link: newTree.link.trim() } : {}),
     };
     setTrees([...trees, tree]);
-    setNewTree({ name: "", industry: "", description: "", species: "oak" });
+    setNewTree({ name: "", industry: "", description: "", species: "oak", link: "" });
     setShowAddTree(false);
   };
 
@@ -463,7 +469,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
             />
           )}
 
-          {activeTab === "my" && selectedTree && (
+          {activeTab === "my" && selectedTree && !selectedTree.link && (
             <TreeCloseup
               tree={selectedTree}
               nodesByType={selectedNodesByType}
@@ -473,6 +479,68 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               onDeleteNode={handleDeleteNode}
               skin={skin}
             />
+          )}
+
+          {activeTab === "my" && selectedTree && selectedTree.link && (
+            <div className="h-full flex flex-col" style={{ background: skin.panelBg }}>
+              {/* 顶部工具条：返回 + 链接信息 */}
+              <div
+                className="flex items-center gap-3 px-4 py-2 shrink-0"
+                style={{
+                  background: skin.cardBg,
+                  borderBottom: `1px solid ${skin.divider}`,
+                }}
+              >
+                <button
+                  onClick={() => setSelectedTree(null)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                  style={{ background: skin.cardHover, color: skin.textPrimary }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = skin.swatch; e.currentTarget.style.color = "#fff"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = skin.cardHover; e.currentTarget.style.color = skin.textPrimary; }}
+                >
+                  <ChevronDown size={12} className="rotate-90" />
+                  返回森林
+                </button>
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <LinkIcon size={12} style={{ color: skin.swatch }} />
+                  <div
+                    className="text-xs font-medium truncate"
+                    style={{ color: skin.textPrimary }}
+                  >
+                    {selectedTree.name}
+                  </div>
+                  <div
+                    className="text-[10px] truncate flex-1 min-w-0"
+                    style={{ color: skin.textMuted }}
+                  >
+                    {selectedTree.link}
+                  </div>
+                </div>
+                <a
+                  href={selectedTree.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-colors"
+                  style={{ background: skin.cardHover, color: skin.textMuted }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = skin.swatch; e.currentTarget.style.color = "#fff"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = skin.cardHover; e.currentTarget.style.color = skin.textMuted; }}
+                  title="在新标签页打开"
+                >
+                  <ExternalLink size={11} />
+                  新窗口
+                </a>
+              </div>
+              {/* iframe 在当前页内打开链接 */}
+              <div className="flex-1 relative" style={{ background: "#fff" }}>
+                <iframe
+                  src={selectedTree.link}
+                  className="absolute inset-0 w-full h-full border-0"
+                  title={selectedTree.name}
+                  referrerPolicy="no-referrer-when-downgrade"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+                />
+              </div>
+            </div>
           )}
 
           {activeTab === "friends" && (
@@ -600,6 +668,29 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               placeholder="一句话描述这棵树要承载的方向"
               skin={skin}
             />
+            <div>
+              <label
+                className="text-xs mb-1.5 block tracking-wider uppercase flex items-center gap-1.5"
+                style={{ color: skin.textMuted }}
+              >
+                <LinkIcon size={11} />
+                链接（可选）
+              </label>
+              <input
+                value={newTree.link}
+                onChange={(e) => setNewTree({ ...newTree, link: e.target.value })}
+                placeholder="https://...  填写后点击树直接打开此链接"
+                className="w-full px-3 py-2 rounded-lg outline-none text-sm transition-all border"
+                style={{
+                  background: skin.cardBg,
+                  color: skin.textPrimary,
+                  borderColor: skin.divider,
+                }}
+              />
+              <div className="text-[10px] mt-1" style={{ color: skin.textMuted }}>
+                留空则进入知识库视图；填写后点击树会直接在当前页打开链接并支持返回。
+              </div>
+            </div>
             <div>
               <label
                 className="text-xs mb-1.5 block tracking-wider uppercase"
