@@ -338,7 +338,8 @@ function OakShape({
   // 树干：基础大尺寸，固定不再随节点缩减（sizeTier 已 shadow tier）
   const trunkH = 8 + sizeTier * 2.2;
   const trunkW = 3 + sizeTier * 0.6;
-  const crownY = 32 - trunkH;
+  // 树冠略向下深入树干区域，消除与主干之间的空隙
+  const crownY = 30 - trunkH;
   const crownSize = 10 + sizeTier * 2.4;
 
   // 树冠轮廓（用 cubic Bézier 绘制不规则自然云朵）
