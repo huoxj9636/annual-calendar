@@ -17,7 +17,7 @@
 
   // ====== 配置：站点 -> 返回地址 ======
   // 默认全部跳回年度日历主页。后续如需不同站点跳到不同目标，在这里改。
-  const CALENDAR_URL = 'https://afb12964-de81-46c9-b8ad-7dc27d262bda.dev.coze.site/';
+  const CALENDAR_URL = 'https://zdy5dkdm93.coze.site/';
 
   // ====== 常量 ======
   const BTN_ID = 'ext-back-to-calendar-btn';
