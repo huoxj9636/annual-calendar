@@ -463,91 +463,122 @@ function PineShape({
   // 基础尺寸：固定成树大小（不再随节点缩减）
   const sizeTier = Math.max(tier, 3);
   // 树干：笔直修长
-  const trunkH = 6 + sizeTier * 1.4;
-  const trunkW = 2.2 + sizeTier * 0.3;
-  // 树冠：层叠蓬松针叶层
+  const trunkH = 6 + sizeTier * 1.2;
+  const trunkW = 2.0 + sizeTier * 0.25;
+  // 树冠：层叠三角（圣诞树式），清晰、挺拔
   const layers = Math.max(2, Math.min(tier, 5));
-  const segmentH = (52 - trunkH) / layers;
-  const baseW = 8 + sizeTier * 1.6;
+  const baseW = 9 + sizeTier * 1.4; // 底层宽度
+  const topW = baseW * 0.18;        // 顶层宽度
+  const trunkTopY = 32;
+  const treeTopY = trunkTopY - trunkH - 1; // 顶层尖端
+  const segH = (trunkTopY - treeTopY) / layers;
 
-  // 蓬松针叶层路径（圆弧形+轻微下垂，不是锐角三角）
-  // 每层呈伞状云朵形，底部略下垂模拟松针蓬松感
-  const NeedleLayer = ({ yTop, yBot, w, color, op }: { yTop: number; yBot: number; w: number; color: string; op: number }) => {
-    const sideDrop = w * 0.08; // 底部下垂幅度
+  // 三角形针叶层（圣诞树风），底部平直，顶部收尖，整体圆润不锐利
+  const NeedleLayer = ({
+    yTop,
+    yBot,
+    wBot,
+    wTop,
+    color,
+    op,
+  }: {
+    yTop: number;
+    yBot: number;
+    wBot: number;
+    wTop: number;
+    color: string;
+    op: number;
+  }) => {
+    // 四个角轻微圆滑：从中心向四角各给一点弧度
+    const cxL_bot = 30 - wBot / 2;
+    const cxR_bot = 30 + wBot / 2;
+    const cxL_top = 30 - wTop / 2;
+    const cxR_top = 30 + wTop / 2;
+    const r = Math.min(0.8, (wBot - wTop) * 0.18); // 圆角半径
     return (
       <path
-        d={`M30,${yTop}
-            Q${30 - w * 0.15},${(yTop + yBot) * 0.5 - 0.5} ${30 - w / 2},${yBot - sideDrop}
-            Q${30 - w * 0.45},${yBot + sideDrop * 0.3} ${30 - w * 0.2},${yBot + 0.3}
-            L${30 + w * 0.2},${yBot + 0.3}
-            Q${30 + w * 0.45},${yBot + sideDrop * 0.3} ${30 + w / 2},${yBot - sideDrop}
-            Q${30 + w * 0.15},${(yTop + yBot) * 0.5 - 0.5} 30,${yTop} Z`}
+        d={`M${30},${yTop}
+            Q${cxR_top + r * 0.4},${yTop + r * 0.6} ${cxR_top + 0.3},${(yTop + yBot) * 0.5}
+            Q${cxR_bot - r * 0.4},${yBot - r * 0.6} ${cxR_bot},${yBot}
+            L${cxL_bot},${yBot}
+            Q${cxL_bot + r * 0.4},${yBot - r * 0.6} ${cxL_top - 0.3},${(yTop + yBot) * 0.5}
+            Q${cxL_top - r * 0.4},${yTop + r * 0.6} ${30},${yTop} Z`}
         fill={color}
         opacity={op}
       />
     );
   };
 
-  // 树干（笔直 + 略带树皮裂纹）
+  // 树干（笔直）
   const trunkPath = `
-    M ${30 - trunkW / 2},32
-    L ${30 + trunkW / 2},32
-    L ${30 + trunkW / 2 + 0.3},${32 + trunkH}
-    L ${30 - trunkW / 2 - 0.3},${32 + trunkH}
+    M ${30 - trunkW / 2},${trunkTopY}
+    L ${30 + trunkW / 2},${trunkTopY}
+    L ${30 + trunkW / 2 + 0.3},${trunkTopY + trunkH}
+    L ${30 - trunkW / 2 - 0.3},${trunkTopY + trunkH}
     Z`.replace(/\s+/g, " ").trim();
+
+  // 计算每层参数
+  const layerInfo = Array.from({ length: layers }).map((_, i) => {
+    const t = i / Math.max(layers - 1, 1);
+    const yBot = trunkTopY - i * segH;     // 该层底部 y
+    const yTop = trunkTopY - (i + 1) * segH + segH * 0.18; // 该层顶部 y（向上收）
+    const wBot = baseW * (1 - t * 0.35);
+    const wTop = Math.max(topW, wBot * 0.18);
+    return { yTop, yBot, wBot, wTop };
+  });
 
   return (
     <g>
       {/* 树干 */}
       <path d={trunkPath} fill="#5C3818" />
-      {/* 树皮裂纹（细密竖线，松树皮特征） */}
-      <g stroke="#3D2415" strokeLinecap="round" opacity="0.55">
-        <line x1={30 - trunkW * 0.25} y1="33" x2={30 - trunkW * 0.25} y2={32 + trunkH - 0.5} strokeWidth="0.3" />
-        <line x1={30 - trunkW * 0.05} y1="33" x2={30 - trunkW * 0.08} y2={32 + trunkH - 0.5} strokeWidth="0.35" />
-        <line x1={30 + trunkW * 0.2} y1="33" x2={30 + trunkW * 0.18} y2={32 + trunkH - 0.5} strokeWidth="0.3" />
-        <line x1={30 + trunkW * 0.35} y1="33" x2={30 + trunkW * 0.32} y2={32 + trunkH - 0.5} strokeWidth="0.25" />
-      </g>
+      {/* 树干中央高光线（增加立体感） */}
+      <line
+        x1={30}
+        y1={trunkTopY + 0.5}
+        x2={30}
+        y2={trunkTopY + trunkH - 0.5}
+        stroke="#7A5230"
+        strokeWidth="0.35"
+        opacity="0.6"
+      />
       {/* 根部土堆 */}
-      <ellipse cx="30" cy={32 + trunkH + 0.3} rx={trunkW * 0.9} ry="0.7" fill="#5C3818" opacity="0.4" />
-      {/* 针叶层叠（蓬松云朵状，底层最深，顶层最亮） */}
-      {Array.from({ length: layers }).map((_, i) => {
-        const yTop = 32 - (i + 1) * segmentH + segmentH * 0.3;
-        const yBot = 32 - i * segmentH + segmentH * 0.5;
-        const w = baseW * (1 - i / (layers + 1));
+      <ellipse cx="30" cy={trunkTopY + trunkH + 0.3} rx={trunkW * 0.9} ry="0.7" fill="#5C3818" opacity="0.4" />
+      {/* 针叶层叠：底层深 + 顶层亮，层与层之间错位（上层稍微下移覆盖下层） */}
+      {layerInfo.map((info, i) => {
+        const { yTop, yBot, wBot, wTop } = info;
         return (
           <g key={i}>
-            <NeedleLayer yTop={yTop} yBot={yBot} w={w} color={i % 2 === 0 ? accent : accentDeep} op={0.95 - i * 0.04} />
-            {/* 每层底部加一点下垂松针（细弧线） */}
-            <path
-              d={`M${30 - w / 2 + 0.3},${yBot - 0.3} Q${30 - w * 0.25},${yBot + 1.2} ${30 - w * 0.1},${yBot + 0.2}`}
-              stroke={i % 2 === 0 ? accent : accentDeep}
-              strokeWidth="0.4"
-              fill="none"
-              opacity="0.7"
+            {/* 主层（深色） */}
+            <NeedleLayer
+              yTop={yTop}
+              yBot={yBot}
+              wBot={wBot}
+              wTop={wTop}
+              color={i === 0 ? accentDeep : accent}
+              op={0.95 - i * 0.03}
             />
-            <path
-              d={`M${30 + w / 2 - 0.3},${yBot - 0.3} Q${30 + w * 0.25},${yBot + 1.2} ${30 + w * 0.1},${yBot + 0.2}`}
-              stroke={i % 2 === 0 ? accent : accentDeep}
-              strokeWidth="0.4"
-              fill="none"
-              opacity="0.7"
-            />
+            {/* 上层向下一层底部延伸一点，形成层叠错位感 */}
+            {i > 0 && (
+              <NeedleLayer
+                yTop={yTop + segH * 0.18}
+                yBot={yBot + segH * 0.18}
+                wBot={wBot * 0.95}
+                wTop={wTop * 0.9}
+                color={accentDeep}
+                op={0.35}
+              />
+            )}
           </g>
         );
       })}
-      {/* 树顶尖收 */}
-      <path
-        d={`M30,${32 - layers * segmentH + segmentH * 0.05} L${30 - 0.4},${32 - (layers - 1) * segmentH + segmentH * 0.3} L${30 + 0.4},${32 - (layers - 1) * segmentH + segmentH * 0.3} Z`}
-        fill={accent}
-        opacity="0.95"
-      />
-      {/* 古木加一点苔藓暗纹 + 树瘤 */}
+      {/* 顶尖小星形装饰（雪松/圣诞树风） */}
+      <circle cx="30" cy={treeTopY - 0.5} r="0.9" fill={accent} opacity="0.9" />
+      {/* 古木加一点深色斑驳 */}
       {ancient && (
-        <g opacity="0.5">
-          <ellipse cx="24" cy={32 - layers * 0.5 * segmentH} rx="1.0" ry="0.6" fill={accentDeep} />
-          <ellipse cx="36" cy={32 - (layers - 1) * 0.7 * segmentH} rx="0.9" ry="0.5" fill={accentDeep} />
-          {/* 树瘤 */}
-          <ellipse cx={30 + trunkW * 0.4} cy={32 + trunkH * 0.4} rx="0.7" ry="0.5" fill="#3D2415" />
+        <g opacity="0.4">
+          <ellipse cx="24" cy={treeTopY + segH * 1.2} rx="0.9" ry="0.5" fill={accentDeep} />
+          <ellipse cx="36" cy={treeTopY + segH * 2.4} rx="0.8" ry="0.45" fill={accentDeep} />
+          <ellipse cx={30 + trunkW * 0.45} cy={trunkTopY + trunkH * 0.45} rx="0.6" ry="0.4" fill="#3D2415" />
         </g>
       )}
     </g>
