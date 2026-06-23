@@ -464,7 +464,8 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
           {!selectedTree && (
             <div className="flex-1 min-h-0">
               <MyForestView
-              forestItems={pagedForestItems}
+              sceneItems={pagedForestItems}
+              listItems={forestItems}
               totalNodes={stats.totalNodes}
               totalTrees={stats.totalTrees}
               onSelectTree={(id) => {
@@ -476,6 +477,15 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               onEditTree={handleEditTree}
               onTreePositionChange={handleTreePositionChange}
               onTreeScaleChange={handleTreeScaleChange}
+              onFocusTree={(id) => {
+                // 跨页定位：计算目标树所在页码
+                const idx = forestItems.findIndex((t) => t.id === id);
+                if (idx >= 0) {
+                  const targetPage = Math.floor(idx / FOREST_PAGE_SIZE);
+                  setForestPage(targetPage);
+                  // 设置 focusTreeId 由 MyForestView 内部处理
+                }
+              }}
               skin={skin}
             />
             </div>
@@ -868,7 +878,8 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
 
 /** Tab 按钮 */
 function MyForestView({
-  forestItems,
+  sceneItems,
+  listItems,
   totalNodes,
   totalTrees,
   onSelectTree,
@@ -877,9 +888,11 @@ function MyForestView({
   onEditTree,
   onTreePositionChange,
   onTreeScaleChange,
+  onFocusTree,
   skin,
 }: {
-  forestItems: ForestItem[];
+  sceneItems: ForestItem[];
+  listItems: ForestItem[];
   totalNodes: number;
   totalTrees: number;
   onSelectTree: (id: string) => void;
@@ -888,39 +901,43 @@ function MyForestView({
   onEditTree: (id: string) => void;
   onTreePositionChange: (id: string, position: { x: number; y: number }) => void;
   onTreeScaleChange: (id: string, scale: number) => void;
+  onFocusTree: (id: string) => void;
   skin: SkinTheme;
 }) {
   // 新增树时自动重置画布到中心：pan=0 让 position (50,50) 的新树正好在可视区中央
   const [panResetKey, setPanResetKey] = useState(0);
-  const prevCountRef = useRef(forestItems.length);
+  const prevCountRef = useRef(sceneItems.length);
   useEffect(() => {
-    if (forestItems.length > prevCountRef.current) {
+    if (sceneItems.length > prevCountRef.current) {
       // 新树刚被种下 → 触发画布复位
       setPanResetKey((k) => k + 1);
     }
-    prevCountRef.current = forestItems.length;
-  }, [forestItems.length]);
+    prevCountRef.current = sceneItems.length;
+  }, [sceneItems.length]);
 
   // 树列表折叠状态（默认收起）
   const [listOpen, setListOpen] = useState(false);
   // focus 树 id：点击列表项时设置，ForestScene 内部高亮该树（不 pan，树永远在屏幕内）
   const [focusTreeId, setFocusTreeId] = useState<string | null>(null);
 
-  // 按节点数倒序排（参天古木在前）
+  // 按节点数倒序排（参天古木在前）—— 用于列表显示（全量）
   const sortedItems = useMemo(
-    () => [...forestItems].sort((a, b) => b.count - a.count),
-    [forestItems]
+    () => [...listItems].sort((a, b) => b.count - a.count),
+    [listItems]
   );
 
+  // 点击列表项定位：跨页跳转 + 高亮
   const handleFocusTree = useCallback((id: string) => {
-    setFocusTreeId(id);
-  }, []);
+    onFocusTree(id); // 父组件处理跨页跳转
+    setFocusTreeId(id); // 高亮
+    setTimeout(() => setFocusTreeId(null), 2000); // 2秒后取消高亮
+  }, [onFocusTree]);
 
   return (
     <div className="relative h-full">
       {/* 森林全景：铺满整个详情页 */}
       <ForestScene
-        items={forestItems}
+        items={sceneItems}
         skin={skin}
         variant="my"
         onItemClick={onSelectTree}
@@ -962,7 +979,7 @@ function MyForestView({
             className="ml-auto text-[11px] font-mono tabular-nums"
             style={{ color: skin.textMuted }}
           >
-            {forestItems.length}
+            {listItems.length}
           </span>
         </button>
 

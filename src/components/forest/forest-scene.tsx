@@ -613,7 +613,7 @@ export default function ForestScene({
     } catch {}
   }, [resetTrigger]);
 
-  // 外部触发 focus 树：focusTreeId 变化时，pan 调整到让该树在可视区中央 + 短暂高亮 pulse
+  // 外部触发 focus 树：focusTreeId 变化或 items 变化时，高亮目标树
   useEffect(() => {
     if (!focusTreeId) return;
     const target = items.find((it) => it.id === focusTreeId);
@@ -625,7 +625,7 @@ export default function ForestScene({
     }, 2400);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusTreeId]);
+  }, [focusTreeId, items]);
 
   // 外部触发"鸟瞰"：计算所有树的总中心，pan 让总中心对齐可视区中心 + zoom 归 1
   // 用于"拖完树后找不到树了"的一键复位
