@@ -450,13 +450,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               }}
               onAddTree={() => setShowAddTree(true)}
               onDeleteTree={setPendingDeleteTreeId}
-              onEditTree={(id) => {
-                const t = trees.find((x) => x.id === id);
-                if (t) {
-                  setEditingTree(t);
-                  setShowEditTree(true);
-                }
-              }}
+              onEditTree={handleEditTree}
               onTreePositionChange={handleTreePositionChange}
               onTreeScaleChange={handleTreeScaleChange}
               skin={skin}
