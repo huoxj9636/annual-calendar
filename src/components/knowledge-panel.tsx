@@ -12,7 +12,6 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   Plus,
   Trees,
-  Users,
   X,
   Sparkles,
   Trash2,
@@ -34,14 +33,11 @@ import {
   Award,
   Link as LinkIcon,
   ExternalLink,
-  BookOpen,
-  Briefcase,
-  LayoutDashboard,
+  Pencil,
 } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import ForestScene, { type ForestItem } from "./forest/forest-scene";
 import TreeCloseup, { TREE_NODE_TYPE_INFO, type NodeType } from "./forest/tree-closeup";
-import FriendsForest from "./forest/friends-forest";
 import { TREE_SPECIES, SpeciesPreview, type TreeSpeciesId } from "./forest/tree-species";
 import { IframeControls } from "./forest/iframe-controls";
 
@@ -106,7 +102,6 @@ function groupNodesByType(nodes: KnowledgeNode[]) {
 
 // === 主组件 ===
 export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelProps) {
-  const [activeTab, setActiveTab] = useState<"os" | "my" | "friends">("os");
   const [trees, setTrees] = useState<KnowledgeTree[]>([]);
   const [selectedTree, setSelectedTree] = useState<KnowledgeTree | null>(null);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
@@ -114,18 +109,20 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   // 弹窗状态
   const [showAddTree, setShowAddTree] = useState(false);
   const [showAddNode, setShowAddNode] = useState<NodeType | null>(null);
-  const [showAddBookmark, setShowAddBookmark] = useState(false);
   const [pendingDeleteTreeId, setPendingDeleteTreeId] = useState<string | null>(null);
+  // 树编辑弹窗
+  const [editingTree, setEditingTree] = useState<KnowledgeTree | null>(null);
+  const [showEditTree, setShowEditTree] = useState(false);
 
   // 表单状态
   const [newTree, setNewTree] = useState<{ name: string; industry: string; description: string; species: TreeSpeciesId; link: string }>({ name: "", industry: "", description: "", species: "oak", link: "" });
+  const [editForm, setEditForm] = useState<{ name: string; industry: string; description: string; species: TreeSpeciesId; link: string }>({ name: "", industry: "", description: "", species: "oak", link: "" });
   const [newNode, setNewNode] = useState<{
     type: NodeType;
     title: string;
     content: string;
     source: string;
   }>({ type: "leaf", title: "", content: "", source: "" });
-  const [newBookmark, setNewBookmark] = useState({ name: "", url: "" });
 
   const [mounted, setMounted] = useState(false);
 
@@ -218,6 +215,59 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
     setPendingDeleteTreeId(id);
   };
 
+  // 打开编辑弹窗，并把当前值填入表单
+  const handleEditTree = (id: string) => {
+    const t = trees.find((x) => x.id === id);
+    if (!t) return;
+    setEditingTree(t);
+    setEditForm({
+      name: t.name,
+      industry: t.industry,
+      description: t.description,
+      species: t.species ?? "oak",
+      link: t.link ?? "",
+    });
+    setShowEditTree(true);
+  };
+
+  // 保存编辑：保留 id / nodes / position / scale / createdAt 等结构字段，只更新可见字段
+  const handleSaveEdit = () => {
+    if (!editingTree) return;
+    const name = editForm.name.trim();
+    if (!name) return;
+    setTrees((prev) =>
+      prev.map((t) =>
+        t.id === editingTree.id
+          ? {
+              ...t,
+              name,
+              industry: editForm.industry.trim() || name,
+              description: editForm.description,
+              species: editForm.species,
+              ...(editForm.link.trim() ? { link: editForm.link.trim() } : { link: undefined }),
+            }
+          : t
+      )
+    );
+    // 如果当前正选中这棵树，同步更新 selectedTree 引用，避免知识库视图渲染旧值
+    if (selectedTree && selectedTree.id === editingTree.id) {
+      setSelectedTree((prev) =>
+        prev && prev.id === editingTree.id
+          ? {
+              ...prev,
+              name,
+              industry: editForm.industry.trim() || name,
+              description: editForm.description,
+              species: editForm.species,
+              ...(editForm.link.trim() ? { link: editForm.link.trim() } : { link: undefined }),
+            }
+          : prev
+      );
+    }
+    setShowEditTree(false);
+    setEditingTree(null);
+  };
+
   const confirmDeleteTree = () => {
     if (!pendingDeleteTreeId) return;
     const id = pendingDeleteTreeId;
@@ -261,28 +311,6 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
     };
     setSelectedTree(updatedTree);
     setTrees(trees.map((t) => (t.id === selectedTree.id ? updatedTree : t)));
-  };
-
-  const handleAddBookmark = () => {
-    if (!newBookmark.name.trim() || !newBookmark.url.trim()) return;
-    const bookmark: Bookmark = {
-      id: `bookmark-${Date.now()}`,
-      name: newBookmark.name,
-      url: newBookmark.url,
-      type: "bookmark",
-    };
-    setBookmarks([...bookmarks, bookmark]);
-    setNewBookmark({ name: "", url: "" });
-    setShowAddBookmark(false);
-  };
-
-  const handleDeleteBookmark = (id: string) => {
-    if (!confirm("确定移除这位朋友吗？")) return;
-    const next = bookmarks.filter((b) => b.id !== id);
-    setBookmarks(next);
-    if (next.length === 0) {
-      localStorage.removeItem("knowledge-bookmarks");
-    }
   };
 
   // === 计算森林数据 ===
@@ -409,51 +437,9 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
           </div>
         )}
 
-        {/* Tab 切换 - 进入详情页时隐藏 */}
-        {!selectedTree && (
-          <div
-            className="flex border-b pr-4"
-            style={{ borderColor: skin.divider }}
-          >
-          <TabButton
-              active={activeTab === "os"}
-              onClick={() => {
-                setActiveTab("os");
-                setSelectedTree(null);
-              }}
-              skin={skin}
-              icon={<LayoutDashboard size={14} />}
-              label="森林OS"
-              subLabel="概览"
-            />
-          <TabButton
-              active={activeTab === "my"}
-              onClick={() => {
-                setActiveTab("my");
-                setSelectedTree(null);
-              }}
-              skin={skin}
-              icon={<Trees size={14} />}
-              label="我的森林"
-              subLabel={`${stats.totalTrees} 棵`}
-            />
-          <TabButton
-            active={activeTab === "friends"}
-            onClick={() => {
-              setActiveTab("friends");
-              setSelectedTree(null);
-            }}
-            skin={skin}
-            icon={<Users size={14} />}
-            label="好友森林"
-            subLabel={`${bookmarks.length} 位`}
-          />
-        </div>
-        )}
-
-        {/* 内容区 */}
+        {/* 内容区：直接渲染树视图（已去掉 OS / 好友森林 tab） */}
         <div className="flex-1" style={{ overflow: "visible" }}>
-          {activeTab === "my" && !selectedTree && (
+          {!selectedTree && (
             <MyForestView
               forestItems={forestItems}
               totalNodes={stats.totalNodes}
@@ -464,13 +450,20 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               }}
               onAddTree={() => setShowAddTree(true)}
               onDeleteTree={setPendingDeleteTreeId}
+              onEditTree={(id) => {
+                const t = trees.find((x) => x.id === id);
+                if (t) {
+                  setEditingTree(t);
+                  setShowEditTree(true);
+                }
+              }}
               onTreePositionChange={handleTreePositionChange}
               onTreeScaleChange={handleTreeScaleChange}
               skin={skin}
             />
           )}
 
-          {activeTab === "my" && selectedTree && !selectedTree.link && (
+          {selectedTree && !selectedTree.link && (
             <TreeCloseup
               tree={selectedTree}
               nodesByType={selectedNodesByType}
@@ -482,7 +475,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
             />
           )}
 
-          {activeTab === "my" && selectedTree && selectedTree.link && (
+          {selectedTree && selectedTree.link && (
             <div className="h-full relative" style={{ background: skin.panelBg }}>
               {/* iframe 在当前页内打开链接（占满整个区域） */}
               <iframe
@@ -498,103 +491,6 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
                 treeLink={selectedTree.link}
                 onBack={() => setSelectedTree(null)}
               />
-            </div>
-          )}
-
-          {activeTab === "friends" && (
-            <FriendsForest
-              bookmarks={bookmarks}
-              onAdd={() => setShowAddBookmark(true)}
-              onDelete={handleDeleteBookmark}
-              skin={skin}
-            />
-          )}
-
-          {activeTab === "os" && (
-            <div className="p-6 space-y-6">
-              {/* 概览统计 */}
-              <div className="grid grid-cols-4 gap-4">
-                <div
-                  className="p-4 rounded-lg bg-card border"
-                  style={{ borderColor: skin.divider }}
-                >
-                  <div className="text-sm text-muted-foreground mb-1">项目总数</div>
-                  <div className="text-2xl font-bold" style={{ color: skin.swatch }}>
-                    {stats.totalTrees}
-                  </div>
-                </div>
-                <div
-                  className="p-4 rounded-lg bg-card border"
-                  style={{ borderColor: skin.divider }}
-                >
-                  <div className="text-sm text-muted-foreground mb-1">节点总数</div>
-                  <div className="text-2xl font-bold" style={{ color: skin.swatch }}>
-                    {stats.totalNodes}
-                  </div>
-                </div>
-                <div
-                  className="p-4 rounded-lg bg-card border"
-                  style={{ borderColor: skin.divider }}
-                >
-                  <div className="text-sm text-muted-foreground mb-1">好友数量</div>
-                  <div className="text-2xl font-bold" style={{ color: skin.swatch }}>
-                    {bookmarks.length}
-                  </div>
-                </div>
-                <div
-                  className="p-4 rounded-lg bg-card border"
-                  style={{ borderColor: skin.divider }}
-                >
-                  <div className="text-sm text-muted-foreground mb-1">最高阶段</div>
-                  <div className="text-2xl font-bold" style={{ color: skin.swatch }}>
-                    {stats.highestLabel}
-                  </div>
-                </div>
-              </div>
-
-              {/* 快捷入口 */}
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  className="p-4 rounded-lg bg-card border flex items-center gap-3 hover:bg-muted/50 transition-colors"
-                  style={{ borderColor: skin.divider }}
-                  onClick={() => setActiveTab("my")}
-                >
-                  <Trees size={24} style={{ color: skin.swatch }} />
-                  <div>
-                    <div className="font-medium">我的森林</div>
-                    <div className="text-sm text-muted-foreground">管理项目与知识节点</div>
-                  </div>
-                </button>
-                <button
-                  className="p-4 rounded-lg bg-card border flex items-center gap-3 hover:bg-muted/50 transition-colors"
-                  style={{ borderColor: skin.divider }}
-                  onClick={() => setActiveTab("friends")}
-                >
-                  <Users size={24} style={{ color: skin.swatch }} />
-                  <div>
-                    <div className="font-medium">好友森林</div>
-                    <div className="text-sm text-muted-foreground">查看好友的公开项目</div>
-                  </div>
-                </button>
-              </div>
-
-              {/* 大树模型说明 */}
-              <div
-                className="p-4 rounded-lg bg-muted/30 border"
-                style={{ borderColor: skin.divider }}
-              >
-                <div className="font-medium mb-2 flex items-center gap-2">
-                  <BookOpen size={16} style={{ color: skin.swatch }} />
-                  大树模型
-                </div>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <p>根 → 找到问题的根源</p>
-                  <p>干 → 设定明确的目标</p>
-                  <p>枝 → 设计实现方案</p>
-                  <p>叶 → 分解执行步骤</p>
-                  <p>果 → 验收成果并复盘</p>
-                </div>
-              </div>
             </div>
           )}
         </div>
@@ -701,6 +597,121 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         </Modal>
       )}
 
+      {showEditTree && editingTree && (
+        <Modal
+          title="编辑这棵树"
+          onClose={() => {
+            setShowEditTree(false);
+            setEditingTree(null);
+          }}
+          skin={skin}
+          icon={<Pencil size={16} />}
+          maxWidth="max-w-2xl"
+        >
+          <div className="space-y-3">
+            {/* 第 1 行：名称 + 领域 */}
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="树的名称"
+                value={editForm.name}
+                onChange={(v) => setEditForm({ ...editForm, name: v })}
+                placeholder="如：技术成长"
+                skin={skin}
+              />
+              <Input
+                label="领域/行业"
+                value={editForm.industry}
+                onChange={(v) => setEditForm({ ...editForm, industry: v })}
+                placeholder="如：互联网、AI..."
+                skin={skin}
+              />
+            </div>
+            {/* 第 2 行：描述 */}
+            <Textarea
+              label="描述"
+              value={editForm.description}
+              onChange={(v) => setEditForm({ ...editForm, description: v })}
+              placeholder="一句话描述这棵树要承载的方向"
+              skin={skin}
+            />
+            {/* 第 3 行：链接 */}
+            <div>
+              <label
+                className="text-xs mb-1.5 block tracking-wider uppercase flex items-center gap-1.5"
+                style={{ color: skin.textMuted }}
+              >
+                <LinkIcon size={11} />
+                链接（可选）
+              </label>
+              <input
+                value={editForm.link}
+                onChange={(e) => setEditForm({ ...editForm, link: e.target.value })}
+                placeholder="https://...  留空清空链接"
+                className="w-full px-3 py-2 rounded-lg outline-none text-sm transition-all border"
+                style={{
+                  background: skin.cardBg,
+                  color: skin.textPrimary,
+                  borderColor: skin.divider,
+                }}
+              />
+              <div className="text-[10px] mt-1" style={{ color: skin.textMuted }}>
+                修改后点击树的跳转目标会同步更新；如想恢复纯知识库视图，把链接清空即可。
+              </div>
+            </div>
+            {/* 第 4 行：树种 */}
+            <div>
+              <label
+                className="text-xs mb-1.5 block tracking-wider uppercase"
+                style={{ color: skin.textMuted }}
+              >
+                树种
+              </label>
+              <div className="grid grid-cols-6 gap-2">
+                {(Object.keys(TREE_SPECIES) as TreeSpeciesId[]).map((key) => {
+                  const info = TREE_SPECIES[key];
+                  const isActive = editForm.species === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, species: key })}
+                      className="rounded-lg p-2.5 flex flex-col items-center gap-1 transition-all hover:scale-[1.02]"
+                      style={{
+                        background: isActive ? skin.swatch + "20" : skin.cardBg,
+                        border: isActive ? `1.5px solid ${skin.swatch}` : `1px solid ${skin.divider}`,
+                      }}
+                    >
+                      <SpeciesPreview species={key} />
+                      <div className="text-xs font-medium" style={{ color: skin.textPrimary }}>
+                        {info.name}
+                      </div>
+                      <div className="text-[10px] leading-tight text-center opacity-70" style={{ color: skin.textMuted }}>
+                        {info.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <Button
+                onClick={() => {
+                  setShowEditTree(false);
+                  setEditingTree(null);
+                }}
+                variant="ghost"
+                skin={skin}
+              >
+                取消
+              </Button>
+              <Button onClick={handleSaveEdit} skin={skin}>
+                保存修改
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {showAddNode && selectedTree && (() => {
         const NodeIcon = TREE_NODE_TYPE_INFO[showAddNode].Icon;
         return (
@@ -776,35 +787,6 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         );
       })()}
 
-      {showAddBookmark && (
-        <Modal title="邀请一位朋友" onClose={() => setShowAddBookmark(false)} skin={skin} icon={<Users size={16} />}>
-          <div className="space-y-3">
-            <Input
-              label="名字"
-              value={newBookmark.name}
-              onChange={(v) => setNewBookmark({ ...newBookmark, name: v })}
-              placeholder="朋友的名字"
-              skin={skin}
-            />
-            <Input
-              label="链接"
-              value={newBookmark.url}
-              onChange={(v) => setNewBookmark({ ...newBookmark, url: v })}
-              placeholder="https://..."
-              skin={skin}
-            />
-            <div className="flex gap-2 justify-end pt-2">
-              <Button onClick={() => setShowAddBookmark(false)} variant="ghost" skin={skin}>
-                取消
-              </Button>
-              <Button onClick={handleAddBookmark} skin={skin}>
-                邀请
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
       {/* 删除树确认 */}
       {pendingDeleteTreeId && (
         <Modal
@@ -840,46 +822,6 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
 // === 子组件 ===
 
 /** Tab 按钮 */
-function TabButton({
-  active,
-  onClick,
-  icon,
-  label,
-  subLabel,
-  skin,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-  subLabel: string;
-  skin: SkinTheme;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="relative px-6 py-3 transition-colors flex items-center gap-2"
-      style={{
-        color: active ? skin.swatch : skin.textSecondary,
-        borderBottom: active ? `2px solid ${skin.swatch}` : "2px solid transparent",
-      }}
-    >
-      <span style={{ opacity: active ? 1 : 0.6 }}>{icon}</span>
-      <span className="font-medium">{label}</span>
-      <span
-        className="text-[10px] px-1.5 py-0.5 rounded-full font-mono"
-        style={{
-          background: active ? `${skin.swatch}20` : `${skin.textMuted}20`,
-          color: active ? skin.swatch : skin.textMuted,
-        }}
-      >
-        {subLabel}
-      </span>
-    </button>
-  );
-}
-
-/** 我的森林主视图：森林全景铺满整个内容区 + 统计 chip + 种新树入口 */
 function MyForestView({
   forestItems,
   totalNodes,
@@ -887,6 +829,7 @@ function MyForestView({
   onSelectTree,
   onAddTree,
   onDeleteTree,
+  onEditTree,
   onTreePositionChange,
   onTreeScaleChange,
   skin,
@@ -897,6 +840,7 @@ function MyForestView({
   onSelectTree: (id: string) => void;
   onAddTree: () => void;
   onDeleteTree: (id: string) => void;
+  onEditTree: (id: string) => void;
   onTreePositionChange: (id: string, position: { x: number; y: number }) => void;
   onTreeScaleChange: (id: string, scale: number) => void;
   skin: SkinTheme;
@@ -936,6 +880,7 @@ function MyForestView({
         variant="my"
         onItemClick={onSelectTree}
         onItemDelete={onDeleteTree}
+        onItemEdit={onEditTree}
         onItemPositionChange={onTreePositionChange}
         onItemScaleChange={onTreeScaleChange}
         fillHeight

@@ -234,8 +234,30 @@ export function IframeControls({
 
   if (!mounted) return null;
 
+  // 两个按钮用同一套主题色 + 同一套尺寸，确保视觉一致 + 拖拽手感一致。
+  // 新窗口按钮改用 <button> + window.open，避免 <a href target=_blank>
+  // 拦截 pointer 事件 / 系统拖拽行为造成的"拖拽不灵敏"。
   const baseClass =
-    "fixed z-[80] w-10 h-10 rounded-full shadow-lg flex items-center justify-center select-none transition-transform duration-150 ease-out";
+    "fixed z-[80] w-8 h-8 rounded-full shadow-md flex items-center justify-center select-none transition-transform duration-150 ease-out";
+
+  const handleReturnClick = (e: React.MouseEvent) => {
+    if (returnCtrl.wasDraggingRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    onBack();
+  };
+
+  const handleExternalClick = (e: React.MouseEvent) => {
+    if (externalCtrl.wasDraggingRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    e.preventDefault();
+    window.open(treeLink, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <>
@@ -243,13 +265,7 @@ export function IframeControls({
         type="button"
         aria-label="返回森林"
         title={`返回森林（${treeName}）`}
-        onClick={(e) => {
-          if (returnCtrl.wasDraggingRef.current) {
-            e.preventDefault();
-            return;
-          }
-          onBack();
-        }}
+        onClick={handleReturnClick}
         className={`${baseClass} bg-primary text-primary-foreground hover:scale-110 active:scale-95 ${
           returnCtrl.dragging ? "cursor-grabbing scale-110 ring-2 ring-primary/40" : "cursor-grab"
         }`}
@@ -260,23 +276,16 @@ export function IframeControls({
         }}
         {...returnCtrl.handlers}
       >
-        <ArrowLeftIcon size={18} />
+        <ArrowLeftIcon size={16} />
       </button>
 
-      <a
-        href={treeLink}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="在新标签页打开"
+      <button
+        type="button"
         aria-label="在新标签页打开"
-        onClick={(e) => {
-          if (externalCtrl.wasDraggingRef.current) {
-            e.preventDefault();
-            return;
-          }
-        }}
-        className={`${baseClass} bg-card text-foreground border border-border hover:scale-110 active:scale-95 ${
-          externalCtrl.dragging ? "cursor-grabbing scale-110 ring-2 ring-foreground/30" : "cursor-grab"
+        title="在新标签页打开"
+        onClick={handleExternalClick}
+        className={`${baseClass} bg-primary text-primary-foreground hover:scale-110 active:scale-95 ${
+          externalCtrl.dragging ? "cursor-grabbing scale-110 ring-2 ring-primary/40" : "cursor-grab"
         }`}
         style={{
           left: externalCtrl.pos.x,
@@ -285,8 +294,8 @@ export function IframeControls({
         }}
         {...externalCtrl.handlers}
       >
-        <ExternalIcon size={16} />
-      </a>
+        <ExternalIcon size={15} />
+      </button>
     </>
   );
 }

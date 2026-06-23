@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useRef, useState, useCallback, useEffect } from "react";
-import { X, TreeDeciduous } from "lucide-react";
+import { X, TreeDeciduous, Pencil } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import { SpeciesTree, TREE_SPECIES, type TreeSpeciesId } from "./tree-species";
 
@@ -47,6 +47,8 @@ export type ForestSceneProps = {
   onItemClick?: (id: string) => void;
   /** 删除树木回调（提供时悬停会出现删除按钮） */
   onItemDelete?: (id: string) => void;
+  /** 编辑树木回调（提供时悬停会出现编辑按钮） */
+  onItemEdit?: (id: string) => void;
   /** 选中的 item id（高亮） */
   selectedId?: string;
   /** 变体：my = 我的森林，friends = 好友森林 */
@@ -114,6 +116,7 @@ function ForestTree({
   focused,
   onClick,
   onDelete,
+  onEdit,
   onPositionChange,
   onScaleChange,
   draggable,
@@ -132,6 +135,7 @@ function ForestTree({
   focused?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
+  onEdit?: () => void;
   onPositionChange?: (position: { x: number; y: number }) => void;
   onScaleChange?: (scale: number) => void;
   draggable?: boolean;
@@ -418,6 +422,39 @@ function ForestTree({
           }}
         >
           <span>{item.name}</span>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onEdit();
+              }}
+              onPointerDown={(e) => {
+                // 阻止冒泡到外层 div 的拖拽/点击逻辑
+                e.stopPropagation();
+              }}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+              }}
+              aria-label="编辑这棵树"
+              className="ml-0.5 rounded-full flex items-center justify-center pointer-events-auto transition-colors"
+              style={{ 
+                background: "rgba(255,255,255,0.18)",
+                width: 16,
+                height: 16,
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.42)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.18)";
+              }}
+              title="编辑这棵树"
+            >
+              <Pencil size={10} strokeWidth={2.5} />
+            </button>
+          )}
           {onDelete && (
             <button
               type="button"
@@ -482,6 +519,7 @@ export default function ForestScene({
   fillHeight = false,
   onItemClick,
   onItemDelete,
+  onItemEdit,
   onItemPositionChange,
   onItemScaleChange,
   selectedId,
@@ -688,6 +726,7 @@ export default function ForestScene({
             focused={item.id === focusPulseId || focusPulseId === "__all__"}
             onClick={onItemClick ? () => onItemClick(item.id) : undefined}
             onDelete={onItemDelete ? () => onItemDelete(item.id) : undefined}
+            onEdit={onItemEdit ? () => onItemEdit(item.id) : undefined}
             onPositionChange={
               onItemPositionChange
                 ? (p) => onItemPositionChange(item.id, p)
