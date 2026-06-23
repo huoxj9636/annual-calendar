@@ -1,11 +1,8 @@
 "use client";
 
-/**
- * KnowledgePanel - 知识森林主入口
+/* knowledge-panel.tsx - 知识森林主入口
  *
- * 视觉：参考蚂蚁森林 - 全景森林 + 树木成长阶段 + 好友森林
- * 数据：保留所有 localStorage 字段（knowledge-trees / knowledge-bookmarks）
- *      5 种知识类型（root/trunk/branch/leaf/fruit）保持兼容
+ * 数据：树信息存于 Supabase knowledge_trees 表，经由 /api/trees API
  */
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
@@ -131,82 +128,79 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
     setMounted(true);
   }, []);
 
-  // 加载数据
+  // 加载数据（从 Supabase API）
   useEffect(() => {
     if (!mounted) return;
-    try {
-      const savedTrees = localStorage.getItem("knowledge-trees");
-      if (savedTrees) {
-        const parsed = JSON.parse(savedTrees);
-        if (Array.isArray(parsed)) {
-          setTrees(
-            parsed.map((t: KnowledgeTree) => ({
-              ...t,
-              nodes: Array.isArray(t.nodes) ? t.nodes : [],
-            }))
-          );
+    (async () => {
+      try {
+        const res = await fetch('/api/trees');
+        if (!res.ok) throw new Error(`加载失败: ${res.status}`);
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setTrees(data.map((t: KnowledgeTree) => ({
+            ...t,
+            nodes: Array.isArray(t.nodes) ? t.nodes : [],
+          })));
         }
+      } catch (e) {
+        console.error('加载知识树失败', e);
       }
+    })();
+    // 仍然加载书签（可保留 localStorage）
+    try {
       const savedBookmarks = localStorage.getItem("knowledge-bookmarks");
       if (savedBookmarks) {
         const parsed = JSON.parse(savedBookmarks);
-        if (Array.isArray(parsed)) {
-          setBookmarks(parsed);
-        }
+        if (Array.isArray(parsed)) setBookmarks(parsed);
       }
     } catch (e) {
-      console.error("Failed to load knowledge data", e);
+      console.error("加载书签失败", e);
     }
   }, [mounted]);
 
-  // 持久化
-  useEffect(() => {
-    if (mounted && trees.length > 0) {
-      localStorage.setItem("knowledge-trees", JSON.stringify(trees));
-    }
-  }, [trees, mounted]);
-
+  // 书签仍用 localStorage 持久化
   useEffect(() => {
     if (mounted && bookmarks.length > 0) {
       localStorage.setItem("knowledge-bookmarks", JSON.stringify(bookmarks));
     }
   }, [bookmarks, mounted]);
 
-  // 当删除最后一棵树时，清理 localStorage 空数组
-  useEffect(() => {
-    if (mounted && trees.length === 0) {
-      localStorage.removeItem("knowledge-trees");
-    }
-  }, [trees, mounted]);
-
   // === 操作函数 ===
 
-  const handleAddTree = () => {
+  const handleAddTree = async () => {
     if (!newTree.name.trim()) return;
     const now = Date.now();
-    const treeId = `tree-${now}`;
+    const id = `${now}`;
     // 每棵新树都先种下 5 个"地基"节点（根/干/枝/叶/果 各一），让树一落地便茁壮
     const baseNodes: KnowledgeNode[] = [
-      { id: `${treeId}-root`, type: "root", title: `${newTree.name} · 根`, content: "底层认知与核心原理", createdAt: now },
-      { id: `${treeId}-trunk`, type: "trunk", title: `${newTree.name} · 干`, content: "核心目标与方向", createdAt: now + 1 },
-      { id: `${treeId}-branch`, type: "branch", title: `${newTree.name} · 枝`, content: "实现路径与方法", createdAt: now + 2 },
-      { id: `${treeId}-leaf`, type: "leaf", title: `${newTree.name} · 叶`, content: "具体执行与碎片知识", createdAt: now + 3 },
-      { id: `${treeId}-fruit`, type: "fruit", title: `${newTree.name} · 果`, content: "成果产出与价值兑现", createdAt: now + 4 },
+      { id: `${id}-root`, type: "root", title: `${newTree.name} · 根`, content: "底层认知与核心原理", createdAt: now },
+      { id: `${id}-trunk`, type: "trunk", title: `${newTree.name} · 干`, content: "核心目标与方向", createdAt: now + 1 },
+      { id: `${id}-branch`, type: "branch", title: `${newTree.name} · 枝`, content: "实现路径与方法", createdAt: now + 2 },
+      { id: `${id}-leaf`, type: "leaf", title: `${newTree.name} · 叶`, content: "具体执行与碎片知识", createdAt: now + 3 },
+      { id: `${id}-fruit`, type: "fruit", title: `${newTree.name} · 果`, content: "成果产出与价值兑现", createdAt: now + 4 },
     ];
-    const tree: KnowledgeTree = {
-      id: treeId,
-      name: newTree.name,
+    const payload = {
+      name: newTree.name.trim(),
       industry: newTree.industry || newTree.name,
       description: newTree.description,
       species: newTree.species,
-      nodes: baseNodes,
-      createdAt: now,
-      // 新树默认种在画布逻辑中心 (50, 50)，pan 复位时正好在可视区中央
+      link: newTree.link.trim() || undefined,
       position: { x: 50, y: 50 },
-      // 可选链接（如未填写则为 undefined，便于判断）
-      ...(newTree.link.trim() ? { link: newTree.link.trim() } : {}),
+      nodes: baseNodes,
+      nodeCount: baseNodes.length,
     };
-    setTrees([...trees, tree]);
+    try {
+      const res = await fetch('/api/trees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`创建失败: ${res.status}`);
+      const tree = await res.json();
+      setTrees((prev) => [...prev, tree]);
+    } catch (e) {
+      console.error('创建知识树失败', e);
+    }
     setNewTree({ name: "", industry: "", description: "", species: "oak", link: "" });
     setShowAddTree(false);
   };
@@ -232,58 +226,57 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   };
 
   // 保存编辑：保留 id / nodes / position / scale / createdAt 等结构字段，只更新可见字段
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingTree) return;
     const name = editForm.name.trim();
     if (!name) return;
-    setTrees((prev) =>
-      prev.map((t) =>
-        t.id === editingTree.id
-          ? {
-              ...t,
-              name,
-              industry: editForm.industry.trim() || name,
-              description: editForm.description,
-              species: editForm.species,
-              ...(editForm.link.trim() ? { link: editForm.link.trim() } : { link: undefined }),
-            }
-          : t
-      )
-    );
-    // 如果当前正选中这棵树，同步更新 selectedTree 引用，避免知识库视图渲染旧值
-    if (selectedTree && selectedTree.id === editingTree.id) {
-      setSelectedTree((prev) =>
-        prev && prev.id === editingTree.id
-          ? {
-              ...prev,
-              name,
-              industry: editForm.industry.trim() || name,
-              description: editForm.description,
-              species: editForm.species,
-              ...(editForm.link.trim() ? { link: editForm.link.trim() } : { link: undefined }),
-            }
-          : prev
-      );
+    const payload: Record<string, unknown> = {
+      name,
+      industry: editForm.industry.trim() || name,
+      description: editForm.description,
+      species: editForm.species,
+    };
+    if (editForm.link.trim()) {
+      payload.link = editForm.link.trim();
+    } else {
+      payload.link = null;
+    }
+    try {
+      const res = await fetch(`/api/trees/${editingTree.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`更新失败: ${res.status}`);
+      const updated = await res.json();
+      setTrees((prev) => prev.map((t) => (t.id === editingTree.id ? updated : t)));
+      if (selectedTree && selectedTree.id === editingTree.id) {
+        setSelectedTree(updated);
+      }
+    } catch (e) {
+      console.error('更新知识树失败', e);
     }
     setShowEditTree(false);
     setEditingTree(null);
   };
 
-  const confirmDeleteTree = () => {
+  const confirmDeleteTree = async () => {
     if (!pendingDeleteTreeId) return;
     const id = pendingDeleteTreeId;
-    const next = trees.filter((t) => t.id !== id);
-    setTrees(next);
+    try {
+      const res = await fetch(`/api/trees/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`删除失败: ${res.status}`);
+    } catch (e) {
+      console.error('删除知识树失败', e);
+    }
+    setTrees((prev) => prev.filter((t) => t.id !== id));
     if (selectedTree?.id === id) {
       setSelectedTree(null);
-    }
-    if (next.length === 0) {
-      localStorage.removeItem("knowledge-trees");
     }
     setPendingDeleteTreeId(null);
   };
 
-  const handleAddNode = () => {
+  const handleAddNode = async () => {
     if (!selectedTree || !newNode.title.trim()) return;
     const node: KnowledgeNode = {
       id: `node-${Date.now()}`,
@@ -293,25 +286,49 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
       source: newNode.source || undefined,
       createdAt: Date.now(),
     };
-    const updatedTree: KnowledgeTree = {
-      ...selectedTree,
-      nodes: [...selectedTree.nodes, node],
-    };
-    setSelectedTree(updatedTree);
-    setTrees(trees.map((t) => (t.id === selectedTree.id ? updatedTree : t)));
+    const updatedNodes = [...selectedTree.nodes, node];
+    try {
+      const res = await fetch(`/api/trees/${selectedTree.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nodes: updatedNodes, nodeCount: updatedNodes.length }),
+      });
+      if (!res.ok) throw new Error(`保存节点失败: ${res.status}`);
+      const updated = await res.json();
+      setSelectedTree(updated);
+      setTrees((prev) => prev.map((t) => (t.id === selectedTree.id ? updated : t)));
+    } catch (e) {
+      console.error('添加节点失败', e);
+      // 本地降级
+      const updatedTree: KnowledgeTree = { ...selectedTree, nodes: updatedNodes };
+      setSelectedTree(updatedTree);
+      setTrees((prev) => prev.map((t) => (t.id === selectedTree.id ? updatedTree : t)));
+    }
     setNewNode({ type: showAddNode || "leaf", title: "", content: "", source: "" });
     setShowAddNode(null);
   };
 
-  const handleDeleteNode = (nodeId: string) => {
+  const handleDeleteNode = async (nodeId: string) => {
     if (!selectedTree) return;
     if (!confirm("确定删除这个知识吗？")) return;
-    const updatedTree: KnowledgeTree = {
-      ...selectedTree,
-      nodes: selectedTree.nodes.filter((n) => n.id !== nodeId),
-    };
-    setSelectedTree(updatedTree);
-    setTrees(trees.map((t) => (t.id === selectedTree.id ? updatedTree : t)));
+    const updatedNodes = selectedTree.nodes.filter((n) => n.id !== nodeId);
+    try {
+      const res = await fetch(`/api/trees/${selectedTree.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nodes: updatedNodes, nodeCount: updatedNodes.length }),
+      });
+      if (!res.ok) throw new Error(`删除节点失败: ${res.status}`);
+      const updated = await res.json();
+      setSelectedTree(updated);
+      setTrees((prev) => prev.map((t) => (t.id === selectedTree.id ? updated : t)));
+    } catch (e) {
+      console.error('删除节点失败', e);
+      // 本地降级
+      const updatedTree: KnowledgeTree = { ...selectedTree, nodes: updatedNodes };
+      setSelectedTree(updatedTree);
+      setTrees((prev) => prev.map((t) => (t.id === selectedTree.id ? updatedTree : t)));
+    }
   };
 
   // === 计算森林数据 ===
@@ -347,12 +364,18 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   );
   const showForestPager = forestItems.length > FOREST_PAGE_SIZE;
 
-  // 拖拽结束：更新单棵树位置并持久化
+  // 拖拽结束：更新单棵树位置并持久化到 DB
   const handleTreePositionChange = useCallback(
     (id: string, position: { x: number; y: number }) => {
       setTrees((prev) =>
         prev.map((t) => (t.id === id ? { ...t, position } : t))
       );
+      // 异步更新到 DB（不等待）
+      fetch(`/api/trees/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ position }),
+      }).catch((e) => console.error('保存位置失败', e));
     },
     []
   );
@@ -362,6 +385,12 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
       setTrees((prev) =>
         prev.map((t) => (t.id === id ? { ...t, scale } : t))
       );
+      // 异步更新到 DB
+      fetch(`/api/trees/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scale }),
+      }).catch((e) => console.error('保存缩放失败', e));
     },
     []
   );
