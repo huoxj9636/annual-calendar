@@ -345,33 +345,17 @@ function ForestTree({
         cursor: draggable ? (dragging ? "grabbing" : "grab") : onClick ? "pointer" : "default",
         touchAction: "none",
         zIndex: dragging ? 50 : selected ? 10 : 1,
-        animation: focused ? "focusPulse 1.2s ease-out 2" : undefined,
+        // 焦点时仅依赖 selected 状态高亮，不再做圆环扩散或缩放 pulse
       }}
-      title={`${item.name} · ${stage.label} · ${item.count} 个知识`}
     >
-      {/* focus pulse 光环：围绕树冠中心的扩散高亮圆环 */}
-      {focused && (
-        <div
-          className="absolute left-1/2 -translate-x-1/2 rounded-full pointer-events-none"
-          style={{
-            // 树冠中心位置（从容器顶部算）：树冠高度的一半
-            top: sizes.crown * 0.5 * treeScale * zoom * currentScale,
-            transform: "translateY(-50%)",
-            width: sizes.crown * 1.6 * treeScale * zoom * currentScale,
-            height: sizes.crown * 1.6 * treeScale * zoom * currentScale,
-            border: `2px solid ${skin.swatch}`,
-            animation: "focusRing 1.2s ease-out 2",
-          }}
-        />
-      )}
-      {/* 树阴影（草地投影）- 保持固定大小，不随树缩放 */}
+      {/* 树阴影（草地投影）：紧贴树底，缩小并聚焦，避免分散注意力 */}
       <div
-        className="absolute left-1/2 -translate-x-1/2 rounded-full blur-[2px]"
+        className="absolute left-1/2 -translate-x-1/2 rounded-full blur-[1px]"
         style={{
-          bottom: -2,
-          width: sizes.crown * 0.7 * zoom,
-          height: 6 * zoom,
-          background: "rgba(0,0,0,0.18)",
+          bottom: 0,
+          width: sizes.crown * 0.55 * zoom,
+          height: 4 * zoom,
+          background: "rgba(0,0,0,0.22)",
         }}
       />
 
@@ -660,14 +644,10 @@ export default function ForestScene({
           50%      { opacity: 0.2; transform: translateX(-50%) scale(1.2); }
         }
         @keyframes focusPulse {
-          0%   { transform: translateX(-50%) scale(1); }
-          40%  { transform: translateX(-50%) scale(1.06); }
-          100% { transform: translateX(-50%) scale(1); }
+          0%, 100% { transform: translateX(-50%) scale(1); }
         }
         @keyframes focusRing {
-          0%   { opacity: 0.85; transform: translate(-50%, -50%) scale(0.5); }
-          80%  { opacity: 0;    transform: translate(-50%, -50%) scale(1.6); }
-          100% { opacity: 0;    transform: translate(-50%, -50%) scale(1.6); }
+          0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
         }
       `}</style>
 
