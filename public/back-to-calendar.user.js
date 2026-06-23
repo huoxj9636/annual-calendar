@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         外部站点 - 返回年度日历
 // @namespace    https://github.com/local/year-calendar
-// @version      1.0.0
+// @version      1.1.0
 // @description  在滴答清单 / 浮墨笔记等外部网站注入一个可拖动的「返回年度日历」按钮
 // @author       You
 // @match        https://dida365.com/*
