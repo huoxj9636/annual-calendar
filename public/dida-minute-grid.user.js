@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name         滴答清单 - 24h 分钟细分网格
+// @name         滴答清单 - 24h 页面变大
 // @namespace    https://github.com/local/year-calendar
-// @version      1.0.0
-// @description  给滴答 24h 视图的每个小时格子里画 5/10/15 分钟细分线（CSS 视觉改造，不破坏原生交互）
+// @version      1.1.0
+// @description  仅在 /webapp/#c/all/calendar/d 页面把 24h 视图的每个小时行高度变大为 120px，并画 5 分钟细分线
 // @author       You
-// @match        https://dida365.com/*
-// @match        https://www.dida365.com/*
+// @match        https://dida365.com/webapp/*
+// @match        https://www.dida365.com/webapp/*
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
@@ -13,94 +13,89 @@
 (function () {
   'use strict';
 
-  // ============ 配置区（按需修改）============
+  // ============ 配置区 ============
   const CONFIG = {
-    // 24h 视图小时行的 CSS 选择器
-    // 基于截图：.tgc-over-wrapper > .so > *（24 个直接子元素，每行 1 小时）
-    // 如果不匹配，改这里。最准确的检测：rows.length === 24
-    rowSelector: '.tgc-over-wrapper .so > *',
+    // 目标页面 hash（只有这个页面生效）
+    targetHash: '#c/all/calendar/d',
 
-    // 每多少分钟画一条线
-    // 5  = 12 条/小时（5 分钟一条，推荐）
-    // 10 = 6  条/小时（10 分钟一条）
-    // 15 = 4  条/小时（15 分钟一条）
-    // 30 = 2  条/小时（半小时一条）
-    // 60 = 1  条/小时（每小时一条）
+    // 强制行高（像素）。每小时 120px = 整体 24×120 = 2880px
+    // 60 = 紧凑；120 = 平衡；180 = 宽松
+    rowHeight: 120,
+
+    // 每多少分钟画一条细分线
+    // 5  = 12 条/小时（5 分钟一条，清晰）
+    // 10 = 6  条/小时
+    // 15 = 4  条/小时
+    // 30 = 2  条/小时
     minutesPerLine: 5,
 
-    // 细分线颜色（rgba，alpha 控制透明度）
+    // 细分线颜色
     lineColor: 'rgba(0, 0, 0, 0.10)',
 
-    // 强制改行高（像素）。null = 不改（保持原 47.5px）
-    // 60 = 每小时 60px（每分钟 1px，可读性 OK，整体 1440px）
-    // 90 = 每小时 90px（更清晰，整体 2160px）
-    // 120 = 每小时 120px（最清晰，整体 2880px，需要更多滚动）
-    forceRowHeight: null,
+    // 24h 视图小时行选择器
+    rowSelector: '.tgc-over-wrapper .so > *',
   };
-  // ============================================
+  // =================================
 
-  function applyMinuteGrid() {
-    const rows = document.querySelectorAll(CONFIG.rowSelector);
-    if (rows.length !== 24) return false; // 只在 24h 视图（正好 24 行）时应用
+  const BODY_CLASS = 'dida-min-grid-active';
+  const STYLE_ID = 'dida-min-grid-style';
 
-    rows.forEach((row, index) => {
-      if (row.dataset.didaMinGridApplied === CONFIG.minutesPerLine + '') return;
+  function buildCSS() {
+    const linesPerHour = 60 / CONFIG.minutesPerLine;
+    const step = CONFIG.rowHeight / linesPerHour;
+    const lineWidth = 1; // px
 
-      const originalHeight = row.getBoundingClientRect().height;
-      const height = CONFIG.forceRowHeight || originalHeight;
-      if (height < 10) return;
-
-      const linesPerHour = 60 / CONFIG.minutesPerLine;
-      const step = height / linesPerHour;
-
-      // repeating-linear-gradient: 透明 step-1px, 线 1px, 重复
-      const bg = `repeating-linear-gradient(
-        to bottom,
-        transparent 0px,
-        transparent ${(step - 1).toFixed(2)}px,
-        ${CONFIG.lineColor} ${(step - 1).toFixed(2)}px,
-        ${CONFIG.lineColor} ${step.toFixed(2)}px
-      )`;
-
-      row.style.backgroundImage = bg;
-      row.style.backgroundSize = `100% ${height.toFixed(2)}px`;
-      row.style.backgroundRepeat = 'repeat-y';
-      row.style.backgroundPosition = 'top left';
-
-      if (CONFIG.forceRowHeight && originalHeight < height) {
-        row.style.minHeight = height + 'px';
+    return `
+      body.${BODY_CLASS} .tgc-over-wrapper {
+        min-height: ${CONFIG.rowHeight * 24}px !important;
+        margin-bottom: ${CONFIG.rowHeight * 17}px !important;
       }
 
-      row.dataset.didaMinGridApplied = String(CONFIG.minutesPerLine);
-    });
+      body.${BODY_CLASS} ${CONFIG.rowSelector} {
+        min-height: ${CONFIG.rowHeight}px !important;
+        height: ${CONFIG.rowHeight}px !important;
+        background-image: repeating-linear-gradient(
+          to bottom,
+          transparent 0px,
+          transparent ${(step - lineWidth).toFixed(2)}px,
+          ${CONFIG.lineColor} ${(step - lineWidth).toFixed(2)}px,
+          ${CONFIG.lineColor} ${step.toFixed(2)}px
+        ) !important;
+        background-size: 100% ${CONFIG.rowHeight}px !important;
+        background-repeat: repeat-y !important;
+        background-position: top left !important;
+      }
+    `;
+  }
 
-    return true;
+  function injectStyle() {
+    if (document.getElementById(STYLE_ID)) {
+      document.getElementById(STYLE_ID).textContent = buildCSS();
+      return;
+    }
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = buildCSS();
+    document.head.appendChild(style);
+  }
+
+  function checkAndActivate() {
+    if (location.hash === CONFIG.targetHash) {
+      document.body.classList.add(BODY_CLASS);
+    } else {
+      document.body.classList.remove(BODY_CLASS);
+    }
   }
 
   function init() {
-    // 立即尝试一次
-    if (applyMinuteGrid()) return;
+    injectStyle();
+    checkAndActivate();
 
-    // MutationObserver 监听 DOM 变化（滴答是 SPA，视图动态渲染）
-    let timer = null;
-    const observer = new MutationObserver(() => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(applyMinuteGrid, 150);
-    });
+    // SPA 路由切换
+    window.addEventListener('hashchange', checkAndActivate);
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-
-    // 路由变化时强制重置（dataset 标记清除，重新应用）
-    setInterval(() => {
-      const marked = document.querySelectorAll('[data-dida-min-grid-applied]');
-      marked.forEach((el) => {
-        delete el.dataset.didaMinGridApplied;
-      });
-      applyMinuteGrid();
-    }, 2000);
+    // 滴答初次加载可能修改 hash
+    setInterval(checkAndActivate, 1000);
   }
 
   if (document.readyState === 'loading') {
