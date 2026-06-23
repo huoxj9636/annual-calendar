@@ -341,8 +341,8 @@ function ForestTree({
         bottom: `${displayY}%`,
         transform: "translateX(-50%)",
         // 拖动命中区：比树实际可见区域略小（0.7x），避免在树周围的空地上误触
-        width: sizes.crown * 0.7 * treeScale * zoom * currentScale,
-        height: sizes.h * 0.7 * treeScale * zoom * currentScale,
+        width: sizes.crown * 0.35 * treeScale * zoom * currentScale,
+        height: sizes.h * 0.35 * treeScale * zoom * currentScale,
         cursor: draggable ? (dragging ? "grabbing" : "grab") : onClick ? "pointer" : "default",
         touchAction: "none",
         zIndex: dragging ? 50 : selected ? 10 : 1,
