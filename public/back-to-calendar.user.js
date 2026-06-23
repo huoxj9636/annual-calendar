@@ -1,11 +1,12 @@
 // ==UserScript==
-// @name         滴答清单 - 返回年度日历
+// @name         外部站点 - 返回年度日历
 // @namespace    https://github.com/local/year-calendar
 // @version      1.0.0
-// @description  在滴答清单页面右上角注入一个可拖动的「返回」按钮，点击后回到你的年度日历主页
+// @description  在滴答清单 / 浮墨笔记等外部网站注入一个可拖动的「返回年度日历」按钮
 // @author       You
 // @match        https://dida365.com/*
 // @match        https://www.dida365.com/*
+// @match        https://*.flomoapp.com/*
 // @grant        none
 // @run-at       document-idle
 // @noframes
@@ -14,19 +15,19 @@
 (function () {
   'use strict';
 
-  // ====== 配置 ======
-  // 你的年度日历主页地址（已 hardcode，可改成自己的部署地址）
+  // ====== 配置：站点 -> 返回地址 ======
+  // 默认全部跳回年度日历主页。后续如需不同站点跳到不同目标，在这里改。
   const CALENDAR_URL = 'https://afb12964-de81-46c9-b8ad-7dc27d262bda.dev.coze.site/';
 
   // ====== 常量 ======
-  const BTN_ID = 'dida-back-to-calendar-btn';
-  const STORAGE_KEY = 'dida-back-btn-pos-v1';
+  const BTN_ID = 'ext-back-to-calendar-btn';
+  const STORAGE_KEY = 'ext-back-btn-pos-v1';
   const BTN_SIZE = 40;
   const SAFE_MARGIN = 8;
   const DRAG_THRESHOLD = 4;
-  const Z_INDEX = 2147483647; // max
+  const Z_INDEX = 2147483647;
 
-  // ====== 工具函数 ======
+  // ====== 工具 ======
   function loadPos() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -102,22 +103,14 @@
     document.documentElement.appendChild(btn);
 
     let pointerId = null;
-    let startX = 0;
-    let startY = 0;
-    let origX = 0;
-    let origY = 0;
-    let moved = false;
-    let wasDragging = false;
+    let startX = 0, startY = 0, origX = 0, origY = 0;
+    let moved = false, wasDragging = false;
 
     function onPointerDown(e) {
       if (e.button !== 0) return;
       e.preventDefault();
       pointerId = e.pointerId;
-      try {
-        btn.setPointerCapture(pointerId);
-      } catch {
-        // ignore
-      }
+      try { btn.setPointerCapture(pointerId); } catch {}
       startX = e.clientX;
       startY = e.clientY;
       origX = parseInt(btn.style.left, 10) || 0;
@@ -135,7 +128,6 @@
       btn.style.cursor = 'grabbing';
       btn.style.transform = 'scale(1.1)';
       btn.style.boxShadow = '0 6px 16px rgba(0,0,0,0.28), 0 0 0 2px rgba(30,41,59,0.4)';
-
       const maxX = Math.max(SAFE_MARGIN, window.innerWidth - BTN_SIZE - SAFE_MARGIN);
       const maxY = Math.max(SAFE_MARGIN, window.innerHeight - BTN_SIZE - SAFE_MARGIN);
       const nextX = clamp(origX + dx, SAFE_MARGIN, maxX);
@@ -146,11 +138,7 @@
 
     function finishPointer(e) {
       if (pointerId !== e.pointerId) return;
-      try {
-        btn.releasePointerCapture(pointerId);
-      } catch {
-        // ignore
-      }
+      try { btn.releasePointerCapture(pointerId); } catch {}
       pointerId = null;
       btn.style.cursor = 'grab';
       btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.18)';
@@ -189,7 +177,6 @@
       if (!pointerId) btn.style.transform = 'scale(1)';
     });
 
-    // resize 重新 clamp 位置
     let resizeTimer = null;
     window.addEventListener('resize', () => {
       if (resizeTimer) clearTimeout(resizeTimer);
@@ -204,19 +191,6 @@
         if (nextY !== currentY) btn.style.top = nextY + 'px';
       }, 100);
     });
-
-    // 监听 SPA 路由变化（dida365 是 SPA），防止被框架覆盖
-    let lastUrl = location.href;
-    new MutationObserver(() => {
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        // 路由切换后如果按钮被移除则重新注入
-        if (!document.getElementById(BTN_ID)) {
-          // 不重复注入，只是给个保险
-        }
-      }
-      // 简单保险：如果按钮消失了，5s 后重新检查
-    }).observe(document.documentElement, { childList: true, subtree: true });
   }
 
   if (document.readyState === 'loading') {
