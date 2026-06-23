@@ -686,20 +686,40 @@ export default function YearCalendar() {
   );
 
   const toggleDay = useCallback(
-    (month: number, day: number) => {
+    async (month: number, day: number) => {
       const key = `${year}-${month}-${day}`;
       const current = overrides[key];
+      let newValue: DayOverride | null = null;
 
       if (!current) {
-        setOverrides((prev) => ({ ...prev, [key]: 'crossed' }));
+        newValue = 'crossed';
+        setOverrides((prev) => ({ ...prev, [key]: newValue! }));
       } else if (current === 'crossed') {
-        setOverrides((prev) => ({ ...prev, [key]: 'checked' }));
+        newValue = 'checked';
+        setOverrides((prev) => ({ ...prev, [key]: newValue! }));
       } else {
         setOverrides((prev) => {
           const next = { ...prev };
           delete next[key];
           return next;
         });
+      }
+
+      // 保存到数据库
+      try {
+        const dataToSave: Record<string, string> = {};
+        if (newValue) {
+          dataToSave[key] = newValue;
+        } else {
+          // 删除：发送空值表示删除
+          dataToSave[key] = '';
+        }
+        await apiFetch('/api/calendar-data', {
+          method: 'POST',
+          body: JSON.stringify({ type: 'overrides', year, data: dataToSave }),
+        });
+      } catch (e) {
+        console.error('[toggleDay] 保存失败:', e);
       }
     },
     [year, overrides],

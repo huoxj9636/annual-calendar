@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
       // 先删后插(简化,适合每天少量数据)
       await client.from('calendar_overrides').delete().eq('user_id', userId).eq('year', year);
       const rows = entries.map(([dateKey, value]) => ({
+        id: `${userId.slice(0, 8)}-override-${year}-${normalizeDateKey(dateKey)}`,
         user_id: userId,
         year,
         date_key: normalizeDateKey(dateKey),
@@ -179,6 +180,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, count: 0 });
       }
       const rows = entries.map(([dateKey, content]) => ({
+        id: `${userId.slice(0, 8)}-note-${year}-${normalizeDateKey(dateKey)}`,
         user_id: userId,
         year,
         date_key: normalizeDateKey(dateKey),
