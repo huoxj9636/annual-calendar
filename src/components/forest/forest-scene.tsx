@@ -355,9 +355,9 @@ function ForestTree({
         <div
           className="absolute left-1/2 -translate-x-1/2 rounded-full pointer-events-none"
           style={{
-            // 树冠中心位置（从容器顶部算）：树冠高度的一半
-            top: sizes.crown * 0.5 * treeScale * zoom * currentScale,
-            transform: "translateY(-50%)",
+            // 从树底部算：树冠中心 = trunk + crown/2，圆圈底部 = crown_center - crown*0.8
+            // 乘缩放因子
+            bottom: (sizes.trunk + sizes.crown * 0.5 - sizes.crown * 0.8) * treeScale * zoom * currentScale,
             width: sizes.crown * 1.6 * treeScale * zoom * currentScale,
             height: sizes.crown * 1.6 * treeScale * zoom * currentScale,
             border: `2px solid ${skin.swatch}`,
