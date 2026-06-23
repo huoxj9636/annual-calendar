@@ -460,112 +460,26 @@ function PineShape({
   count: number;
   hasFruit?: boolean;
 }) {
-  // 基础尺寸：固定成树大小（不再随节点缩减）
+  // 三角形松树（最简）
   const sizeTier = Math.max(tier, 3);
-  // 树干：细长稳定
-  const trunkH = 8 + sizeTier * 1.5;
-  const trunkW = 1.8 + sizeTier * 0.2;
-  // 树冠：层叠伞状（半圆顶 + 平直底），卡通云朵感
-  const layers = Math.max(2, Math.min(tier, 5));
-  const baseW = 10 + sizeTier * 1.6;
-  const trunkTopY = 36;
-  const treeTopY = trunkTopY - trunkH - 2;
-  const segH = (trunkTopY - treeTopY) / layers;
-
-  // 树干（金字塔形：上窄下宽）
-  const trunkPath = `
-    M ${30 - trunkW / 2},${trunkTopY}
-    L ${30 + trunkW / 2},${trunkTopY}
-    L ${30 + trunkW / 2 + 0.4},${trunkTopY + trunkH}
-    L ${30 - trunkW / 2 - 0.4},${trunkTopY + trunkH}
-    Z`.replace(/\s+/g, " ").trim();
-
-  // 半椭圆形针叶层（伞/云朵状）：底部平直，顶部圆弧
-  const NeedleLayer = ({
-    yBot,
-    w,
-    h,
-    color,
-    op,
-  }: {
-    yBot: number;
-    w: number;
-    h: number;
-    color: string;
-    op: number;
-  }) => {
-    return (
-      <path
-        d={`M ${30 - w / 2},${yBot}
-            A ${w / 2},${h} 0 0 1 ${30 + w / 2},${yBot}
-            Z`}
-        fill={color}
-        opacity={op}
-      />
-    );
-  };
-
-  // 每层参数：从底层到顶层，由宽变窄、由低到高
-  const layerInfo = Array.from({ length: layers }).map((_, i) => {
-    const t = i / Math.max(layers - 1, 1);
-    const w = baseW * (1 - t * 0.4);
-    const h = (baseW / 2) * (1 - t * 0.4);
-    // 每层底部 y 略低一些，相邻层互相覆盖形成层叠感
-    const yBot = trunkTopY - i * segH + 0.5;
-    return { w, h, yBot };
-  });
+  const trunkH = 6;
+  const trunkW = 2;
+  const trunkTopY = 34;
+  const baseW = 16 + sizeTier * 1.2;
+  const triH = 18 + sizeTier * 1.0;
+  const cx = 30;
+  const yTop = trunkTopY - triH;
+  const yBot = trunkTopY - 1;
 
   return (
     <g>
-      {/* 树干 */}
-      <path d={trunkPath} fill="#5C3818" />
-      {/* 树干中央高光线 */}
-      <line
-        x1={30}
-        y1={trunkTopY + 0.5}
-        x2={30}
-        y2={trunkTopY + trunkH - 0.5}
-        stroke="#7A5230"
-        strokeWidth="0.3"
-        opacity="0.6"
+      {/* 树干（简单矩形） */}
+      <rect x={cx - trunkW / 2} y={trunkTopY} width={trunkW} height={trunkH} fill="#5C3818" />
+      {/* 三角形树冠（单层） */}
+      <path
+        d={`M${cx},${yTop} L${cx + baseW / 2},${yBot} L${cx - baseW / 2},${yBot} Z`}
+        fill={accent}
       />
-      {/* 根部土堆 */}
-      <ellipse cx="30" cy={trunkTopY + trunkH + 0.3} rx={trunkW * 0.9} ry="0.7" fill="#5C3818" opacity="0.4" />
-      {/* 针叶层：底层深 → 顶层亮，逐层上推形成塔状 */}
-      {layerInfo.map((info, i) => {
-        const { yBot, w, h } = info;
-        const isBottom = i === 0;
-        return (
-          <g key={i}>
-            <NeedleLayer
-              yBot={yBot}
-              w={w}
-              h={h}
-              color={isBottom ? accentDeep : accent}
-              op={0.95 - i * 0.02}
-            />
-            {/* 顶层（最嫩）覆盖一层亮色 */}
-            {!isBottom && (
-              <NeedleLayer
-                yBot={yBot - 0.3}
-                w={w * 0.85}
-                h={h * 0.85}
-                color={accent}
-                op={0.4}
-              />
-            )}
-          </g>
-        );
-      })}
-      {/* 顶尖小圆点装饰 */}
-      <circle cx="30" cy={treeTopY - 0.3} r="0.8" fill={accent} opacity="0.9" />
-      {/* 古木加一点深色斑驳 */}
-      {ancient && (
-        <g opacity="0.4">
-          <ellipse cx="24" cy={treeTopY + segH * 1.2} rx="0.9" ry="0.5" fill={accentDeep} />
-          <ellipse cx="36" cy={treeTopY + segH * 2.4} rx="0.8" ry="0.45" fill={accentDeep} />
-        </g>
-      )}
     </g>
   );
 }
