@@ -380,17 +380,43 @@ export default function YearCalendar() {
     (async () => {
       try {
         // Load review days (dates that have daily review content)
+        // 优先从 API 加载（登录状态），如果失败则从 localStorage 扫描（未登录状态）
         try {
           const reviewDaysRes = await apiFetch(`/api/daily-review?year=${year}&action=list-days`);
-          if (reviewDaysRes) {
-            const reviewDaysData = reviewDaysRes;
-            if (Array.isArray(reviewDaysData.days)) {
-              setReviewDays(new Set(reviewDaysData.days));
+          if (reviewDaysRes && Array.isArray(reviewDaysRes.days)) {
+            setReviewDays(new Set(reviewDaysRes.days));
+          } else {
+            // 未登录或API失败：从 localStorage 扫描 daily-review-* keys
+            const localReviewDays = new Set<string>();
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && /^daily-review-\d{4}-\d{1,2}-\d{1,2}$/.test(k)) {
+                // 提取日期部分：daily-review-2025-1-15 → 2025-1-15
+                const dateMatch = k.match(/^daily-review-(\d{4}-\d{1,2}-\d{1,2})$/);
+                if (dateMatch) {
+                  const raw = localStorage.getItem(k);
+                  // 只有有实际内容才计入
+                  if (raw) {
+                    try {
+                      const parsed = JSON.parse(raw);
+                      // 检查是否有非空内容（今日完成或明日待办）
+                      if (parsed && (parsed.todayDone || parsed.tomorrowTodo || parsed.summary)) {
+                        localReviewDays.add(dateMatch[1]);
+                      }
+                    } catch {
+                      // 非 JSON 格式但有内容也算
+                      if (raw.length > 10) localReviewDays.add(dateMatch[1]);
+                    }
+                  }
+                }
+              }
             }
+            setReviewDays(localReviewDays);
           }
         } catch { /* ignore */ }
 
         // Load overrides from DB
+        // 优先从 API 加载（登录状态），如果失败则从 localStorage 加载（未登录状态）
         const overridesRes = await apiFetch(`/api/calendar-data?type=overrides&year=${year}`);
         if (overridesRes) {
           const overridesData = overridesRes.data || overridesRes;
@@ -398,8 +424,9 @@ export default function YearCalendar() {
             setOverrides(overridesData);
             // eslint-disable-next-line react-hooks/immutability
             overridesLoadedRef.current = true;
-          } else {
-            // Migrate from localStorage if DB is empty
+          }
+          // 登录但数据库空：尝试从 localStorage 迁移
+          if (Object.keys(overridesData).length === 0) {
             try {
               const lsData = localStorage.getItem(`calendar-overrides-${year}`);
               if (lsData) {
@@ -418,6 +445,19 @@ export default function YearCalendar() {
               }
             } catch { /* ignore */ }
           }
+        } else {
+          // 未登录或API失败：从 localStorage 加载
+          try {
+            const lsData = localStorage.getItem(`calendar-overrides-${year}`);
+            if (lsData) {
+              const lsOverrides = JSON.parse(lsData);
+              if (typeof lsOverrides === 'object') {
+                setOverrides(lsOverrides);
+                // eslint-disable-next-line react-hooks/immutability
+                overridesLoadedRef.current = true;
+              }
+            }
+          } catch { /* ignore */ }
         }
 
         // Load notes from DB
@@ -712,7 +752,7 @@ export default function YearCalendar() {
         });
       }
 
-      // 保存到数据库
+      // 保存：登录状态保存到数据库，未登录状态保存到 localStorage
       try {
         const dataToSave: Record<string, string> = {};
         if (newValue) {
@@ -721,10 +761,26 @@ export default function YearCalendar() {
           // 删除：发送空值表示删除
           dataToSave[key] = '';
         }
-        await apiFetch('/api/calendar-data', {
+        
+        // 先尝试保存到数据库
+        const res = await apiFetch('/api/calendar-data', {
           method: 'POST',
           body: JSON.stringify({ type: 'overrides', year, data: dataToSave }),
         });
+        
+        // 如果 API 返回 null（未登录），保存到 localStorage
+        if (!res) {
+          try {
+            const existingData = localStorage.getItem(`calendar-overrides-${year}`);
+            const existingOverrides = existingData ? JSON.parse(existingData) : {};
+            if (newValue) {
+              existingOverrides[key] = newValue;
+            } else {
+              delete existingOverrides[key];
+            }
+            localStorage.setItem(`calendar-overrides-${year}`, JSON.stringify(existingOverrides));
+          } catch { /* ignore */ }
+        }
       } catch (e) {
         console.error('[toggleDay] 保存失败:', e);
       }
