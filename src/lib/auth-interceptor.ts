@@ -73,6 +73,7 @@ function isSyncedKey(key: string): boolean {
 let _isLoggedIn = false;
 let _onRequireLogin: (() => void) | null = null;
 let _installed = false;
+let _initialized = false; // 初始化完成标记（安装 + session 检查完成）
 let _originalSetItem: ((key: string, value: string) => void) | null = null;
 
 export function setInterceptorAuthStatus(loggedIn: boolean): void {
@@ -108,9 +109,19 @@ const pendingNavigations: Array<{ url: string; target: string }> = [];
 
 
 /** 安装拦截器(全局只能装一次) */
-export function installAuthInterceptor(): void {
+export async function installAuthInterceptor(): Promise<void> {
   if (_installed || typeof window === 'undefined') return;
   if (typeof Storage === 'undefined' || !Storage.prototype) return;
+
+  // 先检查当前 session 状态，避免拦截器安装瞬间误拦截
+  try {
+    const { getSupabaseBrowserClientWithRetry } = await import('./supabase-browser');
+    const supabase = await getSupabaseBrowserClientWithRetry();
+    const { data } = await supabase.auth.getSession();
+    _isLoggedIn = !!data.session?.user;
+  } catch {
+    // 获取失败时保持 false
+  }
 
   _originalSetItem = Storage.prototype.setItem;
   _installed = true;
@@ -144,9 +155,10 @@ export function installAuthInterceptor(): void {
       }
 
       if (isSyncedKey(key) && !_isLoggedIn) {
-        // 未登录 + 同步 key → 拦截
+        // 未登录 + 同步 key → 拦截入队
         pendingWrites.push({ key, value });
-        if (_onRequireLogin) _onRequireLogin();
+        // 只有初始化完成后才触发登录弹窗（避免页面刷新时误触发）
+        if (_initialized && _onRequireLogin) _onRequireLogin();
         return;
       }
       // 透传
@@ -161,6 +173,9 @@ export function installAuthInterceptor(): void {
       console.warn('[auth-interceptor] setItem error', err);
     }
   };
+
+  // 初始化完成：标记 _initialized，让后续写入可以触发登录弹窗
+  _initialized = true;
 
   Storage.prototype.removeItem = function (key: string): void {
     try {

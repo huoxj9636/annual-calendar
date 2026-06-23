@@ -339,10 +339,10 @@ export function SyncProvider({ children }: SyncProviderProps) {
     if (typeof window === 'undefined') return;
     let cancelled = false;
 
-    // 异步安装拦截器(确保 supabase config 已就绪)
+    // 异步安装拦截器(确保 supabase config 已就绪 + 先获取 session 状态)
     (async () => {
       const mod = await import('@/lib/auth-interceptor');
-      mod.installAuthInterceptor();
+      await mod.installAuthInterceptor();  // 等待安装完成，session 状态已设置
     })();
 
     const handleLocalChange = () => {
