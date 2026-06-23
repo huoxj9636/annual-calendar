@@ -347,15 +347,6 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   );
   const showForestPager = forestItems.length > FOREST_PAGE_SIZE;
 
-  // 定位树时自动跳到目标树所在页
-  const handleFocusTreeLocal = useCallback((id: string) => {
-    const idx = forestItems.findIndex(t => t.id === id);
-    if (idx >= 0) {
-      const targetPage = Math.floor(idx / FOREST_PAGE_SIZE);
-      setForestPage(targetPage);
-    }
-  }, [forestItems, FOREST_PAGE_SIZE]);
-
   // 拖拽结束：更新单棵树位置并持久化
   const handleTreePositionChange = useCallback(
     (id: string, position: { x: number; y: number }) => {
@@ -485,7 +476,6 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               onEditTree={handleEditTree}
               onTreePositionChange={handleTreePositionChange}
               onTreeScaleChange={handleTreeScaleChange}
-              onFocusTree={handleFocusTreeLocal}
               skin={skin}
             />
             </div>
@@ -888,7 +878,6 @@ function MyForestView({
   onTreePositionChange,
   onTreeScaleChange,
   skin,
-  onFocusTree,
 }: {
   forestItems: ForestItem[];
   totalNodes: number;
@@ -900,7 +889,6 @@ function MyForestView({
   onTreePositionChange: (id: string, position: { x: number; y: number }) => void;
   onTreeScaleChange: (id: string, scale: number) => void;
   skin: SkinTheme;
-  onFocusTree: (id: string) => void;
 }) {
   // 新增树时自动重置画布到中心：pan=0 让 position (50,50) 的新树正好在可视区中央
   const [panResetKey, setPanResetKey] = useState(0);
@@ -924,11 +912,9 @@ function MyForestView({
     [forestItems]
   );
 
-  // 使用父组件传入的 onFocusTree（包含页切换逻辑）
-  // handleFocusTree 改名，避免与父组件同名函数混淆
-  const handleFocusTreeLocal = useCallback((id: string) => {
-    onFocusTree(id);
-  }, [onFocusTree]);
+  const handleFocusTree = useCallback((id: string) => {
+    setFocusTreeId(id);
+  }, []);
 
   return (
     <div className="relative h-full">
@@ -1008,11 +994,11 @@ function MyForestView({
                     key={item.id}
                     role="button"
                     tabIndex={0}
-                    onClick={() => handleFocusTreeLocal(item.id)}
+                    onClick={() => handleFocusTree(item.id)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        handleFocusTreeLocal(item.id);
+                        handleFocusTree(item.id);
                       }
                     }}
                     className="flex items-center gap-2 px-3.5 py-1.5 cursor-pointer transition-colors"
