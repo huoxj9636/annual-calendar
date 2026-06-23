@@ -941,7 +941,16 @@ function MyForestView({
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center gap-1 px-3.5 py-1.5 transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleFocusTree(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleFocusTree(item.id);
+                      }
+                    }}
+                    className="flex items-center gap-2 px-3.5 py-1.5 cursor-pointer transition-colors"
                     style={{
                       color: skin.textPrimary,
                       borderBottom: `1px solid ${skin.divider}`,
@@ -954,25 +963,18 @@ function MyForestView({
                       (e.currentTarget as HTMLDivElement).style.background =
                         "transparent";
                     }}
-                    title="点名称=编辑 · 点图标=定位 · 点×=删除"
+                    title={`定位到「${item.name}」`}
                   >
-                    {/* 树图标：点击定位到树 */}
-                    <button
-                      type="button"
-                      onClick={() => handleFocusTree(item.id)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-transform hover:scale-110"
+                    {/* 树图标 */}
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
                       style={{ background: `${accent}22` }}
-                      title={`定位到「${item.name}」`}
                     >
                       <StageIcon size={14} style={{ color: accent }} />
-                    </button>
+                    </div>
 
-                    {/* 名称：点击 = 修改 */}
-                    <button
-                      type="button"
-                      onClick={() => onEditTree(item.id)}
-                      className="flex-1 min-w-0 text-left px-1.5 py-1 rounded-md transition-colors hover:bg-card"
-                    >
+                    {/* 名称 + 阶段 */}
+                    <div className="flex-1 min-w-0">
                       <div className="text-[13px] font-medium truncate">
                         {item.name}
                       </div>
@@ -982,18 +984,19 @@ function MyForestView({
                       >
                         {stage.label}
                       </div>
-                    </button>
+                    </div>
 
-                    {/* 删除：点击 = 弹出确认 */}
+                    {/* 删除：仅悬停时显示，避免视觉抢戏 */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onDeleteTree(item.id);
                       }}
-                      className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors hover:bg-destructive/10"
+                      className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-all opacity-0 hover:opacity-100 hover:bg-destructive/10"
                       style={{ color: skin.textMuted }}
                       title="删除"
+                      aria-label="删除"
                     >
                       <X size={13} />
                     </button>
