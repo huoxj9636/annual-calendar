@@ -352,7 +352,7 @@ function ForestTree({
       {/* focus pulse 光环：围绕树冠中心的扩散高亮圆环 */}
       {focused && (
         <div
-          className="absolute left-1/2 -translate-x-1/2 rounded-full pointer-events-none"
+          className="absolute left-1/2 rounded-full pointer-events-none"
           style={{
             // 圆圈中心 = 树冠中心（从树底部算 trunk + crown/2）
             // 圆圈底部 = 圆圈中心 - 圆圈半径（crown * 0.8）
@@ -362,6 +362,8 @@ function ForestTree({
             border: `2px solid ${skin.swatch}`,
             transformOrigin: "center bottom",
             animation: "focusRing 1.2s ease-out 2",
+            marginLeft: 80,
+            transform: "translateX(-50%)",
           }}
         />
       )}
