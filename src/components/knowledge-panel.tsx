@@ -482,64 +482,43 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
           )}
 
           {activeTab === "my" && selectedTree && selectedTree.link && (
-            <div className="h-full flex flex-col" style={{ background: skin.panelBg }}>
-              {/* 顶部工具条：返回 + 链接信息 */}
-              <div
-                className="flex items-center gap-3 px-4 py-2 shrink-0"
+            <div className="h-full relative" style={{ background: skin.panelBg }}>
+              {/* iframe 在当前页内打开链接（占满整个区域） */}
+              <iframe
+                src={selectedTree.link}
+                className="absolute inset-0 w-full h-full border-0"
+                title={selectedTree.name}
+                referrerPolicy="no-referrer-when-downgrade"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              />
+              {/* 左上角悬浮返回按钮 */}
+              <button
+                onClick={() => setSelectedTree(null)}
+                className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                style={{
+                  background: skin.swatch,
+                  color: "#fff",
+                  boxShadow: `0 4px 16px ${skin.swatch}55`,
+                }}
+                title={`返回森林（${selectedTree.name}）`}
+              >
+                <ChevronDown size={18} className="rotate-90" />
+              </button>
+              {/* 右上角悬浮"新窗口"按钮（偶尔需要跳出 iframe 时使用） */}
+              <a
+                href={selectedTree.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
                 style={{
                   background: skin.cardBg,
-                  borderBottom: `1px solid ${skin.divider}`,
+                  color: skin.textPrimary,
+                  boxShadow: `0 4px 16px rgba(0,0,0,0.15)`,
                 }}
+                title="在新标签页打开"
               >
-                <button
-                  onClick={() => setSelectedTree(null)}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                  style={{ background: skin.cardHover, color: skin.textPrimary }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = skin.swatch; e.currentTarget.style.color = "#fff"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = skin.cardHover; e.currentTarget.style.color = skin.textPrimary; }}
-                >
-                  <ChevronDown size={12} className="rotate-90" />
-                  返回森林
-                </button>
-                <div className="flex-1 min-w-0 flex items-center gap-2">
-                  <LinkIcon size={12} style={{ color: skin.swatch }} />
-                  <div
-                    className="text-xs font-medium truncate"
-                    style={{ color: skin.textPrimary }}
-                  >
-                    {selectedTree.name}
-                  </div>
-                  <div
-                    className="text-[10px] truncate flex-1 min-w-0"
-                    style={{ color: skin.textMuted }}
-                  >
-                    {selectedTree.link}
-                  </div>
-                </div>
-                <a
-                  href={selectedTree.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-colors"
-                  style={{ background: skin.cardHover, color: skin.textMuted }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = skin.swatch; e.currentTarget.style.color = "#fff"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = skin.cardHover; e.currentTarget.style.color = skin.textMuted; }}
-                  title="在新标签页打开"
-                >
-                  <ExternalLink size={11} />
-                  新窗口
-                </a>
-              </div>
-              {/* iframe 在当前页内打开链接 */}
-              <div className="flex-1 relative" style={{ background: "#fff" }}>
-                <iframe
-                  src={selectedTree.link}
-                  className="absolute inset-0 w-full h-full border-0"
-                  title={selectedTree.name}
-                  referrerPolicy="no-referrer-when-downgrade"
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-                />
-              </div>
+                <ExternalLink size={15} />
+              </a>
             </div>
           )}
 
@@ -645,22 +624,26 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
       {/* === 弹窗 === */}
 
       {showAddTree && (
-        <Modal title="种一棵新树" onClose={() => setShowAddTree(false)} skin={skin} icon={<Sparkles size={16} />}>
+        <Modal title="种一棵新树" onClose={() => setShowAddTree(false)} skin={skin} icon={<Sparkles size={16} />} maxWidth="max-w-2xl">
           <div className="space-y-3">
-            <Input
-              label="树的名称"
-              value={newTree.name}
-              onChange={(v) => setNewTree({ ...newTree, name: v })}
-              placeholder="如：技术成长"
-              skin={skin}
-            />
-            <Input
-              label="领域/行业"
-              value={newTree.industry}
-              onChange={(v) => setNewTree({ ...newTree, industry: v })}
-              placeholder="如：互联网、AI..."
-              skin={skin}
-            />
+            {/* 第 1 行：名称 + 领域 */}
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="树的名称"
+                value={newTree.name}
+                onChange={(v) => setNewTree({ ...newTree, name: v })}
+                placeholder="如：技术成长"
+                skin={skin}
+              />
+              <Input
+                label="领域/行业"
+                value={newTree.industry}
+                onChange={(v) => setNewTree({ ...newTree, industry: v })}
+                placeholder="如：互联网、AI..."
+                skin={skin}
+              />
+            </div>
+            {/* 第 2 行：描述（跨整行） */}
             <Textarea
               label="描述"
               value={newTree.description}
@@ -668,6 +651,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               placeholder="一句话描述这棵树要承载的方向"
               skin={skin}
             />
+            {/* 第 3 行：链接（跨整行） */}
             <div>
               <label
                 className="text-xs mb-1.5 block tracking-wider uppercase flex items-center gap-1.5"
@@ -691,6 +675,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
                 留空则进入知识库视图；填写后点击树会直接在当前页打开链接并支持返回。
               </div>
             </div>
+            {/* 第 4 行：树种 */}
             <div>
               <label
                 className="text-xs mb-1.5 block tracking-wider uppercase"
@@ -698,7 +683,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
               >
                 树种
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-6 gap-2">
                 {(Object.keys(TREE_SPECIES) as TreeSpeciesId[]).map((key) => {
                   const info = TREE_SPECIES[key];
                   const isActive = newTree.species === key;
@@ -1424,12 +1409,14 @@ function Modal({
   children,
   skin,
   icon,
+  maxWidth = "max-w-md",
 }: {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   skin: SkinTheme;
   icon?: React.ReactNode;
+  maxWidth?: string;
 }) {
   return (
     <div
@@ -1438,7 +1425,7 @@ function Modal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md p-5 rounded-lg"
+        className={`w-full ${maxWidth} p-5 rounded-lg`}
         style={{
           background: skin.panelBg,
           color: skin.textPrimary,
