@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const DEFAULT_DIDA_URL = "https://dida365.com/webapp/#q/all/timeline";
-const AUTO_NAV_DELAY = 1500;
+const AUTO_NAV_DELAY = 500;
 
 function DidaContent() {
   const router = useRouter();
