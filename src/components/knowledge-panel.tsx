@@ -137,10 +137,21 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         if (!res.ok) throw new Error(`加载失败: ${res.status}`);
         const data = await res.json();
         if (Array.isArray(data)) {
-          setTrees(data.map((t: KnowledgeTree) => ({
-            ...t,
-            nodes: Array.isArray(t.nodes) ? t.nodes : [],
-          })));
+          // 从 localStorage 读取位置覆盖（API 失败的兜底）
+          let positionOverrides: Record<string, { x: number; y: number }> = {};
+          try {
+            const raw = localStorage.getItem('tree-positions-overrides');
+            if (raw) positionOverrides = JSON.parse(raw);
+          } catch {}
+          setTrees(data.map((t: KnowledgeTree) => {
+            // 如果有 localStorage 覆盖（用户拖拽后 API 失败时保存的），优先使用
+            const override = positionOverrides[t.id];
+            const merged: KnowledgeTree = { ...t, nodes: Array.isArray(t.nodes) ? t.nodes : [] };
+            if (override) {
+              merged.position = override;
+            }
+            return merged;
+          }));
         }
       } catch (e) {
         console.error('加载知识树失败', e);
@@ -364,22 +375,57 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   );
   const showForestPager = forestItems.length > FOREST_PAGE_SIZE;
 
-  // 拖拽结束：更新单棵树位置并持久化到 DB
+  // 拖拽结束：更新单棵树位置并持久化到 DB + localStorage 兜底
   const handleTreePositionChange = useCallback(
     (id: string, position: { x: number; y: number }) => {
+      // 1. 立即更新本地 state
       setTrees((prev) =>
         prev.map((t) => (t.id === id ? { ...t, position } : t))
       );
-      fetch(`/api/trees/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ position }),
-      }).then(r => {
-        if (!r.ok) console.error('保存位置失败:', r.status);
-        return r.json();
-      }).then(data => {
-        if (!data.position) console.warn('保存后无位置返回', data);
-      }).catch((e) => console.error('保存位置异常', e));
+      // 2. 同时写入 localStorage 兜底（确保刷新不丢）
+      try {
+        const raw = localStorage.getItem('tree-positions-overrides');
+        const overrides: Record<string, { x: number; y: number }> = raw ? JSON.parse(raw) : {};
+        overrides[id] = position;
+        localStorage.setItem('tree-positions-overrides', JSON.stringify(overrides));
+      } catch {}
+      // 3. 异步保存到 DB（有重试）
+      const saveToDb = (attempt = 0) => {
+        fetch(`/api/trees/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ position }),
+        }).then(r => {
+          if (!r.ok) {
+            if (attempt < 2) {
+              setTimeout(() => saveToDb(attempt + 1), 1000);
+            }
+            return null;
+          }
+          return r.json();
+        }).then(data => {
+          // DB 保存成功后清除 localStorage 覆盖
+          if (data?.position) {
+            try {
+              const raw = localStorage.getItem('tree-positions-overrides');
+              if (raw) {
+                const overrides = JSON.parse(raw);
+                delete overrides[id];
+                if (Object.keys(overrides).length === 0) {
+                  localStorage.removeItem('tree-positions-overrides');
+                } else {
+                  localStorage.setItem('tree-positions-overrides', JSON.stringify(overrides));
+                }
+              }
+            } catch {}
+          }
+        }).catch(() => {
+          if (attempt < 2) {
+            setTimeout(() => saveToDb(attempt + 1), 1000);
+          }
+        });
+      };
+      saveToDb();
     },
     []
   );

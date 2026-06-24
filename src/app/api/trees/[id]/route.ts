@@ -27,14 +27,23 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       updates.node_count = body.nodes.length;
     }
 
-    const { data, error } = await client
+    const supabaseResult = await client
       .from('knowledge_trees')
       .update(updates)
       .eq('id', id)
       .select()
       .single();
 
-    if (error) return NextResponse.json({ error: `Supabase error: ${error.message}` }, { status: 500 });
+    const { data, error } = supabaseResult;
+
+    if (error) {
+      const errInfo = JSON.stringify({ message: error.message, details: error.details, hint: error.hint, code: error.code });
+      console.error('[PUT-SUPABASE-ERROR]', errInfo);
+      try {
+        require('fs').appendFileSync('/app/work/logs/bypass//dev.log', `[PUT-SUPABASE-ERROR] ${errInfo}\n`);
+      } catch {}
+      return NextResponse.json({ error: `Supabase error: ${error.message}`, code: error.code, details: error.details, hint: error.hint }, { status: 500 });
+    }
 
     const tree = {
       id: data.id,
