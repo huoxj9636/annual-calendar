@@ -1202,7 +1202,12 @@ export default function YearCalendar() {
               if (moreButtonRef.current) {
                 const r = moreButtonRef.current.getBoundingClientRect();
                 // 弹窗顶部对齐"更多"圆形图标的顶部：wrapper顶部 + 12px(分隔线margin-top) + 12px(分隔线margin-bottom) = +24px
-                setMoreMenuPos({ top: r.top + 24, left: r.right + 9 });
+                const menuW = 520, menuH = 400;
+                let top = r.top + 24, left = r.right + 9;
+                if (left + menuW > window.innerWidth) left = window.innerWidth - menuW - 16;
+                if (top + menuH > window.innerHeight) top = window.innerHeight - menuH - 16;
+                if (top < 0) top = 10;
+                setMoreMenuPos({ top, left });
               }
               setShowMoreMenu(true);
             }}
