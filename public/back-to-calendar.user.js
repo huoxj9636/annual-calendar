@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         外部站点 - 返回年度日历
 // @namespace    https://github.com/local/year-calendar
-// @version      1.2.0
-// @description  在滴答清单 / 浮墨笔记等外部网站注入一个可拖动的「返回年度日历」按钮
+// @version      1.3.0
+// @description  在滴答清单 / 浮墨笔记 / 哔哩哔哩等外部网站注入可拖动的「返回」按钮，按钮自动回到出发的 origin（开发/生产环境不会跳错）
 // @author       You
 // @match        https://dida365.com/*
 // @match        https://www.dida365.com/*
@@ -17,9 +17,23 @@
 (function () {
   'use strict';
 
-  // ====== 配置：站点 -> 返回地址 ======
-  // 默认全部跳回年度日历主页。后续如需不同站点跳到不同目标，在这里改。
-  const CALENDAR_URL = 'https://zdy5dkdm93.coze.site/';
+  // ====== 配置：默认返回地址 ======
+  // 用户首次从年度日历点"滴答/B站"时，中转页会把当前 origin 写进
+  // localStorage['ext-back-calendar-url']，这里优先读这个 key 动态返回，
+  // 保证开发/生产环境各自回到出发的位置。
+  // localStorage 为空时 fallback 到下面的默认值。
+  const DEFAULT_CALENDAR_URL = 'https://zdy5dkdm93.coze.site/';
+  const CALENDAR_URL_KEY = 'ext-back-calendar-url';
+
+  function getCalendarUrl() {
+    try {
+      const stored = localStorage.getItem(CALENDAR_URL_KEY);
+      if (stored && /^https?:\/\/[^/]+$/.test(stored)) {
+        return stored;
+      }
+    } catch {}
+    return DEFAULT_CALENDAR_URL;
+  }
 
   // ====== 常量 ======
   const BTN_ID = 'ext-back-to-calendar-btn';
@@ -163,7 +177,7 @@
         e.stopImmediatePropagation();
         return;
       }
-      window.location.href = CALENDAR_URL;
+      window.location.href = getCalendarUrl();
     }
 
     btn.addEventListener('pointerdown', onPointerDown);
