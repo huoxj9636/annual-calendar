@@ -606,59 +606,60 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       <div className="w-[1320px] h-[820px] max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
+          {/* Left: title + action buttons */}
           <div className="flex items-center gap-3">
             <div>
               <div className="text-xl font-bold" style={{ color: skin.textPrimary }}>{dateStr} 复盘</div>
               <div className="text-xs font-medium tracking-wider" style={{ color: skin.textMuted }}>DAILY REVIEW</div>
             </div>
-            <>
-              <button onClick={() => setViewMode(viewMode === 'gantt' ? 'review' : 'gantt')}
-                  className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
-                  style={{ backgroundColor: viewMode === 'gantt' ? '#22c55e' : '#22c55e15', color: viewMode === 'gantt' ? '#fff' : '#22c55e', marginLeft: '8px' }}
-                >📊 日程</button>
-              <div className="flex items-center gap-3" style={{ marginLeft: '16px' }}>
-              <button onClick={startVoiceRecording}
-                  className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
-                  style={{ backgroundColor: '#ef444415', color: '#ef4444' }}
-                >🎙️ 语音复盘</button>
-                <button onClick={() => setShowImport(true)}
-                    className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
-                    style={{ backgroundColor: '#3b82f615', color: '#3b82f6' }}
-                  >📥 导入笔记</button>
-                <button onClick={() => {
-                  const fields = [
-                    { label: '一、今天完成了什么？', key: 'completed' as const },
-                    { label: '二、今天发生了哪些美好或值得关注的事？', key: 'goodThings' as const },
-                    { label: '三、今天遇到了哪些突发问题？', key: 'problems' as const },
-                    { label: '四、今天心情如何？', key: 'mood' as const },
-                    { label: '五、今天有哪些感想或总结？', key: 'reflections' as const },
-                    { label: '六、明日待办？', key: 'tomorrowTodo' as const },
-                  ];
-                  const text = fields.map(f => `${f.label}\n${(review as unknown as Record<string, string | number | undefined>)[f.key] || '（未填写）'}`).join('\n\n');
-                  navigator.clipboard.writeText(text).then(() => {
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 1500);
-                  }).catch(() => {});
-                }}
-                  className="text-sm px-3 py-1.5 rounded-full font-medium transition-all"
-                  style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
-                >{copied ? '✓ 已复制' : '📋 复制'}</button>
-                <button onClick={async () => {
-                  const empty = { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
-                  setReview(empty);
-                  await clearReview(year, month, day);
-                }}
-                  className="text-sm px-3 py-1.5 rounded-full font-medium transition-all"
-                  style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
-                >🗑️ 清空</button>
-              </div>
-              </>
+            <button onClick={startVoiceRecording}
+              className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
+              style={{ backgroundColor: '#ef444415', color: '#ef4444', marginLeft: '16px' }}
+            >🎙️ 语音复盘</button>
+            <button onClick={() => setShowImport(true)}
+              className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
+              style={{ backgroundColor: '#3b82f615', color: '#3b82f6' }}
+            >📥 导入笔记</button>
+            <button onClick={() => {
+              const fields = [
+                { label: '一、今天完成了什么？', key: 'completed' as const },
+                { label: '二、今天发生了哪些美好或值得关注的事？', key: 'goodThings' as const },
+                { label: '三、今天遇到了哪些突发问题？', key: 'problems' as const },
+                { label: '四、今天心情如何？', key: 'mood' as const },
+                { label: '五、今天有哪些感想或总结？', key: 'reflections' as const },
+                { label: '六、明日待办？', key: 'tomorrowTodo' as const },
+              ];
+              const text = fields.map(f => `${f.label}\n${(review as unknown as Record<string, string | number | undefined>)[f.key] || '（未填写）'}`).join('\n\n');
+              navigator.clipboard.writeText(text).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }).catch(() => {});
+            }}
+              className="text-sm px-3 py-1.5 rounded-full font-medium transition-all"
+              style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
+            >{copied ? '✓ 已复制' : '📋 复制'}</button>
+            <button onClick={async () => {
+              const empty = { completed: '', goodThings: '', problems: '', mood: '', reflections: '', tomorrowTodo: '', moodScore: 3, energy: 3, updatedAt: '' };
+              setReview(empty);
+              await clearReview(year, month, day);
+            }}
+              className="text-sm px-3 py-1.5 rounded-full font-medium transition-all"
+              style={{ backgroundColor: skin.swatch + '15', color: skin.swatch }}
+            >🗑️ 清空</button>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
-            style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = skin.swatch; e.currentTarget.style.color = '#fff'; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = skin.cardHover; e.currentTarget.style.color = skin.textMuted; }}
-          >✕</button>
+
+          {/* Right: schedule + close */}
+          <div className="flex items-center gap-2">
+            <button onClick={() => setViewMode(viewMode === 'gantt' ? 'review' : 'gantt')}
+              className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
+              style={{ backgroundColor: viewMode === 'gantt' ? '#22c55e' : '#22c55e15', color: viewMode === 'gantt' ? '#fff' : '#22c55e' }}
+            >📊 日程</button>
+            <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+              style={{ backgroundColor: skin.cardHover, color: skin.textMuted }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = skin.swatch; e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = skin.cardHover; e.currentTarget.style.color = skin.textMuted; }}
+            >✕</button>
+          </div>
         </div>
 
         {/* Content */}
