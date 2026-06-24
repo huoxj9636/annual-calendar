@@ -605,16 +605,18 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
          onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-[1320px] h-[820px] max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
-          {/* Left: title + action buttons */}
+        <div className="flex items-center justify-between px-6 py-3 border-b gap-4" style={{ borderColor: skin.cellBorder }}>
+          {/* Left: title */}
+          <div>
+            <div className="text-xl font-bold" style={{ color: skin.textPrimary }}>{dateStr} 复盘</div>
+            <div className="text-xs font-medium tracking-wider" style={{ color: skin.textMuted }}>DAILY REVIEW</div>
+          </div>
+
+          {/* Middle: action buttons */}
           <div className="flex items-center gap-3">
-            <div>
-              <div className="text-xl font-bold" style={{ color: skin.textPrimary }}>{dateStr} 复盘</div>
-              <div className="text-xs font-medium tracking-wider" style={{ color: skin.textMuted }}>DAILY REVIEW</div>
-            </div>
             <button onClick={startVoiceRecording}
               className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
-              style={{ backgroundColor: '#ef444415', color: '#ef4444', marginLeft: '16px' }}
+              style={{ backgroundColor: '#ef444415', color: '#ef4444' }}
             >🎙️ 语音复盘</button>
             <button onClick={() => setShowImport(true)}
               className="text-sm px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1"
