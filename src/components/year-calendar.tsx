@@ -1141,7 +1141,7 @@ export default function YearCalendar() {
                 if (moduleLinks.longterm) { window.open(moduleLinks.longterm, '_blank'); return; }
                 setShowLifeCalendar(true);
               } else if (mk === 'bilibili') {
-                window.open(moduleLinks.bilibili || 'https://www.bilibili.com', '_blank');
+                router.push(`/bilibili?url=${encodeURIComponent(moduleLinks.bilibili || 'https://www.bilibili.com')}`);
               } else if (mk === 'insight') {
                 if (moduleLinks.insight) { window.open(moduleLinks.insight, '_blank'); return; }
                 const opening = !insightOpen;
