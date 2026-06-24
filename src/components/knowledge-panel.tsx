@@ -370,12 +370,16 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
       setTrees((prev) =>
         prev.map((t) => (t.id === id ? { ...t, position } : t))
       );
-      // 异步更新到 DB（不等待）
       fetch(`/api/trees/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ position }),
-      }).catch((e) => console.error('保存位置失败', e));
+      }).then(r => {
+        if (!r.ok) console.error('保存位置失败:', r.status);
+        return r.json();
+      }).then(data => {
+        if (!data.position) console.warn('保存后无位置返回', data);
+      }).catch((e) => console.error('保存位置异常', e));
     },
     []
   );
