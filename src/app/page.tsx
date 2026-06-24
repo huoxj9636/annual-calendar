@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import YearCalendar from '@/components/year-calendar';
+import AuthGuardWrapper from '@/components/auth-guard-wrapper';
 
 export const metadata: Metadata = {
   title: '年度计划日历',
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  return <YearCalendar />;
+  return (
+    <AuthGuardWrapper>
+      <YearCalendar />
+    </AuthGuardWrapper>
+  );
 }

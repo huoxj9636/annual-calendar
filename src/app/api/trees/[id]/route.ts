@@ -17,8 +17,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (body.species !== undefined) updates.species = body.species;
   if (body.link !== undefined) updates.link = body.link?.trim() || null;
   if (body.position !== undefined) {
-    updates.position_x = body.position.x ?? 50;
-    updates.position_y = body.position.y ?? 50;
+    updates.position_x = body.position?.x ?? null;
+    updates.position_y = body.position?.y ?? null;
   }
   if (body.scale !== undefined) updates.scale = Math.round(body.scale * 100);
   if (body.nodes !== undefined) {
@@ -43,7 +43,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     species: data.species || 'oak',
     nodes: (data.nodes as unknown[]) || [],
     createdAt: new Date(data.created_at as string).getTime(),
-    position: { x: data.position_x ?? 50, y: data.position_y ?? 50 },
+    ...(data.position_x != null ? { position: { x: data.position_x, y: data.position_y ?? 50 } } : {}),
     scale: (data.scale ?? 100) / 100,
     ...(data.link ? { link: data.link as string } : {}),
   };

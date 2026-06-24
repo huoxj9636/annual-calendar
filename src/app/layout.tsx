@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { SupabaseConfigProvider } from '@/components/supabase-config-inject';
 
 export const metadata: Metadata = {
   title: {
@@ -24,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body className={`antialiased`}>
-        {children}
+        <SupabaseConfigProvider>
+          {children}
+        </SupabaseConfigProvider>
       </body>
     </html>
   );

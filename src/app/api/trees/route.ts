@@ -22,7 +22,7 @@ export async function GET() {
     species: row.species || 'oak',
     nodes: (row.nodes as unknown[]) || [],
     createdAt: new Date(row.created_at as string).getTime(),
-    position: { x: row.position_x ?? 50, y: row.position_y ?? 50 },
+    ...(row.position_x != null ? { position: { x: row.position_x, y: row.position_y ?? 50 } } : {}),
     scale: ((row.scale as number) ?? 100) / 100,
     ...(row.link ? { link: row.link as string } : {}),
   }));
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     species: data.species || 'oak',
     nodes: (data.nodes as unknown[]) || [],
     createdAt: new Date(data.created_at as string).getTime(),
-    position: { x: data.position_x ?? 50, y: data.position_y ?? 50 },
+    ...(data.position_x != null ? { position: { x: data.position_x, y: data.position_y ?? 50 } } : {}),
     scale: (data.scale ?? 100) / 100,
     ...(data.link ? { link: data.link as string } : {}),
   };
