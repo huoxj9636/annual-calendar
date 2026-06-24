@@ -2,6 +2,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { execSync } from 'child_process';
 
 let envLoaded = false;
+let supabaseClientSingleton: SupabaseClient | null = null;
 
 interface SupabaseCredentials {
   url: string;
@@ -52,8 +53,14 @@ except Exception as e:
     }
 
     envLoaded = true;
-  } catch {
-    // Silently fail
+  } catch (e) {
+    // Even if loading fails, mark as attempted to avoid retrying every request.
+    // The env vars might come from process.env already.
+    envLoaded = true;
+    const errMsg = e instanceof Error ? e.message : String(e);
+    try {
+      require('fs').appendFileSync('/app/work/logs/bypass//dev.log', `[loadEnv] Python exec failed: ${errMsg}\n`);
+    } catch {}
   }
 }
 
@@ -79,6 +86,11 @@ function getSupabaseServiceRoleKey(): string | undefined {
 }
 
 function getSupabaseClient(token?: string): SupabaseClient {
+  // Return cached singleton (no-token case)
+  if (!token && supabaseClientSingleton) {
+    return supabaseClientSingleton;
+  }
+
   const { url, anonKey } = getSupabaseCredentials();
 
   let key: string;
@@ -94,7 +106,7 @@ function getSupabaseClient(token?: string): SupabaseClient {
     globalOptions.headers = { Authorization: `Bearer ${token}` };
   }
 
-  return createClient(url, key, {
+  const client = createClient(url, key, {
     global: globalOptions,
     db: {
       timeout: 60000,
@@ -104,6 +116,13 @@ function getSupabaseClient(token?: string): SupabaseClient {
       persistSession: false,
     },
   });
+
+  // Cache singleton (only for non-token client)
+  if (!token) {
+    supabaseClientSingleton = client;
+  }
+
+  return client;
 }
 
 export { loadEnv, getSupabaseCredentials, getSupabaseServiceRoleKey, getSupabaseClient };

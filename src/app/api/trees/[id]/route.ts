@@ -52,8 +52,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json(tree);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[PUT /api/trees/[id]]', msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const stack = err instanceof Error ? err.stack : '';
+    const detail = JSON.stringify({ msg, url: process.env.COZE_SUPABASE_URL ? 'set' : 'unset', stack: stack?.slice(0, 300) });
+    // Write to stderr so it shows in dev.log
+    console.error('[PUT /api/trees/[id]]', detail);
+    try {
+      require('fs').appendFileSync('/app/work/logs/bypass//dev.log', `[PUT-ERROR] ${detail}\n`);
+    } catch {}
+    return NextResponse.json({ error: msg, detail }, { status: 500 });
   }
 }
 
