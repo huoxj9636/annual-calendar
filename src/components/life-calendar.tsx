@@ -471,8 +471,26 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
     setGoals(prev => [...prev, ...newGoals]);
   };
 
-  // Save via API — only after initial load completes
-  useEffect(() => { if (mounted && !loading) fetch('/api/okr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ objectives: goals }) }).catch(() => {}); }, [goals, mounted, loading]);
+  // Save via API — only after initial load completes; surface errors instead of silently swallowing
+  const [saveError, setSaveError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!mounted || loading) return;
+    setSaveError(null);
+    fetch('/api/okr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ objectives: goals }) })
+      .then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          const msg = data.errors ? data.errors.join('; ') : (data.error || `HTTP ${res.status}`);
+          setSaveError(msg);
+          console.error('[OKR save failed]', msg);
+        }
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setSaveError(msg);
+        console.error('[OKR save failed]', msg);
+      });
+  }, [goals, mounted, loading]);
 
   // Voice for top input
   const voiceTop = useVoiceRecognition((text) => { setNewOTitle(text); });
@@ -760,6 +778,11 @@ export default function LifeCalendar({ visible, birthYear, setBirthYear, onClose
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-bold tracking-wide text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>人生旅途 · OKR</h2>
+                {saveError && (
+                  <div className="mt-1 px-2 py-1 rounded text-[10px] bg-red-500/20 text-red-200 border border-red-400/30">
+                    保存失败: {saveError}
+                  </div>
+                )}
                 <div className="flex items-center gap-2 mt-2 text-xs text-white/70">
                   <span>出生年份</span>
                   <input type="number" value={birthYear} onChange={e => setBirthYear(Number(e.target.value))}

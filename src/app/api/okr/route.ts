@@ -1,13 +1,19 @@
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Use 'legacy' as default user_id — matches the RLS policy exception:
+//   (user_id = 'legacy' OR auth.uid()::text = user_id)
+// This ensures data persists for the anonymous/single-user scenario.
+const OKR_USER_ID = 'legacy';
+
 export async function GET() {
   const client = getSupabaseClient();
 
-  // Fetch all objectives with nested KRs and tasks
+  // Fetch only the current user's objectives with nested KRs and tasks
   const { data: objectives, error: oErr } = await client
     .from('okr_objectives')
     .select('*, okr_key_results(*, okr_tasks(*))')
+    .eq('user_id', OKR_USER_ID)
     .order('created_at', { ascending: true });
 
   if (oErr) return NextResponse.json({ error: oErr.message }, { status: 500 });
@@ -50,16 +56,22 @@ export async function POST(request: NextRequest) {
   };
 
   const client = getSupabaseClient();
+  const errors: string[] = [];
 
-  // Get existing IDs for diff
-  const { data: existingO } = await client.from('okr_objectives').select('id');
+  // Get existing IDs for diff (only for this user)
+  const { data: existingO } = await client.from('okr_objectives').select('id').eq('user_id', OKR_USER_ID);
   const existingOIds = new Set<string>((existingO || []).map((o: Record<string, string>) => o.id));
 
-  const { data: existingKR } = await client.from('okr_key_results').select('id');
+  const { data: existingKR } = await client.from('okr_key_results').select('id, objective_id').eq('user_id', OKR_USER_ID);
   const existingKRIds = new Set<string>((existingKR || []).map((kr: Record<string, string>) => kr.id));
 
-  const { data: existingTask } = await client.from('okr_tasks').select('id');
-  const existingTaskIds = new Set<string>((existingTask || []).map((t: Record<string, string>) => t.id));
+  // Get tasks for this user's KRs only
+  const userKRRIds = (existingKR || []).map((kr: Record<string, string>) => kr.id);
+  const existingTaskIds = new Set<string>();
+  if (userKRRIds.length > 0) {
+    const { data: existingTask } = await client.from('okr_tasks').select('id').in('key_result_id', userKRRIds);
+    (existingTask || []).forEach((t: Record<string, string>) => existingTaskIds.add(t.id));
+  }
 
   const currentOIds = new Set<string>();
   const currentKRIds = new Set<string>();
@@ -75,22 +87,25 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Delete removed items
+  // Delete removed items (only for this user)
   const oToDelete = [...existingOIds].filter(id => !currentOIds.has(id));
   const krToDelete = [...existingKRIds].filter(id => !currentKRIds.has(id));
   const taskToDelete = [...existingTaskIds].filter(id => !currentTaskIds.has(id));
 
   if (taskToDelete.length > 0) {
-    await client.from('okr_tasks').delete().in('id', taskToDelete);
+    const { error: delErr } = await client.from('okr_tasks').delete().in('id', taskToDelete);
+    if (delErr) errors.push(`Delete tasks: ${delErr.message}`);
   }
   if (krToDelete.length > 0) {
-    await client.from('okr_key_results').delete().in('id', krToDelete);
+    const { error: delErr } = await client.from('okr_key_results').delete().in('id', krToDelete);
+    if (delErr) errors.push(`Delete KRs: ${delErr.message}`);
   }
   if (oToDelete.length > 0) {
-    await client.from('okr_objectives').delete().in('id', oToDelete);
+    const { error: delErr } = await client.from('okr_objectives').delete().in('id', oToDelete);
+    if (delErr) errors.push(`Delete objectives: ${delErr.message}`);
   }
 
-  // Upsert objectives, KRs, tasks
+  // Upsert objectives, KRs, tasks — WITH user_id
   for (const o of objectives) {
     const { error: oErr } = await client
       .from('okr_objectives')
@@ -98,10 +113,11 @@ export async function POST(request: NextRequest) {
         id: o.id,
         title: o.title,
         period: o.period,
+        user_id: OKR_USER_ID,
         created_at: typeof o.createdAt === 'number' ? new Date(o.createdAt).toISOString() : (o.createdAt || new Date().toISOString()),
       }, { onConflict: 'id' });
 
-    if (oErr) console.error('[OKR upsert O]', oErr.message);
+    if (oErr) errors.push(`Upsert O[${o.id}]: ${oErr.message}`);
 
     for (const kr of o.children) {
       const { error: krErr } = await client
@@ -111,10 +127,11 @@ export async function POST(request: NextRequest) {
           objective_id: o.id,
           title: kr.title,
           target_value: kr.targetValue ?? 1,
+          user_id: OKR_USER_ID,
           created_at: typeof kr.createdAt === 'number' ? new Date(kr.createdAt).toISOString() : (kr.createdAt || new Date().toISOString()),
         }, { onConflict: 'id' });
 
-      if (krErr) console.error('[OKR upsert KR]', krErr.message);
+      if (krErr) errors.push(`Upsert KR[${kr.id}]: ${krErr.message}`);
 
       for (const t of kr.children) {
         const { error: tErr } = await client
@@ -127,12 +144,18 @@ export async function POST(request: NextRequest) {
             planned_year: t.plannedYear ?? null,
             planned_month: t.plannedMonth ?? null,
             planned_day: t.plannedDay ?? null,
+            user_id: OKR_USER_ID,
             created_at: typeof t.createdAt === 'number' ? new Date(t.createdAt).toISOString() : (t.createdAt || new Date().toISOString()),
           }, { onConflict: 'id' });
 
-        if (tErr) console.error('[OKR upsert Task]', tErr.message);
+        if (tErr) errors.push(`Upsert Task[${t.id}]: ${tErr.message}`);
       }
     }
+  }
+
+  if (errors.length > 0) {
+    console.error('[OKR POST errors]', errors);
+    return NextResponse.json({ success: false, errors }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });
