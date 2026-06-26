@@ -1,6 +1,8 @@
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { NextRequest, NextResponse } from 'next/server';
 
+const USER_ID = 'legacy';
+
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const { events } = body as {
@@ -19,6 +21,7 @@ export async function POST(request: NextRequest) {
 
   const rows = events.map(e => ({
     id: e.id,
+    user_id: USER_ID,
     year: e.year,
     month: e.month,
     day: e.day,

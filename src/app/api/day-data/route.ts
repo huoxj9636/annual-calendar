@@ -1,6 +1,15 @@
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { NextRequest, NextResponse } from 'next/server';
 
+const USER_ID = 'legacy';
+
+function parseTime(t: string): { hour: number; min: number } {
+  if (!t || typeof t !== 'string') return { hour: 0, min: 0 };
+  const [h, m] = t.split(':').map((v) => parseInt(v, 10) || 0);
+  return { hour: h, min: m };
+}
+
+// GET /api/day-data?year=&month=&day= — 读该日 events + todos
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const year = Number(searchParams.get('year'));
@@ -12,94 +21,99 @@ export async function GET(request: NextRequest) {
   }
 
   const client = getSupabaseClient();
-  const [eventsRes, todosRes] = await Promise.all([
-    client.from('day_events').select('*').eq('year', year).eq('month', month).eq('day', day).order('start_hour', { ascending: true }),
-    client.from('day_todos').select('*').eq('year', year).eq('month', month).eq('day', day).order('created_at', { ascending: true }),
-  ]);
 
-  if (eventsRes.error) return NextResponse.json({ error: eventsRes.error.message }, { status: 500 });
-  if (todosRes.error) return NextResponse.json({ error: todosRes.error.message }, { status: 500 });
+  const { data: events, error: e1 } = await client
+    .from('day_events')
+    .select('*')
+    .eq('user_id', USER_ID)
+    .eq('year', year)
+    .eq('month', month)
+    .eq('day', day)
+    .order('start_hour', { ascending: true })
+    .order('start_min', { ascending: true });
+  if (e1) return NextResponse.json({ error: e1.message }, { status: 500 });
 
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const events = (eventsRes.data || []).map((e: Record<string, unknown>) => ({
-    id: e.id,
-    title: e.title,
-    time: `${pad((e.start_hour as number) ?? 0)}:${pad((e.start_min as number) ?? 0)}`,
-    endTime: e.end_hour != null || e.end_min != null
-      ? `${pad((e.end_hour as number) ?? 0)}:${pad((e.end_min as number) ?? 0)}`
-      : undefined,
-  }));
+  const { data: todos, error: e2 } = await client
+    .from('day_todos')
+    .select('*')
+    .eq('user_id', USER_ID)
+    .eq('year', year)
+    .eq('month', month)
+    .eq('day', day)
+    .order('created_at', { ascending: true });
+  if (e2) return NextResponse.json({ error: e2.message }, { status: 500 });
 
-  const todos = (todosRes.data || []).map((t: Record<string, unknown>) => ({
-    id: t.id,
-    text: t.text,
-    done: t.done ?? false,
-  }));
-
-  return NextResponse.json({ events, todos });
+  return NextResponse.json({ events: events || [], todos: todos || [] });
 }
 
+// POST /api/day-data — body: { type: 'events'|'todos'|'note', year, month, day, data }
+//  type='events' : data = EventItem[] （用 time/endTime/title/desc 字段）
+//  type='todos'  : data = TodoItem[]  （用 text/checked 字段）
+//  type='note'   : data = string（暂不持久化，前端有 dayview-note 单独 API）
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { year, month, day, type, data: rawData } = body as {
-    year: number; month: number; day: number;
-    type?: string;
-    data?: unknown[];
-    events?: { id: string; title: string; time?: string; endTime?: string; startHour?: number; startMin?: number; endHour?: number; endMin?: number; color?: string; done?: boolean }[];
-    todos?: { id: string; text: string; done: boolean }[];
+  const { type, year, month, day, data } = body as {
+    type: string;
+    year: number;
+    month: number;
+    day: number;
+    data: unknown;
   };
 
-  // Support both old format (type+data) and new format (events+todos)
-  type EventInput = { id: string; title: string; time?: string; endTime?: string; startHour?: number; startMin?: number; endHour?: number; endMin?: number };
-  type TodoInput = { id: string; text: string; done: boolean };
-  const events: EventInput[] | undefined = body.events || (type === 'events' ? rawData as EventInput[] : undefined);
-  const todos: TodoInput[] | undefined = body.todos || (type === 'todos' ? rawData as TodoInput[] : undefined);
-
-  if (!year || !month || !day) {
+  if (!type || !year || !month || !day) {
     return NextResponse.json({ error: 'Missing params' }, { status: 400 });
   }
 
   const client = getSupabaseClient();
 
-  // Delete existing events and todos for this date
-  await client.from('day_events').delete().eq('year', year).eq('month', month).eq('day', day);
-  await client.from('day_todos').delete().eq('year', year).eq('month', month).eq('day', day);
-
-  // Insert new events
-  if (events && events.length > 0) {
-    const parseTime = (t?: string) => {
-      if (!t) return { h: 0, m: 0 };
-      const parts = t.split(':').map(Number);
-      return { h: parts[0] ?? 0, m: parts[1] ?? 0 };
-    };
-    const rows = events.map(e => {
-      const start = e.startHour != null ? { h: e.startHour, m: e.startMin ?? 0 } : parseTime(e.time);
-      const end = e.endHour != null ? { h: e.endHour, m: e.endMin ?? 0 } : parseTime(e.endTime);
+  if (type === 'events') {
+    const items = Array.isArray(data) ? (data as Array<{ time?: string; endTime?: string; title?: string; desc?: string; color?: string }>) : [];
+    if (items.length === 0) {
+      return NextResponse.json({ success: true, count: 0 });
+    }
+    const rows = items.map((e) => {
+      const start = parseTime(e.time || '');
+      const end = parseTime(e.endTime || '');
       return {
-        id: e.id, year, month, day,
-        title: e.title,
-        start_hour: start.h,
-        start_min: start.m,
-        end_hour: end.h,
-        end_min: end.m,
-        created_at: new Date().toISOString(),
+        user_id: USER_ID,
+        year,
+        month,
+        day,
+        title: e.title || '',
+        notes: e.desc || '',
+        start_hour: start.hour,
+        start_min: start.min,
+        end_hour: end.hour,
+        end_min: end.min,
+        color: e.color || null,
       };
     });
     const { error } = await client.from('day_events').insert(rows);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, count: rows.length });
   }
 
-  // Insert new todos
-  if (todos && todos.length > 0) {
-    const rows = todos.map(t => ({
-      id: t.id, year, month, day,
-      text: t.text,
-      done: t.done ?? false,
-      created_at: new Date().toISOString(),
+  if (type === 'todos') {
+    const items = Array.isArray(data) ? (data as Array<{ text?: string; checked?: boolean }>) : [];
+    if (items.length === 0) {
+      return NextResponse.json({ success: true, count: 0 });
+    }
+    const rows = items.map((t) => ({
+      user_id: USER_ID,
+      year,
+      month,
+      day,
+      text: t.text || '',
+      done: !!t.checked,
     }));
     const { error } = await client.from('day_todos').insert(rows);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, count: rows.length });
   }
 
-  return NextResponse.json({ success: true });
+  if (type === 'note') {
+    return NextResponse.json({ success: true, note: 'persisted client-side' });
+  }
+
+  return NextResponse.json({ error: `Unknown type: ${type}` }, { status: 400 });
 }

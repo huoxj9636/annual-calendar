@@ -484,6 +484,7 @@ async function processImportTask(
       const { data: existing } = await supabase
         .from('daily_reviews')
         .select('*')
+        .eq('user_id', 'legacy')
         .eq('year', entry.year)
         .eq('month', entry.month)
         .eq('day', entry.day)
@@ -511,6 +512,7 @@ async function processImportTask(
             reflections: updated.reflections,
             tomorrow_todo: updated.tomorrowTodo,
           })
+          .eq('user_id', 'legacy')
           .eq('year', entry.year)
           .eq('month', entry.month)
           .eq('day', entry.day);
@@ -520,6 +522,7 @@ async function processImportTask(
         const { error } = await supabase
           .from('daily_reviews')
           .upsert({
+            user_id: 'legacy',
             year: entry.year,
             month: entry.month,
             day: entry.day,
@@ -531,7 +534,7 @@ async function processImportTask(
             tomorrow_todo: entry.tomorrowTodo,
             mood_score: 3,
             energy: 3,
-          }, { onConflict: 'year,month,day' });
+          }, { onConflict: 'user_id,year,month,day' });
 
         if (!error) savedCount++;
       }
