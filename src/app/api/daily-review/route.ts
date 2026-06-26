@@ -1,6 +1,11 @@
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Use 'legacy' as default user_id — matches the RLS policy exception:
+//   (user_id = 'legacy' OR auth.uid()::text = user_id)
+// This ensures data persists for the anonymous/single-user scenario.
+const REVIEW_USER_ID = 'legacy';
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const year = Number(searchParams.get('year'));
@@ -78,6 +83,7 @@ export async function POST(request: NextRequest) {
 
   const client = getSupabaseClient();
   const row = {
+    user_id: REVIEW_USER_ID,
     year, month, day,
     completed: completed || '',
     good_things: goodThings || '',
@@ -92,7 +98,7 @@ export async function POST(request: NextRequest) {
 
   const { error } = await client
     .from('daily_reviews')
-    .upsert(row, { onConflict: 'year,month,day' });
+    .upsert(row, { onConflict: 'user_id,year,month,day' });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
