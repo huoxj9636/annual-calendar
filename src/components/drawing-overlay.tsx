@@ -54,9 +54,13 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
 
     const saveStrokes = useCallback((newStrokes: Stroke[]) => {
       try {
-        // Extract year from storageKey like "calendar-drawing-2025"
         const yearMatch = storageKey.match(/(\d{4})/);
         if (yearMatch) {
+          // 1) 写主 localStorage（永久不删）
+          try { localStorage.setItem(storageKey, JSON.stringify(newStrokes)); } catch { /* ignore */ }
+          // 2) 写备份 localStorage（防主 key 被清）
+          try { localStorage.setItem(`${storageKey}-backup`, JSON.stringify(newStrokes)); } catch { /* ignore */ }
+          // 3) 同步到 DB（云备份）
           fetch('/api/calendar-data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -102,7 +106,7 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
           if (!yearMatch) return;
           const year = yearMatch[1];
 
-          // 1) 先看 localStorage
+          // 1) 先看 localStorage 主 key
           let lsStrokes: Stroke[] | null = null;
           try {
             const lsRaw = localStorage.getItem(storageKey);
@@ -112,7 +116,17 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
             }
           } catch { /* ignore */ }
 
-          // 2) 再看 DB
+          // 2) 看 localStorage 备份 key（防主 key 被清）
+          let lsBackupStrokes: Stroke[] | null = null;
+          try {
+            const raw = localStorage.getItem(`${storageKey}-backup`);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed) && parsed.length > 0) lsBackupStrokes = parsed;
+            }
+          } catch { /* ignore */ }
+
+          // 3) 看 DB
           let dbStrokes: Stroke[] | null = null;
           try {
             const res = await fetch(`/api/calendar-data?type=drawing&year=${year}`);
@@ -124,35 +138,39 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
             }
           } catch { /* ignore */ }
 
-          // 诊断日志（用户可在 console 看到发生了什么）
+          // 取最多的那份（最可能是完整数据）
+          const candidates = [lsStrokes, lsBackupStrokes, dbStrokes].filter(Boolean) as Stroke[][];
+          const best = candidates.length > 0
+            ? candidates.reduce((a, b) => (a.length >= b.length ? a : b))
+            : null;
+
           // eslint-disable-next-line no-console
           console.log('[画布恢复诊断]', {
             year,
-            localStorageCount: lsStrokes?.length ?? 0,
+            mainKeyCount: lsStrokes?.length ?? 0,
+            backupKeyCount: lsBackupStrokes?.length ?? 0,
             dbCount: dbStrokes?.length ?? 0,
-            source: lsStrokes ? 'localStorage' : (dbStrokes ? 'database' : 'empty'),
+            recoveredCount: best?.length ?? 0,
+            source: best ? (lsStrokes && best === lsStrokes ? 'localStorage-main'
+                          : lsBackupStrokes && best === lsBackupStrokes ? 'localStorage-backup'
+                          : 'database') : 'empty',
           });
 
-          // 3) 优先级：localStorage > DB
-          if (lsStrokes) {
-            setStrokes(lsStrokes);
-            // 同步到 DB（保证以后清缓存也不丢）
-            if (!dbStrokes || dbStrokes.length !== lsStrokes.length) {
+          if (best) {
+            setStrokes(best);
+            // 同步所有源到主 key
+            try { localStorage.setItem(storageKey, JSON.stringify(best)); } catch { /* ignore */ }
+            try { localStorage.setItem(`${storageKey}-backup`, JSON.stringify(best)); } catch { /* ignore */ }
+            // 同步到 DB
+            if (!dbStrokes || dbStrokes.length !== best.length) {
               try {
                 await fetch('/api/calendar-data', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ type: 'drawing', year: Number(year), data: lsStrokes }),
+                  body: JSON.stringify({ type: 'drawing', year: Number(year), data: best }),
                 });
               } catch { /* ignore */ }
             }
-            // 保留 localStorage 备份，不再 remove
-          } else if (dbStrokes) {
-            setStrokes(dbStrokes);
-            // 备份到 localStorage
-            try {
-              localStorage.setItem(storageKey, JSON.stringify(dbStrokes));
-            } catch { /* ignore */ }
           }
         } catch { /* ignore */ }
       })();
