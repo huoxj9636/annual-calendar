@@ -21,6 +21,7 @@ import InsightPanel from '@/components/insight-panel';
 import { AnalogClock } from '@/components/analog-clock';
 import TrackPanel from '@/components/track-panel';
 import DailyReview from '@/components/daily-review';
+import WeeklyReviewTimeline from '@/components/weekly-review-timeline';
 import KnowledgePanel from '@/components/knowledge-panel';
 import {
   precomputeYearData,
@@ -1792,7 +1793,20 @@ export default function YearCalendar() {
       </div>{/* end flex-1 container */}
       </div>{/* end page1 container */}
 
-      {/* Page 2: Monthly Review */}
+      {/* Page 2: Weekly Review Timeline (一屏一周 + 挖掘分析) */}
+      <section className="h-screen overflow-hidden">
+        <WeeklyReviewTimeline
+          year={year}
+          skin={skin}
+          onOpenDayReview={(month, day) => {
+            setDailyReviewMonth(month);
+            setDailyReviewDay(day);
+            setDailyReviewOpen(true);
+          }}
+        />
+      </section>
+
+      {/* Page 3: Monthly Review */}
       <section className="h-screen overflow-y-auto">
         <MonthlyReview year={year} skin={skin} />
       </section>
