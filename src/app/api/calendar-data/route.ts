@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       .eq('year', year)
       .maybeSingle();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json(data?.strokes || null);
+    return NextResponse.json({ strokes: data?.strokes || [] });
   }
 
   return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
