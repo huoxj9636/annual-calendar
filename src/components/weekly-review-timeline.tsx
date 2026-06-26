@@ -409,7 +409,7 @@ function ThemesModule({ mining, skin }: { mining: MiningResult | null; skin: Ski
               <ul className="space-y-1">
                 {mining.topProblems.map((p, i) => (
                   <li key={i} className="text-[11px] flex items-baseline gap-1.5" style={{ color: skin.textPrimary }}>
-                    <span className="w-3 flex-shrink-0 text-center font-mono text-[10px]" style={{ color: '#e74c3c' }}>{(i + 1)}</span>
+                    <span className="w-3 flex-shrink-0 text-center font-mono text-[10px]" style={{ color: skin.crossColor }}>{(i + 1)}</span>
                     <span className="flex-1 min-w-0 truncate" title={p.text}>{p.text}</span>
                     {p.count > 1 && <span className="text-[10px] flex-shrink-0" style={{ color: skin.textMuted }}>×{p.count}</span>}
                   </li>

@@ -94,39 +94,65 @@ const DrawingOverlay = forwardRef<DrawingOverlayHandle, DrawingOverlayProps>(
       hasStrokes: strokes.length > 0,
     }), [drawingEnabled, tool, penColor, overlayVisible, strokes.length, handleUndo, handleClear]);
 
-    // Load strokes from API (with localStorage migration)
+    // Load strokes: localStorage 永远优先（用户最近操作的真相），DB 作为兜底
     useEffect(() => {
       (async () => {
         try {
           const yearMatch = storageKey.match(/(\d{4})/);
-          if (yearMatch) {
-            const year = yearMatch[1];
+          if (!yearMatch) return;
+          const year = yearMatch[1];
+
+          // 1) 先看 localStorage
+          let lsStrokes: Stroke[] | null = null;
+          try {
+            const lsRaw = localStorage.getItem(storageKey);
+            if (lsRaw) {
+              const parsed = JSON.parse(lsRaw);
+              if (Array.isArray(parsed) && parsed.length > 0) lsStrokes = parsed;
+            }
+          } catch { /* ignore */ }
+
+          // 2) 再看 DB
+          let dbStrokes: Stroke[] | null = null;
+          try {
             const res = await fetch(`/api/calendar-data?type=drawing&year=${year}`);
             if (res.ok) {
               const data = await res.json();
               if (data.strokes && Array.isArray(data.strokes) && data.strokes.length > 0) {
-                setStrokes(data.strokes);
-              } else {
-                // No data in DB — try migrating from localStorage
-                try {
-                  const lsData = localStorage.getItem(storageKey);
-                  if (lsData) {
-                    const lsStrokes = JSON.parse(lsData);
-                    if (Array.isArray(lsStrokes) && lsStrokes.length > 0) {
-                      setStrokes(lsStrokes);
-                      // Migrate to DB
-                      await fetch('/api/calendar-data', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ type: 'drawing', year: Number(year), data: lsStrokes }),
-                      });
-                      // Remove from localStorage after successful migration
-                      localStorage.removeItem(storageKey);
-                    }
-                  }
-                } catch { /* ignore localStorage errors */ }
+                dbStrokes = data.strokes;
               }
             }
+          } catch { /* ignore */ }
+
+          // 诊断日志（用户可在 console 看到发生了什么）
+          // eslint-disable-next-line no-console
+          console.log('[画布恢复诊断]', {
+            year,
+            localStorageCount: lsStrokes?.length ?? 0,
+            dbCount: dbStrokes?.length ?? 0,
+            source: lsStrokes ? 'localStorage' : (dbStrokes ? 'database' : 'empty'),
+          });
+
+          // 3) 优先级：localStorage > DB
+          if (lsStrokes) {
+            setStrokes(lsStrokes);
+            // 同步到 DB（保证以后清缓存也不丢）
+            if (!dbStrokes || dbStrokes.length !== lsStrokes.length) {
+              try {
+                await fetch('/api/calendar-data', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ type: 'drawing', year: Number(year), data: lsStrokes }),
+                });
+              } catch { /* ignore */ }
+            }
+            // 保留 localStorage 备份，不再 remove
+          } else if (dbStrokes) {
+            setStrokes(dbStrokes);
+            // 备份到 localStorage
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(dbStrokes));
+            } catch { /* ignore */ }
           }
         } catch { /* ignore */ }
       })();
