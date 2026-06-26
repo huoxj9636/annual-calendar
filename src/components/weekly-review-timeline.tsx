@@ -490,7 +490,6 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
-  const dragStartX = useRef<number | null>(null);
   const totalWeeks = useMemo(() => getTotalWeeks(year), [year]);
 
   // Init to current week
@@ -546,26 +545,7 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
     });
   }, [totalWeeks]);
 
-  // Wheel handler (only when in view)
-  useEffect(() => {
-    if (!inView) return;
-    let lastFire = 0;
-    const handler = (e: WheelEvent) => {
-      e.preventDefault();
-      const now = Date.now();
-      if (now - lastFire < 400) return;
-      if (Math.abs(e.deltaY) < 20) return;
-      lastFire = now;
-      if (e.deltaY > 0) goNext();
-      else goPrev();
-    };
-    const node = containerRef.current;
-    if (!node) return;
-    node.addEventListener('wheel', handler, { passive: false });
-    return () => node.removeEventListener('wheel', handler);
-  }, [inView, goPrev, goNext]);
-
-  // Touch/drag handlers
+  // Touch handler (mobile swipe)
   useEffect(() => {
     const node = containerRef.current;
     if (!node) return;
@@ -586,31 +566,12 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
       touchStartY.current = null;
     };
 
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('button, input, textarea, [data-no-drag]')) return;
-      dragStartX.current = e.clientX;
-    };
-    const onMouseUp = (e: MouseEvent) => {
-      if (dragStartX.current === null) return;
-      const dx = e.clientX - dragStartX.current;
-      if (Math.abs(dx) > 80) {
-        if (dx < 0) goNext();
-        else goPrev();
-      }
-      dragStartX.current = null;
-    };
-
     node.addEventListener('touchstart', onTouchStart, { passive: true });
     node.addEventListener('touchend', onTouchEnd, { passive: true });
-    node.addEventListener('mousedown', onMouseDown);
-    node.addEventListener('mouseup', onMouseUp);
 
     return () => {
       node.removeEventListener('touchstart', onTouchStart);
       node.removeEventListener('touchend', onTouchEnd);
-      node.removeEventListener('mousedown', onMouseDown);
-      node.removeEventListener('mouseup', onMouseUp);
     };
   }, [goPrev, goNext]);
 
@@ -643,38 +604,40 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
     <div
       ref={containerRef}
       className="h-screen flex flex-col overflow-hidden select-none"
-      style={{ backgroundColor: skin.bodyBg, cursor: dragStartX.current !== null ? 'grabbing' : 'default' }}
+      style={{ backgroundColor: skin.bodyBg }}
     >
       {/* Top bar */}
       <div
-        className="flex-shrink-0 px-6 py-3 flex items-center justify-between"
+        className="flex-shrink-0 px-6 py-3 flex items-center justify-center gap-4"
         style={{ borderBottom: `1px solid ${skin.divider}` }}
       >
         <button
           onClick={goPrev}
           disabled={currentWeek <= 1}
-          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-30"
-          style={{ color: skin.textPrimary, backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
+          aria-label="上一周"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold transition-all disabled:opacity-30 hover:scale-110 active:scale-95"
+          style={{ color: skin.swatch, backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
         >
-          ← 上一周
+          ←
         </button>
-        <div className="flex flex-col items-center">
-          <div className="text-base font-bold flex items-center gap-2" style={{ color: skin.textPrimary }}>
+        <div className="flex flex-col items-center min-w-0 px-2">
+          <div className="text-2xl font-bold flex items-baseline gap-2 whitespace-nowrap" style={{ color: skin.textPrimary, fontFamily: 'var(--font-serif)' }}>
             <span style={{ color: skin.swatch }}>第 {currentWeek}</span>
             <span>周</span>
-            <span className="text-sm font-mono" style={{ color: skin.textMuted }}>· {formatDateRange(weekStart, weekEnd)}</span>
+            <span className="text-base font-mono font-normal" style={{ color: skin.textMuted }}>· {formatDateRange(weekStart, weekEnd)}</span>
           </div>
-          <div className="text-xs mt-0.5" style={{ color: skin.textMuted }}>
+          <div className="text-base mt-1 font-medium" style={{ color: skin.textSecondary }}>
             {loading ? '加载中...' : mining ? `本周已写 ${mining.totalItems} 条 · ${mining.filledDays}/7 天` : '暂无数据'}
           </div>
         </div>
         <button
           onClick={goNext}
           disabled={currentWeek >= totalWeeks}
-          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-30"
-          style={{ color: skin.textPrimary, backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
+          aria-label="下一周"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold transition-all disabled:opacity-30 hover:scale-110 active:scale-95"
+          style={{ color: skin.swatch, backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
         >
-          下一周 →
+          →
         </button>
       </div>
 
