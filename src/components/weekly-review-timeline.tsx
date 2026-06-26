@@ -546,25 +546,6 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
     });
   }, [totalWeeks]);
 
-  // Wheel handler (only when in view)
-  useEffect(() => {
-    if (!inView) return;
-    let lastFire = 0;
-    const handler = (e: WheelEvent) => {
-      e.preventDefault();
-      const now = Date.now();
-      if (now - lastFire < 400) return;
-      if (Math.abs(e.deltaY) < 20) return;
-      lastFire = now;
-      if (e.deltaY > 0) goNext();
-      else goPrev();
-    };
-    const node = containerRef.current;
-    if (!node) return;
-    node.addEventListener('wheel', handler, { passive: false });
-    return () => node.removeEventListener('wheel', handler);
-  }, [inView, goPrev, goNext]);
-
   // Touch/drag handlers
   useEffect(() => {
     const node = containerRef.current;
@@ -645,48 +626,50 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
       className="h-screen flex flex-col overflow-hidden select-none"
       style={{ backgroundColor: skin.bodyBg, cursor: dragStartX.current !== null ? 'grabbing' : 'default' }}
     >
-      {/* Top bar */}
+      {/* Title bar */}
       <div
-        className="flex-shrink-0 px-6 py-2.5 flex items-center justify-between"
+        className="flex-shrink-0 px-6 py-3 flex items-center justify-center"
         style={{ borderBottom: `1px solid ${skin.divider}` }}
       >
-        <button
-          onClick={goPrev}
-          disabled={currentWeek <= 1}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-30"
-          style={{ color: skin.textPrimary, backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
-        >
-          ← 上一周
-        </button>
-        <div className="flex flex-col items-center">
-          <div className="text-sm font-semibold flex items-center gap-2" style={{ color: skin.textPrimary }}>
+        <div className="flex flex-col items-center gap-1">
+          <div className="text-2xl font-bold flex items-baseline gap-2" style={{ color: skin.textPrimary }}>
             <span style={{ color: skin.swatch }}>第 {currentWeek}</span>
             <span>周</span>
-            <span className="text-xs font-mono" style={{ color: skin.textMuted }}>· {formatDateRange(weekStart, weekEnd)}</span>
+            <span className="text-base font-mono font-normal" style={{ color: skin.textMuted }}>· {formatDateRange(weekStart, weekEnd)}</span>
           </div>
-          <div className="text-[10px] mt-0.5" style={{ color: skin.textMuted }}>
-            {loading ? '加载中...' : mining ? `本周已写 ${mining.totalItems} 条 · ${mining.filledDays}/7 天` : '暂无数据'}
+          <div className="text-sm" style={{ color: skin.textMuted }}>
+            {loading ? '加载中...' : mining ? `本周已写 ${mining.totalItems} 条 · ${mining.filledDays}/7 天有内容` : '暂无数据'}
           </div>
         </div>
-        <button
-          onClick={goNext}
-          disabled={currentWeek >= totalWeeks}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-30"
-          style={{ color: skin.textPrimary, backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
-        >
-          下一周 →
-        </button>
       </div>
 
-      {/* Cards row */}
+      {/* Cards row with side arrows */}
       <div
-        className="flex-1 flex gap-2 px-3 py-2 overflow-hidden min-h-0 transition-all duration-300"
+        className="flex-1 relative flex gap-2 px-3 py-2 overflow-hidden min-h-0 transition-all duration-300"
         style={{
           transform: transition === 'left' ? 'translateX(-20px)' : transition === 'right' ? 'translateX(20px)' : 'none',
           opacity: transition ? 0 : 1,
         }}
         data-no-drag
       >
+        {/* Left arrow - on the leftmost card side */}
+        <button
+          onClick={goPrev}
+          disabled={currentWeek <= 1}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-16 flex items-center justify-center transition-all disabled:opacity-20 disabled:cursor-not-allowed group cursor-pointer rounded-r-xl"
+          style={{
+            background: `linear-gradient(to right, ${skin.bodyBg}ee, transparent)`,
+          }}
+          title="上一周"
+        >
+          <span
+            className="text-3xl font-bold leading-none transition-transform group-hover:-translate-x-1"
+            style={{ color: skin.swatch }}
+          >
+            ‹
+          </span>
+        </button>
+
         {weekData.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-sm" style={{ color: skin.textMuted }}>
             {loading ? '加载本周复盘中...' : '本周无复盘数据'}
@@ -702,6 +685,24 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
             />
           ))
         )}
+
+        {/* Right arrow - on the rightmost card side */}
+        <button
+          onClick={goNext}
+          disabled={currentWeek >= totalWeeks}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-16 flex items-center justify-center transition-all disabled:opacity-20 disabled:cursor-not-allowed group cursor-pointer rounded-l-xl"
+          style={{
+            background: `linear-gradient(to left, ${skin.bodyBg}ee, transparent)`,
+          }}
+          title="下一周"
+        >
+          <span
+            className="text-3xl font-bold leading-none transition-transform group-hover:translate-x-1"
+            style={{ color: skin.swatch }}
+          >
+            ›
+          </span>
+        </button>
       </div>
 
       {/* Mining area */}
