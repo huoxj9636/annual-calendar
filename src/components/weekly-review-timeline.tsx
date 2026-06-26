@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Crosshair, Trophy, Minus } from 'lucide-react';
 import type { SkinTheme } from '@/lib/skins';
 
 interface WeeklyReviewTimelineProps {
@@ -22,6 +23,7 @@ interface DayReview {
   tomorrowTodo: string;
   totalLength: number;
   fieldLengths: Record<string, number>;
+  filledCount: number;
   hasContent: boolean;
 }
 
@@ -118,6 +120,7 @@ async function fetchDayReview(year: number, month: number, day: number): Promise
       tomorrowTodo: (data.tomorrowTodo || '').length,
     };
     const totalLength = Object.values(fieldLengths).reduce((a, b) => a + b, 0);
+    const filledCount = Object.values(fieldLengths).filter(v => v > 0).length;
     return {
       date: new Date(year, month - 1, day),
       year, month, day,
@@ -129,6 +132,7 @@ async function fetchDayReview(year: number, month: number, day: number): Promise
       tomorrowTodo: data.tomorrowTodo || '',
       totalLength,
       fieldLengths,
+      filledCount,
       hasContent: totalLength > 0,
     };
   } catch {
@@ -354,19 +358,54 @@ function HeatmapModule({ mining, weekData, skin }: { mining: MiningResult | null
   );
 }
 
+function getDayName(date: Date): string {
+  const names = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  return names[date.getDay()];
+}
+
+function getDayShortName(date: Date): string {
+  const names = ['日', '一', '二', '三', '四', '五', '六'];
+  return `周${names[date.getDay()]}`;
+}
+
 function StatsModule({ mining, weekData, skin }: { mining: MiningResult | null; weekData: DayReview[]; skin: SkinTheme }) {
   if (!mining) return <ModuleFrame skin={skin} title="完成度统计" />;
-  const maxBar = Math.max(1, ...Object.values(mining.fieldFilledCount));
+
+  const strongestDay = mining.mostProductiveDayIndex >= 0 ? weekData[mining.mostProductiveDayIndex] : null;
+  const weakestDay = mining.leastProductiveDayIndex >= 0 && mining.leastProductiveDayIndex !== mining.mostProductiveDayIndex
+    ? weekData[mining.leastProductiveDayIndex] : null;
+
   return (
     <ModuleFrame skin={skin} title="本周完成度统计" subtitle={`总条数 ${mining.totalItems} · 填写天数 ${mining.filledDays}/7`}>
-      <div className="flex-1 flex flex-col gap-2.5 min-h-0">
-        {/* Day stats */}
-        <div className="flex gap-3 text-sm" style={{ color: skin.textSecondary }}>
-          <span>最强: <b style={{ color: skin.swatch }}>{mining.mostProductiveDayIndex >= 0 ? `周${['一','二','三','四','五','六','日'][weekData[mining.mostProductiveDayIndex].date.getDay() === 0 ? 6 : weekData[mining.mostProductiveDayIndex].date.getDay() - 1]}` : '—'}</b></span>
-          {mining.leastProductiveDayIndex >= 0 && mining.leastProductiveDayIndex !== mining.mostProductiveDayIndex && (
-            <span>最弱: <b style={{ color: skin.textMuted }}>{`周${['一','二','三','四','五','六','日'][weekData[mining.leastProductiveDayIndex].date.getDay() === 0 ? 6 : weekData[mining.leastProductiveDayIndex].date.getDay() - 1]}`}</b></span>
-          )}
+      <div className="flex-1 flex flex-col gap-2 min-h-0">
+        {/* Strongest / Weakest pills */}
+        <div className="flex-shrink-0 grid grid-cols-2 gap-2">
+          <div
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg"
+            style={{ backgroundColor: `${skin.swatch}1a`, border: `1px solid ${skin.swatch}33` }}
+          >
+            <Trophy className="w-3.5 h-3.5 flex-shrink-0" style={{ color: skin.swatch }} />
+            <div className="flex flex-col leading-tight min-w-0">
+              <span className="text-[10px]" style={{ color: skin.textMuted }}>最强</span>
+              <span className="text-xs font-semibold truncate" style={{ color: skin.textPrimary }}>
+                {strongestDay ? `${getDayShortName(strongestDay.date)} · ${strongestDay.filledCount}项` : '—'}
+              </span>
+            </div>
+          </div>
+          <div
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg"
+            style={{ backgroundColor: `${skin.cardHover}80`, border: `1px solid ${skin.divider}` }}
+          >
+            <Minus className="w-3.5 h-3.5 flex-shrink-0" style={{ color: skin.textMuted }} />
+            <div className="flex flex-col leading-tight min-w-0">
+              <span className="text-[10px]" style={{ color: skin.textMuted }}>最弱</span>
+              <span className="text-xs font-semibold truncate" style={{ color: skin.textSecondary }}>
+                {weakestDay ? `${getDayShortName(weakestDay.date)} · ${weakestDay.filledCount}项` : '—'}
+              </span>
+            </div>
+          </div>
         </div>
+
         {/* 6 field bar chart */}
         <div className="flex-1 flex flex-col justify-center gap-1.5 min-h-0">
           {FIELD_ORDER.map((field) => {
@@ -628,7 +667,7 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
     >
       {/* Title bar */}
       <div
-        className="flex-shrink-0 px-6 py-3 flex items-center justify-center"
+        className="flex-shrink-0 px-6 py-3 flex items-center justify-center relative"
         style={{ borderBottom: `1px solid ${skin.divider}` }}
       >
         <div className="flex flex-col items-center gap-1">
@@ -641,6 +680,28 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
             {loading ? '加载中...' : mining ? `本周已写 ${mining.totalItems} 条 · ${mining.filledDays}/7 天有内容` : '暂无数据'}
           </div>
         </div>
+        {/* Jump to current week button */}
+        <button
+          onClick={() => {
+            const cw = getCurrentWeekIndex(year);
+            if (cw !== currentWeek) {
+              setTransition(cw > currentWeek ? 'left' : 'right');
+              setTimeout(() => setTransition(null), 350);
+              setCurrentWeek(cw);
+            }
+          }}
+          disabled={currentWeek === getCurrentWeekIndex(year)}
+          className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30 hover:scale-105"
+          style={{
+            color: skin.swatch,
+            backgroundColor: `${skin.swatch}14`,
+            border: `1px solid ${skin.swatch}40`,
+          }}
+          title="回到本周"
+        >
+          <Crosshair className="w-3.5 h-3.5" />
+          <span>回到本周</span>
+        </button>
       </div>
 
       {/* Cards row with side arrows */}
@@ -656,18 +717,17 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
         <button
           onClick={goPrev}
           disabled={currentWeek <= 1}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-16 flex items-center justify-center transition-all disabled:opacity-20 disabled:cursor-not-allowed group cursor-pointer rounded-r-xl"
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-14 h-24 flex items-center justify-center transition-all disabled:opacity-15 disabled:cursor-not-allowed group cursor-pointer rounded-2xl"
           style={{
-            background: `linear-gradient(to right, ${skin.bodyBg}ee, transparent)`,
+            background: `linear-gradient(to right, ${skin.bodyBg}f5, ${skin.bodyBg}aa 40%, transparent)`,
           }}
           title="上一周"
         >
-          <span
-            className="text-3xl font-bold leading-none transition-transform group-hover:-translate-x-1"
+          <ChevronLeft
+            className="w-10 h-10 transition-transform group-hover:-translate-x-1"
+            strokeWidth={2.5}
             style={{ color: skin.swatch }}
-          >
-            ‹
-          </span>
+          />
         </button>
 
         {weekData.length === 0 ? (
@@ -690,18 +750,17 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
         <button
           onClick={goNext}
           disabled={currentWeek >= totalWeeks}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-16 flex items-center justify-center transition-all disabled:opacity-20 disabled:cursor-not-allowed group cursor-pointer rounded-l-xl"
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-14 h-24 flex items-center justify-center transition-all disabled:opacity-15 disabled:cursor-not-allowed group cursor-pointer rounded-2xl"
           style={{
-            background: `linear-gradient(to left, ${skin.bodyBg}ee, transparent)`,
+            background: `linear-gradient(to left, ${skin.bodyBg}f5, ${skin.bodyBg}aa 40%, transparent)`,
           }}
           title="下一周"
         >
-          <span
-            className="text-3xl font-bold leading-none transition-transform group-hover:translate-x-1"
+          <ChevronRight
+            className="w-10 h-10 transition-transform group-hover:translate-x-1"
+            strokeWidth={2.5}
             style={{ color: skin.swatch }}
-          >
-            ›
-          </span>
+          />
         </button>
       </div>
 
