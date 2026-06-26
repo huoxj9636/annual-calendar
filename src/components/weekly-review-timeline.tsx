@@ -244,17 +244,17 @@ function DayCard({ day, skin, onClick, isToday }: { day: DayReview; skin: SkinTh
     >
       {/* Date header - 固定高度 */}
       <div
-        className="flex-shrink-0 px-2.5 py-2 flex items-center justify-between"
+        className="flex-shrink-0 px-3 py-2.5 flex items-center justify-between"
         style={{ borderBottom: `1px solid ${skin.divider}` }}
       >
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-base font-bold" style={{ color: skin.textPrimary }}>{day.date.getMonth() + 1}/{day.date.getDate()}</span>
-          <span className="text-[10px] uppercase tracking-wider" style={{ color: skin.textMuted }}>
+        <div className="flex items-baseline gap-2">
+          <span className="text-lg font-bold" style={{ color: skin.textPrimary }}>{day.date.getMonth() + 1}/{day.date.getDate()}</span>
+          <span className="text-xs font-medium" style={{ color: skin.textMuted }}>
             {['周日', '周一', '周二', '周三', '周四', '周五', '周六'][day.date.getDay()]}
           </span>
         </div>
         <span
-          className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+          className="text-xs font-mono px-2 py-0.5 rounded"
           style={{
             backgroundColor: filledFields > 0 ? `${skin.swatch}22` : skin.cardHover,
             color: filledFields > 0 ? skin.swatch : skin.textMuted,
@@ -265,18 +265,18 @@ function DayCard({ day, skin, onClick, isToday }: { day: DayReview; skin: SkinTh
       </div>
 
       {/* 6 fields - 每项 flex-1 均分剩余高度 */}
-      <div className="flex-1 min-h-0 px-2.5 py-1.5 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 px-3 py-2 flex flex-col gap-1 overflow-hidden">
         {FIELD_ORDER.map((field) => {
           const text = (day as unknown as Record<string, string>)[field] || '';
           const filled = !!text;
           return (
-            <div key={field} className="flex-1 min-h-0 flex flex-col gap-0.5 overflow-hidden">
+            <div key={field} className="flex-1 min-h-0 flex flex-col gap-1 overflow-hidden">
               <div
-                className="flex-shrink-0 flex items-center gap-1 text-[10px] font-medium leading-none"
+                className="flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold leading-none"
                 style={{ color: filled ? skin.textSecondary : skin.textMuted }}
               >
                 <span
-                  className="w-3 h-3 flex-shrink-0 rounded-sm flex items-center justify-center text-[8px] font-bold"
+                  className="w-3.5 h-3.5 flex-shrink-0 rounded-sm flex items-center justify-center text-[10px] font-bold"
                   style={{
                     backgroundColor: filled ? skin.checkColor : skin.cardHover,
                     color: filled ? 'white' : skin.textMuted,
@@ -287,12 +287,12 @@ function DayCard({ day, skin, onClick, isToday }: { day: DayReview; skin: SkinTh
                 <span>{FIELD_LABELS[field]}</span>
               </div>
               <div
-                className="flex-1 min-h-0 text-[11px] leading-snug overflow-hidden"
+                className="flex-1 min-h-0 text-sm leading-snug overflow-hidden"
                 style={{
                   color: filled ? skin.textPrimary : skin.textMuted,
                   opacity: filled ? 1 : 0.5,
                   display: '-webkit-box',
-                  WebkitLineClamp: 3,
+                  WebkitLineClamp: 2,
                   WebkitBoxOrient: 'vertical',
                   wordBreak: 'break-word',
                 }}
@@ -315,17 +315,17 @@ function HeatmapModule({ mining, weekData, skin }: { mining: MiningResult | null
   return (
     <ModuleFrame skin={skin} title="完成度密度" subtitle="色深 = 字数">
       <div className="flex-1 flex flex-col justify-center min-h-0">
-        <div className="grid gap-0.5" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
+        <div className="grid gap-1" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
           {/* Header row */}
           <div />
           {weekData.map((d, i) => (
-            <div key={i} className="text-[10px] text-center font-mono" style={{ color: skin.textMuted }}>
+            <div key={i} className="text-xs text-center font-semibold" style={{ color: skin.textMuted }}>
               {['一', '二', '三', '四', '五', '六', '日'][d.date.getDay() === 0 ? 6 : d.date.getDay() - 1]}
             </div>
           ))}
           {mining.heatmap.map((row) => (
             <div key={`row-${row.field}`} className="contents">
-              <div className="text-[11px] pr-1 text-right" style={{ color: skin.textSecondary }}>
+              <div className="text-xs pr-1.5 text-right font-medium" style={{ color: skin.textSecondary }}>
                 {row.label}
               </div>
               {row.cells.map((cell, i) => {
@@ -334,7 +334,7 @@ function HeatmapModule({ mining, weekData, skin }: { mining: MiningResult | null
                 return (
                   <div
                     key={`${row.field}-${i}`}
-                    className="h-6 rounded-sm flex items-center justify-center text-[9px] font-mono"
+                    className="h-7 rounded-sm flex items-center justify-center text-xs font-mono font-semibold"
                     style={{
                       backgroundColor: cell.filled ? skin.swatch : skin.cardHover,
                       opacity: cell.filled ? 0.3 + intensity * 0.7 : 1,
@@ -359,29 +359,29 @@ function StatsModule({ mining, weekData, skin }: { mining: MiningResult | null; 
   const maxBar = Math.max(1, ...Object.values(mining.fieldFilledCount));
   return (
     <ModuleFrame skin={skin} title="本周完成度统计" subtitle={`总条数 ${mining.totalItems} · 填写天数 ${mining.filledDays}/7`}>
-      <div className="flex-1 flex flex-col gap-2 min-h-0">
+      <div className="flex-1 flex flex-col gap-2.5 min-h-0">
         {/* Day stats */}
-        <div className="flex gap-2 text-[11px]" style={{ color: skin.textSecondary }}>
+        <div className="flex gap-3 text-sm" style={{ color: skin.textSecondary }}>
           <span>最强: <b style={{ color: skin.swatch }}>{mining.mostProductiveDayIndex >= 0 ? `周${['一','二','三','四','五','六','日'][weekData[mining.mostProductiveDayIndex].date.getDay() === 0 ? 6 : weekData[mining.mostProductiveDayIndex].date.getDay() - 1]}` : '—'}</b></span>
           {mining.leastProductiveDayIndex >= 0 && mining.leastProductiveDayIndex !== mining.mostProductiveDayIndex && (
             <span>最弱: <b style={{ color: skin.textMuted }}>{`周${['一','二','三','四','五','六','日'][weekData[mining.leastProductiveDayIndex].date.getDay() === 0 ? 6 : weekData[mining.leastProductiveDayIndex].date.getDay() - 1]}`}</b></span>
           )}
         </div>
         {/* 6 field bar chart */}
-        <div className="flex-1 flex flex-col justify-center gap-1 min-h-0">
+        <div className="flex-1 flex flex-col justify-center gap-1.5 min-h-0">
           {FIELD_ORDER.map((field) => {
             const count = mining.fieldFilledCount[field];
             const pct = count / 7;
             return (
-              <div key={field} className="flex items-center gap-2 text-[11px]">
-                <span className="w-8 flex-shrink-0 text-right" style={{ color: skin.textSecondary }}>{FIELD_LABELS[field]}</span>
-                <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: skin.cardHover }}>
+              <div key={field} className="flex items-center gap-2 text-sm">
+                <span className="w-9 flex-shrink-0 text-right font-medium" style={{ color: skin.textSecondary }}>{FIELD_LABELS[field]}</span>
+                <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: skin.cardHover }}>
                   <div
                     className="h-full rounded-full transition-all"
                     style={{ width: `${pct * 100}%`, backgroundColor: skin.swatch, opacity: 0.4 + pct * 0.6 }}
                   />
                 </div>
-                <span className="w-8 flex-shrink-0 font-mono text-[10px]" style={{ color: skin.textMuted }}>{count}/7</span>
+                <span className="w-10 flex-shrink-0 font-mono text-xs text-right" style={{ color: skin.textMuted }}>{count}/7</span>
               </div>
             );
           })}
