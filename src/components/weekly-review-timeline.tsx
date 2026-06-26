@@ -395,20 +395,20 @@ function ThemesModule({ mining, skin }: { mining: MiningResult | null; skin: Ski
   if (!mining) return <ModuleFrame skin={skin} title="完成内容 + TOP 问题" />;
   return (
     <ModuleFrame skin={skin} title="完成内容 + TOP 问题">
-      <div className="flex-1 grid grid-cols-2 gap-2 min-h-0">
+      <div className="flex-1 grid grid-cols-2 gap-3 min-h-0">
         {/* Themes */}
         <div className="flex flex-col min-h-0 overflow-hidden">
-          <div className="text-[11px] font-medium mb-1" style={{ color: skin.textSecondary }}>本周主要完成</div>
+          <div className="text-sm font-semibold mb-1.5" style={{ color: skin.textSecondary }}>本周主要完成</div>
           <div className="flex-1 overflow-y-auto min-h-0">
             {mining.themes.length === 0 ? (
-              <div className="text-[11px]" style={{ color: skin.textMuted }}>本周完成项为空</div>
+              <div className="text-sm" style={{ color: skin.textMuted }}>本周完成项为空</div>
             ) : (
-              <ul className="space-y-1">
+              <ul className="space-y-1.5">
                 {mining.themes.map((t, i) => (
-                  <li key={i} className="text-[11px] flex items-baseline gap-1.5" style={{ color: skin.textPrimary }}>
-                    <span className="w-3 flex-shrink-0 text-center font-mono text-[10px]" style={{ color: skin.swatch }}>{(i + 1)}</span>
+                  <li key={i} className="text-sm flex items-baseline gap-2" style={{ color: skin.textPrimary }}>
+                    <span className="w-3.5 flex-shrink-0 text-center font-mono text-xs" style={{ color: skin.swatch }}>{(i + 1)}</span>
                     <span className="flex-1 min-w-0 truncate" title={t.text}>{t.text}</span>
-                    {t.count > 1 && <span className="text-[10px] flex-shrink-0" style={{ color: skin.textMuted }}>×{t.count}</span>}
+                    {t.count > 1 && <span className="text-xs flex-shrink-0 font-mono" style={{ color: skin.textMuted }}>×{t.count}</span>}
                   </li>
                 ))}
               </ul>
@@ -417,17 +417,17 @@ function ThemesModule({ mining, skin }: { mining: MiningResult | null; skin: Ski
         </div>
         {/* Top problems */}
         <div className="flex flex-col min-h-0 overflow-hidden">
-          <div className="text-[11px] font-medium mb-1" style={{ color: skin.textSecondary }}>TOP 问题</div>
+          <div className="text-sm font-semibold mb-1.5" style={{ color: skin.textSecondary }}>TOP 问题</div>
           <div className="flex-1 overflow-y-auto min-h-0">
             {mining.topProblems.length === 0 ? (
-              <div className="text-[11px]" style={{ color: skin.textMuted }}>本周无问题</div>
+              <div className="text-sm" style={{ color: skin.textMuted }}>本周无问题</div>
             ) : (
-              <ul className="space-y-1">
+              <ul className="space-y-1.5">
                 {mining.topProblems.map((p, i) => (
-                  <li key={i} className="text-[11px] flex items-baseline gap-1.5" style={{ color: skin.textPrimary }}>
-                    <span className="w-3 flex-shrink-0 text-center font-mono text-[10px]" style={{ color: skin.crossColor }}>{(i + 1)}</span>
+                  <li key={i} className="text-sm flex items-baseline gap-2" style={{ color: skin.textPrimary }}>
+                    <span className="w-3.5 flex-shrink-0 text-center font-mono text-xs" style={{ color: skin.crossColor }}>{(i + 1)}</span>
                     <span className="flex-1 min-w-0 truncate" title={p.text}>{p.text}</span>
-                    {p.count > 1 && <span className="text-[10px] flex-shrink-0" style={{ color: skin.textMuted }}>×{p.count}</span>}
+                    {p.count > 1 && <span className="text-xs flex-shrink-0 font-mono" style={{ color: skin.textMuted }}>×{p.count}</span>}
                   </li>
                 ))}
               </ul>
@@ -445,9 +445,9 @@ function ModuleFrame({ skin, title, subtitle, children }: { skin: SkinTheme; tit
       className="rounded-xl p-3 flex flex-col min-h-0 overflow-hidden"
       style={{ backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
     >
-      <div className="flex items-baseline justify-between mb-2 flex-shrink-0">
-        <h3 className="text-xs font-semibold" style={{ color: skin.textPrimary }}>{title}</h3>
-        {subtitle && <span className="text-[10px]" style={{ color: skin.textMuted }}>{subtitle}</span>}
+      <div className="flex items-baseline justify-between mb-2.5 flex-shrink-0">
+        <h3 className="text-sm font-bold" style={{ color: skin.textPrimary }}>{title}</h3>
+        {subtitle && <span className="text-xs" style={{ color: skin.textMuted }}>{subtitle}</span>}
       </div>
       {children}
     </div>
@@ -647,31 +647,31 @@ export default function WeeklyReviewTimeline({ year, skin, onOpenDayReview }: We
     >
       {/* Top bar */}
       <div
-        className="flex-shrink-0 px-6 py-2.5 flex items-center justify-between"
+        className="flex-shrink-0 px-6 py-3 flex items-center justify-between"
         style={{ borderBottom: `1px solid ${skin.divider}` }}
       >
         <button
           onClick={goPrev}
           disabled={currentWeek <= 1}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-30"
+          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-30"
           style={{ color: skin.textPrimary, backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
         >
           ← 上一周
         </button>
         <div className="flex flex-col items-center">
-          <div className="text-sm font-semibold flex items-center gap-2" style={{ color: skin.textPrimary }}>
+          <div className="text-base font-bold flex items-center gap-2" style={{ color: skin.textPrimary }}>
             <span style={{ color: skin.swatch }}>第 {currentWeek}</span>
             <span>周</span>
-            <span className="text-xs font-mono" style={{ color: skin.textMuted }}>· {formatDateRange(weekStart, weekEnd)}</span>
+            <span className="text-sm font-mono" style={{ color: skin.textMuted }}>· {formatDateRange(weekStart, weekEnd)}</span>
           </div>
-          <div className="text-[10px] mt-0.5" style={{ color: skin.textMuted }}>
+          <div className="text-xs mt-0.5" style={{ color: skin.textMuted }}>
             {loading ? '加载中...' : mining ? `本周已写 ${mining.totalItems} 条 · ${mining.filledDays}/7 天` : '暂无数据'}
           </div>
         </div>
         <button
           onClick={goNext}
           disabled={currentWeek >= totalWeeks}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-30"
+          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-30"
           style={{ color: skin.textPrimary, backgroundColor: skin.cardBg, border: `1px solid ${skin.divider}` }}
         >
           下一周 →
