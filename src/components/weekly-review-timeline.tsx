@@ -242,7 +242,7 @@ function DayCard({ day, skin, onClick, isToday }: { day: DayReview; skin: SkinTh
       }}
       title="点击编辑当日复盘"
     >
-      {/* Date header */}
+      {/* Date header - 固定高度 */}
       <div
         className="flex-shrink-0 px-2.5 py-2 flex items-center justify-between"
         style={{ borderBottom: `1px solid ${skin.divider}` }}
@@ -264,26 +264,42 @@ function DayCard({ day, skin, onClick, isToday }: { day: DayReview; skin: SkinTh
         </span>
       </div>
 
-      {/* 6 fields */}
-      <div className="flex-1 min-h-0 px-2.5 py-1.5 flex flex-col gap-1 overflow-hidden">
+      {/* 6 fields - 每项 flex-1 均分剩余高度 */}
+      <div className="flex-1 min-h-0 px-2.5 py-1.5 flex flex-col overflow-hidden">
         {FIELD_ORDER.map((field) => {
           const text = (day as unknown as Record<string, string>)[field] || '';
           const filled = !!text;
           return (
-            <div key={field} className="flex items-start gap-1 text-[11px] leading-tight min-h-0">
-              <span
-                className="flex-shrink-0 font-medium"
-                style={{ color: filled ? skin.textSecondary : skin.textMuted, minWidth: '28px' }}
+            <div key={field} className="flex-1 min-h-0 flex flex-col gap-0.5 overflow-hidden">
+              <div
+                className="flex-shrink-0 flex items-center gap-1 text-[10px] font-medium leading-none"
+                style={{ color: filled ? skin.textSecondary : skin.textMuted }}
               >
-                {filled ? '✓' : '·'} {FIELD_LABELS[field]}
-              </span>
-              <span
-                className="flex-1 min-w-0 truncate"
-                style={{ color: filled ? skin.textPrimary : skin.textMuted, opacity: filled ? 1 : 0.5 }}
+                <span
+                  className="w-3 h-3 flex-shrink-0 rounded-sm flex items-center justify-center text-[8px] font-bold"
+                  style={{
+                    backgroundColor: filled ? skin.checkColor : skin.cardHover,
+                    color: filled ? 'white' : skin.textMuted,
+                  }}
+                >
+                  {filled ? '✓' : ''}
+                </span>
+                <span>{FIELD_LABELS[field]}</span>
+              </div>
+              <div
+                className="flex-1 min-h-0 text-[11px] leading-snug overflow-hidden"
+                style={{
+                  color: filled ? skin.textPrimary : skin.textMuted,
+                  opacity: filled ? 1 : 0.5,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  wordBreak: 'break-word',
+                }}
                 title={text}
               >
                 {text || '——'}
-              </span>
+              </div>
             </div>
           );
         })}
