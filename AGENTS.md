@@ -2,15 +2,21 @@
 
 ### 跨对话记忆系统（最高优先级 - 每次对话必读）
 
-**启动规则**：每次新建对话时，必须先读取 `.memory/INDEX.md` 获取历史上下文索引。需要了解某次对话的决策细节时，根据 ID 读取 `.memory/sessions/{id}.md`。
+**启动规则**：每次新建对话时，必须按顺序读取以下文件：
+1. `.memory/INDEX.md` — 历史上下文索引，用行号精准跳读
+2. `.memory/PITFALL.md` — 错误合集，已犯过的错误绝不重犯
 
-- `.memory/INDEX.md` — 所有对话的摘要索引（ID / 日期 / 主题 / 关键决策 / 涉及文件）
-- `.memory/sessions/*.md` — 每次对话的完整决策记录（需求 / 放弃的方案 / 最终决策 / 用户原话 / 改动文件）
+需要了解某次对话的决策细节时，根据 INDEX.md 中的定位读取 `.memory/sessions/{id}.md`。
+
+- `.memory/INDEX.md` — 所有对话的摘要索引（日期 / 主题 / 关键点 / 详情定位）
+- `.memory/PITFALL.md` — 历史错误合集（犯错场景 / 正确做法 / 根因）
+- `.memory/sessions/*.md` — 每次对话的完整决策记录（需求 / 放弃的方案 / 最终决策 / 用户原话 / 涉及文件）
 
 **对话结束规则**：每次对话结束时，必须：
 1. 创建 session 详情文件（`.memory/sessions/YYYY-MM-DD-主题关键词.md`）
-2. 更新 INDEX.md（追加索引条目）
-3. 将所有改动 commit 并 `git push origin main` 推送到 GitHub
+2. 更新 INDEX.md（追加索引条目，含行级精准定位）
+3. 如本次对话中犯过错误（哪怕已修复），追加条目到 `.memory/PITFALL.md`
+4. 将所有改动 commit 并 `git push origin main` 推送到 GitHub
 
 ### 对话结束时的记忆更新流程（强制）
 
