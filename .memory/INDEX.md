@@ -18,3 +18,12 @@
 | 2026-07-01 | 记忆系统-session分文件规则 | 同一上下文=同一文件，不同上下文=不同文件，按上下文分不是按日期分 | sessions/2026-06-30-周复盘时间轴.md#Q20(L221) |
 | 2026-07-01 | OKR数据丢失-根因定位 | POST /api/okr 从未传user_id→upsert静默失败，前端.catch吞错，OKR从未入库 | sessions/2026-07-01-OKR数据丢失.md#Q1(L14) |
 | 2026-07-01 | OKR数据丢失-修复方案 | POST加user_id='legacy'、GET加过滤、后端返回500+详情、前端显示红色错误提示 | sessions/2026-07-01-OKR数据丢失.md#Q1(L14) |
+| 2026-07-01 | user_id设计必要性 | 解释RLS策略/未来登录兼容/多用户隔离，'legacy'是占位符 | sessions/2026-07-01-OKR数据丢失.md#Q5(L87) |
+| 2026-07-01 | 用户反馈加登录未做好 | 承认'legacy'占位方案不是用户要的，需要接入真 Supabase Auth | sessions/2026-07-01-OKR数据丢失.md#Q6(L95) |
+| 2026-07-01 | 画布数据紧急回滚 | curl测试污染+后端GET drawing返回裸数组bug，UPDATE清空strokes | sessions/2026-07-01-OKR数据丢失.md#Q7(L103) |
+| 2026-07-01 | 画布恢复-拒绝诊断 | 用户拒绝帮查→AI自查全库确认DB 4天前就空、画布只在localStorage | sessions/2026-07-01-OKR数据丢失.md#Q8(L114) |
+| 2026-07-01 | 画布数据位置 | DB里2026年画布4天前就空、localStorage大概率有 | sessions/2026-07-01-OKR数据丢失.md#Q9(L141) |
+| 2026-07-01 | 智能存储方案承诺 | user_id是实现细节、代码自动决定localStorage vs DB、不再问用户 | sessions/2026-07-01-OKR数据丢失.md#Q10(L154) |
+| 2026-07-01 | 画布3重备份 | 主key+备份key+DB，加载取最多那份，永久保留localStorage | sessions/2026-07-01-OKR数据丢失.md#Q11(L162) |
+| 2026-07-01 | 用户4条红线写入AGENTS.md | 禁删功能/数据、测试用2099、智能隐藏技术细节、新功能后向兼容 | sessions/2026-07-01-OKR数据丢失.md#Q12(L176) |
+| 2026-07-01 | 第二轮记忆整理 | Q5-Q13追加到同一session文件 | sessions/2026-07-01-OKR数据丢失.md#Q13(L188) |

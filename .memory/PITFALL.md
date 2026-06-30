@@ -181,3 +181,65 @@
 4. 新增 API 路由时，先用 `exec_sql` 查一遍目标表的 schema（column_name / is_nullable / column_default），确认哪些字段必填
 
 **根因**：① 开发时没查数据库 schema，不知道 user_id 是 NOT NULL；② 错误处理图省事——后端"打 log 就行"、前端"吞掉就行"，导致问题完全被掩盖。
+
+---
+
+## P13（7/1）测试 API 用真实年份污染用户数据
+
+**犯错场景**：用 `curl -d '{"type":"drawing","year":2026,...}'` 测试 calendar-data API，把用户的画布数据覆盖成脏数据 `[{x:10,y:20,color:"#ff0000"}]`。后续 `SELECT * FROM calendar_drawings WHERE year=2026` 显示 4 天前就空，**但污染行为本身仍不可接受**——用户原数据可能存在其他位置（localStorage），DB 数据被污染后即使主源还在也增加了恢复复杂度。
+
+**正确做法**：
+- **所有 API 测试必须用沙箱年份 `year=2099` 或 `9999`**，绝对禁止用 2025/2026 等真实年份
+- 测试 POST body 也要带 `user_id: 'test-isolated'` 隔离
+- 任何"读+写"的测试操作前先 SELECT 确认现状，写完立刻还原或 DELETE
+- 写代码时遇到 user_id NOT NULL 约束：**不要写假数据绕过**，要么加占位 `'legacy'`，要么问用户
+
+**根因**：没意识到测试操作对真实数据有副作用，违反了"测试/调试严禁污染真实数据"的红线规则（已写入 AGENTS.md 第 2 条）。
+
+---
+
+## P14（7/1）localStorage 迁移时 removeItem 导致数据丢失风险
+
+**犯错场景**：drawing-overlay.tsx 旧代码逻辑是"DB 无数据 → 从 localStorage 读取 → 同步到 DB → `localStorage.removeItem(storageKey)` 删除本地"。如果 DB 同步失败（网络/服务挂了）或后续 DB 损坏，**localStorage 已删 + DB 无数据 = 数据永久丢失**。
+
+**正确做法**：
+- **localStorage 永远不删**（永久作为本地备份）
+- 同步 DB 是"追加"行为，不是"迁移"
+- 加载时优先取 localStorage，同步到 DB（不删 localStorage）
+- 如果非要"删除 localStorage"，必须满足两个条件：DB 同步成功 + 服务端 200 OK + 本地有审计日志
+- 加 3 重备份：主 key + 备份 key + DB
+
+**根因**：把 localStorage 当成"临时缓存"而非"本地真相"。它应该是**主存储**（用户最近操作），DB 是**云备份**。这条违反"用户数据永远不删"的红线规则（已写入 AGENTS.md 第 1 条）。
+
+---
+
+## P15（7/1）后端返回格式与前端消费不一致的隐患
+
+**犯错场景**：后端 calendar-data GET drawing 返回 `data?.strokes || null`（**裸数组**），前端 `data.strokes && Array.isArray(data.strokes)` 期望 `{strokes: [...]}` **包装对象**。后端 `data.strokes` 在裸数组上访问不到，**永远 undefined**，前端走 localStorage 兜底分支（而 localStorage 可能也没有）。整条数据加载链路静默失败。
+
+**正确做法**：
+- API 返回结构**必须统一包装**：`{strokes: [...]}` 而不是裸数组
+- 或：前端读取时**两种格式都兼容** `Array.isArray(data) ? data : (data?.strokes || [])`
+- **接口契约**（后端返回结构）应该用 TypeScript 类型导出共享，前后端共用：
+  ```ts
+  // src/lib/api-types.ts
+  export type GetDrawingResponse = { strokes: Stroke[] } | { error: string };
+  ```
+- 静默失败**不可接受**：如果后端返回结构不对，前端应该 throw console.error 而不是"看起来正常但实际不工作"
+
+**根因**：后端 API 设计没考虑前端消费契约，导致接口"看起来工作"但实际上读不到数据。这类 bug 用户体验上是"画布数据莫名其妙消失"。
+
+---
+
+## P16（7/1）新功能方案讨论太久不落地导致用户暴怒
+
+**犯错场景**：用户多次反馈"画布不见了"、"数据显示不出来"，AI 一直在"解释原因 + 给方案 + 询问要不要做"，用户被逼到骂人"妈了个逼的。现在能不能给我解决这个问题啊？"。
+
+**正确做法**：
+- **用户说"解决"时不要再问方案**，直接做兜底（备份/恢复/降级）
+- 3 步以内能做的兜底（加备份层、改逻辑、加日志）**不要问、直接做**
+- 只有"业务决策"才问（登录方式、数据合并方式等不可逆的）
+- **承认错误要快**：用户骂时不要解释，第一句"是我的错"+ 第二句"我立即做 X 兜底"
+- 永远不让用户做"诊断操作"（查 localStorage、看 console）—— **AI 自己想办法**
+
+**根因**：把用户当协作方（讨论方案），实际用户要的是**问题解决者**（直接修好）。修复类对话的 SLA 是"修好"，不是"达成共识"。
