@@ -8,8 +8,31 @@
 - `.memory/sessions/*.md` — 每次对话的完整决策记录（需求 / 放弃的方案 / 最终决策 / 用户原话 / 改动文件）
 
 **对话结束规则**：每次对话结束时，必须：
-1. 更新 INDEX.md（追加新行）和创建对应的 session 详情文件
-2. 将所有改动 commit 并 `git push origin main` 推送到 GitHub
+1. 创建 session 详情文件（`.memory/sessions/YYYY-MM-DD-主题关键词.md`）
+2. 更新 INDEX.md（追加索引条目）
+3. 将所有改动 commit 并 `git push origin main` 推送到 GitHub
+
+### 对话结束时的记忆更新流程（强制）
+
+**Step 1：创建详情文件**
+- 路径：`.memory/sessions/YYYY-MM-DD-主题关键词.md`
+- 日期用对话发生的日期，主题用2-4个字概括核心内容
+- 文件必须包含顶部目录表（章节名 + 行号），行号写完后必须回核对齐
+- 必选章节：需求 / 放弃的方案 / 最终决策 / 用户明确表态 / 涉及文件
+- "用户明确表态"必须保留用户原话，不要改写
+- 格式参照已有的详情文件（如 `2025-01-14-周复盘时间轴.md`）
+
+**Step 2：更新索引文件**
+- 读取 `.memory/INDEX.md`，在表格末尾追加条目
+- 一个对话如果涉及多个独立话题，拆成多条索引，每条指向详情文件的不同章节
+- 定位格式：`sessions/YYYY-MM-DD-主题关键词.md#章节名(L行号)`
+- 行号必须与详情文件目录表中的行号一致
+- 关键点要写具体（"确认了XX方案"），不要写空泛（"讨论了XX"）
+
+**Step 3：推送**
+```bash
+cd /workspace/projects && git add .memory/ && git commit -m "docs: 补充记忆 - YYYY-MM-DD-主题关键词" && git push origin main
+```
 
 **版本推送规则（强制）**：每次完成一个功能版本（即每次调用 `done` 工具交付前），必须执行 `git push origin main` 将代码推送到 GitHub。不得遗漏。
 
