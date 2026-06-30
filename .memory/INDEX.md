@@ -29,8 +29,21 @@
 | 2026-07-01 | 第二轮记忆整理 | Q5-Q13追加到同一session文件 | sessions/2026-07-01-OKR数据丢失.md#Q13(L189) |
 | 2026-07-01 | 第三轮记忆整理-执行过程 | 读PITFALL/AGENTS→追加Q5-Q13→更新INDEX→追加P13-P16→push | sessions/2026-07-01-OKR数据丢失.md#Q14(L196) |
 | 2026-07-01 | 第三轮记忆整理-请求 | 用户要求按5步整理记忆流程 | sessions/2026-07-01-OKR数据丢失.md#Q15(L241) |
-| 2026-07-01 | 登录弹窗-启动暂停期 | 拦截器安装时先getSession+500ms暂停期，刷新时不弹窗 | sessions/2026-07-01-登录弹窗与勾选逻辑.md#Q1(L84) |
-| 2026-07-01 | 登录弹窗-刷新仍弹出+语法错误 | _initialized不够，加_paused 500ms暂停期；edit_file多次替换破坏try-catch(TS1472) | sessions/2026-07-01-登录弹窗与勾选逻辑.md#Q2(L70) |
-| 2026-07-01 | 勾选逻辑-复盘内容优先 | overrides从覆盖变兜底，有复盘内容✓不受overrides影响 | sessions/2026-07-01-登录弹窗与勾选逻辑.md#Q3(L60) |
-| 2026-07-01 | 勾选逻辑-登录未登录分别处理 | 未登录从localStorage加载/保存reviewDays+overrides，登录从API/DB | sessions/2026-07-01-登录弹窗与勾选逻辑.md#Q4(L30) |
-| 2026-07-01 | 记忆整理-偷懒被抓 | 初次只记3轮次，用户指出后补全5轮次+错误过程 | sessions/2026-07-01-登录弹窗与勾选逻辑.md#Q5(L16) |
+| 2026-07-01 | 登录弹窗-启动暂停期 | 拦截器安装时先getSession+500ms暂停期，刷新时不弹窗 | sessions/2026-07-01-登录弹窗与勾选逻辑.md#Q1(L111) |
+| 2026-07-01 | 登录弹窗-刷新仍弹出+语法错误 | _initialized不够，加_paused 500ms暂停期；edit_file多次替换破坏try-catch(TS1472) | sessions/2026-07-01-登录弹窗与勾选逻辑.md#Q2(L95) |
+| 2026-07-01 | 勾选逻辑-复盘内容优先 | overrides从覆盖变兜底，有复盘内容✓不受overrides影响 | sessions/2026-07-01-登录弹窗与勾选逻辑.md#Q3(L79) |
+| 2026-07-01 | 勾选逻辑-登录未登录分别处理 | 未登录从localStorage加载/保存reviewDays+overrides，登录从API/DB | sessions/2026-07-01-登录弹窗与勾选逻辑.md#Q4(L52) |
+| 2026-07-01 | 记忆整理-偷懒被抓 | 初次只记3轮次→补5轮次→用户指出20+轮不止 | sessions/2026-07-01-登录弹窗与勾选逻辑.md#Q5(L42) |
+| 2026-07-01 | 记忆整理-二次被抓 | 整个会话20+轮对话只记了5轮，前上下文12个Phase完全遗漏 | sessions/2026-07-01-登录弹窗与勾选逻辑.md#Q7(L17) |
+| 2026-07-01 | 登录按钮位置与可见性 | import从default改named，absolute定位向下43px | sessions/2026-07-01-账号登录与数据链路.md#Q1(L160) |
+| 2026-07-01 | MigrationToast每次刷新弹出 | localStorage key读写不一致(带/不带userId后缀)，统一全局key+useState | sessions/2026-07-01-账号登录与数据链路.md#Q2(L142) |
+| 2026-07-01 | ChunkLoadError缓存 | 重启服务+清除.next缓存+修复layout HTML结构 | sessions/2026-07-01-账号登录与数据链路.md#Q3(L132) |
+| 2026-07-01 | 画板数据丢失 | API enum只有drawings(复数)，前端调用drawing(单数)，添加别名 | sessions/2026-07-01-账号登录与数据链路.md#Q4(L119) |
+| 2026-07-01 | 部署NOT NULL约束错误 | user_id列有null值，UPDATE null为legacy，schema改nullable | sessions/2026-07-01-账号登录与数据链路.md#Q5(L103) |
+| 2026-07-01 | legacy数据显示问题 | user_id=legacy数据，登录后看不到，需手动迁移 | sessions/2026-07-01-账号登录与数据链路.md#Q6(L92) |
+| 2026-07-01 | API返回格式不匹配 | API返回{data:{...}}，前端期望{...}，统一res.data||res | sessions/2026-07-01-账号登录与数据链路.md#Q7(L81) |
+| 2026-07-01 | daily_review保存失败 | upsert需唯一约束但无，改为delete+insert | sessions/2026-07-01-账号登录与数据链路.md#Q8(L70) |
+| 2026-07-01 | saveReview函数bug | res.catch()错误，Response没有catch方法，改try-catch | sessions/2026-07-01-账号登录与数据链路.md#Q9(L59) |
+| 2026-07-01 | apiFetch null触发登录 | 添加requireLogin触发登录弹窗 | sessions/2026-07-01-账号登录与数据链路.md#Q10(L48) |
+| 2026-07-01 | 全面数据链路检查 | calendar_overrides加API保存，notes/drawings加id生成，knowledge_trees无API待做 | sessions/2026-07-01-账号登录与数据链路.md#Q11(L33) |
+| 2026-07-01 | 登录弹窗-GET静默 | apiFetch只有POST/PUT/DELETE触发requireLogin，GET静默返回null | sessions/2026-07-01-账号登录与数据链路.md#Q12(L22) |
