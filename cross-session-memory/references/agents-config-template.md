@@ -12,7 +12,7 @@
 需要了解某次对话的决策细节时，根据 INDEX.md 中的定位读取 `.memory/sessions/{id}.md`。
 
 #### 对话结束规则：每次对话结束时，必须：
-1. 创建独立的 session 详情文件（`.memory/sessions/YYYY-MM-DD-主题关键词.md`），每个对话一个文件，绝不追加到旧对话的文件
+1. 同一上下文（同一对话窗口）的内容追加到同一个 session 文件，不同上下文才需要不同文件；跨天的轮次用日期标注区分（如"Q17/A17 查看结构（7/1）"）
 2. 追加索引条目到 INDEX.md（含行级精准定位）—— INDEX 是汇总层，追加
 3. 如本次对话中犯过错误（哪怕已修复），追加条目到 `.memory/PITFALL.md` —— PITFALL 是汇总层，追加
 4. 将所有改动 commit 并 `git push origin main` 推送到 GitHub
