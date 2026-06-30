@@ -52,7 +52,7 @@ cat << 'AGENTS_SNIPPET'
 ③ 读 .memory/PITFALL.md → 知道什么错不能犯
     ↓
 ④ 需要某次对话细节？→ 按 INDEX.md 中的定位 read_file 精准跳读
-   例：sessions/2025-01-14-周复盘时间轴.md#Q4(L61)
+   例：sessions/2026-06-30-周复盘时间轴.md#Q4(L61)
    → read_file(path, offset=61, limit=8) 只读8行，不用通读全文
     ↓
 ⑤ 正常开发（写代码 / 修bug / 新功能）

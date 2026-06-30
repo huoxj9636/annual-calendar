@@ -33,7 +33,7 @@ description: 为 AI Agent 建立跨对话记忆系统；当用户需要在新对
 1. 读 `.memory/INDEX.md` → 扫一遍所有历史摘要
 2. 读 `.memory/PITFALL.md` → 知道什么错不能犯
 3. 需要某次对话细节？→ 按 INDEX 中的定位精准跳读
-   - 例：`sessions/2025-01-14-周复盘.md#Q4(L61)` → `read_file(path, offset=61, limit=8)`
+   - 例：`sessions/2026-06-30-周复盘.md#Q4(L61)` → `read_file(path, offset=61, limit=8)`
 
 ### 详情文件格式
 
