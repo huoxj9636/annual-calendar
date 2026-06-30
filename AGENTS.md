@@ -7,7 +7,11 @@
 - `.memory/INDEX.md` — 所有对话的摘要索引（ID / 日期 / 主题 / 关键决策 / 涉及文件）
 - `.memory/sessions/*.md` — 每次对话的完整决策记录（需求 / 放弃的方案 / 最终决策 / 用户原话 / 改动文件）
 
-**对话结束规则**：每次对话结束时，必须更新 INDEX.md（追加新行）和创建对应的 session 详情文件。
+**对话结束规则**：每次对话结束时，必须：
+1. 更新 INDEX.md（追加新行）和创建对应的 session 详情文件
+2. 将所有改动 commit 并 `git push origin main` 推送到 GitHub
+
+**版本推送规则（强制）**：每次完成一个功能版本（即每次调用 `done` 工具交付前），必须执行 `git push origin main` 将代码推送到 GitHub。不得遗漏。
 
 ### 项目概述
 
