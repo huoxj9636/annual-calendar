@@ -94,7 +94,10 @@ cross-session-memory.skill（.skill文件）
 | 记忆系统流程/必读文件变更 | AGENTS.md + agents-config-template.md + SKILL.md |
 | session/INDEX/PITFALL 格式变更 | SKILL.md + agents-config-template.md |
 | init-memory.sh 脚本变更 | 重新打包 .skill |
+| 同步矩阵本身变更 | AGENTS.md + agents-config-template.md + SKILL.md + 重新打包 .skill |
 | .memory/ 数据 | 不同步，项目独有 |
+
+**触发方式**：每次对话中若修改了 AGENTS.md 里"跨对话记忆系统"相关段落，对话结束前必须按同步矩阵检查并更新技能包对应文件，重新打包 `.skill`，执行 `save_to_my_skill`。
 
 ### 项目概述
 
