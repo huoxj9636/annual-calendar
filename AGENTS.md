@@ -34,6 +34,8 @@
 cd /workspace/projects && git add .memory/ && git commit -m "docs: 补充记忆 - YYYY-MM-DD-主题关键词" && git push origin main
 ```
 
+**推送后提醒（强制）**：git push 成功后、调用 `done` 交付前，必须明确告知用户"已推送到 GitHub"。不得在未提醒的情况下直接交付。
+
 **版本推送规则（强制）**：每次完成一个功能版本（即每次调用 `done` 工具交付前），必须执行 `git push origin main` 将代码推送到 GitHub。不得遗漏。
 
 ### 项目概述
