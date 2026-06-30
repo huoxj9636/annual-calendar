@@ -12,9 +12,9 @@
 需要了解某次对话的决策细节时，根据 INDEX.md 中的定位读取 `.memory/sessions/{id}.md`。
 
 #### 对话结束规则：每次对话结束时，必须：
-1. 追加或创建 session 详情文件（`.memory/sessions/YYYY-MM-DD-主题关键词.md`）
-2. 追加索引条目到 INDEX.md（含行级精准定位）
-3. 如本次对话中犯过错误（哪怕已修复），追加条目到 `.memory/PITFALL.md`
+1. 创建独立的 session 详情文件（`.memory/sessions/YYYY-MM-DD-主题关键词.md`），每个对话一个文件，绝不追加到旧对话的文件
+2. 追加索引条目到 INDEX.md（含行级精准定位）—— INDEX 是汇总层，追加
+3. 如本次对话中犯过错误（哪怕已修复），追加条目到 `.memory/PITFALL.md` —— PITFALL 是汇总层，追加
 4. 将所有改动 commit 并 `git push origin main` 推送到 GitHub
 5. 推送后提醒用户"已推送到 GitHub"，然后才能调用 done 交付
 ```
