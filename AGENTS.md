@@ -75,6 +75,27 @@ cd /workspace/projects && git add .memory/ && git commit -m "docs: 补充记忆 
 
 **技能包同步规则**：当记忆系统的格式、流程、PITFALL 内容有重大变更时，必须同步更新 `cross-session-memory/` 技能包（SKILL.md + references + scripts），重新打包 `.skill` 文件，并执行 `save_to_my_skill` 更新"我的技能"。
 
+**文件同步关系**：
+```
+AGENTS.md（项目实际配置）
+    ↕ 必须保持一致
+cross-session-memory/references/agents-config-template.md（技能包模板）
+
+cross-session-memory/（技能源码）
+    ↕ 打包生成
+cross-session-memory.skill（.skill文件）
+
+.memory/（运行时数据）→ 不同步到技能包，每个项目独有
+```
+
+同步矩阵：
+| 改了什么 | 要同步更新 |
+|---|---|
+| 记忆系统流程/必读文件变更 | AGENTS.md + agents-config-template.md + SKILL.md |
+| session/INDEX/PITFALL 格式变更 | SKILL.md + agents-config-template.md |
+| init-memory.sh 脚本变更 | 重新打包 .skill |
+| .memory/ 数据 | 不同步，项目独有 |
+
 ### 项目概述
 
 年度计划日历应用，支持 12 周工作法区块划分、农历/节气显示、每日满意度勾选、日视图日程管理、月度复盘、人生旅途行动模板等功能。
