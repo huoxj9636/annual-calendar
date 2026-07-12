@@ -350,9 +350,15 @@ export default function YearCalendar() {
       if (savedOrder) {
         try {
           const parsed = JSON.parse(savedOrder) as string[];
-          const allKeys = Object.keys(defaultModuleNames);
-          const validOrder = parsed.filter(k => allKeys.includes(k));
-          const missing = allKeys.filter(k => !validOrder.includes(k));
+          const builtinKeys = Object.keys(defaultModuleNames);
+          // 自定义书签的 ID（如 bm_xxx）也属于合法 key，否则刷新后会被当作非法值过滤掉
+          const bookmarkIds = (() => {
+            try { return (JSON.parse(localStorage.getItem('calendar-bookmarks') || '[]') as Array<{ id: string }>).map(b => b.id); }
+            catch { return []; }
+          })();
+          const validKeySet = new Set([...builtinKeys, ...bookmarkIds]);
+          const validOrder = parsed.filter(k => validKeySet.has(k));
+          const missing = [...builtinKeys, ...bookmarkIds].filter(k => !validOrder.includes(k));
           setModuleOrder([...validOrder, ...missing]);
         } catch { /* ignore */ }
       }
