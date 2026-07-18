@@ -603,7 +603,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
          onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-[1280px] h-[700px] max-h-[75vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
+      <div className="w-[92vw] max-w-[1280px] h-[80vh] max-h-[700px] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b gap-4" style={{ borderColor: skin.cellBorder }}>
           {/* Left: title + action buttons */}
@@ -798,7 +798,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     </div>
                     {/* Time scale container - z-index lower than task column so it gets covered when scrolling left */}
                     {/* 尺子效果：顶部一条连续横杠 + 每个刻度竖线从横杠往下凸出 */}
-                    <div className="flex relative z-0 border-t" style={{ borderColor: skin.textMuted + '60', borderTopWidth: '2px' }}>
+                    <div className="flex relative z-0 border-t" style={{ borderColor: skin.textMuted, borderTopWidth: '2px' }}>
                       {/* 格子数量和GanttRow一致：截止在24点 */}
                       {(() => {
                         const cellWidth = 48;
@@ -822,11 +822,11 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                           const isHourTick = minute === 0;
 
                           return (
-                            <div key={slotIdx} className="text-left text-xs font-medium shrink-0 relative" style={{ width: `${cellWidth}px`, color: skin.textMuted }}>
-                              {showHourLabel && <span className="relative pl-0.5">{hour}</span>}
-                              {show15MinLabel && <span className="absolute top-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>}
-                              {show30MinLabel && <span className="absolute top-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>}
-                              {show45MinLabel && <span className="absolute top-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>}
+                            <div key={slotIdx} className="text-left text-[10px] font-medium shrink-0 relative" style={{ width: `${cellWidth}px`, color: skin.textMuted }}>
+                              {showHourLabel && <span className="relative pl-0.5 text-[9px]">{hour}</span>}
+                              {show15MinLabel && <span className="absolute top-px left-1/2 text-[10px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>}
+                              {show30MinLabel && <span className="absolute top-px left-1/2 text-[10px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>}
+                              {show45MinLabel && <span className="absolute top-px left-1/2 text-[10px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>}
                               {/* 刻度竖线：从顶部横杠往下凸出，小时刻度更高更粗 */}
                               <div
                                 className="absolute right-0 top-0"
@@ -834,7 +834,6 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                                   width: isHourTick ? '2px' : '1px',
                                   height: isHourTick ? '10px' : '6px',
                                   backgroundColor: skin.textMuted,
-                                  opacity: isHourTick ? 0.6 : 0.35,
                                 }}
                               />
                             </div>
