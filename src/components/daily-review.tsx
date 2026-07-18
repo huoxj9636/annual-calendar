@@ -797,8 +797,8 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                       </div>
                     </div>
                     {/* Time scale container - z-index lower than task column so it gets covered when scrolling left */}
-                    {/* 尺子效果：底部一条连续横杠 + 每个刻度竖线从横杠凸出 */}
-                    <div className="flex relative z-0 border-b" style={{ borderColor: skin.textMuted + '80', borderBottomWidth: '2px' }}>
+                    {/* 尺子效果：顶部一条连续横杠 + 每个刻度竖线从横杠往下凸出 */}
+                    <div className="flex relative z-0 border-t" style={{ borderColor: skin.textMuted + '80', borderTopWidth: '2px' }}>
                       {/* 格子数量和GanttRow一致：截止在24点 */}
                       {(() => {
                         const cellWidth = 48;
@@ -824,12 +824,12 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                           return (
                             <div key={slotIdx} className="text-left text-xs font-medium shrink-0 relative" style={{ width: `${cellWidth}px`, color: skin.textMuted }}>
                               {showHourLabel && <span className="relative pl-0.5">{hour}</span>}
-                              {show15MinLabel && <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>}
-                              {show30MinLabel && <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>}
-                              {show45MinLabel && <span className="absolute bottom-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>}
-                              {/* 刻度竖线：从底部横杠凸出，小时刻度更高更粗 */}
+                              {show15MinLabel && <span className="absolute top-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>15</span>}
+                              {show30MinLabel && <span className="absolute top-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>30</span>}
+                              {show45MinLabel && <span className="absolute top-px left-1/2 text-[8px] leading-none tracking-tight opacity-75" style={{ transform: 'translateX(-50%)' }}>45</span>}
+                              {/* 刻度竖线：从顶部横杠往下凸出，小时刻度更高更粗 */}
                               <div
-                                className="absolute right-0 bottom-0"
+                                className="absolute right-0 top-0"
                                 style={{
                                   width: isHourTick ? '2px' : '1px',
                                   height: isHourTick ? '10px' : '6px',
@@ -1569,12 +1569,8 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
           {Array.from({ length: totalSlots }, (_, i) => (
             <div
               key={i}
-              className="border-r"
-              style={{
-                borderColor: skin.textMuted,
-                borderRightWidth: '1px',
-                opacity: 0.35,
-              }}
+              className="border-r opacity-20"
+              style={{ borderColor: skin.cellBorder }}
             />
           ))}
         </div>
