@@ -798,7 +798,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                     </div>
                     {/* Time scale container - z-index lower than task column so it gets covered when scrolling left */}
                     {/* 尺子效果：顶部一条连续横杠 + 每个刻度竖线从横杠往下凸出 */}
-                    <div className="flex relative z-0 border-t" style={{ borderColor: skin.textMuted + '80', borderTopWidth: '2px' }}>
+                    <div className="flex relative z-0 border-t" style={{ borderColor: skin.textMuted + '60', borderTopWidth: '2px' }}>
                       {/* 格子数量和GanttRow一致：截止在24点 */}
                       {(() => {
                         const cellWidth = 48;
@@ -834,7 +834,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
                                   width: isHourTick ? '2px' : '1px',
                                   height: isHourTick ? '10px' : '6px',
                                   backgroundColor: skin.textMuted,
-                                  opacity: isHourTick ? 0.9 : 0.5,
+                                  opacity: isHourTick ? 0.6 : 0.35,
                                 }}
                               />
                             </div>
@@ -1554,7 +1554,7 @@ function GanttRow({ row, idx, skin, scale, hoverHour, taskColumnWidth, onUpdateR
           className="w-full px-2 py-1.5 rounded-lg text-sm outline-none border"
           style={{ 
             backgroundColor: skin.cardBg, 
-            color: skin.textPrimary, 
+            color: skin.textMuted, // Lighter color for placeholder state
             borderColor: `${skin.swatch}30`, // Subtle border with 30% opacity, not too prominent
           }}
         />
