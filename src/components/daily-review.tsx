@@ -603,9 +603,9 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
          onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-[1320px] h-[820px] max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
+      <div className="w-[min(1320px,96vw)] h-[min(820px,92vh)] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b gap-4" style={{ borderColor: skin.cellBorder }}>
+        <div className="flex items-center justify-between px-3 sm:px-6 py-3 border-b gap-2 sm:gap-4 flex-wrap" style={{ borderColor: skin.cellBorder }}>
           {/* Left: title + action buttons */}
           <div className="flex items-center gap-3">
             <div>
@@ -663,7 +663,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
         </div>
 
         {/* Content */}
-        <div className="px-6 py-3 flex-1 flex flex-col min-h-0">
+        <div className="px-3 sm:px-6 py-3 flex-1 flex flex-col min-h-0">
           {viewMode === 'gantt' ? (
             /* Gantt View */
             <div className="flex flex-col gap-2 flex-1 min-h-0">
@@ -921,7 +921,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
             </div>
           ) : (
             /* Review View */
-            <div className="grid grid-cols-3 grid-rows-2 gap-3 mb-3 h-full">
+            <div className="grid gap-3 mb-3 flex-1 min-h-0 overflow-y-auto grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2 auto-rows-[minmax(200px,1fr)]">
               <ReviewSection
               title="今天完成了什么？"
               icon="✓"
@@ -985,7 +985,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
             left: modalPos ? modalPos.x : '50%',
             top: modalPos ? modalPos.y : '50%',
             transform: modalPos ? 'none' : 'translate(-50%, -50%)',
-            minWidth: 420,
+            minWidth: 'min(420px, 92vw)',
             cursor: isDragging ? 'grabbing' : 'default',
           }}
         >
@@ -1126,7 +1126,7 @@ export default function DailyReview({ year, month, day, skin, events, todos, onC
       {showImport && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
           onClick={e => { if (e.target === e.currentTarget) { setShowImport(false); } }}>
-          <div className="w-[840px] max-h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
+          <div className="w-[min(840px,95vw)] max-h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ backgroundColor: skin.panelBg }}>
             <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: skin.cellBorder }}>
               <div className="font-bold" style={{ color: skin.textPrimary }}>📥 导入笔记</div>
               <div className="flex items-center gap-1">
