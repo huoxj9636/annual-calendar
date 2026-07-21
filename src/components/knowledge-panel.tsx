@@ -569,7 +569,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
         {/* 内容区 */}
         <div className="flex-1 flex flex-col min-h-0 relative">
           {activeTab === "reading" && !selectedTree && (
-            <ReadingRoom skin={skin} />
+            <ReadingRoom skin={skin} onBack={() => setActiveTab("forest")} />
           )}
           {activeTab === "forest" && (
             <>

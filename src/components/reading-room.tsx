@@ -1,53 +1,59 @@
 "use client";
 
-/* reading-room.tsx — 书房：嵌入石墨文档书单 */
+/* reading-room.tsx — 书房：全屏嵌入石墨文档 */
 
-import { ExternalLink } from "lucide-react";
+import { ChevronLeft, ExternalLink } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 
 const SHIMO_URL = "https://shimo.im/docs/N2A1gBe87Eu1gKqD";
 
 interface ReadingRoomProps {
   skin: SkinTheme;
+  onBack: () => void;
 }
 
-export default function ReadingRoom({ skin }: ReadingRoomProps) {
+export default function ReadingRoom({ skin, onBack }: ReadingRoomProps) {
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative">
-      {/* 顶部工具栏 */}
-      <div
-        className="flex items-center justify-between px-4 py-2 border-b"
-        style={{ borderColor: skin.divider }}
-      >
-        <span
-          className="text-xs"
-          style={{ color: skin.textMuted }}
-        >
-          书房 · 书单
-        </span>
-        <a
-          href={SHIMO_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all hover:opacity-80"
-          style={{
-            color: skin.swatch,
-            background: skin.swatch + "10",
-          }}
-        >
-          <ExternalLink size={12} />
-          新窗口打开
-        </a>
-      </div>
-
-      {/* 石墨文档 iframe */}
+    <div className="absolute inset-0 z-10">
+      {/* 全屏 iframe */}
       <iframe
         src={SHIMO_URL}
-        className="flex-1 w-full border-0"
+        className="w-full h-full border-0"
         title="书房 - 书单"
         referrerPolicy="no-referrer-when-downgrade"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
       />
+
+      {/* 左上角返回按钮 */}
+      <button
+        onClick={onBack}
+        className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium shadow-lg transition-all hover:scale-105"
+        style={{
+          background: skin.cardBg,
+          color: skin.textPrimary,
+          border: `1px solid ${skin.divider}`,
+          boxShadow: `0 4px 16px rgba(0,0,0,0.12)`,
+        }}
+      >
+        <ChevronLeft size={16} />
+        返回
+      </button>
+
+      {/* 右上角新窗口打开 */}
+      <a
+        href={SHIMO_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-4 right-4 flex items-center gap-1 px-3 py-2 rounded-full text-sm shadow-lg transition-all hover:scale-105"
+        style={{
+          background: skin.cardBg,
+          color: skin.textSecondary,
+          border: `1px solid ${skin.divider}`,
+          boxShadow: `0 4px 16px rgba(0,0,0,0.12)`,
+        }}
+      >
+        <ExternalLink size={14} />
+      </a>
     </div>
   );
 }
