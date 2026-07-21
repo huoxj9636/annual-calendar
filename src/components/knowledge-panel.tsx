@@ -126,7 +126,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
 
   const [mounted, setMounted] = useState(false);
 
-  // Tab 切换：我的森林 / 书房
+  // Tab 切换：我的森林 / 书库
   const [activeTab, setActiveTab] = useState<"forest" | "reading">("forest");
 
   useEffect(() => {
@@ -485,7 +485,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
       className="fixed inset-0 z-50 flex"
       style={{ background: skin.panelBg }}
     >
-      {/* 书房全屏覆盖 */}
+      {/* 书库全屏覆盖 */}
       {activeTab === "reading" && !selectedTree && (
         <ReadingRoom skin={skin} onBack={() => setActiveTab("forest")} />
       )}
@@ -564,7 +564,7 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
             <TabButton
               active={activeTab === "reading"}
               icon={<BookOpen size={14} />}
-              label="书房"
+              label="书库"
               onClick={() => setActiveTab("reading")}
               skin={skin}
             />

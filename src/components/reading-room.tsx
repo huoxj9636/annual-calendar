@@ -1,6 +1,6 @@
 "use client";
 
-/* reading-room.tsx — 书房：全屏嵌入石墨文档 */
+/* reading-room.tsx — 书库：全屏嵌入石墨文档 */
 
 import { ChevronLeft, ExternalLink } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
@@ -19,7 +19,7 @@ export default function ReadingRoom({ skin, onBack }: ReadingRoomProps) {
       <iframe
         src={SHIMO_URL}
         className="w-full h-full border-0"
-        title="书房 - 书单"
+        title="书库 - 书单"
         referrerPolicy="no-referrer-when-downgrade"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
       />
