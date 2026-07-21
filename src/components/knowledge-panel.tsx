@@ -32,12 +32,14 @@ import {
   Link as LinkIcon,
   ExternalLink,
   Pencil,
+  BookOpen,
 } from "lucide-react";
 import type { SkinTheme } from "@/lib/skins";
 import ForestScene, { type ForestItem } from "./forest/forest-scene";
 import TreeCloseup, { TREE_NODE_TYPE_INFO, type NodeType } from "./forest/tree-closeup";
 import { TREE_SPECIES, SpeciesPreview, type TreeSpeciesId } from "./forest/tree-species";
 import { IframeControls } from "./forest/iframe-controls";
+import ReadingRoom from "./reading-room";
 
 // === 数据类型（保持兼容）===
 
@@ -123,6 +125,9 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
   }>({ type: "leaf", title: "", content: "", source: "" });
 
   const [mounted, setMounted] = useState(false);
+
+  // Tab 切换：我的森林 / 书房
+  const [activeTab, setActiveTab] = useState<"forest" | "reading">("forest");
 
   useEffect(() => {
     setMounted(true);
@@ -538,9 +543,37 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
           </div>
         )}
 
-        {/* 内容区：直接渲染树视图（已去掉 OS / 好友森林 tab） */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {!selectedTree && (
+        {/* Tab 切换栏 — 仅在非详情页时显示 */}
+        {!selectedTree && (
+          <div
+            className="flex items-center gap-1 px-6 pt-2"
+            style={{ borderBottom: `1px solid ${skin.divider}` }}
+          >
+            <TabButton
+              active={activeTab === "forest"}
+              icon={<Trees size={14} />}
+              label="我的森林"
+              onClick={() => setActiveTab("forest")}
+              skin={skin}
+            />
+            <TabButton
+              active={activeTab === "reading"}
+              icon={<BookOpen size={14} />}
+              label="书房"
+              onClick={() => setActiveTab("reading")}
+              skin={skin}
+            />
+          </div>
+        )}
+
+        {/* 内容区 */}
+        <div className="flex-1 flex flex-col min-h-0 relative">
+          {activeTab === "reading" && !selectedTree && (
+            <ReadingRoom skin={skin} />
+          )}
+          {activeTab === "forest" && (
+            <>
+              {!selectedTree && (
             <div className="flex-1 min-h-0">
               <MyForestView
               sceneItems={pagedForestItems}
@@ -626,6 +659,8 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
                 onBack={() => setSelectedTree(null)}
               />
             </div>
+          )}
+            </>
           )}
         </div>
       </div>
@@ -1539,5 +1574,41 @@ function Modal({
         {children}
       </div>
     </div>
+  );
+}
+
+/** Tab 切换按钮 */
+function TabButton({
+  active,
+  icon,
+  label,
+  onClick,
+  skin,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  skin: SkinTheme;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all relative"
+      style={{
+        color: active ? skin.swatch : skin.textMuted,
+      }}
+    >
+      {icon}
+      {label}
+      {/* 底部高亮条 */}
+      <span
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] rounded-full transition-all"
+        style={{
+          width: active ? "60%" : "0%",
+          background: skin.swatch,
+        }}
+      />
+    </button>
   );
 }

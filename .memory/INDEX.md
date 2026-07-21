@@ -62,3 +62,4 @@
 | 2026-07-11 | 知识森林-PUT 500连环修复 | 间歇性500: putRoute+RLS→单例+loadEnv→localStorage兜底→重试，3轮修复未完全解决 | sessions/2026-07-11-知识森林持久化.md#Q11(L155) |
 | 2026-07-12 | 自定义链接-刷新消失 | 模块顺序加载过滤allKeys仅内建8个,bm_xxx被过滤;扩展为validKeySet=内建+书签ID | sessions/2026-07-12-自定义链接消失.md#A1(L21) |
 | 2026-07-12 | 每日复盘-屏幕自适应 | 主弹窗1320px固定宽改min(1320px,96vw);Review网格响应式1/2/3列+滚动;语音/导入弹窗同改 | sessions/2026-07-12-自定义链接消失.md#A2(L89) |
+| 2026-07-21 | 书房功能-需求与实现 | 知识森林新增"书房"Tab：book_lists+books表、CRUD API、微信读书解析API、reading-room组件 | sessions/2026-07-21-书房功能.md#Q1(L9) |
