@@ -63,3 +63,4 @@
 | 2026-07-12 | 自定义链接-刷新消失 | 模块顺序加载过滤allKeys仅内建8个,bm_xxx被过滤;扩展为validKeySet=内建+书签ID | sessions/2026-07-12-自定义链接消失.md#A1(L21) |
 | 2026-07-12 | 每日复盘-屏幕自适应 | 主弹窗1320px固定宽改min(1320px,96vw);Review网格响应式1/2/3列+滚动;语音/导入弹窗同改 | sessions/2026-07-12-自定义链接消失.md#A2(L89) |
 | 2026-07-21 | 书房功能-需求与实现 | 知识森林新增"书房"Tab：book_lists+books表、CRUD API、微信读书解析API、reading-room组件 | sessions/2026-07-21-书房功能.md#Q1(L9) |
+| 2026-07-21 | 书房简化为石墨文档iframe | 用户不要自建CRUD，改为直接嵌入石墨文档iframe；删除多余API和DB表 | sessions/2026-07-21-书房功能.md#Q2(L41) |
