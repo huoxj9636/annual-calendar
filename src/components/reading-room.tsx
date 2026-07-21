@@ -14,7 +14,7 @@ interface ReadingRoomProps {
 
 export default function ReadingRoom({ skin, onBack }: ReadingRoomProps) {
   return (
-    <div className="absolute inset-0 z-10">
+    <div className="fixed inset-0 z-[60]">
       {/* 全屏 iframe */}
       <iframe
         src={SHIMO_URL}

@@ -485,6 +485,11 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
       className="fixed inset-0 z-50 flex"
       style={{ background: skin.panelBg }}
     >
+      {/* 书房全屏覆盖 */}
+      {activeTab === "reading" && !selectedTree && (
+        <ReadingRoom skin={skin} onBack={() => setActiveTab("forest")} />
+      )}
+
       {/* 主容器 */}
       <div className="w-full h-full flex flex-col overflow-hidden">
         {/* 顶部标题栏 - 进入详情页时隐藏 */}
@@ -568,9 +573,6 @@ export default function KnowledgePanel({ open, onClose, skin }: KnowledgePanelPr
 
         {/* 内容区 */}
         <div className="flex-1 flex flex-col min-h-0 relative">
-          {activeTab === "reading" && !selectedTree && (
-            <ReadingRoom skin={skin} onBack={() => setActiveTab("forest")} />
-          )}
           {activeTab === "forest" && (
             <>
               {!selectedTree && (
